@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyPrivateAgent</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <!-- Markdown渲染库 -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- 顶部栏 -->
+        <header class="top-bar">
+            <div class="app-title">MyPrivateAgent</div>
+            <div class="header-actions">
+                <button class="skills-button" id="skills-button">
+                    <span>🧩</span>
+                    <span id="skills-count">Skills: 0 | 0</span>
+                </button>
+                <div class="user-menu">
+                    <button class="user-button" id="user-button">
+                        <span class="user-icon">👤</span>
+                        <span class="user-name" id="current-username">用户</span>
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="user-dropdown" id="user-dropdown">
+                        <button class="logout-btn" id="logout-btn">退出登录</button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <!-- 左侧栏：会话列表 -->
+            <aside class="sidebar">
+                <button class="new-chat-btn" id="new-chat-btn">
+                    <span>➕</span> 新建对话
+                </button>
+                <div class="conversation-list" id="conversation-list">
+                    <!-- 会话列表将在这里动态生成 -->
+                </div>
+            </aside>
+
+            <!-- 右侧栏：对话区域 -->
+            <main class="chat-area">
+                <!-- 模型选择 -->
+                <div class="model-selector">
+                    <label for="model-select">模型：</label>
+                    <select id="model-select">
+                        <option value="llama3.1">Llama 3.1</option>
+                        <option value="deepseek-r1:7b">DeepSeek R1</option>
+                        <option value="llava">LLaVA</option>
+                    </select>
+                </div>
+
+                <!-- 聊天消息区域 -->
+                <div class="messages-container" id="messages-container">
+                    <div class="welcome-message" id="welcome-message">
+                        <h2>欢迎使用 MyPrivateAgent</h2>
+                        <p>开始一个新的对话吧！</p>
+                    </div>
+                </div>
+
+                <!-- 输入区域 -->
+                <div class="input-area">
+                    <textarea
+                        id="message-input"
+                        placeholder="输入消息... (Shift+Enter 换行)"
+                        rows="1"
+                    ></textarea>
+                    <button class="send-button" id="send-button">发送</button>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+    
+    <!-- Skills 管理面板 -->
+    <div class="modal-overlay" id="skills-modal">
+        <div class="modal-content skills-modal">
+            <div class="modal-header">
+                <h3>🧩 Skills 管理</h3>
+                <button class="modal-close" id="skills-close">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="skills-stats" id="skills-stats">
+                    <span>总数: <strong id="skills-total">0</strong></span>
+                    <span>已启用: <strong id="skills-enabled">0</strong></span>
+                    <div class="import-buttons">
+                        <button class="btn-primary" id="import-skill-folder-btn" title="选择包含 SKILL.md 的文件夹，一键导入所有文件">📁 选择文件夹</button>
+                        <button class="btn-secondary" id="import-skill-btn" title="上传 ZIP 压缩包或 SKILL.md 文件">📦 导入文件或ZIP压缩包</button>
+                    </div>
+                </div>
+                <p style="font-size: 12px; color: #888; margin: 5px 0 10px;">
+                    💡 推荐：选择文件夹（推荐） | ZIP压缩包 | 单个MD文件
+                </p>
+                <!-- 文件夹选择 -->
+                <input type="file" id="skill-folder-input" webkitdirectory directory style="display: none;">
+                <!-- 文件选择（支持 ZIP 和 MD） -->
+                <input type="file" id="skill-file-input" accept=".md,.zip" style="display: none;">
+                <div class="skills-list" id="skills-list">
+                    <!-- Skills 列表将在这里动态生成 -->
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
