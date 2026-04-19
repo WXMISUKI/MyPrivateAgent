@@ -3,10 +3,11 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import Annotated, Generator
 import json
+import asyncio
 from datetime import datetime
 import logging
 
-from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
+from langchain_core.messages import HumanMessage, AIMessage, ToolMessage, SystemMessage
 from langchain_ollama import ChatOllama
 from langgraph.graph import END, StateGraph
 from langchain_core.tools import Tool
@@ -19,9 +20,15 @@ from database import get_db
 from models import User, Conversation, Message, Skill
 from schemas import ChatRequest, ChatResponse, ModelInfo
 from auth import get_current_user
-from config import OLLAMA_BASE_URL, DEFAULT_MODEL, AVAILABLE_MODELS, PROJECT_ROOT
+from config import OLLAMA_BASE_URL, DEFAULT_MODEL, AVAILABLE_MODELS, PROJECT_ROOT, ARK_API_KEY, ARK_BASE_URL, ARK_MODEL
 import pytz
 import os
+
+# 导入协调器
+from orchestrator import get_orchestrator
+
+# 导入自学习模块
+from learning_recorder import LearningRecorder
 
 
 # ============ Skills 加载函数 ============
@@ -123,8 +130,11 @@ class MessagesState(TypedDict):
     messages: list
 
 
-# 不支持工具的模型列表
-MODELS_WITHOUT_TOOLS = ["deepseek-r1:7b", "llava"]
+# 不支持工具的模型列表（仅本地 Ollama 模型）
+MODELS_WITHOUT_TOOLS = ["deepseek-r1:7b", "llava", "llama3.1"]
+
+# 需要使用火山引擎 ARK API 的模型
+MODELS_USING_ARK = ["doubao"]
 
 
 # 工具定义
@@ -319,21 +329,29 @@ def chat(
     db: Annotated[Session, Depends(get_db)]
 ):
     """流式对话"""
-    # 验证会话归属
-    conversation = db.query(Conversation).filter(
-        Conversation.id == request.conversation_id,
-        Conversation.user_id == current_user.id
-    ).first()
+    conversation = None
+
+    if request.conversation_id:
+        # 验证会话归属
+        conversation = db.query(Conversation).filter(
+            Conversation.id == request.conversation_id,
+            Conversation.user_id == current_user.id
+        ).first()
 
     if not conversation:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="会话不存在"
+        # 创建新会话
+        conversation = Conversation(
+            user_id=current_user.id,
+            title=request.message[:30] + ("..." if len(request.message) > 30 else ""),
+            model_name=request.model_name or "doubao"
         )
+        db.add(conversation)
+        db.commit()
+        db.refresh(conversation)
 
     # 获取历史消息
     history_messages = db.query(Message).filter(
-        Message.conversation_id == request.conversation_id
+        Message.conversation_id == conversation.id
     ).order_by(Message.created_at).all()
 
     # 构建消息列表
@@ -350,7 +368,7 @@ def chat(
 
     # 保存用户消息到数据库
     db.add(Message(
-        conversation_id=request.conversation_id,
+        conversation_id=conversation.id,
         role="user",
         content=request.message
     ))
@@ -375,50 +393,94 @@ def chat(
         # 清除旧模型缓存
         clear_graph_cache(conversation.model_name)
 
-    print(f"[聊天] 会话ID: {request.conversation_id}, 使用模型: {model_name}")
+    logger.info(f"[聊天] 会话ID: {request.conversation_id}")
+    logger.info(f"[聊天] 使用模型: {model_name}")
+    logger.info(f"[聊天] 用户消息: {request.message[:100]}...")
+    logger.info(f"[聊天] 请求对象: {request}")
+    logger.info(f"[聊天] 请求类型: {type(request)}")
 
-    # 调用 LangGraph（不传递 config，不再使用 MemorySaver 缓存）
-    graph = get_graph(model_name)
+    # 获取推理显示设置
+    show_reasoning = getattr(request, 'show_reasoning', False)
 
-    def generate():
+    # 使用新的协调器处理消息
+    orchestrator = get_orchestrator(
+        conversation_id=request.conversation_id,
+        show_reasoning=show_reasoning
+    )
+
+    async def generate():
+        """异步生成器 - 实现真正的流式输出"""
         try:
             logger.info(f"[Chat] 开始流式处理，会话ID: {request.conversation_id}")
-            logger.debug(f"[Chat] 消息历史: {len(messages)} 条")
-            
+
             full_response = ""
-            
-            # 使用 stream_mode="messages" 获取 LLM token 流
-            # 不再使用 MemorySaver，直接传入消息列表
-            for message_chunk, metadata in graph.stream(
-                {"messages": messages},
-                stream_mode="messages"
-            ):
-                if message_chunk.content:
-                    full_response += message_chunk.content
-                    logger.debug(f"[Chat] 流式内容: {message_chunk.content}")
-                    # 流式输出
-                    yield f"data: {json.dumps({'content': message_chunk.content})}\n\n"
+            actual_content = ""
+
+            # 首先发送 conversation_id 给前端
+            yield f"data: {json.dumps({'type': 'conversation_id', 'conversation_id': conversation.id})}\n\n"
+
+            try:
+                async for chunk in orchestrator.process_message(
+                    user_message=request.message,
+                    selected_model=model_name
+                ):
+                    full_response += chunk
+
+                    try:
+                        parsed = json.loads(chunk)
+                        msg_type = parsed.get('type', '')
+                        if msg_type == 'content' or msg_type == 'answer':
+                            actual_content += parsed.get('content', '') or parsed.get('answer', '')
+                    except (json.JSONDecodeError, TypeError):
+                        if chunk.strip():
+                            actual_content += chunk
+
+                    yield f"data: {chunk}\n\n"
+
+            except Exception as e:
+                logger.error(f"[Chat] 处理消息时出错: {str(e)}")
+                import traceback
+                logger.error(traceback.format_exc())
+                yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+                return
 
             logger.info(f"[Chat] 流式处理完成，响应长度: {len(full_response)}")
-            
-            # 保存 AI 响应到数据库
-            if full_response:
+
+            if actual_content:
                 db.add(Message(
-                    conversation_id=request.conversation_id,
+                    conversation_id=conversation.id,
                     role="assistant",
-                    content=full_response
+                    content=actual_content
                 ))
                 db.commit()
                 logger.info(f"[Chat] AI 响应已保存到数据库")
+
+                try:
+                    recorder = LearningRecorder()
+                    conversation_text = f"用户: {request.message}\n助手: {actual_content}"
+                    records = recorder.record_from_conversation(
+                        conversation_text=conversation_text,
+                        db=db,
+                        user_id=current_user.id,
+                        area=None
+                    )
+                    if records:
+                        logger.info(f"[Chat] 自学习：记录了 {len(records)} 条学习内容")
+                except Exception as e:
+                    logger.error(f"[Chat] 自学习记录失败: {e}")
             else:
                 logger.warning(f"[Chat] AI 响应为空")
 
-            yield "data: [DONE]\n\n"
         except Exception as e:
-            logger.error(f"[Chat] 发生错误: {str(e)}", exc_info=True)
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            logger.error(f"[Chat] 处理错误: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
+            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
 
-    return StreamingResponse(generate(), media_type="text/event-stream")
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream"
+    )
 
 
 @router.post("/chat/non-stream")
@@ -428,23 +490,31 @@ def chat_non_stream(
     db: Annotated[Session, Depends(get_db)]
 ):
     """非流式对话（备用）"""
-    logger.info(f"[Non-Stream Chat] 开始处理会话: {request.conversation_id}")
-    
-    # 验证会话归属
-    conversation = db.query(Conversation).filter(
-        Conversation.id == request.conversation_id,
-        Conversation.user_id == current_user.id
-    ).first()
+    logger.info(f"[Non-Stream Chat] 开始处理")
+
+    conversation = None
+
+    if request.conversation_id:
+        # 验证会话归属
+        conversation = db.query(Conversation).filter(
+            Conversation.id == request.conversation_id,
+            Conversation.user_id == current_user.id
+        ).first()
 
     if not conversation:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="会话不存在"
+        # 创建新会话
+        conversation = Conversation(
+            user_id=current_user.id,
+            title=request.message[:30] + ("..." if len(request.message) > 30 else ""),
+            model_name=request.model_name or "doubao"
         )
+        db.add(conversation)
+        db.commit()
+        db.refresh(conversation)
 
     # 获取历史消息
     history_messages = db.query(Message).filter(
-        Message.conversation_id == request.conversation_id
+        Message.conversation_id == conversation.id
     ).order_by(Message.created_at).all()
 
     # 构建消息列表
@@ -462,7 +532,7 @@ def chat_non_stream(
 
     # 保存用户消息到数据库
     db.add(Message(
-        conversation_id=request.conversation_id,
+        conversation_id=conversation.id,
         role="user",
         content=request.message
     ))
@@ -476,18 +546,78 @@ def chat_non_stream(
 
     db.commit()
 
-    # 调用 LangGraph（不传递 config，不再使用 MemorySaver 缓存）
-    graph = get_graph(conversation.model_name)
+    # 使用前端传递的模型名称，如果没传则使用会话中存储的模型
+    model_name = request.model_name or conversation.model_name
 
-    logger.info(f"[Non-Stream Chat] 调用模型: {conversation.model_name}")
-    result = graph.invoke({"messages": messages})
-    ai_response = result["messages"][-1].content
+    # 加载 skills prompt
+    enabled_skills = load_enabled_skills()
+    skills_prompt = build_system_prompt_with_skills(enabled_skills)
+
+    # 对于不支持工具调用的模型，使用简化处理
+    try:
+        if model_name in MODELS_WITHOUT_TOOLS:
+            logger.info(f"[Non-Stream Chat] 使用简化模式（无工具）: {model_name}")
+
+            # 直接调用模型，不使用 LangGraph
+            from langchain_ollama import ChatOllama
+            simple_model = ChatOllama(
+                model=model_name,
+                temperature=0.7,
+                base_url=OLLAMA_BASE_URL,
+            )
+
+            # 构建消息列表（不添加 Skills 提示，避免模型产生不必要的回复）
+            chat_messages = []
+            for msg in messages:
+                chat_messages.append(msg)
+
+            logger.info(f"[Non-Stream Chat] 直接调用模型，消息数量: {len(chat_messages)}")
+            response = simple_model.invoke(chat_messages)
+            ai_response = response.content if hasattr(response, 'content') else str(response)
+            logger.info(f"[Non-Stream Chat] 模型返回: {ai_response[:100] if ai_response else '空'}...")
+        elif model_name in MODELS_USING_ARK:
+            # 豆包模型使用火山引擎 ARK API
+            logger.info(f"[Non-Stream Chat] 使用 ARK API 模式: {model_name}")
+
+            from langchain_openai import ChatOpenAI
+            ark_model = ChatOpenAI(
+                base_url=ARK_BASE_URL,
+                model=ARK_MODEL,
+                api_key=ARK_API_KEY,
+                temperature=0.7,
+                max_tokens=2048,
+                timeout=30,
+            )
+
+            # 构建消息列表（不添加 Skills 提示，避免模型产生不必要的回复）
+            chat_messages = []
+            for msg in messages:
+                chat_messages.append(msg)
+
+            logger.info(f"[Non-Stream Chat] 通过 ARK API 调用豆包，消息数量: {len(chat_messages)}")
+            response = ark_model.invoke(chat_messages)
+            ai_response = response.content if hasattr(response, 'content') else str(response)
+            logger.info(f"[Non-Stream Chat] 模型返回: {ai_response[:100] if ai_response else '空'}...")
+        else:
+            # 支持工具调用的模型，使用 LangGraph
+            graph = get_graph(model_name)
+            logger.info(f"[Non-Stream Chat] 调用模型: {model_name}")
+            result = graph.invoke({"messages": messages})
+            ai_response = result["messages"][-1].content
+    except Exception as e:
+        logger.error(f"[Non-Stream Chat] 模型调用失败: {e}", exc_info=True)
+        import traceback
+        logger.error(f"[Non-Stream Chat] 详细错误: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"模型调用失败: {str(e)}"
+        )
     
     logger.info(f"[Non-Stream Chat] 模型返回: {ai_response[:100] if ai_response else '空'}...")
 
     # 保存 AI 响应
     db.add(Message(
-        conversation_id=request.conversation_id,
+        conversation_id=conversation.id,
         role="assistant",
         content=ai_response
     ))
@@ -495,4 +625,4 @@ def chat_non_stream(
     
     logger.info(f"[Non-Stream Chat] 完成")
 
-    return ChatResponse(message=ai_response, conversation_id=request.conversation_id)
+    return ChatResponse(message=ai_response, conversation_id=conversation.id)

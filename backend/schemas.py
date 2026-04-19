@@ -64,7 +64,7 @@ class MessageResponse(BaseModel):
 class ChatRequest(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
 
-    conversation_id: int
+    conversation_id: Optional[int] = None
     message: str
     model_name: Optional[str] = None
 

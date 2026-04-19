@@ -2,8 +2,10 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-# 加载环境变量
-load_dotenv()
+# 加载环境变量 - 确保从项目根目录加载
+project_root = Path(__file__).parent.parent
+env_path = project_root / ".env"
+load_dotenv(dotenv_path=env_path)
 
 # 项目根目录
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -22,11 +24,44 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440
 
 # Ollama 配置
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-DEFAULT_MODEL = os.getenv("DEFAULT_MODEL", "llama3.1")
+DEFAULT_MODEL = os.getenv("DEFAULT_MODEL", "doubao")
+
+# 豆包模型配置（火山引擎）
+ARK_API_KEY = os.getenv("ARK_API_KEY")
+ARK_BASE_URL = os.getenv("ARK_BASE_URL", "https://ark.cn-beijing.volces.com/api/v3")
+ARK_MODEL = os.getenv("ARK_MODEL", "doubao-seed-2-0-mini-260215")
+
+# 推理显示配置
+SHOW_REASONING = os.getenv("SHOW_REASONING", "false").lower() == "true"
 
 # 可用模型列表
 AVAILABLE_MODELS = [
-    {"name": "llama3.1", "display_name": "Llama 3.1"},
-    {"name": "deepseek-r1:7b", "display_name": "DeepSeek R1"},
-    {"name": "llava", "display_name": "LLaVA"},
+    {
+        "name": "doubao",
+        "display_name": "豆包 (火山引擎)",
+        "type": "cloud",
+        "has_reasoning": False,
+        "provider": "volcengine"
+    },
+    {
+        "name": "llama3.1",
+        "display_name": "Llama 3.1",
+        "type": "local",
+        "has_reasoning": False,
+        "provider": "ollama"
+    },
+    {
+        "name": "deepseek-r1:7b",
+        "display_name": "DeepSeek R1 7B",
+        "type": "local",
+        "has_reasoning": True,
+        "provider": "ollama"
+    },
+    {
+        "name": "llava",
+        "display_name": "LLaVA",
+        "type": "local",
+        "has_reasoning": False,
+        "provider": "ollama"
+    },
 ]

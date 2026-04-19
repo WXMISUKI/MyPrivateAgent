@@ -82,6 +82,44 @@ def logout():
     return {"message": "登出成功"}
 
 
+@router.post("/guest", response_model=Token)
+def guest_login(
+    db: Annotated[Session, Depends(get_db)]
+):
+    """游客登录（无需注册）"""
+    print("[游客登录] 正在处理游客登录请求")
+
+    guest_username = "guest"
+    guest_password = "guest_temporary_password"
+
+    # 查找游客用户
+    user = db.query(User).filter(User.username == guest_username).first()
+
+    if not user:
+        # 创建游客用户
+        print("[游客登录] 游客用户不存在，正在创建")
+        hashed_password = get_password_hash(guest_password)
+        user = User(
+            username=guest_username,
+            password_hash=hashed_password
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        print(f"[游客登录] 游客用户创建成功: {user.id}")
+    else:
+        print(f"[游客登录] 使用现有游客用户: {user.id}")
+
+    # 生成 Token
+    access_token = create_access_token(
+        data={"sub": str(user.id)},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+
+    print(f"[游客登录] Token 生成成功")
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
 @router.get("/me", response_model=UserResponse)
 def get_me(current_user: Annotated[User, Depends(get_current_user)]):
     """获取当前用户信息"""

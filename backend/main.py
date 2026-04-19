@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,13 +8,26 @@ import pymysql
 from dotenv import load_dotenv
 import os
 from pathlib import Path
+import logging
 
-# 加载环境变量
-load_dotenv()
+# 配置详细日志
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
+# 加载环境变量 - 明确指定 .env 文件路径
+env_path = Path(__file__).parent.parent / ".env"
+load_dotenv(dotenv_path=env_path)
+logger.info(f"已加载环境变量文件: {env_path}")
 
 from database import engine, Base
 from config import DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
-from routers import auth, conversations, chat, skills
+from routers import auth, conversations, chat, skills, learnings, permissions, memory
 
 # 获取项目根目录
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -45,6 +58,9 @@ app.include_router(auth.router)
 app.include_router(conversations.router)
 app.include_router(chat.router)
 app.include_router(skills.router)
+app.include_router(learnings.router)
+app.include_router(permissions.router)
+app.include_router(memory.router)
 
 
 def init_database():
@@ -83,15 +99,15 @@ def root():
 
 
 @app.get("/login")
-def login_page():
+def login_page(request: Request):
     """登录页"""
-    return templates.TemplateResponse("login.html", {"request": {}})
+    return templates.TemplateResponse("login.html", {"request": request})
 
 
 @app.get("/index")
-def index_page():
+def index_page(request: Request):
     """主页面"""
-    return templates.TemplateResponse("index.html", {"request": {}})
+    return templates.TemplateResponse("index.html", {"request": request})
 
 
 if __name__ == "__main__":

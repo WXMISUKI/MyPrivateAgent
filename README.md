@@ -1,30 +1,60 @@
 # MyPrivateAgent 项目设计文档
 
+# 1. 激活 conda 环境
+
+conda activate langgraph-env
+
+```shellscript
+cd d:\AI\AIcode\MyPrivateAgent\backend
+python -m uvicorn main:app --reload --port 8000
+
+或者
+cd d:\AI\AIcode\MyPrivateAgent\backend
+python main.py
+```
+
+cd d:\AI\AIcode\MyPrivateAgent\frontend-vue
+npm run dev
+
+# 2. 启动后端服务
+
+cd backend
+python main.py
+
+# 3. 访问应用
+
+# 浏览器打开: <http://localhost:8000>
+
+cd frontend-vue
+npm install
+npm run dev
+
 ## 一、项目概述
 
-**项目名称**：MyPrivateAgent  
-**项目类型**：私有 AI 对话助手 Web 应用  
-**核心功能**：用户注册登录、多模型对话、会话历史管理  
+**项目名称**：MyPrivateAgent\
+**项目类型**：私有 AI 对话助手 Web 应用\
+**核心功能**：用户注册登录、多模型对话、会话历史管理\
 **目标用户**：个人用户，本地部署使用
 
----
+***
 
 ## 二、技术栈
 
-| 层级 | 技术选型 |
-|------|----------|
-| 后端 | FastAPI + SQLAlchemy + Pydantic |
-| 数据库 | MySQL (localhost:3306) |
-| 认证 | JWT Token + HTTPOnly Cookie |
-| 前端 | HTML + CSS + JavaScript (原生) |
-| AI 对话 | LangGraph + Ollama (LLM) |
-| 密码加密 | bcrypt |
+| 层级    | 技术选型                            |
+| ----- | ------------------------------- |
+| 后端    | FastAPI + SQLAlchemy + Pydantic |
+| 数据库   | MySQL (localhost:3306)          |
+| 认证    | JWT Token + HTTPOnly Cookie     |
+| 前端    | HTML + CSS + JavaScript (原生)    |
+| AI 对话 | LangGraph + Ollama (LLM)        |
+| 密码加密  | bcrypt                          |
 
----
+***
 
 ## 三、数据库设计
 
 ### 3.1 数据库名称
+
 ```
 MyPrivateAgent
 ```
@@ -32,63 +62,66 @@ MyPrivateAgent
 ### 3.2 表结构
 
 #### 用户表 (users)
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| id | INT (主键, 自增) | 用户ID |
-| username | VARCHAR(50) | 用户名 (唯一) |
-| password_hash | VARCHAR(255) | 加密后的密码 |
-| created_at | DATETIME | 注册时间 |
-| updated_at | DATETIME | 更新时间 |
+
+| 字段             | 类型           | 说明       |
+| -------------- | ------------ | -------- |
+| id             | INT (主键, 自增) | 用户ID     |
+| username       | VARCHAR(50)  | 用户名 (唯一) |
+| password\_hash | VARCHAR(255) | 加密后的密码   |
+| created\_at    | DATETIME     | 注册时间     |
+| updated\_at    | DATETIME     | 更新时间     |
 
 #### 对话会话表 (conversations)
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| id | INT (主键, 自增) | 会话ID |
-| user_id | INT (外键) | 所属用户ID |
-| title | VARCHAR(255) | 对话标题 |
-| model_name | VARCHAR(50) | 使用的模型 |
-| created_at | DATETIME | 创建时间 |
-| updated_at | DATETIME | 更新时间 |
+
+| 字段          | 类型           | 说明     |
+| ----------- | ------------ | ------ |
+| id          | INT (主键, 自增) | 会话ID   |
+| user\_id    | INT (外键)     | 所属用户ID |
+| title       | VARCHAR(255) | 对话标题   |
+| model\_name | VARCHAR(50)  | 使用的模型  |
+| created\_at | DATETIME     | 创建时间   |
+| updated\_at | DATETIME     | 更新时间   |
 
 #### 消息表 (messages)
-| 字段 |类型 | 说明 |
-|------|------|------|
-| id | INT (主键, 自增) | 消息ID |
-| conversation_id | INT (外键) | 所属会话ID |
-| role | VARCHAR(20) | 角色 (user/assistant) |
-| content | TEXT | 消息内容 |
-| created_at | DATETIME | 创建时间 |
 
----
+| 字段               | 类型           | 说明                  |
+| ---------------- | ------------ | ------------------- |
+| id               | INT (主键, 自增) | 消息ID                |
+| conversation\_id | INT (外键)     | 所属会话ID              |
+| role             | VARCHAR(20)  | 角色 (user/assistant) |
+| content          | TEXT         | 消息内容                |
+| created\_at      | DATETIME     | 创建时间                |
+
+***
 
 ## 四、API 接口设计
 
 ### 4.1 认证接口
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | /api/auth/register | 用户注册 |
-| POST | /api/auth/login | 用户登录 |
-| POST | /api/auth/logout | 用户登出 |
-| GET | /api/auth/me | 获取当前用户信息 |
+| 方法   | 路径                 | 说明       |
+| ---- | ------------------ | -------- |
+| POST | /api/auth/register | 用户注册     |
+| POST | /api/auth/login    | 用户登录     |
+| POST | /api/auth/logout   | 用户登出     |
+| GET  | /api/auth/me       | 获取当前用户信息 |
 
 ### 4.2 对话接口
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | /api/conversations | 获取用户所有会话 |
-| POST | /api/conversations | 创建新会话 |
-| GET | /api/conversations/{id} | 获取会话详情 |
-| DELETE | /api/conversations/{id} | 删除会话 |
-| POST | /api/chat | 发送消息并获取回复 |
+| 方法     | 路径                      | 说明        |
+| ------ | ----------------------- | --------- |
+| GET    | /api/conversations      | 获取用户所有会话  |
+| POST   | /api/conversations      | 创建新会话     |
+| GET    | /api/conversations/{id} | 获取会话详情    |
+| DELETE | /api/conversations/{id} | 删除会话      |
+| POST   | /api/chat               | 发送消息并获取回复 |
 
 ### 4.3 模型接口
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
+| 方法  | 路径          | 说明       |
+| --- | ----------- | -------- |
 | GET | /api/models | 获取可用模型列表 |
 
----
+***
 
 ## 五、前端页面设计
 
@@ -115,17 +148,17 @@ MyPrivateAgent
    - 右侧对话区域，支持流式输出
    - 模型选择下拉框切换对话模型
 
----
+***
 
 ## 六、可用模型列表
 
-| 模型名称 | 说明 |
-|----------|------|
-| llama3.1 | Llama 3.1 (默认) |
-| deepseek-r1:7b | DeepSeek R1 |
-| llava | 多模态模型 |
+| 模型名称           | 说明             |
+| -------------- | -------------- |
+| llama3.1       | Llama 3.1 (默认) |
+| deepseek-r1:7b | DeepSeek R1    |
+| llava          | 多模态模型          |
 
----
+***
 
 ## 七、项目目录结构
 
@@ -157,12 +190,13 @@ D:\AI\AIcode\MyPrivateAgent\
 └── requirements.txt          # Python 依赖
 ```
 
----
+***
 
 ## 八、部署步骤
 
 ### 8.1 后端启动
-```bash 首次使用
+
+```bash
 cd D:\AI\AIcode\MyPrivateAgent\backend
 pip install -r requirements.txt
 python main.py
@@ -170,11 +204,12 @@ python main.py
 ```
 
 ### 8.2 前端访问
+
 ```
 http://localhost:8000
 ```
 
----
+***
 
 ## 九、安全考虑
 
@@ -183,7 +218,7 @@ http://localhost:8000
 3. CORS 配置允许前端访问
 4. 用户只能访问自己的对话记录
 
----
+***
 
 ## 十、待确认事项
 
@@ -192,17 +227,19 @@ http://localhost:8000
 - [x] 模型列表
 - [x] 部署方式
 
----
+***
 
 ## 十一、使用说明
 
 ### 11.1 启动服务
 
 **前置条件：**
+
 - MySQL 服务已启动（用户 root，密码 root）
-- Ollama 服务已启动（默认 http://localhost:11434）
+- Ollama 服务已启动（默认 <http://localhost:11434）>
 
 **启动后端：**
+
 ```bash
 
 你的项目采用 FastAPI + Jinja2 模板架构（非真正的前后端分离），只需启动后端即可：
@@ -240,3 +277,5 @@ http://localhost:8000
 
 *文档创建时间：2026-03-08*
 *最后更新时间：2026-03-08*
+```
+
