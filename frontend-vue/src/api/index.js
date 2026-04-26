@@ -95,6 +95,50 @@ export const settingsApi = {
   }
 }
 
+export const mcpApi = {
+  listServers() {
+    return api.get('/mcp/servers')
+  },
+
+  createServer(payload) {
+    return api.post('/mcp/servers', payload)
+  },
+
+  updateServer(serverName, payload) {
+    return api.patch(`/mcp/servers/${serverName}`, payload)
+  },
+
+  deleteServer(serverName) {
+    return api.delete(`/mcp/servers/${serverName}`)
+  },
+
+  enableServer(serverName) {
+    return api.post(`/mcp/servers/${serverName}/enable`)
+  },
+
+  disableServer(serverName) {
+    return api.post(`/mcp/servers/${serverName}/disable`)
+  },
+
+  getCatalog() {
+    return api.get('/mcp/catalog')
+  },
+
+  probeServer(serverName) {
+    return api.post(`/mcp/servers/${serverName}/probe`)
+  },
+
+  handshakeServer(serverName) {
+    return api.post(`/mcp/servers/${serverName}/handshake`)
+  },
+
+  callTool(serverName, toolName, argumentsPayload = {}) {
+    return api.post(`/mcp/servers/${serverName}/tools/${toolName}/call`, {
+      arguments: argumentsPayload
+    })
+  }
+}
+
 export const learningsApi = {
   getLearnings(params) {
     return api.get('/learnings', { params })

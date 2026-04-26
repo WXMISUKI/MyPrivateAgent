@@ -27,7 +27,7 @@ class ContextWindow:
     管理对话消息的生命周期，包括：
     - 消息添加
     - Token 计数
-    - 自动压缩/总结
+    - 三层自动压缩/总结
     """
 
     # 不同模型的上下文限制
@@ -41,11 +41,18 @@ class ContextWindow:
         "default": 4096
     }
 
-    # 压缩阈值（达到此比例时触发压缩）
-    COMPRESSION_THRESHOLD = 0.8
+    # 三层压缩阈值
+    MICRO_COMPACT_THRESHOLD = 0.6   # 60% 时触发 MicroCompact
+    AUTO_COMPACT_THRESHOLD = 0.8    # 80% 时触发 AutoCompact
+    FULL_COMPACT_THRESHOLD = 0.95   # 95% 时触发 FullCompact
 
-    # 最大保留消息数
-    MAX_MESSAGES = 100
+    # MicroCompact：单条消息最大 token 数
+    MAX_MESSAGE_TOKENS = 2000
+
+    # 压缩保留消息数
+    PRESERVE_RECENT_MICRO = 5
+    PRESERVE_RECENT_AUTO = 10
+    PRESERVE_RECENT_FULL = 3
 
     def __init__(
         self,
@@ -58,10 +65,11 @@ class ContextWindow:
             model_name.lower(),
             self.CONTEXT_LIMITS["default"]
         )
-        self.compression_threshold = compression_threshold or self.COMPRESSION_THRESHOLD
+        self.compression_threshold = compression_threshold or self.AUTO_COMPACT_THRESHOLD
         self.messages: List[Message] = []
         self.total_tokens = 0
         self.compression_count = 0
+        self.last_compression_level = None
 
     def add_message(self, role: str, content: str) -> Message:
         """
@@ -85,11 +93,126 @@ class ContextWindow:
         self.messages.append(message)
         self.total_tokens += token_count
 
-        # 检查是否需要压缩
-        if self.should_compress():
-            self.compress()
+        self._auto_compress()
 
         return message
+
+    def _auto_compress(self):
+        """自动压缩检查"""
+        usage_ratio = self.total_tokens / self.max_tokens if self.max_tokens > 0 else 0
+
+        if usage_ratio >= self.FULL_COMPACT_THRESHOLD:
+            self._full_compact()
+        elif usage_ratio >= self.AUTO_COMPACT_THRESHOLD:
+            self._auto_compact()
+        elif usage_ratio >= self.MICRO_COMPACT_THRESHOLD:
+            self._micro_compact()
+
+    def _micro_compact(self) -> bool:
+        """
+        层1: MicroCompact - 本地修剪过长的单条消息
+
+        Returns:
+            是否执行了压缩
+        """
+        if self.last_compression_level == "micro":
+            return False
+
+        self.compression_count += 1
+        self.last_compression_level = "micro"
+        logger.info(f"[ContextWindow] MicroCompact (第 {self.compression_count} 次)")
+
+        compacted = False
+        for msg in self.messages:
+            if msg.token_count > self.MAX_MESSAGE_TOKENS:
+                original_len = len(msg.content)
+                msg.content = msg.content[:self.MAX_MESSAGE_TOKENS * 2] + "...[已截断]"
+                msg.token_count = self.MAX_MESSAGE_TOKENS
+                compacted = True
+                logger.info(f"[ContextWindow] 截断消息 {msg.role}: {original_len} -> {len(msg.content)}")
+
+        if compacted:
+            self.total_tokens = sum(m.token_count for m in self.messages)
+
+        return compacted
+
+    def _auto_compact(self, preserve_recent: int = None) -> bool:
+        """
+        层2: AutoCompact - 模型摘要模式
+
+        保留最近 N 条消息，对早期消息进行总结
+
+        Args:
+            preserve_recent: 保留最近多少条消息
+
+        Returns:
+            是否执行了压缩
+        """
+        preserve_recent = preserve_recent or self.PRESERVE_RECENT_AUTO
+
+        if self.last_compression_level == "auto":
+            return False
+
+        if len(self.messages) <= preserve_recent:
+            return False
+
+        self.compression_count += 1
+        self.last_compression_level = "auto"
+        logger.info(f"[ContextWindow] AutoCompact (第 {self.compression_count} 次)")
+
+        system_messages = [m for m in self.messages if m.role == "system"]
+        recent_messages = self.messages[-preserve_recent:]
+        early_messages = self.messages[:-preserve_recent]
+
+        summary = self._summarize_messages(early_messages)
+
+        self.messages = system_messages.copy()
+
+        if summary:
+            self.add_system_message(f"[早期对话摘要] {summary}")
+
+        self.messages.extend(recent_messages)
+        self.total_tokens = sum(m.token_count for m in self.messages)
+
+        logger.info(f"[ContextWindow] 压缩完成，当前消息数: {len(self.messages)}, Token: {self.total_tokens}")
+        return True
+
+    def _full_compact(self, preserve_recent: int = None) -> bool:
+        """
+        层3: FullCompact - 完全压缩
+
+        只保留最近 3 条消息
+
+        Args:
+            preserve_recent: 保留最近多少条消息
+
+        Returns:
+            是否执行了压缩
+        """
+        preserve_recent = preserve_recent or self.PRESERVE_RECENT_FULL
+
+        if self.last_compression_level == "full":
+            return False
+
+        self.compression_count += 1
+        self.last_compression_level = "full"
+        logger.info(f"[ContextWindow] FullCompact (第 {self.compression_count} 次)")
+
+        system_messages = [m for m in self.messages if m.role == "system"]
+        recent_messages = self.messages[-preserve_recent:]
+
+        summary = self._summarize_messages(self.messages[:-preserve_recent])
+
+        self.messages = system_messages.copy()
+
+        if summary:
+            self.add_system_message(f"[对话摘要] {summary}")
+
+        self.messages.extend(recent_messages)
+        self.total_tokens = sum(m.token_count for m in self.messages)
+
+        logger.info(f"[ContextWindow] 完全压缩完成，当前消息数: {len(self.messages)}, Token: {self.total_tokens}")
+        return True
 
     def add_user_message(self, content: str) -> Message:
         """添加用户消息"""
@@ -116,8 +239,8 @@ class ContextWindow:
         ]
 
     def should_compress(self) -> bool:
-        """检查是否需要压缩"""
-        return self.total_tokens >= self.max_tokens * self.compression_threshold
+        """检查是否需要压缩（兼容方法）"""
+        return self.total_tokens >= self.max_tokens * self.AUTO_COMPACT_THRESHOLD
 
     def estimate_tokens(self, text: str) -> int:
         """
@@ -125,58 +248,11 @@ class ContextWindow:
 
         简单的估算：中文约 2 tokens/字符，英文约 4 tokens/词
         """
-        # 简单估算：平均每个汉字约 1.5 tokens，每个英文单词约 1.3 tokens
         chinese_chars = sum(1 for c in text if '\u4e00' <= c <= '\u9fff')
         english_words = len([w for w in text.split() if w.isascii()])
         other_chars = len(text) - chinese_chars - len(''.join([w for w in text.split() if w.isascii()]))
 
         return int(chinese_chars * 1.5 + english_words * 1.3 + other_chars * 1)
-
-    def compress(self, preserve_recent: int = 10) -> bool:
-        """
-        压缩上下文
-
-        策略：
-        1. 保留最近的消息（用户最后的问题等）
-        2. 总结早期对话的核心内容
-        3. 删除中间消息
-
-        Args:
-            preserve_recent: 保留最近多少条消息
-
-        Returns:
-            是否成功压缩
-        """
-        if len(self.messages) <= preserve_recent:
-            logger.info("[ContextWindow] 消息数量太少，无需压缩")
-            return False
-
-        self.compression_count += 1
-        logger.info(f"[ContextWindow] 开始压缩上下文 (第 {self.compression_count} 次)")
-
-        # 保留系统消息（如果有）
-        system_messages = [m for m in self.messages if m.role == "system"]
-
-        # 保留最近的消息
-        recent_messages = self.messages[-preserve_recent:]
-
-        # 总结早期消息的核心内容
-        early_messages = self.messages[:-preserve_recent]
-        summary = self._summarize_messages(early_messages)
-
-        # 清空并重建
-        self.messages = system_messages.copy()
-
-        if summary:
-            self.add_system_message(f"[早期对话摘要] {summary}")
-
-        self.messages.extend(recent_messages)
-
-        # 重新计算 token
-        self.total_tokens = sum(m.token_count for m in self.messages)
-
-        logger.info(f"[ContextWindow] 压缩完成，当前消息数: {len(self.messages)}, Token: {self.total_tokens}")
-        return True
 
     def _summarize_messages(self, messages: List[Message]) -> str:
         """
@@ -191,14 +267,12 @@ class ContextWindow:
         if not messages:
             return ""
 
-        # 简单总结：提取关键信息
         user_messages = [m.content for m in messages if m.role == "user"]
         assistant_messages = [m.content for m in messages if m.role == "assistant"]
 
         summary_parts = []
 
         if user_messages:
-            # 取第一条和最后一条用户消息作为关键点
             key_topics = f"用户询问了 {len(user_messages)} 个问题"
             if user_messages[0]:
                 key_topics += f"，从 '{user_messages[0][:30]}...' 开始"
@@ -207,10 +281,13 @@ class ContextWindow:
             summary_parts.append(key_topics)
 
         if assistant_messages:
-            # 统计助手回答的主题
             summary_parts.append(f"助手进行了 {len(assistant_messages)} 次回复")
 
         return "; ".join(summary_parts)
+
+    def compress(self, preserve_recent: int = 10) -> bool:
+        """兼容方法：调用 AutoCompact"""
+        return self._auto_compact(preserve_recent=preserve_recent)
 
     def get_stats(self) -> Dict[str, Any]:
         """获取统计信息"""
@@ -220,6 +297,7 @@ class ContextWindow:
             "max_tokens": self.max_tokens,
             "usage_ratio": self.total_tokens / self.max_tokens if self.max_tokens > 0 else 0,
             "compression_count": self.compression_count,
+            "compression_level": self.last_compression_level or "none",
             "model": self.model_name
         }
 

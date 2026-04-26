@@ -25,9 +25,27 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/skills',
+    name: 'Skills',
+    component: () => import('../views/SkillsView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/settings',
     name: 'Settings',
     component: () => import('../views/SettingsView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/search',
+    name: 'Search',
+    component: () => import('../views/SearchView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/feedback-analytics',
+    name: 'FeedbackAnalytics',
+    component: () => import('../views/FeedbackAnalyticsView.vue'),
     meta: { requiresAuth: true }
   }
 ]

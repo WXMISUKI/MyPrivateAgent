@@ -46,6 +46,85 @@ class PermissionService:
         self._pending_requests: Dict[str, PermissionRequest] = {}
         self._completed_results: Dict[str, str] = {}
 
+    def _get_session_factory(self):
+        try:
+            from database import SessionLocal
+        except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+            from backend.database import SessionLocal
+        return SessionLocal
+
+    def _to_request(self, record) -> PermissionRequest:
+        status_value = getattr(record, "status", PermissionStatus.PENDING.value)
+        try:
+            status = PermissionStatus(status_value)
+        except ValueError:
+            status = PermissionStatus.PENDING
+
+        return PermissionRequest(
+            id=record.request_id,
+            tool_name=record.tool_name,
+            tool_args=dict(record.tool_args or {}),
+            permission_level=record.permission_level,
+            status=status,
+            created_at=record.created_at or datetime.now(),
+            user_id=record.user_id,
+            conversation_id=record.conversation_id,
+            result=record.result,
+        )
+
+    def _save_request(self, request: PermissionRequest) -> None:
+        try:
+            try:
+                from models import PermissionRequestRecord
+            except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+                from backend.models import PermissionRequestRecord
+
+            session_factory = self._get_session_factory()
+            db = session_factory()
+            try:
+                record = db.query(PermissionRequestRecord).filter(
+                    PermissionRequestRecord.request_id == request.id
+                ).first()
+                if record is None:
+                    record = PermissionRequestRecord(request_id=request.id)
+                    db.add(record)
+
+                record.tool_name = request.tool_name
+                record.tool_args = request.tool_args
+                record.permission_level = request.permission_level
+                record.status = request.status.value
+                record.user_id = request.user_id
+                record.conversation_id = request.conversation_id
+                record.result = request.result
+                if request.status in (PermissionStatus.APPROVED, PermissionStatus.DENIED, PermissionStatus.TIMEOUT):
+                    record.completed_at = datetime.now()
+
+                db.commit()
+            finally:
+                db.close()
+        except Exception as e:
+            logger.debug(f"[PermissionService] 持久化权限请求失败，回退内存态: {e}")
+
+    def _load_record(self, request_id: str) -> Optional[PermissionRequest]:
+        try:
+            try:
+                from models import PermissionRequestRecord
+            except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+                from backend.models import PermissionRequestRecord
+
+            session_factory = self._get_session_factory()
+            db = session_factory()
+            try:
+                record = db.query(PermissionRequestRecord).filter(
+                    PermissionRequestRecord.request_id == request_id
+                ).first()
+                return self._to_request(record) if record else None
+            finally:
+                db.close()
+        except Exception as e:
+            logger.debug(f"[PermissionService] 读取权限请求失败: {e}")
+            return None
+
     def create_request(
         self,
         tool_name: str,
@@ -80,13 +159,17 @@ class PermissionService:
         )
 
         self._pending_requests[request_id] = request
+        self._save_request(request)
         logger.info(f"[PermissionService] 创建权限请求: {request_id} - {tool_name}")
 
         return request
 
     def get_request(self, request_id: str) -> Optional[PermissionRequest]:
         """获取权限请求"""
-        return self._pending_requests.get(request_id)
+        request = self._pending_requests.get(request_id)
+        if request:
+            return request
+        return self._load_record(request_id)
 
     def approve(self, request_id: str, result: str = None) -> bool:
         """
@@ -100,6 +183,10 @@ class PermissionService:
             是否成功
         """
         request = self._pending_requests.get(request_id)
+        if request is None:
+            request = self._load_record(request_id)
+            if request is not None:
+                self._pending_requests[request_id] = request
         if not request:
             logger.warning(f"[PermissionService] 请求不存在: {request_id}")
             return False
@@ -107,6 +194,7 @@ class PermissionService:
         request.status = PermissionStatus.APPROVED
         request.result = result
         self._completed_results[request_id] = result or "approved"
+        self._save_request(request)
         logger.info(f"[PermissionService] 批准权限请求: {request_id}")
 
         return True
@@ -122,19 +210,29 @@ class PermissionService:
             是否成功
         """
         request = self._pending_requests.get(request_id)
+        if request is None:
+            request = self._load_record(request_id)
+            if request is not None:
+                self._pending_requests[request_id] = request
         if not request:
             logger.warning(f"[PermissionService] 请求不存在: {request_id}")
             return False
 
         request.status = PermissionStatus.DENIED
         self._completed_results[request_id] = "denied"
+        self._save_request(request)
         logger.info(f"[PermissionService] 拒绝权限请求: {request_id}")
 
         return True
 
     def get_result(self, request_id: str) -> Optional[str]:
         """获取请求结果（用于恢复挂起的执行）"""
-        return self._completed_results.get(request_id)
+        result = self._completed_results.get(request_id)
+        if result is not None:
+            return result
+
+        request = self._load_record(request_id)
+        return request.result if request else None
 
     def is_pending(self, request_id: str) -> bool:
         """检查请求是否还在等待"""
@@ -157,11 +255,38 @@ class PermissionService:
             if request and request.status == PermissionStatus.PENDING:
                 request.status = PermissionStatus.TIMEOUT
                 self._completed_results[req_id] = "timeout"
+                self._save_request(request)
                 logger.info(f"[PermissionService] 清理过期请求: {req_id}")
 
     def list_pending_requests(self, user_id: int = None) -> List[PermissionRequest]:
         """列出待处理的请求"""
         requests = list(self._pending_requests.values())
+
+        try:
+            try:
+                from models import PermissionRequestRecord
+            except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+                from backend.models import PermissionRequestRecord
+
+            session_factory = self._get_session_factory()
+            db = session_factory()
+            try:
+                query = db.query(PermissionRequestRecord).filter(
+                    PermissionRequestRecord.status == PermissionStatus.PENDING.value
+                )
+                if user_id is not None:
+                    query = query.filter(PermissionRequestRecord.user_id == user_id)
+                records = query.order_by(PermissionRequestRecord.created_at.asc()).all()
+                persisted = [self._to_request(record) for record in records]
+                request_map = {request.id: request for request in persisted}
+                for request in requests:
+                    request_map[request.id] = request
+                return list(request_map.values())
+            finally:
+                db.close()
+        except Exception as e:
+            logger.debug(f"[PermissionService] 列出待处理权限请求失败，回退内存态: {e}")
+
         if user_id is not None:
             requests = [r for r in requests if r.user_id == user_id]
 

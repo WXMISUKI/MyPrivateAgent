@@ -10,10 +10,14 @@ import zipfile
 import tempfile
 from pathlib import Path
 
-from database import get_db
-from models import Skill
-from auth import get_current_user
-from config import PROJECT_ROOT
+try:
+    from agent_server.dependencies import get_current_user, get_db
+    from config import PROJECT_ROOT
+    from models import Skill
+except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+    from backend.agent_server.dependencies import get_current_user, get_db
+    from backend.config import PROJECT_ROOT
+    from backend.models import Skill
 
 router = APIRouter(prefix="/api/skills", tags=["Skills"])
 
@@ -429,5 +433,164 @@ def get_enabled_skills(
             "description": skill.description,
             "content": content
         })
-    
+
     return result
+
+
+@router.post("/create")
+def create_skill_by_ai(
+    request: dict,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)]
+):
+    """AI 根据用户需求创建 Skill
+    请求体:
+    {
+        "name": "Skill名称",
+        "description": "Skill描述",
+        "prompt": "详细需求描述"
+    }
+    """
+    skill_name = request.get("name", "").strip()
+    skill_description = request.get("description", "").strip()
+    prompt = request.get("prompt", "")
+
+    if not skill_name:
+        raise HTTPException(status_code=400, detail="Skill 名称不能为空")
+
+    print(f"[AI Create Skill] 开始创建: {skill_name}")
+
+    try:
+        from openai import OpenAI
+        from config import ARK_API_KEY, ARK_BASE_URL
+
+        client = OpenAI(
+            api_key=ARK_API_KEY,
+            base_url=ARK_BASE_URL
+        )
+
+        system_prompt = """你是一个专业的 Skill 创建助手。请根据用户需求生成一个完整的 SKILL.md 文件。
+
+SKILL.md 文件格式要求：
+1. Frontmatter (YAML):
+---
+name: Skill名称
+description: 简短描述
+---
+
+2. Overview: 功能概述
+
+3. Usage: 使用方法
+
+4. Examples: 使用示例
+
+5. Notes: 注意事项
+
+请直接返回完整的 SKILL.md 内容，不需要其他解释。"""
+
+        response = client.chat.completions.create(
+            model="doubao-seed-2-0-mini-260215",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7
+        )
+
+        skill_content = response.choices[0].message.content
+        print(f"[AI Create Skill] 生成内容长度: {len(skill_content)}")
+
+        skill_content = skill_content.strip()
+        if skill_content.startswith("```markdown"):
+            skill_content = skill_content[11:]
+        elif skill_content.startswith("```"):
+            skill_content = skill_content[3]
+        if skill_content.endswith("```"):
+            skill_content = skill_content[:-3]
+        skill_content = skill_content.strip()
+
+    except Exception as e:
+        print(f"[AI Create Skill] OpenAI API 调用失败: {e}")
+        skill_content = f"""---
+name: {skill_name}
+description: {skill_description or 'AI创建的Skill'}
+---
+
+# {skill_name}
+
+## Overview
+{skill_description or '一个由AI创建的Skill。'}
+
+## Usage
+1. 激活此Skill
+2. 按照指示使用
+
+## Examples
+暂无示例
+
+## Notes
+- 此Skill由AI自动创建
+- 如有问题请联系管理员
+"""
+
+    ensure_skill_dir()
+
+    safe_name = re.sub(r'[^\w\-_]', '_', skill_name)
+    skill_dir = SKILL_STORE_DIR / safe_name
+
+    if skill_dir.exists():
+        shutil.rmtree(skill_dir)
+    skill_dir.mkdir(exist_ok=True)
+
+    skill_md_path = skill_dir / "SKILL.md"
+    with open(skill_md_path, 'w', encoding='utf-8') as f:
+        f.write(skill_content)
+
+    final_name = skill_name
+    final_desc = skill_description
+
+    try:
+        frontmatter_match = re.search(r'^---\s*\n(.*?)\n---', skill_content, re.DOTALL)
+        if frontmatter_match:
+            fm_text = frontmatter_match.group(1)
+            for line in fm_text.strip().split('\n'):
+                if ':' in line:
+                    key, value = line.split(':', 1)
+                    key = key.strip()
+                    value = value.strip()
+                    if key == 'name' and value:
+                        final_name = value
+                    elif key == 'description' and value:
+                        final_desc = value
+    except:
+        pass
+
+    existing = db.query(Skill).filter(Skill.name == final_name).first()
+    if existing:
+        existing.source_path = "ai_created"
+        existing.storage_path = str(skill_dir)
+        existing.content = skill_content
+        db.commit()
+        skill = existing
+        message = f"✅ Skill '{final_name}' 已更新"
+    else:
+        skill = Skill(
+            name=final_name,
+            description=final_desc or "AI创建的Skill",
+            source_path="ai_created",
+            storage_path=str(skill_dir),
+            is_enabled=0
+        )
+        db.add(skill)
+        db.commit()
+        db.refresh(skill)
+        message = f"✅ Skill '{final_name}' 创建成功"
+
+    print(f"[AI Create Skill] {message}")
+
+    return {
+        "id": skill.id,
+        "name": skill.name,
+        "description": skill.description,
+        "message": message
+    }

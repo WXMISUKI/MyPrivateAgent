@@ -1,8 +1,12 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Boolean, Enum as SQLEnum, JSON
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Boolean, Enum as SQLEnum, JSON, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from database import Base
 import enum
+
+try:
+    from database import Base
+except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+    from backend.database import Base
 
 
 class User(Base):
@@ -214,3 +218,149 @@ class BestPractice(Base):
 
     def __repr__(self):
         return f"<BestPractice {self.practice_id}: {self.title}>"
+
+
+class PermissionRequestRecord(Base):
+    """工具权限请求持久化记录。"""
+
+    __tablename__ = "permission_requests"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    request_id = Column(String(50), unique=True, index=True, nullable=False)
+    tool_name = Column(String(100), nullable=False)
+    tool_args = Column(JSON)
+    permission_level = Column(String(20), nullable=False)
+    status = Column(String(20), default="pending", nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    conversation_id = Column(Integer, ForeignKey("conversations.id"), nullable=True)
+    result = Column(Text)
+    created_at = Column(DateTime, server_default=func.now())
+    completed_at = Column(DateTime)
+
+    def __repr__(self):
+        return f"<PermissionRequestRecord {self.request_id}: {self.tool_name} ({self.status})>"
+
+
+class ArtifactRecord(Base):
+    """运行时 artifact 持久化记录。"""
+
+    __tablename__ = "artifacts"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    artifact_id = Column(String(64), unique=True, index=True, nullable=False)
+    conversation_id = Column(Integer, ForeignKey("conversations.id"), nullable=True)
+    kind = Column(String(100), nullable=False)
+    content = Column(Text, nullable=False)
+    render_mode = Column(String(50))
+    card_schema = Column(String(100))
+    card = Column(JSON)
+    artifact_metadata = Column("metadata", JSON)
+    created_at = Column(DateTime, server_default=func.now())
+
+    def __repr__(self):
+        return f"<ArtifactRecord {self.artifact_id}: {self.kind}>"
+
+
+class MessageFeedbackRecord(Base):
+    """用户对助手输出的反馈记录。"""
+
+    __tablename__ = "message_feedback"
+    __table_args__ = (
+        UniqueConstraint(
+            "conversation_id",
+            "message_id",
+            "user_id",
+            name="uq_message_feedback_conv_msg_user",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    conversation_id = Column(Integer, ForeignKey("conversations.id"), nullable=False)
+    message_id = Column(Integer, ForeignKey("messages.id"), nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    feedback_type = Column(String(20), nullable=False)
+    score = Column(Integer, nullable=True)
+    comment = Column(Text)
+    runtime_artifact_id = Column(String(64), nullable=True)
+    runtime_scope = Column(String(50), nullable=True)
+    selected_items = Column(JSON)
+    stop_reason = Column(String(50), nullable=True)
+    created_learning_id = Column(String(50), nullable=True)
+    feedback_metadata = Column("metadata", JSON)
+    created_at = Column(DateTime, server_default=func.now())
+
+    def __repr__(self):
+        return f"<MessageFeedbackRecord {self.id}: {self.feedback_type}>"
+
+
+class PlanStatus(str, enum.Enum):
+    """计划项状态。"""
+
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+    BLOCKED = "blocked"
+    CANCELLED = "cancelled"
+
+
+class PlanHandoffStatus(str, enum.Enum):
+    """计划项分派/交接状态。"""
+
+    UNASSIGNED = "unassigned"
+    READY = "ready"
+    HANDED_OFF = "handed_off"
+    EXECUTING = "executing"
+    MERGED = "merged"
+
+
+class PlanRunRecord(Base):
+    """Planner 计划运行记录。"""
+
+    __tablename__ = "plan_runs"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    conversation_id = Column(Integer, ForeignKey("conversations.id"), nullable=True, index=True)
+    objective = Column(Text, nullable=False)
+    source = Column(String(50), default="manual", nullable=False)
+    status = Column(SQLEnum(PlanStatus), default=PlanStatus.PENDING, nullable=False)
+    active_item_id = Column(Integer, nullable=True)
+    summary = Column(Text)
+    plan_metadata = Column("metadata", JSON)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    items = relationship(
+        "PlanItemRecord",
+        back_populates="plan",
+        cascade="all, delete-orphan",
+        order_by="PlanItemRecord.step_order.asc()",
+    )
+
+    def __repr__(self):
+        return f"<PlanRunRecord {self.id}: {self.objective[:40]}>"
+
+
+class PlanItemRecord(Base):
+    """Planner 计划步骤记录。"""
+
+    __tablename__ = "plan_items"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    plan_id = Column(Integer, ForeignKey("plan_runs.id"), nullable=False, index=True)
+    step_order = Column(Integer, default=1, nullable=False)
+    title = Column(String(255), nullable=False)
+    details = Column(Text)
+    status = Column(SQLEnum(PlanStatus), default=PlanStatus.PENDING, nullable=False)
+    owner = Column(String(100))
+    agent_role = Column(String(100))
+    agent_id = Column(String(100))
+    handoff_status = Column(SQLEnum(PlanHandoffStatus), default=PlanHandoffStatus.UNASSIGNED, nullable=False)
+    item_metadata = Column("metadata", JSON)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    plan = relationship("PlanRunRecord", back_populates="items")
+
+    def __repr__(self):
+        return f"<PlanItemRecord {self.id}: {self.title}>"

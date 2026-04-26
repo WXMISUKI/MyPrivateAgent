@@ -10,12 +10,20 @@ load_dotenv(dotenv_path=env_path)
 # 项目根目录
 PROJECT_ROOT = Path(__file__).parent.parent
 
-# 数据库配置
+# 存储 / 数据库配置
+DB_MODE = os.getenv("DB_MODE", "sqlite").strip().lower() or "sqlite"
+LOCAL_DATA_DIR = Path(os.getenv("LOCAL_DATA_DIR", str(PROJECT_ROOT / ".myagent"))).resolve()
+SQLITE_PATH = Path(os.getenv("SQLITE_PATH", str(LOCAL_DATA_DIR / "app.db"))).resolve()
 DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_PORT = int(os.getenv("DB_PORT", "3306"))
 DB_NAME = os.getenv("DB_NAME", "MyPrivateAgent")
 DB_USER = os.getenv("DB_USER", "root")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "root")
+
+if DB_MODE == "mysql":
+    DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+else:
+    DATABASE_URL = f"sqlite:///{SQLITE_PATH.as_posix()}"
 
 # JWT 配置
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production-2026")

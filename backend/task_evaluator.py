@@ -7,7 +7,11 @@ import re
 from typing import Literal, Optional
 from pydantic import BaseModel
 from langchain_core.messages import HumanMessage, SystemMessage
-from model_router import get_model_router
+
+try:
+    from model_router import get_model_router
+except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+    from backend.model_router import get_model_router
 
 
 class QuickAssessment(BaseModel):

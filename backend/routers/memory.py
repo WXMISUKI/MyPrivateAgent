@@ -7,7 +7,10 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 
-from harness import get_memory_manager, get_context_manager
+try:
+    from harness import get_memory_manager, get_context_manager
+except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+    from backend.harness import get_memory_manager, get_context_manager
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/admin", tags=["admin"])

@@ -3,16 +3,26 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import Annotated
 
-from config import ACCESS_TOKEN_EXPIRE_MINUTES
-from database import get_db
-from models import User
-from schemas import UserCreate, UserLogin, UserResponse, Token
-from auth import (
-    get_password_hash,
-    verify_password,
-    create_access_token,
-    get_current_user
-)
+try:
+    from config import ACCESS_TOKEN_EXPIRE_MINUTES
+    from agent_server.dependencies import get_current_user, get_db
+    from models import User
+    from schemas import UserCreate, UserLogin, UserResponse, Token
+    from auth import (
+        get_password_hash,
+        verify_password,
+        create_access_token,
+    )
+except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+    from backend.config import ACCESS_TOKEN_EXPIRE_MINUTES
+    from backend.agent_server.dependencies import get_current_user, get_db
+    from backend.models import User
+    from backend.schemas import UserCreate, UserLogin, UserResponse, Token
+    from backend.auth import (
+        get_password_hash,
+        verify_password,
+        create_access_token,
+    )
 
 router = APIRouter(prefix="/api/auth", tags=["认证"])
 

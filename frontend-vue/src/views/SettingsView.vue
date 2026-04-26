@@ -1,7 +1,12 @@
 <template>
   <div class="settings-container">
     <div class="settings-header">
-      <h1>⚙️ 设置</h1>
+      <div class="header-row">
+        <button @click="goBack" class="back-btn">
+          <span>←</span> 返回
+        </button>
+        <h1>⚙️ 设置</h1>
+      </div>
       <p class="subtitle">配置您的个人偏好</p>
     </div>
 
@@ -104,6 +109,8 @@
           </button>
         </div>
       </section>
+
+      <McpManagementPanel />
     </div>
 
     <div class="settings-footer">
@@ -119,6 +126,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSettingsStore } from '../stores/settings'
 import { useAuthStore } from '../stores/auth'
+import McpManagementPanel from '../components/McpManagementPanel.vue'
 
 const emit = defineEmits(['close', 'theme-changed'])
 const router = useRouter()
@@ -147,12 +155,16 @@ function setTheme(theme) {
   emit('theme-changed', theme)
 }
 
+function goBack() {
+  router.push('/chat')
+}
+
 function saveSettings() {
   settingsStore.setDefaultModel(defaultModel.value)
   settingsStore.setTemperature(parseFloat(temperature.value))
   settingsStore.setMaxContextLength(parseInt(maxContextLength.value))
   settingsStore.setAutoSave(autoSave.value)
-  emit('close')
+  router.push('/chat')
 }
 
 async function handleLogout() {
@@ -174,10 +186,36 @@ async function handleLogout() {
   margin-bottom: var(--space-xl);
 }
 
+.header-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-sm);
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.back-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-elevated);
+  border-color: var(--primary);
+}
+
 .settings-header h1 {
   font-size: 1.75rem;
   color: var(--text-primary);
-  margin-bottom: var(--space-sm);
 }
 
 .subtitle {

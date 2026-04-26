@@ -43,8 +43,18 @@
   --ai-message-border: #2d2d44;
 
   /* Thinking Colors */
-  --thinking-bg: rgba(99, 102, 241, 0.05);
+  --thinking-bg: rgba(99, 102, 241, 0.08);
   --thinking-border: rgba(99, 102, 241, 0.2);
+  --thinking-header-bg: linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(139, 92, 246, 0.06) 100%);
+  --thinking-header-hover: linear-gradient(135deg, rgba(99, 102, 241, 0.18) 0%, rgba(139, 92, 246, 0.12) 100%);
+  --thinking-text: var(--primary);
+
+  /* Tool Colors */
+  --tool-bg: rgba(59, 130, 246, 0.08);
+  --tool-border: rgba(59, 130, 246, 0.2);
+  --tool-header-bg: linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(99, 102, 241, 0.06) 100%);
+  --tool-badge-bg: rgba(59, 130, 246, 0.15);
+  --tool-text: #60a5fa;
 
   /* Spacing */
   --space-xs: 4px;
@@ -119,8 +129,17 @@
   --ai-message-bg: #f8fafc;
   --ai-message-border: #e2e8f0;
 
-  --thinking-bg: rgba(99, 102, 241, 0.05);
+  --thinking-bg: rgba(99, 102, 241, 0.06);
   --thinking-border: rgba(99, 102, 241, 0.15);
+  --thinking-header-bg: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.05) 100%);
+  --thinking-header-hover: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.1) 100%);
+  --thinking-text: var(--primary);
+
+  --tool-bg: rgba(59, 130, 246, 0.08);
+  --tool-border: rgba(59, 130, 246, 0.2);
+  --tool-header-bg: linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(99, 102, 241, 0.06) 100%);
+  --tool-badge-bg: rgba(59, 130, 246, 0.15);
+  --tool-text: #3b82f6;
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);

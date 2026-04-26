@@ -11,7 +11,6 @@
         :username="username"
         @toggle-theme="toggleTheme"
         @toggle-sidebar="toggleSidebar"
-        @search="handleSearch"
         @logout="handleLogout"
       />
 
@@ -23,8 +22,10 @@
           @new-chat="createNewChat"
           @select-conversation="selectConversation"
           @delete-conversation="deleteConversation"
-          @open-learnings="showLearnings = true"
-          @open-settings="showSettings = true"
+          @open-learnings="goToLearnings"
+          @open-feedback-analytics="goToFeedbackAnalytics"
+          @open-skills="goToSkills"
+          @open-settings="goToSettings"
         />
 
         <main class="main-view" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
@@ -34,17 +35,6 @@
           />
         </main>
       </div>
-
-      <LearningsModal
-        v-if="showLearnings"
-        @close="showLearnings = false"
-      />
-
-      <SettingsModal
-        v-if="showSettings"
-        @close="showSettings = false"
-        @theme-changed="handleThemeChange"
-      />
     </template>
 
     <template v-else>
@@ -58,8 +48,6 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AppHeader from './components/AppHeader.vue'
 import AppSidebar from './components/AppSidebar.vue'
-import LearningsModal from './views/LearningsView.vue'
-import SettingsModal from './views/SettingsView.vue'
 import { useConversationStore } from './stores/conversation'
 import { useAuthStore } from './stores/auth'
 import { useSettingsStore } from './stores/settings'
@@ -72,9 +60,6 @@ const settingsStore = useSettingsStore()
 const theme = ref('dark')
 const username = ref('用户')
 const sidebarCollapsed = ref(false)
-const showLearnings = ref(false)
-const showSettings = ref(false)
-const searchQuery = ref('')
 const isLoading = ref(true)
 
 const isAuthenticated = computed(() => authStore.isAuthenticated)
@@ -117,11 +102,6 @@ function toggleSidebar() {
   sidebarCollapsed.value = !sidebarCollapsed.value
 }
 
-function handleSearch(query) {
-  searchQuery.value = query
-  conversationStore.setSearchQuery(query)
-}
-
 async function createNewChat() {
   await conversationStore.createConversation()
   router.push('/chat')
@@ -143,6 +123,22 @@ function updateCurrentConversation(data) {
 async function handleLogout() {
   await authStore.logout()
   router.push('/login')
+}
+
+function goToLearnings() {
+  router.push('/learnings')
+}
+
+function goToSkills() {
+  router.push('/skills')
+}
+
+function goToSettings() {
+  router.push('/settings')
+}
+
+function goToFeedbackAnalytics() {
+  router.push('/feedback-analytics')
 }
 </script>
 

@@ -1,6 +1,6 @@
 <template>
   <div class="app-layout">
-    <aside class="sidebar" :class="{ collapsed: sidebarCollapsed }">
+    <aside class="sidebar" :class="{ collapsed: collapsed }">
       <div class="sidebar-header">
         <button class="new-chat-btn" @click="$emit('new-chat')">
           <span class="icon">+</span>
@@ -49,6 +49,14 @@
           <span class="icon">🧠</span>
           <span class="text">学习记录</span>
         </button>
+        <button class="footer-btn" @click="$emit('open-feedback-analytics')">
+          <span class="icon">📊</span>
+          <span class="text">反馈分析</span>
+        </button>
+        <button class="footer-btn" @click="$emit('open-skills')">
+          <span class="icon">🛠️</span>
+          <span class="text">Skills</span>
+        </button>
         <button class="footer-btn" @click="$emit('open-settings')">
           <span class="icon">⚙️</span>
           <span class="text">设置</span>
@@ -74,13 +82,21 @@ const props = defineProps({
     type: [Number, String],
     default: null
   },
-  sidebarCollapsed: {
+  collapsed: {
     type: Boolean,
     default: false
   }
 })
 
-const emit = defineEmits(['new-chat', 'select-conversation', 'open-learnings', 'open-settings', 'delete-conversation'])
+const emit = defineEmits([
+  'new-chat',
+  'select-conversation',
+  'open-learnings',
+  'open-feedback-analytics',
+  'open-skills',
+  'open-settings',
+  'delete-conversation'
+])
 
 const hoveredConv = ref(null)
 
@@ -318,5 +334,62 @@ function handleDelete(convId) {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+/* 完全收缩样式 - 只显示图标 */
+.sidebar.collapsed {
+  width: var(--sidebar-collapsed-width);
+}
+
+.sidebar.collapsed .sidebar-header {
+  padding: var(--space-sm);
+  display: flex;
+  justify-content: center;
+}
+
+.sidebar.collapsed .new-chat-btn {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.sidebar.collapsed .new-chat-btn .icon {
+  font-size: 20px;
+}
+
+.sidebar.collapsed .new-chat-btn .text {
+  display: none;
+}
+
+.sidebar.collapsed .conversation-list {
+  display: none;
+}
+
+.sidebar.collapsed .sidebar-footer {
+  padding: var(--space-sm);
+  align-items: center;
+}
+
+.sidebar.collapsed .footer-btn {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  margin: 0 auto;
+}
+
+.sidebar.collapsed .footer-btn .icon {
+  font-size: 18px;
+}
+
+.sidebar.collapsed .footer-btn .text {
+  display: none;
 }
 </style>

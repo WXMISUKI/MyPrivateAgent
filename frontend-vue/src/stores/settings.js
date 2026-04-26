@@ -13,6 +13,12 @@ export const useSettingsStore = defineStore('settings', () => {
   function setTheme(value) {
     theme.value = value
     localStorage.setItem('theme', value)
+    document.documentElement.setAttribute('data-theme', value)
+  }
+
+  function toggleTheme() {
+    const newTheme = theme.value === 'dark' ? 'light' : 'dark'
+    setTheme(newTheme)
   }
 
   function setDefaultModel(value) {
@@ -66,6 +72,7 @@ export const useSettingsStore = defineStore('settings', () => {
     streamResponse,
     showTokenCount,
     setTheme,
+    toggleTheme,
     setDefaultModel,
     setTemperature,
     setMaxContextLength,

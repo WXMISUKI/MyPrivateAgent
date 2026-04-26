@@ -7,13 +7,14 @@
     </div>
 
     <div class="header-center">
-      <div class="search-box">
+      <div class="search-box" @click="navigateToSearch">
         <span class="search-icon">🔍</span>
         <input
           type="text"
           v-model="searchQuery"
           placeholder="搜索会话..."
-          @input="$emit('search', searchQuery)"
+          @keydown.enter="navigateToSearch"
+          readonly
         />
       </div>
     </div>
@@ -37,6 +38,9 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 defineProps({
   theme: {
@@ -49,10 +53,14 @@ defineProps({
   }
 })
 
-defineEmits(['toggle-sidebar', 'toggle-theme', 'search', 'logout'])
+defineEmits(['toggle-sidebar', 'toggle-theme', 'logout'])
 
 const searchQuery = ref('')
 const showUserMenu = ref(false)
+
+function navigateToSearch() {
+  router.push('/search')
+}
 </script>
 
 <style scoped>

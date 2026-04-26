@@ -1,281 +1,143 @@
-# MyPrivateAgent 项目设计文档
+# MyPrivateAgent Agent Framework Demo
 
-# 1. 激活 conda 环境
+## 项目定位
+本仓库已从“单项目私有助手”演进为“可复用的通用智能体 Demo 框架”，用于后续垂域 Agent 快速孵化。
 
-conda activate langgraph-env
+核心边界：
+- 框架层：`backend/agent_framework`、`backend/agent_server`
+- 业务层：`backend/services` 中领域服务、`frontend-vue` 页面与文案
 
-```shellscript
-cd d:\AI\AIcode\MyPrivateAgent\backend
-python -m uvicorn main:app --reload --port 8000
+## 当前状态（2026-04-24）
+- 后端执行链：`AgentHarness + Orchestrator + ChatService` 已收口
+- 前端主界面：`frontend-vue`（Vue SPA）为默认展示面
+- 反馈闭环：消息级反馈、runtime effect 关联、feedback analytics 已打通
+- 幂等治理：同用户同消息反馈采用 upsert 语义（避免统计污染）
 
-或者
-cd d:\AI\AIcode\MyPrivateAgent\backend
-python main.py
-```
+## 快速启动
 
-cd d:\AI\AIcode\MyPrivateAgent\frontend-vue
-npm run dev
-
-# 2. 启动后端服务
-
-cd backend
-python main.py
-
-# 3. 访问应用
-
-# 浏览器打开: <http://localhost:8000>
-
-cd frontend-vue
-npm install
-npm run dev
-
-## 一、项目概述
-
-**项目名称**：MyPrivateAgent\
-**项目类型**：私有 AI 对话助手 Web 应用\
-**核心功能**：用户注册登录、多模型对话、会话历史管理\
-**目标用户**：个人用户，本地部署使用
-
-***
-
-## 二、技术栈
-
-| 层级    | 技术选型                            |
-| ----- | ------------------------------- |
-| 后端    | FastAPI + SQLAlchemy + Pydantic |
-| 数据库   | MySQL (localhost:3306)          |
-| 认证    | JWT Token + HTTPOnly Cookie     |
-| 前端    | HTML + CSS + JavaScript (原生)    |
-| AI 对话 | LangGraph + Ollama (LLM)        |
-| 密码加密  | bcrypt                          |
-
-***
-
-## 三、数据库设计
-
-### 3.1 数据库名称
-
-```
-MyPrivateAgent
-```
-
-### 3.2 表结构
-
-#### 用户表 (users)
-
-| 字段             | 类型           | 说明       |
-| -------------- | ------------ | -------- |
-| id             | INT (主键, 自增) | 用户ID     |
-| username       | VARCHAR(50)  | 用户名 (唯一) |
-| password\_hash | VARCHAR(255) | 加密后的密码   |
-| created\_at    | DATETIME     | 注册时间     |
-| updated\_at    | DATETIME     | 更新时间     |
-
-#### 对话会话表 (conversations)
-
-| 字段          | 类型           | 说明     |
-| ----------- | ------------ | ------ |
-| id          | INT (主键, 自增) | 会话ID   |
-| user\_id    | INT (外键)     | 所属用户ID |
-| title       | VARCHAR(255) | 对话标题   |
-| model\_name | VARCHAR(50)  | 使用的模型  |
-| created\_at | DATETIME     | 创建时间   |
-| updated\_at | DATETIME     | 更新时间   |
-
-#### 消息表 (messages)
-
-| 字段               | 类型           | 说明                  |
-| ---------------- | ------------ | ------------------- |
-| id               | INT (主键, 自增) | 消息ID                |
-| conversation\_id | INT (外键)     | 所属会话ID              |
-| role             | VARCHAR(20)  | 角色 (user/assistant) |
-| content          | TEXT         | 消息内容                |
-| created\_at      | DATETIME     | 创建时间                |
-
-***
-
-## 四、API 接口设计
-
-### 4.1 认证接口
-
-| 方法   | 路径                 | 说明       |
-| ---- | ------------------ | -------- |
-| POST | /api/auth/register | 用户注册     |
-| POST | /api/auth/login    | 用户登录     |
-| POST | /api/auth/logout   | 用户登出     |
-| GET  | /api/auth/me       | 获取当前用户信息 |
-
-### 4.2 对话接口
-
-| 方法     | 路径                      | 说明        |
-| ------ | ----------------------- | --------- |
-| GET    | /api/conversations      | 获取用户所有会话  |
-| POST   | /api/conversations      | 创建新会话     |
-| GET    | /api/conversations/{id} | 获取会话详情    |
-| DELETE | /api/conversations/{id} | 删除会话      |
-| POST   | /api/chat               | 发送消息并获取回复 |
-
-### 4.3 模型接口
-
-| 方法  | 路径          | 说明       |
-| --- | ----------- | -------- |
-| GET | /api/models | 获取可用模型列表 |
-
-***
-
-## 五、前端页面设计
-
-### 5.1 页面结构
-
-```
-登录页 (login.html)
-    │
-    ▼
-主页面 (index.html)
-    ├── 顶部栏：用户名称 + 下拉菜单（退出登录）
-    ├── 左侧栏：会话列表 + 新建对话按钮
-    └── 右侧栏：对话窗口 + 模型选择下拉框
-```
-
-### 5.2 功能说明
-
-1. **登录页**：用户名/密码输入，注册/登录按钮
-2. **主页面**：
-   - 顶部显示当前用户名
-   - 点击用户名显示下拉菜单（退出登录）
-   - 左侧显示历史会话列表，点击切换对话
-   - 左侧"新建对话"按钮创建新会话
-   - 右侧对话区域，支持流式输出
-   - 模型选择下拉框切换对话模型
-
-***
-
-## 六、可用模型列表
-
-| 模型名称           | 说明             |
-| -------------- | -------------- |
-| llama3.1       | Llama 3.1 (默认) |
-| deepseek-r1:7b | DeepSeek R1    |
-| llava          | 多模态模型          |
-
-***
-
-## 七、项目目录结构
-
-```
-D:\AI\AIcode\MyPrivateAgent\
-├── backend/
-│   ├── main.py              # FastAPI 主入口
-│   ├── config.py             # 配置项
-│   ├── models.py             # SQLAlchemy 模型
-│   ├── schemas.py           # Pydantic schemas
-│   ├── database.py           # 数据库连接
-│   ├── auth.py               # 认证逻辑
-│   └── routers/
-│       ├── auth.py           # 认证路由
-│       ├── chat.py           # 对话路由
-│       └── conversations.py # 会话路由
-├── frontend/
-│   ├── login.html            # 登录页
-│   ├── index.html            # 主页面
-│   ├── static/
-│   │   ├── css/
-│   │   │   └── style.css     # 样式
-│   │   └── js/
-│   │       ├── login.js     # 登录逻辑
-│   │       ├── chat.js      # 对话逻辑
-│   │       └── app.js       # 主应用逻辑
-│   └── templates/            # HTML 模板
-├── .env                      # 环境变量
-└── requirements.txt          # Python 依赖
-```
-
-***
-
-## 八、部署步骤
-
-### 8.1 后端启动
-
-```bash
+### 1. 后端
+```powershell
 cd D:\AI\AIcode\MyPrivateAgent\backend
 pip install -r requirements.txt
-python main.py
-# 服务运行在 http://localhost:8000
+python scripts/doctor.py
+python -m uvicorn main:app --reload --port 8000
 ```
 
-### 8.2 前端访问
-
-```
-http://localhost:8000
-```
-
-***
-
-## 九、安全考虑
-
-1. 密码使用 bcrypt 加密存储
-2. JWT Token 存储在 HTTPOnly Cookie 中
-3. CORS 配置允许前端访问
-4. 用户只能访问自己的对话记录
-
-***
-
-## 十、待确认事项
-
-- [x] 数据库配置
-- [x] 认证方式
-- [x] 模型列表
-- [x] 部署方式
-
-***
-
-## 十一、使用说明
-
-### 11.1 启动服务
-
-**前置条件：**
-
-- MySQL 服务已启动（用户 root，密码 root）
-- Ollama 服务已启动（默认 <http://localhost:11434）>
-
-**启动后端：**
-
-```bash
-
-你的项目采用 FastAPI + Jinja2 模板架构（非真正的前后端分离），只需启动后端即可：
-
-   conda activate langgraph-env
-   cd D:\AI\AIcode\MyPrivateAgent\backend
-   python main.py
-
-  前端访问
-
-  后端启动后，直接在浏览器访问：
-   - 登录页: http://localhost:8000/login
-   - 主页面: http://localhost:8000/index
-
-  工具调用说明
-
-### 11.2 使用流程
-
-1. 打开浏览器访问 http://localhost:8000
-2. 点击"注册"按钮创建账号
-3. 登录后即可使用对话功能
-4. 左侧栏可以查看历史对话和新建对话
-5. 右上角可以切换用户模型
-6. 点击用户名可退出登录
-
-### 11.3 技术细节
-
-- 后端：FastAPI + SQLAlchemy + MySQL
-- 前端：原生 HTML/CSS/JS
-- 认证：JWT Token (HTTPOnly Cookie)
-- 密码加密：bcrypt
-- AI 对话：LangGraph + Ollama
-
----
-
-*文档创建时间：2026-03-08*
-*最后更新时间：2026-03-08*
+### 2. 前端
+```powershell
+cd D:\AI\AIcode\MyPrivateAgent\frontend-vue
+npm install
+npm run dev
 ```
 
+前端开发地址默认：`http://localhost:5173`  
+后端 API 默认：`http://localhost:8000`
+
+## 默认存储模式
+
+当前 demo 默认使用：
+
+- `SQLite` 本地存储
+- 数据文件默认位于：`D:\AI\AIcode\MyPrivateAgent\.myagent\app.db`
+
+这意味着：
+
+- 演示和本地开发默认不需要额外安装 MySQL
+- 会话、计划、反馈、artifact 等状态可直接本地持久化
+
+如果后续要接入业务数据库，再显式配置：
+
+```env
+DB_MODE=mysql
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=MyPrivateAgent
+DB_USER=root
+DB_PASSWORD=your_password
+```
+
+## 启动前自检与最小 Smoke
+
+后端环境自检：
+```powershell
+cd D:\AI\AIcode\MyPrivateAgent\backend
+python scripts/doctor.py
+```
+
+最小后端 smoke 检查：
+```powershell
+cd D:\AI\AIcode\MyPrivateAgent\backend
+python scripts/smoke_check.py
+```
+
+认证 + 会话主链路 smoke：
+```powershell
+cd D:\AI\AIcode\MyPrivateAgent\backend
+python scripts/auth_session_smoke.py
+```
+
+聊天 SSE 主链路 smoke：
+```powershell
+cd D:\AI\AIcode\MyPrivateAgent\backend
+python scripts/chat_stream_smoke.py
+```
+
+聊天空响应兜底 smoke：
+```powershell
+cd D:\AI\AIcode\MyPrivateAgent\backend
+python scripts/chat_empty_response_smoke.py
+```
+
+聊天错误事件 smoke：
+```powershell
+cd D:\AI\AIcode\MyPrivateAgent\backend
+python scripts/chat_error_event_smoke.py
+```
+
+停止生成 smoke：
+```powershell
+cd D:\AI\AIcode\MyPrivateAgent\backend
+python scripts/chat_stop_generation_smoke.py
+```
+
+说明：
+- `doctor.py` 会检查 `.env`、数据库连接、关键目录、前端构建产物、默认模型配置
+- `smoke_check.py` 不会触发真实模型调用，只验证后端基础路由和健康检查是否可用
+- `auth_session_smoke.py` 会验证游客登录、`/api/auth/me`、会话创建/列表/详情
+- `chat_stream_smoke.py` 会验证聊天 SSE 能输出 `conversation_id`、流式内容、以及 `done` 结束事件
+- `chat_empty_response_smoke.py` 会验证上游空响应时，后端仍会返回可展示的兜底回复和 `done`
+- `chat_error_event_smoke.py` 会验证流式 `error` 事件能够被返回给前端展示链路
+- `chat_stop_generation_smoke.py` 会验证停止生成链路的前端 store 合约与收尾行为
+- 运行中的服务也可直接访问：`GET /api/health`
+
+## Demo 入口
+- 天气 Demo：`examples/weather_demo_app.py`
+- 知识 Demo：`examples/knowledge_demo_app.py`
+
+示例：
+```powershell
+cd D:\AI\AIcode\MyPrivateAgent
+python -m uvicorn examples.weather_demo_app:app --port 8010
+```
+
+## 关键文档
+- Starter 指南：`docs/agent_framework_starter_guide.md`
+- Demo 指南：`docs/agent_framework_demo_guide.md`
+- Demo 运行手册：`docs/demo_runbook.md`
+- 测试手册：`docs/test_manual.md`
+- Card Schema：`docs/agent_framework_card_schemas.md`
+- 阶段记录索引：`问题记录/README.md`
+
+## 维护命令
+
+反馈重复数据清理（默认 dry-run）：
+```powershell
+cd D:\AI\AIcode\MyPrivateAgent
+python backend/scripts/dedupe_message_feedback.py --preview-limit 20
+```
+
+执行清理：
+```powershell
+cd D:\AI\AIcode\MyPrivateAgent
+python backend/scripts/dedupe_message_feedback.py --apply --limit-groups 50
+```

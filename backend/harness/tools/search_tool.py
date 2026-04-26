@@ -4,6 +4,11 @@
 import logging
 from ..tool_registry import BaseTool, PermissionLevel
 
+try:
+    from services.weather_service import weather_service
+except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+    from backend.services.weather_service import weather_service
+
 logger = logging.getLogger(__name__)
 
 
@@ -19,14 +24,8 @@ async def search(query: str) -> str:
     """
     query_lower = query.lower()
 
-    # 简单的信息查询
-    if "天气" in query or "weather" in query_lower:
-        if "上海" in query or "shanghai" in query_lower:
-            return "上海现在30度，多云，有微风。"
-        elif "北京" in query or "beijing" in query_lower:
-            return "北京现在28度，晴朗。"
-        else:
-            return "无法获取该地区的天气信息。"
+    if weather_service.is_weather_query(query):
+        return await weather_service.get_weather_text_for_query(query)
 
     if "时间" in query or "date" in query_lower or "time" in query_lower:
         from datetime import datetime

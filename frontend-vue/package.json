@@ -7,19 +7,24 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs --fix"
+    "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs --fix",
+    "test": "vitest run"
   },
   "dependencies": {
-    "vue": "^3.4.21",
-    "vue-router": "^4.3.0",
-    "pinia": "^2.1.7",
-    "marked": "^12.0.1",
+    "axios": "^1.6.8",
     "highlight.js": "^11.9.0",
-    "axios": "^1.6.8"
+    "lz-string": "^1.5.0",
+    "marked": "^12.0.1",
+    "pinia": "^2.1.7",
+    "vue": "^3.4.21",
+    "vue-router": "^4.3.0"
   },
   "devDependencies": {
+    "@vue/test-utils": "^2.4.6",
     "@vitejs/plugin-vue": "^5.0.4",
+    "jsdom": "^24.1.3",
+    "sass": "^1.72.0",
     "vite": "^5.2.0",
-    "sass": "^1.72.0"
+    "vitest": "^2.1.3"
   }
 }

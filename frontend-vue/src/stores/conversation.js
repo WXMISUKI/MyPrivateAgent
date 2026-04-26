@@ -1,12 +1,127 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import storage from '../services/storage'
+import { createStreamingEventParser, normalizeAgentEvent } from '../services/agentEvents'
+import { usePlannerStore } from './planner'
+import axios from 'axios'
 
 export const useConversationStore = defineStore('conversation', () => {
+  const plannerStore = usePlannerStore()
   const conversations = ref([])
   const activeId = ref(null)
   const searchQuery = ref('')
   const isLoading = ref(false)
+
+  let currentRequestHandle = null
+  let lastDataTimestamp = null
+  let timeoutCheckInterval = null
+  const STREAM_TIMEOUT_MS = 30000
+
+  const feedbackReasons = [
+    { id: 'irrelevant', label: '回答与问题无关' },
+    { id: 'incorrect', label: '内容不正确' },
+    { id: 'incomplete', label: '信息不完整' },
+    { id: 'not_helpful', label: '不够实用' },
+    { id: 'format_issue', label: '格式不符合预期' },
+    { id: 'other', label: '其他问题' }
+  ]
+
+  function getAuthHeaders() {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      return {}
+    }
+    return {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  }
+
+  function applyAssistantRenderMetadata(message, event) {
+    if (event.render_mode) {
+      message.renderMode = event.render_mode
+    }
+    if (event.card) {
+      message.cardData = event.card
+    }
+    if (event.card_schema) {
+      message.cardSchema = event.card_schema
+    }
+    if (message.renderMode === 'structured_card' && !message.cardData) {
+      message.renderMode = 'plain_text'
+    }
+  }
+
+  function applyAssistantDebugMetadata(message, event) {
+    if (event.tool_execution) {
+      message.toolExecution = { ...event.tool_execution }
+    } else if (event.cache_hit !== null || event.duration_ms !== null || event.result_source || event.status) {
+      message.toolExecution = {
+        cache_hit: event.cache_hit ?? false,
+        duration_ms: event.duration_ms ?? null,
+        result_source: event.result_source || '',
+        status: event.status || ''
+      }
+    }
+
+    if (event.type === 'status' && event.status_kind === 'runtime_knowledge') {
+      message.runtimeKnowledge = {
+        scope: event.scope || 'global',
+        promptCount: event.prompt_count || 0,
+        practiceCount: event.practice_count || 0,
+        selectedItems: Array.isArray(event.selected_items) ? event.selected_items : [],
+        skippedItems: Array.isArray(event.skipped_items) ? event.skipped_items : []
+      }
+    }
+  }
+
+  function applyMessageFeedback(message, feedback) {
+    if (!feedback) {
+      return
+    }
+    message.feedback = {
+      type: feedback.feedback_type || feedback.type || '',
+      score: feedback.score ?? null,
+      comment: feedback.comment || '',
+      runtime_artifact_id: feedback.runtime_artifact_id || null,
+      runtime_scope: feedback.runtime_scope || null,
+      selected_items: Array.isArray(feedback.selected_items) ? feedback.selected_items : [],
+      stop_reason: feedback.stop_reason || '',
+      created_learning_id: feedback.created_learning_id || null,
+      metadata: feedback.feedback_metadata || null
+    }
+  }
+
+  function upsertToolCall(message, event, status = 'completed') {
+    message.toolCalls = message.toolCalls || []
+    const toolCall = message.toolCalls.find(t => t.name === event.name && t.status === 'pending')
+    const execution = event.tool_execution || {
+      cache_hit: event.cache_hit ?? false,
+      duration_ms: event.duration_ms ?? null,
+      result_source: event.result_source || '',
+      status: event.status || ''
+    }
+
+    if (toolCall) {
+      toolCall.status = status
+      toolCall.result = event.result
+      toolCall.toolSpec = event.tool_spec || null
+      toolCall.cardData = event.card || null
+      toolCall.cardSchema = event.card_schema || ''
+      toolCall.execution = execution
+    } else {
+      message.toolCalls.push({
+        id: `tool_${Date.now()}`,
+        name: event.name,
+        status,
+        result: event.result,
+        toolSpec: event.tool_spec || null,
+        cardData: event.card || null,
+        cardSchema: event.card_schema || '',
+        execution
+      })
+    }
+  }
 
   const currentConversation = computed(() => {
     if (!activeId.value && conversations.value.length > 0) {
@@ -77,15 +192,6 @@ export const useConversationStore = defineStore('conversation', () => {
       activeId.value = savedActiveId
     }
     console.log('[Conversation] Loaded from storage:', conversations.value.length, 'conversations')
-    console.log('[Conversation] activeId:', activeId.value, 'type:', typeof activeId.value)
-    if (conversations.value.length > 0) {
-      console.log('[Conversation] First conv id:', conversations.value[0].id, 'type:', typeof conversations.value[0].id)
-      console.log('[Conversation] First conv messages:', conversations.value[0].messages?.length)
-    }
-
-    // Find current conversation
-    const found = conversations.value.find(c => String(c.id) === String(activeId.value))
-    console.log('[Conversation] Found conversation:', found ? 'yes' : 'no', found?.id)
   }
 
   function loadConversations() {
@@ -124,6 +230,70 @@ export const useConversationStore = defineStore('conversation', () => {
     searchQuery.value = query
   }
 
+  async function submitMessageFeedback({
+    messageId = null,
+    feedbackType,
+    score = null,
+    comment = '',
+    selectedReasons = []
+  } = {}) {
+    if (!currentConversation.value) {
+      throw new Error('当前没有活动会话')
+    }
+
+    const conversationId = Number(currentConversation.value.id)
+    if (!Number.isFinite(conversationId)) {
+      throw new Error('会话尚未同步，暂不可提交反馈')
+    }
+
+    if (!['positive', 'negative', 'neutral'].includes(feedbackType)) {
+      throw new Error('feedback_type 无效')
+    }
+
+    const payload = {
+      feedback_type: feedbackType,
+      score: score ?? null,
+      comment: comment ? comment.trim() : null
+    }
+
+    if (Array.isArray(selectedReasons) && selectedReasons.length > 0) {
+      payload.selected_reasons = selectedReasons.map(reason => String(reason).trim()).filter(Boolean)
+    }
+
+    if (messageId) {
+      const normalizedMessageId = Number(messageId)
+      if (Number.isFinite(normalizedMessageId)) {
+        payload.message_id = normalizedMessageId
+      }
+    }
+
+    try {
+      const response = await axios.post(
+        `/api/conversations/${conversationId}/feedback`,
+        payload,
+        {
+          headers: getAuthHeaders()
+        }
+      )
+
+      const msgIndex = currentConversation.value.messages.findIndex(m => m.id === messageId)
+      if (msgIndex !== -1) {
+        const currentMessage = currentConversation.value.messages[msgIndex]
+        const updatedMessage = {
+          ...currentMessage
+        }
+        applyMessageFeedback(updatedMessage, response.data)
+        currentConversation.value.messages.splice(msgIndex, 1, updatedMessage)
+        saveToStorage()
+      }
+
+      return response.data
+    } catch (error) {
+      console.error('[Feedback] 提交失败:', error)
+      throw error
+    }
+  }
+
   async function addMessage(message) {
     if (!currentConversation.value) {
       createConversation()
@@ -140,11 +310,46 @@ export const useConversationStore = defineStore('conversation', () => {
     saveToStorage()
   }
 
+  function abortCurrentRequest() {
+    if (currentRequestHandle && typeof currentRequestHandle.abort === 'function') {
+      console.log('[Stream] Aborting previous request')
+      currentRequestHandle.abort()
+      currentRequestHandle = null
+    }
+    stopTimeoutCheck()
+    isLoading.value = false
+  }
+
+  function stopTimeoutCheck() {
+    if (timeoutCheckInterval) {
+      clearInterval(timeoutCheckInterval)
+      timeoutCheckInterval = null
+    }
+    lastDataTimestamp = null
+  }
+
+  function startTimeoutCheck(msgId, updateCallback) {
+    lastDataTimestamp = Date.now()
+    timeoutCheckInterval = setInterval(() => {
+      if (lastDataTimestamp && Date.now() - lastDataTimestamp > STREAM_TIMEOUT_MS) {
+        console.log('[Stream] Timeout detected, forcing completion')
+        stopTimeoutCheck()
+        if (currentRequestHandle && typeof currentRequestHandle.abort === 'function') {
+          currentRequestHandle.abort()
+        }
+        updateCallback({ type: 'timeout' })
+      }
+    }, 5000)
+  }
+
   async function sendMessage(content, model = null) {
+    abortCurrentRequest()
+
     if (!currentConversation.value) {
       createConversation()
     }
 
+    const currentModel = model || currentConversation.value?.modelName || 'doubao'
     if (model && currentConversation.value) {
       currentConversation.value.modelName = model
     }
@@ -164,10 +369,8 @@ export const useConversationStore = defineStore('conversation', () => {
 
     return new Promise((resolve, reject) => {
       const requestData = {
-        message: content
-      }
-      if (model) {
-        requestData.model_name = model
+        message: content,
+        model_name: currentModel
       }
 
       const xhr = new XMLHttpRequest()
@@ -179,158 +382,205 @@ export const useConversationStore = defineStore('conversation', () => {
       }
 
       xhr.timeout = 300000
+      currentRequestHandle = xhr
 
       let fullContent = ''
       let thinkingContent = ''
-      let responseConversationId = null
-      let jsonBuffer = ''
-      let lastProcessedIndex = 0
+      let isCompleted = false
 
-      xhr.onprogress = (event) => {
-        if (xhr.readyState === 3) {
-          const responseText = xhr.responseText
-          const newData = responseText.slice(lastProcessedIndex)
-          lastProcessedIndex = responseText.length
+      const finalizeMessage = (finalContent, finalThinking, isError = false, lookupMessageId = assistantMessage.id) => {
+        if (isCompleted) return
+        isCompleted = true
+        isLoading.value = false
 
-          const lines = newData.split('\n')
-          for (let i = 0; i < lines.length; i++) {
-            const line = lines[i]
-            if (line.startsWith('data: ')) {
-              jsonBuffer += line.slice(6)
-              console.log('[Stream] Received:', line.slice(6).substring(0, 100))
-
-              try {
-                const data = JSON.parse(jsonBuffer)
-                jsonBuffer = ''
-
-                console.log('[Stream] Parsed:', data.type, 'content length:', (data.content || '').length)
-
-                if (data.type === 'conversation_id') {
-                  responseConversationId = data.conversation_id
-                  console.log('[Stream] Got conversation_id:', responseConversationId)
-                  if (currentConversation.value && String(currentConversation.value.id).startsWith('local_')) {
-                    currentConversation.value.id = responseConversationId
-                    activeId.value = responseConversationId
-                  }
-                } else if (data.type === 'reasoning') {
-                  thinkingContent += data.content || ''
-                  const updatedMsg = { ...assistantMessage, thinking: thinkingContent }
-                  const msgIndex = currentConversation.value.messages.findIndex(m => m.id === assistantMessage.id)
-                  if (msgIndex !== -1) {
-                    currentConversation.value.messages[msgIndex] = updatedMsg
-                  }
-                  assistantMessage.thinking = thinkingContent
-                  console.log('[Stream] Thinking:', thinkingContent.substring(0, 50))
-                } else if (data.type === 'content' || data.type === 'answer') {
-                  const contentStr = data.content || data.answer || ''
-                  fullContent += contentStr
-                  const updatedMsg = { ...assistantMessage, content: fullContent }
-                  const msgIndex = currentConversation.value.messages.findIndex(m => m.id === assistantMessage.id)
-                  if (msgIndex !== -1) {
-                    currentConversation.value.messages[msgIndex] = updatedMsg
-                  }
-                  assistantMessage.content = fullContent
-                  console.log('[Stream] Content:', fullContent.substring(0, 50))
-                } else if (data.type === 'done') {
-                  if (data.content !== undefined) {
-                    fullContent = data.content
-                  }
-                  if (data.reasoning_content) {
-                    thinkingContent = data.reasoning_content
-                  }
-                  const updatedMsg = { 
-                    ...assistantMessage, 
-                    content: fullContent,
-                    thinking: thinkingContent,
-                    isGenerating: false
-                  }
-                  const msgIndex = currentConversation.value.messages.findIndex(m => m.id === assistantMessage.id)
-                  if (msgIndex !== -1) {
-                    currentConversation.value.messages[msgIndex] = updatedMsg
-                  }
-                  assistantMessage.content = fullContent
-                  assistantMessage.thinking = thinkingContent
-                  assistantMessage.isGenerating = false
-                  console.log('[Stream] Done! Full content length:', fullContent.length)
-                }
-              } catch (e) {
-                // JSON不完整，继续缓冲
-              }
-            }
+        const msgIndex = currentConversation.value.messages.findIndex(m => m.id === lookupMessageId)
+        const finalMsg = {
+          ...assistantMessage,
+          content: String(finalContent || ''),
+          thinking: finalThinking || '',
+          isGenerating: false,
+          isToolCalling: false,
+          timestamp: Date.now()
+        }
+        Object.assign(assistantMessage, finalMsg)
+        if (msgIndex !== -1) {
+          if (finalMsg.renderMode === 'structured_card' && !finalMsg.cardData) {
+            finalMsg.renderMode = 'plain_text'
           }
+          currentConversation.value.messages.splice(msgIndex, 1, finalMsg)
+        }
+        currentConversation.value.updatedAt = Date.now()
+        saveToStorage()
+        stopTimeoutCheck()
+        currentRequestHandle = null
+      }
+
+      const handleStreamData = (data) => {
+        const event = normalizeAgentEvent(data)
+        lastDataTimestamp = Date.now()
+
+        if (event.type === 'conversation_id') {
+          console.log('[Stream] Got conversation_id:', event.conversation_id)
+          if (currentConversation.value && String(currentConversation.value.id).startsWith('local_')) {
+            currentConversation.value.id = event.conversation_id
+            activeId.value = event.conversation_id
+          }
+        } else if (event.type === 'reasoning') {
+          thinkingContent += event.content || ''
+          assistantMessage.thinking = thinkingContent
+          const msgIndex = currentConversation.value.messages.findIndex(m => m.id === assistantMessage.id)
+          if (msgIndex !== -1) {
+            currentConversation.value.messages.splice(msgIndex, 1, { ...assistantMessage })
+          }
+        } else if (event.type === 'content' || event.type === 'answer') {
+          const contentStr = event.content || event.answer || ''
+          fullContent += contentStr
+          assistantMessage.content = fullContent
+          assistantMessage.isGenerating = true
+          applyAssistantRenderMetadata(assistantMessage, event)
+          applyAssistantDebugMetadata(assistantMessage, event)
+          const msgIndex = currentConversation.value.messages.findIndex(m => m.id === assistantMessage.id)
+          if (msgIndex !== -1) {
+            currentConversation.value.messages.splice(msgIndex, 1, { ...assistantMessage })
+          }
+        } else if (event.type === 'status' && event.status_kind === 'runtime_knowledge') {
+          applyAssistantDebugMetadata(assistantMessage, event)
+          const msgIndex = currentConversation.value.messages.findIndex(m => m.id === assistantMessage.id)
+          if (msgIndex !== -1) {
+            currentConversation.value.messages.splice(msgIndex, 1, { ...assistantMessage })
+          }
+        } else if (event.type === 'tool_call_start') {
+          console.log('[Stream] Tool call start:', event.count)
+          assistantMessage.toolCalls = assistantMessage.toolCalls || []
+          assistantMessage.isToolCalling = true
+          const msgIndex = currentConversation.value.messages.findIndex(m => m.id === assistantMessage.id)
+          if (msgIndex !== -1) {
+            currentConversation.value.messages.splice(msgIndex, 1, { ...assistantMessage })
+          }
+        } else if (event.type === 'tool_permission_required') {
+          console.log('[Stream] Tool permission required:', event.name)
+          const toolCall = {
+            id: `tool_${Date.now()}`,
+            name: event.name,
+            args: event.args,
+            status: 'pending',
+            result: null
+          }
+          assistantMessage.toolCalls = assistantMessage.toolCalls || []
+          assistantMessage.toolCalls.push(toolCall)
+          assistantMessage.isToolCalling = false
+          const msgIndex = currentConversation.value.messages.findIndex(m => m.id === assistantMessage.id)
+          if (msgIndex !== -1) {
+            currentConversation.value.messages.splice(msgIndex, 1, { ...assistantMessage })
+          }
+        } else if (event.type === 'tool_denied') {
+          console.log('[Stream] Tool denied:', event.name)
+          assistantMessage.isToolCalling = false
+          const msgIndex = currentConversation.value.messages.findIndex(m => m.id === assistantMessage.id)
+          if (msgIndex !== -1) {
+            currentConversation.value.messages.splice(msgIndex, 1, { ...assistantMessage })
+          }
+        } else if (event.type === 'tool_result') {
+          console.log('[Stream] Tool result:', event.name, event.result)
+          upsertToolCall(assistantMessage, event, 'completed')
+          assistantMessage.isToolCalling = false
+          const msgIndex = currentConversation.value.messages.findIndex(m => m.id === assistantMessage.id)
+          if (msgIndex !== -1) {
+            currentConversation.value.messages.splice(msgIndex, 1, { ...assistantMessage })
+          }
+        } else if (event.type === 'plan_updated') {
+          if (event.plan) {
+            plannerStore.upsertPlan(event.plan)
+          }
+        } else if (event.type === 'done') {
+          const finalContent = event.content !== undefined ? event.content : fullContent
+          const finalThinking = event.reasoning_content || thinkingContent
+          const lookupMessageId = assistantMessage.id
+          const resolvedMessageId = Number(event.message_id)
+          if (Number.isFinite(resolvedMessageId)) {
+            assistantMessage.id = resolvedMessageId
+          }
+          applyAssistantRenderMetadata(assistantMessage, event)
+          applyAssistantDebugMetadata(assistantMessage, event)
+          finalizeMessage(finalContent, finalThinking, false, lookupMessageId)
+          resolve(assistantMessage)
+        } else if (event.type === 'error') {
+          const errorContent = event.error || event.content || fullContent || '发生错误，请稍后重试'
+          finalizeMessage(errorContent, '', true)
+          resolve(assistantMessage)
+        } else if (event.type === 'timeout') {
+          finalizeMessage(fullContent || '生成超时，请尝试重新生成', thinkingContent)
+          resolve(assistantMessage)
+        }
+      }
+      const eventParser = createStreamingEventParser(handleStreamData)
+
+      startTimeoutCheck(assistantMessage.id, handleStreamData)
+
+      xhr.onprogress = () => {
+        if (xhr.readyState === 3) {
+          eventParser.processResponseText(xhr.responseText)
         }
       }
 
       xhr.onload = () => {
+        eventParser.flush(xhr.responseText)
+        stopTimeoutCheck()
         isLoading.value = false
+
         if (xhr.status >= 200 && xhr.status < 300) {
-          const finalMsg = { 
-            ...assistantMessage, 
-            content: String(fullContent || ''),
-            thinking: '',
-            isGenerating: false,
-            timestamp: Date.now()
+          if (!isCompleted) {
+            finalizeMessage(fullContent || '', thinkingContent)
+            resolve(assistantMessage)
           }
-          const msgIndex = currentConversation.value.messages.findIndex(m => m.id === assistantMessage.id)
-          if (msgIndex !== -1) {
-            currentConversation.value.messages[msgIndex] = finalMsg
+        } else if (xhr.status === 0) {
+          if (!isCompleted) {
+            finalizeMessage(fullContent || '请求被中断', thinkingContent)
+            resolve(assistantMessage)
           }
-          currentConversation.value.updatedAt = Date.now()
-          saveToStorage()
-          resolve(finalMsg)
         } else {
           let errorContent = '发生错误，请稍后重试'
           try {
             const errorData = JSON.parse(xhr.responseText)
             errorContent = errorData.detail || errorContent
           } catch (e) {
-            // use default error content
           }
-          const errorMsg = {
-            ...assistantMessage,
-            content: errorContent,
-            thinking: '',
-            isGenerating: false
+          if (!isCompleted) {
+            finalizeMessage(errorContent, '', true)
+            resolve(assistantMessage)
           }
-          const msgIndex = currentConversation.value.messages.findIndex(m => m.id === assistantMessage.id)
-          if (msgIndex !== -1) {
-            currentConversation.value.messages[msgIndex] = errorMsg
-          }
-          saveToStorage()
-          reject(new Error(errorContent))
         }
+        currentRequestHandle = null
       }
 
       xhr.onerror = () => {
+        stopTimeoutCheck()
         isLoading.value = false
-        const errorMsg = {
-          ...assistantMessage,
-          content: '网络错误，请检查连接',
-          thinking: '',
-          isGenerating: false
+        if (!isCompleted) {
+          finalizeMessage('网络错误，请检查连接', '', true)
+          resolve(assistantMessage)
         }
-        const msgIndex = currentConversation.value.messages.findIndex(m => m.id === assistantMessage.id)
-        if (msgIndex !== -1) {
-          currentConversation.value.messages[msgIndex] = errorMsg
-        }
-        saveToStorage()
-        reject(new Error('Network error'))
+        currentRequestHandle = null
       }
 
       xhr.ontimeout = () => {
+        stopTimeoutCheck()
         isLoading.value = false
-        const errorMsg = {
-          ...assistantMessage,
-          content: '请求超时，请稍后重试',
-          thinking: '',
-          isGenerating: false
+        if (!isCompleted) {
+          finalizeMessage('请求超时，请稍后重试', '', true)
+          resolve(assistantMessage)
         }
-        const msgIndex = currentConversation.value.messages.findIndex(m => m.id === assistantMessage.id)
-        if (msgIndex !== -1) {
-          currentConversation.value.messages[msgIndex] = errorMsg
+        currentRequestHandle = null
+      }
+
+      xhr.onabort = () => {
+        stopTimeoutCheck()
+        isLoading.value = false
+        if (!isCompleted) {
+          finalizeMessage(fullContent || '已停止生成', thinkingContent)
+          resolve(assistantMessage)
         }
-        saveToStorage()
-        reject(new Error('Timeout'))
+        currentRequestHandle = null
       }
 
       xhr.send(JSON.stringify(requestData))
@@ -348,6 +598,222 @@ export const useConversationStore = defineStore('conversation', () => {
   function clearCurrentMessages() {
     if (currentConversation.value) {
       currentConversation.value.messages = []
+      saveToStorage()
+    }
+  }
+
+  async function regenerateMessage(userMessageContent) {
+    abortCurrentRequest()
+
+    if (!currentConversation.value) return Promise.reject('No active conversation')
+
+    const currentModel = currentConversation.value.modelName || 'doubao'
+
+    isLoading.value = true
+
+    const assistantMessage = {
+      id: `local_${Date.now()}`,
+      role: 'assistant',
+      content: '',
+      thinking: '',
+      timestamp: Date.now(),
+      isGenerating: true
+    }
+    currentConversation.value.messages.push(assistantMessage)
+    saveToStorage()
+
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest()
+      xhr.open('POST', '/api/chat', true)
+      xhr.setRequestHeader('Content-Type', 'application/json')
+      const token = localStorage.getItem('token')
+      if (token) {
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+      }
+
+      xhr.timeout = 300000
+      currentRequestHandle = xhr
+
+      let fullContent = ''
+      let thinkingContent = ''
+      let isCompleted = false
+
+      const finalizeMessage = (finalContent, finalThinking, isError = false, lookupMessageId = assistantMessage.id) => {
+        if (isCompleted) return
+        isCompleted = true
+        isLoading.value = false
+
+        const msgIndex = currentConversation.value.messages.findIndex(m => m.id === lookupMessageId)
+        const finalMsg = {
+          ...assistantMessage,
+          content: String(finalContent || ''),
+          thinking: finalThinking || '',
+          isGenerating: false,
+          isToolCalling: false,
+          timestamp: Date.now()
+        }
+        Object.assign(assistantMessage, finalMsg)
+        if (msgIndex !== -1) {
+          if (finalMsg.renderMode === 'structured_card' && !finalMsg.cardData) {
+            finalMsg.renderMode = 'plain_text'
+          }
+          currentConversation.value.messages.splice(msgIndex, 1, finalMsg)
+        }
+        currentConversation.value.updatedAt = Date.now()
+        saveToStorage()
+        stopTimeoutCheck()
+        currentRequestHandle = null
+      }
+
+      const handleStreamData = (data) => {
+        const event = normalizeAgentEvent(data)
+        lastDataTimestamp = Date.now()
+
+        if (event.type === 'reasoning') {
+          thinkingContent += event.content || ''
+          assistantMessage.thinking = thinkingContent
+          const msgIndex = currentConversation.value.messages.findIndex(m => m.id === assistantMessage.id)
+          if (msgIndex !== -1) {
+            currentConversation.value.messages.splice(msgIndex, 1, { ...assistantMessage })
+          }
+        } else if (event.type === 'content' || event.type === 'answer') {
+          const contentStr = event.content || event.answer || ''
+          fullContent += contentStr
+          assistantMessage.content = fullContent
+          assistantMessage.isGenerating = true
+          applyAssistantRenderMetadata(assistantMessage, event)
+          applyAssistantDebugMetadata(assistantMessage, event)
+          const msgIndex = currentConversation.value.messages.findIndex(m => m.id === assistantMessage.id)
+          if (msgIndex !== -1) {
+            currentConversation.value.messages.splice(msgIndex, 1, { ...assistantMessage })
+          }
+        } else if (event.type === 'status' && event.status_kind === 'runtime_knowledge') {
+          applyAssistantDebugMetadata(assistantMessage, event)
+          const msgIndex = currentConversation.value.messages.findIndex(m => m.id === assistantMessage.id)
+          if (msgIndex !== -1) {
+            currentConversation.value.messages.splice(msgIndex, 1, { ...assistantMessage })
+          }
+        } else if (event.type === 'tool_call_start') {
+          assistantMessage.toolCalls = assistantMessage.toolCalls || []
+          assistantMessage.isToolCalling = true
+          const msgIndex = currentConversation.value.messages.findIndex(m => m.id === assistantMessage.id)
+          if (msgIndex !== -1) {
+            currentConversation.value.messages.splice(msgIndex, 1, { ...assistantMessage })
+          }
+        } else if (event.type === 'tool_result') {
+          upsertToolCall(assistantMessage, event, 'completed')
+          assistantMessage.isToolCalling = false
+          const msgIndex = currentConversation.value.messages.findIndex(m => m.id === assistantMessage.id)
+          if (msgIndex !== -1) {
+            currentConversation.value.messages.splice(msgIndex, 1, { ...assistantMessage })
+          }
+        } else if (event.type === 'plan_updated') {
+          if (event.plan) {
+            plannerStore.upsertPlan(event.plan)
+          }
+        } else if (event.type === 'done') {
+          const lookupMessageId = assistantMessage.id
+          const resolvedMessageId = Number(event.message_id)
+          if (Number.isFinite(resolvedMessageId)) {
+            assistantMessage.id = resolvedMessageId
+          }
+          if (event.content !== undefined) {
+            fullContent = event.content
+          }
+          if (event.reasoning_content) {
+            thinkingContent = event.reasoning_content
+          }
+          applyAssistantRenderMetadata(assistantMessage, event)
+          applyAssistantDebugMetadata(assistantMessage, event)
+          finalizeMessage(fullContent, thinkingContent, false, lookupMessageId)
+          resolve(assistantMessage)
+        } else if (event.type === 'error') {
+          const errorContent = event.error || event.content || fullContent || '重新生成失败，请稍后重试'
+          finalizeMessage(errorContent, '', true)
+          resolve(assistantMessage)
+        } else if (event.type === 'timeout') {
+          finalizeMessage(fullContent || '生成超时，请尝试重新生成', thinkingContent)
+          resolve(assistantMessage)
+        }
+      }
+      const eventParser = createStreamingEventParser(handleStreamData)
+
+      startTimeoutCheck(assistantMessage.id, handleStreamData)
+
+      xhr.onprogress = () => {
+        if (xhr.readyState === 3) {
+          eventParser.processResponseText(xhr.responseText)
+        }
+      }
+
+      xhr.onload = () => {
+        eventParser.flush(xhr.responseText)
+        stopTimeoutCheck()
+        isLoading.value = false
+
+        if (xhr.status >= 200 && xhr.status < 300) {
+          if (!isCompleted) {
+            finalizeMessage(fullContent || '', thinkingContent)
+          }
+          resolve(assistantMessage)
+        } else if (xhr.status === 0) {
+          if (!isCompleted) {
+            finalizeMessage(fullContent || '请求被中断', thinkingContent)
+            resolve(assistantMessage)
+          }
+        } else {
+          let errorContent = '重新生成失败，请稍后重试'
+          try {
+            const errorData = JSON.parse(xhr.responseText)
+            errorContent = errorData.detail || errorContent
+          } catch (e) {
+            // use default
+          }
+          finalizeMessage(errorContent, '', true)
+          resolve(assistantMessage)
+        }
+        currentRequestHandle = null
+      }
+
+      xhr.onerror = () => {
+        stopTimeoutCheck()
+        isLoading.value = false
+        if (!isCompleted) {
+          finalizeMessage('网络错误，请检查连接', '', true)
+          resolve(assistantMessage)
+        }
+        currentRequestHandle = null
+      }
+
+      xhr.ontimeout = () => {
+        stopTimeoutCheck()
+        isLoading.value = false
+        if (!isCompleted) {
+          finalizeMessage('请求超时，请稍后重试', '', true)
+          resolve(assistantMessage)
+        }
+        currentRequestHandle = null
+      }
+
+      xhr.onabort = () => {
+        stopTimeoutCheck()
+        isLoading.value = false
+        if (!isCompleted) {
+          finalizeMessage(fullContent || '已停止生成', thinkingContent)
+          resolve(assistantMessage)
+        }
+        currentRequestHandle = null
+      }
+
+      xhr.send(JSON.stringify({ message: userMessageContent, model_name: currentModel }))
+    })
+  }
+
+  function removeAssistantMessage(messageId) {
+    if (!currentConversation.value) return
+    const msgIndex = currentConversation.value.messages.findIndex(m => m.id === messageId)
+    if (msgIndex !== -1) {
+      currentConversation.value.messages.splice(msgIndex, 1)
       saveToStorage()
     }
   }
@@ -378,6 +844,11 @@ export const useConversationStore = defineStore('conversation', () => {
     setSearchQuery,
     addMessage,
     sendMessage,
+    regenerateMessage,
+    removeAssistantMessage,
+    submitMessageFeedback,
+    feedbackReasons,
+    abortCurrentRequest,
     updateConversation,
     clearCurrentMessages,
     exportConversations,

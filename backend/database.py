@@ -1,13 +1,21 @@
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from config import DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
+from pathlib import Path
 
-# 数据库连接 URL
-DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+from sqlalchemy import create_engine
+from sqlalchemy.orm import declarative_base, sessionmaker
+
+try:
+    from config import DATABASE_URL, DB_MODE, LOCAL_DATA_DIR
+except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+    from backend.config import DATABASE_URL, DB_MODE, LOCAL_DATA_DIR
+
+if DB_MODE != "mysql":
+    Path(LOCAL_DATA_DIR).mkdir(parents=True, exist_ok=True)
 
 # 创建引擎
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+engine_kwargs = {"pool_pre_ping": True}
+if DATABASE_URL.startswith("sqlite"):
+    engine_kwargs["connect_args"] = {"check_same_thread": False}
+engine = create_engine(DATABASE_URL, **engine_kwargs)
 
 # 创建会话工厂
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

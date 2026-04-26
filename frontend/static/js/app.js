@@ -455,6 +455,53 @@ function scrollToBottom() {
     elements.messagesContainer.scrollTop = elements.messagesContainer.scrollHeight;
 }
 
+function createSSEChunkParser(onEvent) {
+    let eventBuffer = '';
+    let jsonBuffer = '';
+
+    return {
+        push(chunkText) {
+            eventBuffer += chunkText || '';
+
+            const segments = eventBuffer.split('\n\n');
+            eventBuffer = segments.pop() || '';
+
+            for (const segment of segments) {
+                const lines = segment.split('\n');
+                for (const line of lines) {
+                    if (!line.startsWith('data: ')) continue;
+
+                    jsonBuffer += line.slice(6);
+                    try {
+                        const parsed = JSON.parse(jsonBuffer);
+                        jsonBuffer = '';
+                        onEvent(parsed);
+                    } catch (e) {
+                        // 等待后续 chunk 补全 JSON
+                    }
+                }
+            }
+        },
+
+        flush() {
+            if (eventBuffer.trim()) {
+                this.push('\n\n');
+            }
+
+            if (!jsonBuffer.trim()) return;
+
+            try {
+                const parsed = JSON.parse(jsonBuffer);
+                jsonBuffer = '';
+                onEvent(parsed);
+            } catch (e) {
+                console.warn('[SSE] 丢弃未完成的 JSON 片段:', jsonBuffer);
+                jsonBuffer = '';
+            }
+        }
+    };
+}
+
 // 设置输入区域状态
 function setInputState(generating) {
     isGenerating = generating;
@@ -745,8 +792,9 @@ async function sendMessage() {
             const decoder = new TextDecoder();
             let assistantMessage = '';
             let reasoningMessage = '';  // 收集推理内容
-            let isFirstChunk = true;  // 标记是否第一个数据块
             let reasoningDone = false;  // 标记推理是否完成
+            let latestDoneContent = '';
+            const sseParser = createSSEChunkParser(handleSSEEvent);
 
             console.log('[SSE] 开始读取流');
 
@@ -793,101 +841,86 @@ async function sendMessage() {
             // 初始空内容
             updateMessageContent('', '');
 
+            function handleSSEEvent(parsed) {
+                const type = parsed.type;
+                console.log('[SSE] 收到数据:', type, parsed);
+
+                if (type === 'conversation_id' && parsed.conversation_id) {
+                    currentConversationId = parsed.conversation_id;
+                    return;
+                }
+
+                if (type === 'reasoning') {
+                    reasoningMessage += parsed.content || '';
+                    updateMessageContent(assistantMessage, reasoningMessage, true);
+                    return;
+                }
+
+                if (type === 'status') {
+                    console.log('[SSE] 状态:', parsed.content);
+                    return;
+                }
+
+                if (type === 'answer' || type === 'content') {
+                    assistantMessage += parsed.content || '';
+                    updateMessageContent(assistantMessage, reasoningMessage);
+                    return;
+                }
+
+                if (type === 'done') {
+                    reasoningDone = true;
+                    latestDoneContent = parsed.content || latestDoneContent || '';
+                    if (latestDoneContent) {
+                        assistantMessage = latestDoneContent;
+                    }
+                    const finalReasoning = parsed.reasoning_content || reasoningMessage;
+                    updateMessageContent(assistantMessage, finalReasoning, false);
+                    finishStreaming();
+
+                    if (parsed.context_stats && elements.contextStatsIndicator) {
+                        const stats = parsed.context_stats;
+                        const tokens = stats.tokens || 0;
+                        const messages = stats.messages || 0;
+                        const compression = stats.compression_count || 0;
+
+                        elements.contextStatsIndicator.style.display = 'flex';
+                        elements.contextUsage.textContent = `Tokens: ${tokens} | Messages: ${messages}${compression > 0 ? ` | Compressed: ${compression}x` : ''}`;
+
+                        elements.contextStatsIndicator.className = 'context-stats-indicator';
+                        if (tokens > 6000) {
+                            elements.contextStatsIndicator.classList.add('danger');
+                        } else if (tokens > 4000) {
+                            elements.contextStatsIndicator.classList.add('warning');
+                        }
+                    }
+
+                    console.log('[SSE] 完成');
+                    return;
+                }
+
+                if (type === 'error') {
+                    finishStreaming();
+                    assistantMessage += '\n\n' + (parsed.content || parsed.error || '发生错误');
+                    updateMessageContent(assistantMessage, '');
+                    return;
+                }
+
+                if (parsed.content && !type) {
+                    assistantMessage += parsed.content;
+                    updateMessageContent(assistantMessage, reasoningMessage);
+                }
+            }
+
             while (true) {
                 const { done, value } = await reader.read();
 
                 if (done) break;
 
                 const text = decoder.decode(value, { stream: true });
-
-                // 处理多条 SSE 数据
-                const lines = text.split('\n');
-                for (const line of lines) {
-                    if (!line.startsWith('data: ')) continue;
-
-                    const data = line.slice(6).trim();
-                    if (data === '[DONE]') continue;
-                    if (!data) continue;
-
-                    try {
-                        const parsed = JSON.parse(data);
-                        const type = parsed.type;
-                        console.log('[SSE] 收到数据:', type, parsed);
-
-                        // 处理推理内容
-                        if (type === 'reasoning') {
-                            reasoningMessage += parsed.content || '';
-                            updateMessageContent(assistantMessage, reasoningMessage, true);  // true = 显示加载动画
-                        }
-
-                        // 处理状态消息
-                        else if (type === 'status') {
-                            // 状态消息只在控制台记录，不显示
-                            console.log('[SSE] 状态:', parsed.content);
-                        }
-
-                        // 处理答案（多智能体模式）
-                        else if (type === 'answer') {
-                            assistantMessage += parsed.content || '';
-                            updateMessageContent(assistantMessage, reasoningMessage);
-                        }
-
-                        // 处理内容
-                        else if (type === 'content') {
-                            assistantMessage += parsed.content || '';
-                            updateMessageContent(assistantMessage, reasoningMessage);
-                        }
-
-                        // 处理完成信号
-                        else if (type === 'done') {
-                            reasoningDone = true;
-                            const finalReasoning = parsed.reasoning_content || reasoningMessage;
-                            updateMessageContent(assistantMessage, finalReasoning, false);
-                            finishStreaming();
-
-                            // 显示上下文统计
-                            if (parsed.context_stats && elements.contextStatsIndicator) {
-                                const stats = parsed.context_stats;
-                                const tokens = stats.tokens || 0;
-                                const messages = stats.messages || 0;
-                                const compression = stats.compression_count || 0;
-
-                                elements.contextStatsIndicator.style.display = 'flex';
-                                elements.contextUsage.textContent = `Tokens: ${tokens} | Messages: ${messages}${compression > 0 ? ` | Compressed: ${compression}x` : ''}`;
-
-                                // 根据使用率设置颜色
-                                elements.contextStatsIndicator.className = 'context-stats-indicator';
-                                if (tokens > 6000) {
-                                    elements.contextStatsIndicator.classList.add('danger');
-                                } else if (tokens > 4000) {
-                                    elements.contextStatsIndicator.classList.add('warning');
-                                }
-                            }
-
-                            console.log('[SSE] 完成');
-                        }
-
-                        // 处理错误
-                        else if (type === 'error') {
-                            finishStreaming();
-                            assistantMessage += '\n\n' + (parsed.content || '发生错误');
-                            updateMessageContent(assistantMessage, '');
-                        }
-
-                        // 兼容旧格式（纯文本）
-                        else if (parsed.content && !type) {
-                            assistantMessage += parsed.content;
-                            updateMessageContent(assistantMessage, reasoningMessage);
-                        }
-                    } catch (e) {
-                        // 非 JSON 格式，直接作为内容
-                        if (data && data !== '[DONE]') {
-                            assistantMessage += data;
-                            updateMessageContent(assistantMessage, reasoningMessage);
-                        }
-                    }
-                }
+                sseParser.push(text);
             }
+
+            sseParser.flush();
 
             console.log('[SSE] 完成, 内容长度:', assistantMessage.length, '推理内容长度:', reasoningMessage.length);
 
