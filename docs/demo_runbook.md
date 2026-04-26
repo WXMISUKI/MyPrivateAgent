@@ -42,12 +42,21 @@
 
 建议环境：
 
-- Python 3.10+
+- Python 3.11
 - 已安装 `backend/requirements.txt`
 
 安装命令：
 
 ```powershell
+cd D:\AI\AIcode\MyPrivateAgent\backend
+pip install -r requirements.txt
+```
+
+如果你之前已经在 `myenv` 里装过一轮失败或混乱的依赖，不建议直接在原环境上反复覆盖。更稳妥的做法是重建环境：
+
+```powershell
+conda create -n myenv python=3.11 -y
+conda activate myenv
 cd D:\AI\AIcode\MyPrivateAgent\backend
 pip install -r requirements.txt
 ```
@@ -72,6 +81,7 @@ npm install
 
 ```powershell
 cd D:\AI\AIcode\MyPrivateAgent\backend
+conda activate myenv
 python scripts/doctor.py
 python -m uvicorn main:app --reload --port 8000
 ```
@@ -151,6 +161,11 @@ npm run build
 
 当前这两条已经是 demo 可用性的最低回归门槛。
 
+说明：
+
+- `doctor.py` 只做环境与连接检查，不主动建表
+- `auth_session_smoke.py` 和聊天相关 smoke 现在会自动初始化 demo 所需表结构
+
 ## 7. 建议演示顺序
 
 如果你要向别人展示当前项目，建议按这个顺序：
@@ -191,7 +206,53 @@ python scripts/chat_error_event_smoke.py
 
 如果这些 smoke 都通过，再去看真实模型配置。
 
-### 8.3 前端一直处于“生成中”
+### 8.3 `pip install -r requirements.txt` 提示 `ResolutionImpossible`
+
+当前项目使用的是 `langchain 0.3.x / langgraph 0.2.x` 这一代依赖栈，所以必须和 `langchain-openai 0.2.x` 配套，不能混用 `langchain-openai 1.x`。
+
+如果你看到类似下面的冲突：
+
+- `langchain 0.3.7 depends on langchain-core<0.4.0`
+- `langchain-openai 1.1.13 depends on langchain-core>=1.2.29`
+
+说明环境里用了错误的 OpenAI 适配包版本，或者旧环境里残留了冲突依赖。现在仓库已经修正为兼容组合：
+
+- `langchain==0.3.7`
+- `langchain-ollama==0.2.0`
+- `langchain-openai==0.2.14`
+- `langgraph==0.2.56`
+- `openai==1.58.1`
+
+建议直接重建环境并重装：
+
+```powershell
+conda deactivate
+conda remove -n myenv --all -y
+conda create -n myenv python=3.11 -y
+conda activate myenv
+cd D:\AI\AIcode\MyPrivateAgent\backend
+pip install -r requirements.txt
+```
+
+如果安装完成后还出现这类提示：
+
+- `langgraph-prebuilt 1.0.8 requires langchain-core>=1.0.0`
+
+说明你当前激活的环境里还有旧版 `langgraph-prebuilt` 残留。这不是本项目当前依赖栈需要的包，清掉即可：
+
+```powershell
+pip uninstall -y langgraph-prebuilt langgraph-supervisor
+pip install -r requirements.txt
+```
+
+另外，后端脚本建议始终从 `backend` 目录执行，例如：
+
+```powershell
+cd D:\AI\AIcode\MyPrivateAgent\backend
+python scripts/doctor.py
+```
+
+### 8.4 前端一直处于“生成中”
 
 当前已经有几层兜底：
 
@@ -206,7 +267,7 @@ python scripts/chat_error_event_smoke.py
 - 后端 `/api/chat` 返回流
 - `frontend-vue/src/stores/conversation.js`
 
-### 8.4 页面打不开，但后端正常
+### 8.5 页面打不开，但后端正常
 
 先确认：
 
@@ -222,7 +283,7 @@ cd frontend-vue
 npm run build
 ```
 
-### 8.5 需要切回 MySQL
+### 8.6 需要切回 MySQL
 
 在 `.env` 显式设置：
 
@@ -260,4 +321,4 @@ python -m uvicorn main:app --reload --port 8000
 
 ## 10. 配套测试手册
 
-- 统一测试手册：[test_manual.md](./test_manual.md)
+- 统一测试手册：[test\_manual.md](./test_manual.md)

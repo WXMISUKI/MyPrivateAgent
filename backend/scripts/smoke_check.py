@@ -3,8 +3,20 @@
 from __future__ import annotations
 
 import json
+import sys
+from pathlib import Path
 
 from fastapi.testclient import TestClient
+
+
+def _bootstrap_path() -> None:
+    root = Path(__file__).resolve().parents[2]
+    candidate = str(root)
+    if candidate not in sys.path:
+        sys.path.insert(0, candidate)
+
+
+_bootstrap_path()
 
 try:
     from agent_server import create_app

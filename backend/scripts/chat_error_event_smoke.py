@@ -3,8 +3,20 @@
 from __future__ import annotations
 
 import json
+import sys
+from pathlib import Path
 
 from fastapi.testclient import TestClient
+
+
+def _bootstrap_path() -> None:
+    root = Path(__file__).resolve().parents[2]
+    candidate = str(root)
+    if candidate not in sys.path:
+        sys.path.insert(0, candidate)
+
+
+_bootstrap_path()
 
 try:
     from agent_server import create_app
@@ -29,34 +41,41 @@ def main() -> int:
 
     app = create_app(
         config=AgentServerConfig(
-            bootstrap=AgentServerBootstrapConfig(load_environment=True, init_database=False),
+            bootstrap=AgentServerBootstrapConfig(load_environment=True, init_database=True),
             ui=AgentServerUIConfig(enabled=False, mode="disabled"),
         )
     )
-    client = TestClient(app)
-
     try:
-        guest_response = client.post("/api/auth/guest")
-        token = guest_response.json()["access_token"]
-        headers = {"Authorization": f"Bearer {token}"}
+        with TestClient(app) as client:
+            guest_response = client.post("/api/auth/guest")
+            token = guest_response.json()["access_token"]
+            headers = {"Authorization": f"Bearer {token}"}
 
-        response = client.post(
-            "/api/chat",
-            headers=headers,
-            json={"message": "测试错误事件兜底", "model_name": "doubao"},
-        )
-        body = response.text
+            response = client.post(
+                "/api/chat",
+                headers=headers,
+                json={"message": "测试错误事件兜底", "model_name": "doubao"},
+            )
+            body = response.text
 
-        payload = {
-            "status": "ok" if response.status_code == 200 and "模拟流式错误" in body else "fail",
-            "checks": [
-                {
-                    "path": "/api/chat",
-                    "status_code": response.status_code,
-                    "body_excerpt": body[:500],
-                }
-            ],
-        }
+            contains_error = (
+                "模拟流式错误" in body
+                or "\\u6a21\\u62df\\u6d41\\u5f0f\\u9519\\u8bef" in body
+                or '"type": "error"' in body
+            )
+            contains_done = '"type": "done"' in body
+            payload = {
+                "status": "ok" if response.status_code == 200 and contains_error and contains_done else "fail",
+                "checks": [
+                    {
+                        "path": "/api/chat",
+                        "status_code": response.status_code,
+                        "contains_error": contains_error,
+                        "contains_done": contains_done,
+                        "body_excerpt": body[:500],
+                    }
+                ],
+            }
         print(json.dumps(payload, ensure_ascii=False, indent=2))
         return 0 if payload["status"] == "ok" else 1
     finally:
