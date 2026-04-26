@@ -11,7 +11,7 @@ from .auth_provider import AgentServerAuthProvider, get_default_auth_provider
 
 DependencyCallable = Callable[..., Any]
 AgentServerPreset = Literal["full_stack", "api_only", "embedded", "learning_demo", "weather_demo", "knowledge_demo"]
-AgentServerUiMode = Literal["spa", "legacy", "disabled"]
+AgentServerUiMode = Literal["spa", "disabled"]
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_ROUTE_GROUPS = (
@@ -68,7 +68,7 @@ class AgentServerBootstrapConfig:
 
 @dataclass(frozen=True)
 class AgentServerUIConfig:
-    """Legacy UI and static asset mounting configuration."""
+    """Vue SPA mounting configuration."""
 
     enabled: bool = True
     mode: AgentServerUiMode = "spa"
@@ -84,12 +84,6 @@ class AgentServerUIConfig:
         "/search",
         "/feedback-analytics",
     )
-    static_mount_path: str = "/static"
-    static_dir: Path = PROJECT_ROOT / "frontend" / "static"
-    templates_dir: Path = PROJECT_ROOT / "frontend" / "templates"
-    legacy_mount_prefix: str = "/legacy"
-    root_redirect_path: str | None = "/login"
-    login_route_path: str = "/login"
     index_route_path: str = "/index"
 
 

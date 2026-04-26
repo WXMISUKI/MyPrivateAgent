@@ -15,5 +15,4 @@
 
 ## 3. 协议与专项
 - [agent_framework_card_schemas.md](./agent_framework_card_schemas.md)：结构化卡片协议
-- [frontend_minimal_regression_checklist.md](./frontend_minimal_regression_checklist.md)：前端最小回归清单
-- [conversation_fix_20260419.md](./conversation_fix_20260419.md)：会话链路历史修复记录
+- [test_manual.md](./test_manual.md)：当前统一测试基线与测试案例

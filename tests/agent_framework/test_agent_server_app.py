@@ -36,7 +36,7 @@ from backend.agent_server.router_registry import get_api_router_registrations, g
 class AgentServerAppTests(unittest.TestCase):
     def test_router_registry_returns_expected_count(self):
         routers = tuple(get_api_routers())
-        self.assertEqual(len(routers), 7)
+        self.assertEqual(len(routers), 10)
 
     def test_router_registry_can_filter_by_group(self):
         registrations = get_api_router_registrations(route_groups=("admin",))
@@ -45,7 +45,7 @@ class AgentServerAppTests(unittest.TestCase):
     def test_router_registry_exposes_supported_groups(self):
         self.assertEqual(
             get_route_group_names(),
-            ("auth", "core", "skills", "learning", "permissions", "admin"),
+            ("auth", "core", "skills", "mcp", "planner", "learning", "permissions", "admin"),
         )
 
     def test_create_app_registers_core_routes(self):
@@ -61,10 +61,8 @@ class AgentServerAppTests(unittest.TestCase):
         if spa_index.exists():
             self.assertIn("/chat", route_paths)
             self.assertIn("/index", route_paths)
-            self.assertIn("/legacy/login", route_paths)
-            self.assertIn("/legacy/index", route_paths)
         else:
-            self.assertIn("/index", route_paths)
+            self.assertNotIn("/chat", route_paths)
 
     def test_create_app_allows_api_only_route_selection(self):
         app = create_app(
@@ -104,7 +102,7 @@ class AgentServerAppTests(unittest.TestCase):
 
         self.assertIs(app.dependency_overrides[get_current_user], fake_current_user)
 
-    def test_create_app_can_serve_spa_primary_ui_with_legacy_compat(self):
+    def test_create_app_can_serve_spa_primary_ui(self):
         dist_dir = Path("D:/AI/AIcode/MyPrivateAgent/.tmp_test_spa_dist") / uuid.uuid4().hex
         try:
             assets_dir = dist_dir / "assets"
@@ -123,8 +121,6 @@ class AgentServerAppTests(unittest.TestCase):
             route_paths = {route.path for route in app.router.routes}
 
             self.assertIn("/chat", route_paths)
-            self.assertIn("/legacy/login", route_paths)
-            self.assertIn("/legacy/index", route_paths)
             self.assertIn("/index", route_paths)
         finally:
             if dist_dir.exists():

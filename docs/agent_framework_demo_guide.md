@@ -28,8 +28,8 @@ Keep domain-specific code isolated:
 `frontend-vue` is now the primary client surface for the reusable demo framework.
 
 - Default `full_stack` mode serves the built Vue SPA from `frontend-vue/dist`
-- Legacy `frontend/` is retained only as a compatibility UI under `/legacy/*`
-- New domain demos should target `frontend-vue`, not the old template frontend
+- The legacy template frontend has been removed from the default demo
+- New domain demos should target `frontend-vue` only
 
 ## Current Server Presets
 

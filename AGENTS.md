@@ -3,7 +3,7 @@
 ## Project Structure & Module Organization
 `backend/` contains the FastAPI app, database models, orchestration logic, and API routers. Start in `backend/main.py`, then trace route handlers under `backend/routers/` and shared services in files such as `orchestrator.py` and `learning_recorder.py`.
 
-`frontend-vue/` is the active Vue 3 + Vite client. Views live in `src/views/`, reusable UI in `src/components/`, state in `src/stores/`, and API helpers in `src/api/` and `src/services/`. `frontend/` is the legacy Jinja/static frontend still served by the backend. `skill_store/dev-browser/` is an isolated TypeScript skill package with its own tests. `docs/` and `问题记录/` hold design notes and troubleshooting records.
+`frontend-vue/` is the active Vue 3 + Vite client. Views live in `src/views/`, reusable UI in `src/components/`, state in `src/stores/`, and API helpers in `src/api/` and `src/services/`. `skill_store/dev-browser/` is an isolated TypeScript skill package with its own tests. `docs/` and `问题记录/` hold design notes and troubleshooting records.
 
 ## Build, Test, and Development Commands
 Backend setup and run:

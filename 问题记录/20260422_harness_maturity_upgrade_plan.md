@@ -473,7 +473,7 @@ class AgentRunContext:
 - `backend/harness/permission_service.py`
 - `backend/orchestrator.py`
 - `frontend-vue/src/views/ChatView.vue`
-- `20260422_doubao_tool_call_weather_fix.md`
+- 当日天气工具调用历史修复记录（已并入当前精简历史）
 
 ---
 

@@ -245,8 +245,6 @@ Deliver a minimal but reusable planner/todo capability that can support:
   - child-level summary / error rendering
 - Added frontend regression coverage for planner scheduler display:
   - `frontend-vue/src/components/__tests__/PlannerPanel.test.js`
-- Related implementation record:
-  - [20260425_framework_phase36_implementation.md](./20260425_framework_phase36_implementation.md)
 
 ## Phase A Parallel Fan-Out Upgrade
 
@@ -258,8 +256,6 @@ Deliver a minimal but reusable planner/todo capability that can support:
   - updates planner/scheduler state from the main coordination loop
 - Each child execution now uses its own orchestrator instance instead of reusing a single shared orchestrator object.
 - Added regression coverage for scheduled parallel fan-out stream behavior.
-- Related implementation record:
-  - [20260425_framework_phase37_implementation.md](./20260425_framework_phase37_implementation.md)
 
 ## Phase A Scheduler Governance Upgrade
 
@@ -281,8 +277,6 @@ Deliver a minimal but reusable planner/todo capability that can support:
   - `subagent_cancelled`
   - `scheduler_cancelled`
 - Added regression coverage for timeout -> retry -> failure and cancellation flow.
-- Related implementation record:
-  - [20260425_framework_phase38_implementation.md](./20260425_framework_phase38_implementation.md)
 
 ## Phase A Audit Trail And Timeline
 
@@ -300,8 +294,6 @@ Deliver a minimal but reusable planner/todo capability that can support:
   - audit trail append/read behavior
   - planner serialization of audit trail
   - planner timeline rendering
-- Related implementation record:
-  - [20260425_framework_phase39_implementation.md](./20260425_framework_phase39_implementation.md)
 
 ## Phase A Unified Run Trace Upgrade
 
@@ -326,8 +318,6 @@ Deliver a minimal but reusable planner/todo capability that can support:
   - scheduler unified trace recording
   - planner serialization of `run_trace`
   - planner panel `run_trace` rendering
-- Related implementation record:
-  - [20260425_framework_phase40_implementation.md](./20260425_framework_phase40_implementation.md)
 
 ## Phase A Runtime Tool And Permission Trace Upgrade
 
@@ -348,8 +338,6 @@ Deliver a minimal but reusable planner/todo capability that can support:
 - Added regression coverage for:
   - stream trace recording of permission + MCP tool events
   - non-stream trace recording of tool failure events
-- Related implementation record:
-  - [20260425_framework_phase41_implementation.md](./20260425_framework_phase41_implementation.md)
 
 ## Phase A Permission Approval Trace Upgrade
 
@@ -363,8 +351,6 @@ Deliver a minimal but reusable planner/todo capability that can support:
   - router-level permission approval trace append
   - router-level permission denial trace append
   - run-trace service append behavior
-- Related implementation record:
-  - [20260425_framework_phase42_implementation.md](./20260425_framework_phase42_implementation.md)
 
 ## Phase D Skill Runtime Integration First Pass
 
@@ -385,8 +371,6 @@ Deliver a minimal but reusable planner/todo capability that can support:
   - runtime skill matching
   - runtime skill artifact persistence
   - runtime skill status to run-trace mapping
-- Related implementation record:
-  - [20260425_framework_phase43_implementation.md](./20260425_framework_phase43_implementation.md)
 
 ## Phase D Skill Runtime Governance First Pass
 
@@ -406,8 +390,6 @@ Deliver a minimal but reusable planner/todo capability that can support:
   - manual activation suppression
   - role-only activation matching
   - domain conflict resolution by priority
-- Related implementation record:
-  - [20260425_framework_phase44_implementation.md](./20260425_framework_phase44_implementation.md)
 
 ## Phase Stability Startup Diagnostics And Smoke
 
@@ -425,8 +407,6 @@ Deliver a minimal but reusable planner/todo capability that can support:
 - Added regression coverage for:
   - diagnostics report aggregation
   - `/api/health` route response
-- Related implementation record:
-  - [20260425_framework_phase45_implementation.md](./20260425_framework_phase45_implementation.md)
 
 ## Phase Stability Auth And Conversation Smoke
 
@@ -439,8 +419,6 @@ Deliver a minimal but reusable planner/todo capability that can support:
   - conversation detail
 - Added automated regression coverage using temporary SQLite:
   - `tests/agent_framework/test_auth_conversation_smoke.py`
-- Related implementation record:
-  - [20260425_framework_phase46_implementation.md](./20260425_framework_phase46_implementation.md)
 
 ## Phase Stability Chat SSE Smoke
 
@@ -453,8 +431,6 @@ Deliver a minimal but reusable planner/todo capability that can support:
   - streamed `content`
   - final `done`
   - fallback done aggregation
-- Related implementation record:
-  - [20260426_framework_phase47_implementation.md](./20260426_framework_phase47_implementation.md)
 
 ## Phase Stability Chat Empty Response Handling
 
@@ -464,8 +440,6 @@ Deliver a minimal but reusable planner/todo capability that can support:
 - Added automated regression coverage:
   - `tests/agent_framework/test_chat_empty_response_smoke.py`
   - updated `frontend-vue/src/stores/__tests__/conversation.test.js`
-- Related implementation record:
-  - [20260426_framework_phase48_implementation.md](./20260426_framework_phase48_implementation.md)
 
 ## Phase Stability Frontend Regression Closure And Error Smoke
 
@@ -474,8 +448,6 @@ Deliver a minimal but reusable planner/todo capability that can support:
   - `npm test`
   - `npm run build`
 - Added `backend/scripts/chat_error_event_smoke.py`.
-- Related implementation record:
-  - [20260426_framework_phase49_implementation.md](./20260426_framework_phase49_implementation.md)
 
 ## Phase Storage Default SQLite For Demo
 
@@ -483,8 +455,6 @@ Deliver a minimal but reusable planner/todo capability that can support:
 - Local state is stored under `.myagent/app.db` by default.
 - MySQL database creation bootstrap now only runs when `DB_MODE=mysql`.
 - Startup diagnostics now surface storage mode and actual connection target.
-- Related implementation record:
-  - [20260426_framework_phase50_implementation.md](./20260426_framework_phase50_implementation.md)
 
 ## Phase Demo Runbook Closure
 
@@ -496,5 +466,5 @@ Deliver a minimal but reusable planner/todo capability that can support:
   - troubleshooting
   - SQLite/MySQL mode guidance
 - Updated `README.md` and `docs/README.md` to point to the runbook.
-- Related implementation record:
-  - [20260426_framework_phase51_implementation.md](./20260426_framework_phase51_implementation.md)
+- See also:
+  - `20260426_framework_history_compact.md`
