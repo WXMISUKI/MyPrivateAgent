@@ -15,7 +15,7 @@ export const useConversationStore = defineStore('conversation', () => {
   let currentRequestHandle = null
   let lastDataTimestamp = null
   let timeoutCheckInterval = null
-  const STREAM_TIMEOUT_MS = 30000
+  const STREAM_TIMEOUT_MS = 60000
 
   const feedbackReasons = [
     { id: 'irrelevant', label: '回答与问题无关' },
@@ -73,6 +73,36 @@ export const useConversationStore = defineStore('conversation', () => {
         skippedItems: Array.isArray(event.skipped_items) ? event.skipped_items : []
       }
     }
+
+    if (event.completion_check) {
+      message.completionCheck = { ...event.completion_check }
+    }
+    if (event.framework_notice !== undefined) {
+      message.frameworkNotice = Boolean(event.framework_notice)
+    }
+  }
+
+  function applyExecutionProgress(message, event) {
+    if (event.type !== 'status' || event.status_kind !== 'execution_progress') {
+      return
+    }
+    const content = String(event.content || '').trim()
+    if (!content) {
+      return
+    }
+    message.executionProgress = Array.isArray(message.executionProgress) ? [...message.executionProgress] : []
+    const phase = event.phase || ''
+    const duplicate = message.executionProgress.find(
+      item => item.phase === phase && item.content === content
+    )
+    if (duplicate) {
+      return
+    }
+    message.executionProgress.push({
+      phase,
+      content,
+      timestamp: Date.now()
+    })
   }
 
   function applyMessageFeedback(message, feedback) {
@@ -310,9 +340,10 @@ export const useConversationStore = defineStore('conversation', () => {
     saveToStorage()
   }
 
-  function abortCurrentRequest() {
+  function abortCurrentRequest(reason = 'user') {
     if (currentRequestHandle && typeof currentRequestHandle.abort === 'function') {
       console.log('[Stream] Aborting previous request')
+      currentRequestHandle._abortReason = reason
       currentRequestHandle.abort()
       currentRequestHandle = null
     }
@@ -335,6 +366,7 @@ export const useConversationStore = defineStore('conversation', () => {
         console.log('[Stream] Timeout detected, forcing completion')
         stopTimeoutCheck()
         if (currentRequestHandle && typeof currentRequestHandle.abort === 'function') {
+          currentRequestHandle._abortReason = 'timeout'
           currentRequestHandle.abort()
         }
         updateCallback({ type: 'timeout' })
@@ -445,6 +477,13 @@ export const useConversationStore = defineStore('conversation', () => {
           }
         } else if (event.type === 'status' && event.status_kind === 'runtime_knowledge') {
           applyAssistantDebugMetadata(assistantMessage, event)
+          applyExecutionProgress(assistantMessage, event)
+          const msgIndex = currentConversation.value.messages.findIndex(m => m.id === assistantMessage.id)
+          if (msgIndex !== -1) {
+            currentConversation.value.messages.splice(msgIndex, 1, { ...assistantMessage })
+          }
+        } else if (event.type === 'status' && event.status_kind === 'execution_progress') {
+          applyExecutionProgress(assistantMessage, event)
           const msgIndex = currentConversation.value.messages.findIndex(m => m.id === assistantMessage.id)
           if (msgIndex !== -1) {
             currentConversation.value.messages.splice(msgIndex, 1, { ...assistantMessage })
@@ -577,7 +616,11 @@ export const useConversationStore = defineStore('conversation', () => {
         stopTimeoutCheck()
         isLoading.value = false
         if (!isCompleted) {
-          finalizeMessage(fullContent || '已停止生成', thinkingContent)
+          const abortReason = xhr._abortReason || 'user'
+          const abortMessage = abortReason === 'timeout'
+            ? (fullContent || '生成超时，请稍后重试')
+            : (fullContent || '已停止生成')
+          finalizeMessage(abortMessage, thinkingContent)
           resolve(assistantMessage)
         }
         currentRequestHandle = null
@@ -689,6 +732,13 @@ export const useConversationStore = defineStore('conversation', () => {
           }
         } else if (event.type === 'status' && event.status_kind === 'runtime_knowledge') {
           applyAssistantDebugMetadata(assistantMessage, event)
+          applyExecutionProgress(assistantMessage, event)
+          const msgIndex = currentConversation.value.messages.findIndex(m => m.id === assistantMessage.id)
+          if (msgIndex !== -1) {
+            currentConversation.value.messages.splice(msgIndex, 1, { ...assistantMessage })
+          }
+        } else if (event.type === 'status' && event.status_kind === 'execution_progress') {
+          applyExecutionProgress(assistantMessage, event)
           const msgIndex = currentConversation.value.messages.findIndex(m => m.id === assistantMessage.id)
           if (msgIndex !== -1) {
             currentConversation.value.messages.splice(msgIndex, 1, { ...assistantMessage })
@@ -799,7 +849,11 @@ export const useConversationStore = defineStore('conversation', () => {
         stopTimeoutCheck()
         isLoading.value = false
         if (!isCompleted) {
-          finalizeMessage(fullContent || '已停止生成', thinkingContent)
+          const abortReason = xhr._abortReason || 'user'
+          const abortMessage = abortReason === 'timeout'
+            ? (fullContent || '生成超时，请稍后重试')
+            : (fullContent || '已停止生成')
+          finalizeMessage(abortMessage, thinkingContent)
           resolve(assistantMessage)
         }
         currentRequestHandle = null

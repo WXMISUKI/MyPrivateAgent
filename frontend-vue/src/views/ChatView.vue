@@ -8,7 +8,7 @@
           </option>
         </select>
       </div>
-      <button class="planner-toggle-btn" @click="plannerCollapsed = !plannerCollapsed">
+      <button v-if="showPlannerConsole" class="planner-toggle-btn" @click="plannerCollapsed = !plannerCollapsed">
         {{ plannerCollapsed ? '打开 Planner' : '隐藏 Planner' }}
       </button>
     </div>
@@ -64,6 +64,7 @@
             <span>Shift + Enter 换行</span>
             <span>/ 快捷命令</span>
             <button
+              v-if="showPlannerConsole"
               class="inline-plan-btn"
               :disabled="plannerStore.isGenerating || !plannerDraftObjective.trim()"
               @click="generatePlanFromDraft"
@@ -75,6 +76,7 @@
       </div>
 
       <PlannerPanel
+        v-if="showPlannerConsole"
         :collapsed="plannerCollapsed"
         :plan="currentPlan"
         :draft-objective="plannerDraftObjective"
@@ -106,9 +108,10 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, defineAsyncComponent } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useConversationStore } from '../stores/conversation'
 import { usePlannerStore } from '../stores/planner'
+import { useAuthStore } from '../stores/auth'
 import axios from 'axios'
 
 const CommandPalette = defineAsyncComponent(() => import('../components/CommandPalette.vue'))
@@ -117,8 +120,10 @@ const PlannerPanel = defineAsyncComponent(() => import('../components/PlannerPan
 import { parseCommand } from '../services/commands'
 
 const router = useRouter()
+const route = useRoute()
 const conversationStore = useConversationStore()
 const plannerStore = usePlannerStore()
+const authStore = useAuthStore()
 
 const messagesContainer = ref(null)
 const textareaRef = ref(null)
@@ -130,12 +135,7 @@ const plannerCollapsed = ref(false)
 const plannerDraftObjective = ref('')
 const newPlanItemTitle = ref('')
 const plannerError = ref('')
-const availableModels = ref([
-  { name: 'doubao', display_name: '豆包 (火山引擎)' },
-  { name: 'deepseek-r1:7b', display_name: 'DeepSeek R1 7B' },
-  { name: 'llama3.1', display_name: 'Llama 3.1' },
-  { name: 'llava', display_name: 'LLaVA' }
-])
+const availableModels = ref([])
 
 const isLoading = computed(() => conversationStore.isLoading)
 const feedbackReasons = computed(() => conversationStore.feedbackReasons || [])
@@ -151,6 +151,11 @@ const messages = computed(() => {
 })
 
 const currentPlan = computed(() => plannerStore.currentPlan)
+const showPlannerConsole = computed(() => {
+  const queryFlag = String(route.query.planner || '').trim() === '1'
+  const localFlag = localStorage.getItem('myprivateagent.showPlannerConsole') === '1'
+  return queryFlag || localFlag
+})
 const currentConversationId = computed(() => {
   const conv = conversationStore.currentConversation
   const normalizedId = Number(conv?.id)
@@ -359,7 +364,7 @@ function handleCommandExecute(command) {
       break
 
     case 'show_help':
-      inputMessage.value = '/help 可用命令:\n/new - 新建对话\n/clear - 清空对话\n/search - 搜索会话\n/export - 导出对话\n/skills - Skills管理\n/learnings - 学习记录\n/feedback - 反馈分析\n/settings - 设置\n提示：右侧 Planner 可生成 Todo 计划'
+      inputMessage.value = '/help 可用命令:\n/new - 新建对话\n/clear - 清空对话\n/search - 搜索会话\n/export - 导出对话\n/skills - Skills管理\n/learnings - 学习记录\n/feedback - 反馈分析\n/settings - 设置'
       break
   }
 }
@@ -605,13 +610,23 @@ onMounted(async () => {
     const response = await axios.get('/api/models')
     if (response.data && Array.isArray(response.data)) {
       availableModels.value = response.data
+      const defaultModel = response.data.find(model => model.is_default)?.name
+      if (!conversationStore.currentConversation && defaultModel) {
+        selectedModel.value = defaultModel
+      }
     }
   } catch (error) {
     console.error('Failed to load models:', error)
   }
 
+  if (authStore.runtimeProfile?.default_model && !conversationStore.currentConversation) {
+    selectedModel.value = authStore.runtimeProfile.default_model
+  }
+
   plannerDraftObjective.value = inputMessage.value.trim()
-  await refreshPlans()
+  if (showPlannerConsole.value) {
+    await refreshPlans()
+  }
 })
 
 watch(() => messages.value.length, () => {
@@ -619,7 +634,9 @@ watch(() => messages.value.length, () => {
 })
 
 watch(currentConversationId, async () => {
-  await refreshPlans()
+  if (showPlannerConsole.value) {
+    await refreshPlans()
+  }
 }, { immediate: false })
 
 watch(inputMessage, (value) => {

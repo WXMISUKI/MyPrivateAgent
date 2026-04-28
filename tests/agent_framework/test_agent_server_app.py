@@ -2,6 +2,9 @@ import unittest
 from pathlib import Path
 import shutil
 import uuid
+from unittest.mock import patch
+
+from fastapi.testclient import TestClient
 
 from backend.agent_server.app import create_app
 from backend.agent_server.auth_provider import (
@@ -245,6 +248,26 @@ class AgentServerAppTests(unittest.TestCase):
         provider = create_anonymous_auth_provider(user={"id": "anon-user"})
         self.assertEqual(provider.current_user_dependency(), {"id": "anon-user"})
         self.assertEqual(provider.optional_user_dependency(), {"id": "anon-user"})
+
+    @patch("backend.routers.chat.get_runtime_surface_service")
+    def test_models_endpoint_uses_runtime_surface_catalog(self, mock_surface_factory):
+        mock_surface_factory.return_value.list_models.return_value = [
+            {"name": "doubao", "display_name": "豆包", "provider": "volcengine-ark"}
+        ]
+        app = create_app(
+            AgentServerConfig(
+                bootstrap=AgentServerBootstrapConfig(
+                    load_environment=False,
+                    init_database=False,
+                ),
+                ui=AgentServerUIConfig(enabled=False),
+            )
+        )
+        client = TestClient(app)
+
+        response = client.get("/api/models")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()[0]["name"], "doubao")
 
 
 if __name__ == "__main__":

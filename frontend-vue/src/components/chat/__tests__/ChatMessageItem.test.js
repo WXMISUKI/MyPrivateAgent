@@ -52,7 +52,7 @@ describe('ChatMessageItem', () => {
     expect(wrapper.findAll('.action-btn')).toHaveLength(4)
   })
 
-  it('renders tool call result block', () => {
+  it('renders tool call result block', async () => {
     const wrapper = mountMessageItem({
       id: 102,
       role: 'assistant',
@@ -70,8 +70,31 @@ describe('ChatMessageItem', () => {
     })
 
     expect(wrapper.text()).toContain('工具调用')
+    expect(wrapper.text()).toContain('已调用 1 个工具，点击查看详情')
+    expect(wrapper.find('.tool-calls-box').attributes('open')).toBeUndefined()
+    expect(wrapper.text()).not.toContain('weather_lookup')
+    expect(wrapper.text()).not.toContain('晴天')
+
+    await wrapper.find('.tool-calls-header').trigger('click')
     expect(wrapper.text()).toContain('weather_lookup')
     expect(wrapper.text()).toContain('晴天')
+  })
+
+  it('renders visible execution progress summary for assistant messages', () => {
+    const wrapper = mountMessageItem({
+      id: 105,
+      role: 'assistant',
+      content: '最终回答',
+      timestamp: Date.now(),
+      executionProgress: [
+        { phase: 'intent_routing', content: '正在识别你的复合需求。' },
+        { phase: 'tool_execution', content: '正在检索天气和交通信息。' }
+      ]
+    })
+
+    expect(wrapper.text()).toContain('执行摘要')
+    expect(wrapper.text()).toContain('正在识别你的复合需求。')
+    expect(wrapper.text()).toContain('正在检索天气和交通信息。')
   })
 
   it('shows submitted feedback summary', () => {

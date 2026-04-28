@@ -95,6 +95,22 @@ export const settingsApi = {
   }
 }
 
+export const runtimeSurfaceApi = {
+  getProfile() {
+    return api.get('/runtime-profile')
+  },
+
+  updateProfile(payload) {
+    return api.patch('/runtime-profile', payload)
+  }
+}
+
+export const capabilityGapApi = {
+  getSummary(params = {}) {
+    return api.get('/capability-gaps', { params })
+  }
+}
+
 export const mcpApi = {
   listServers() {
     return api.get('/mcp/servers')

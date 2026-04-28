@@ -31,13 +31,34 @@
         </div>
       </div>
 
-      <div v-if="message.toolCalls && message.toolCalls.length > 0" class="tool-calls-box">
-        <div class="tool-calls-header">
+      <div v-if="executionProgressItems.length" class="execution-progress-box">
+        <div class="execution-progress-header">
+          <span class="execution-progress-icon">🪜</span>
+          <span class="execution-progress-title">执行摘要</span>
+        </div>
+        <div class="execution-progress-list">
+          <div
+            v-for="(item, progressIdx) in executionProgressItems"
+            :key="`${item.phase}-${progressIdx}`"
+            class="execution-progress-item"
+          >
+            <span class="execution-progress-dot"></span>
+            <span class="execution-progress-text">{{ item.content }}</span>
+          </div>
+        </div>
+      </div>
+
+      <details v-if="message.toolCalls && message.toolCalls.length > 0" class="tool-calls-box">
+        <button class="tool-calls-header" type="button" @click="toolCallsCollapsed = !toolCallsCollapsed">
           <span class="tool-icon">🔧</span>
           <span class="tool-label">工具调用</span>
           <span class="tool-count">{{ message.toolCalls.length }}</span>
+          <span class="tool-toggle">{{ toolCallsCollapsed ? '展开' : '收起' }}</span>
+        </button>
+        <div v-if="toolCallsCollapsed" class="tool-calls-summary">
+          已调用 {{ message.toolCalls.length }} 个工具，点击查看详情
         </div>
-        <div class="tool-calls-list">
+        <div v-else class="tool-calls-list">
           <div
             v-for="(tool, tIdx) in message.toolCalls"
             :key="tool.id || tIdx"
@@ -73,7 +94,7 @@
             </div>
           </div>
         </div>
-      </div>
+      </details>
 
       <div v-if="hasStructuredCard(message.cardData, message.cardSchema)">
         <AgentStructuredCard :card="message.cardData" :card-schema="message.cardSchema" />
@@ -171,7 +192,7 @@
 </template>
 
 <script setup>
-import { computed, defineAsyncComponent } from 'vue'
+import { computed, defineAsyncComponent, ref } from 'vue'
 import { hasStructuredCardSchema } from '../cards/registry'
 
 const MessageTextRenderer = defineAsyncComponent(() => import('./MessageTextRenderer.vue'))
@@ -237,6 +258,7 @@ const messageKey = computed(() => {
 const isThinkingExpanded = computed(() => {
   return !!props.expandedThinking[messageKey.value]
 })
+const toolCallsCollapsed = ref(true)
 
 const hasVisibleMessageText = computed(() => {
   if (!props.message) return false
@@ -244,6 +266,11 @@ const hasVisibleMessageText = computed(() => {
     return false
   }
   return !!String(props.message.content || '').trim()
+})
+
+const executionProgressItems = computed(() => {
+  const items = Array.isArray(props.message?.executionProgress) ? props.message.executionProgress : []
+  return items.slice(-4)
 })
 
 function hasStructuredCard(cardData, cardSchema) {
@@ -424,6 +451,51 @@ function onSubmitNegativeFeedback() {
   gap: var(--space-sm);
   opacity: 0;
   transition: opacity 0.2s;
+}
+
+.execution-progress-box {
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid rgba(59, 130, 246, 0.16);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(14, 165, 233, 0.05) 100%);
+}
+
+.execution-progress-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-xs);
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.execution-progress-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.execution-progress-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.execution-progress-dot {
+  width: 6px;
+  height: 6px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: #38bdf8;
+  flex-shrink: 0;
+}
+
+.execution-progress-text {
+  flex: 1;
 }
 
 .message-wrapper:hover .message-actions {
@@ -678,9 +750,16 @@ function onSubmitNegativeFeedback() {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
+  justify-content: space-between;
   padding: var(--space-sm) var(--space-md);
   background: var(--tool-header-bg);
   border-bottom: 1px solid var(--tool-border);
+  width: 100%;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  cursor: pointer;
+  text-align: left;
 }
 
 .tool-icon {
@@ -701,6 +780,17 @@ function onSubmitNegativeFeedback() {
   border-radius: 10px;
   font-size: 0.75rem;
   font-weight: 500;
+}
+
+.tool-toggle {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+.tool-calls-summary {
+  padding: var(--space-sm) var(--space-md);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
 }
 
 .tool-calls-list {

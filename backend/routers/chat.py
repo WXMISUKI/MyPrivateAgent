@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import Annotated
+import asyncio
 import json
 import logging
 
@@ -10,7 +11,6 @@ try:
     from agent_server.http import build_error_event, build_sse_event
     from models import User
     from schemas import ChatRequest, ChatResponse, ModelInfo
-    from config import AVAILABLE_MODELS
     from services.chat_service import (
         collect_orchestrator_response,
         collect_scheduled_orchestrator_response,
@@ -23,13 +23,13 @@ try:
         stream_scheduled_orchestrator_events,
         stream_orchestrator_events,
     )
+    from services.runtime_surface_service import get_runtime_surface_service
     from orchestrator import get_orchestrator
 except ModuleNotFoundError:  # pragma: no cover - package import compatibility
     from backend.agent_server.dependencies import get_current_user, get_db
     from backend.agent_server.http import build_error_event, build_sse_event
     from backend.models import User
     from backend.schemas import ChatRequest, ChatResponse, ModelInfo
-    from backend.config import AVAILABLE_MODELS
     from backend.services.chat_service import (
         collect_orchestrator_response,
         collect_scheduled_orchestrator_response,
@@ -42,6 +42,7 @@ except ModuleNotFoundError:  # pragma: no cover - package import compatibility
         stream_scheduled_orchestrator_events,
         stream_orchestrator_events,
     )
+    from backend.services.runtime_surface_service import get_runtime_surface_service
     from backend.orchestrator import get_orchestrator
 
 # 配置日志
@@ -57,7 +58,7 @@ router = APIRouter(prefix="/api", tags=["对话"])
 @router.get("/models", response_model=list[ModelInfo])
 def get_models():
     """获取可用模型列表"""
-    return AVAILABLE_MODELS
+    return get_runtime_surface_service().list_models()
 
 
 @router.post("/chat")
@@ -149,25 +150,64 @@ def chat(
                 if stream_fn is stream_scheduled_orchestrator_events:
                     stream_kwargs.update({})
 
-                async for chunk, actual_content_snapshot in stream_fn(**stream_kwargs):
-                    full_response += chunk
-                    actual_content = actual_content_snapshot
+                queue: asyncio.Queue = asyncio.Queue()
+                stream_done = object()
 
+                async def pump_stream():
                     try:
-                        parsed_chunk = json.loads(chunk)
-                    except (json.JSONDecodeError, TypeError):
-                        parsed_chunk = None
+                        async for chunk, actual_content_snapshot in stream_fn(**stream_kwargs):
+                            await queue.put(("chunk", chunk, actual_content_snapshot))
+                    except Exception as pump_error:
+                        await queue.put(("error", pump_error, None))
+                    finally:
+                        await queue.put(("done", stream_done, None))
 
-                    if isinstance(parsed_chunk, dict):
-                        chunk_type = parsed_chunk.get("type")
-                        payload = parsed_chunk.get("payload")
-                        if not chunk_type and isinstance(payload, dict):
-                            chunk_type = payload.get("type")
-                        if chunk_type == "done":
-                            pending_done_event = parsed_chunk
+                pump_task = asyncio.create_task(pump_stream())
+                try:
+                    while True:
+                        try:
+                            event_kind, event_payload, actual_content_snapshot = await asyncio.wait_for(queue.get(), timeout=12.0)
+                        except asyncio.TimeoutError:
+                            yield build_sse_event({
+                                "type": "status",
+                                "status_kind": "execution_progress",
+                                "phase": "heartbeat",
+                                "content": "仍在整理结果，请稍候。",
+                            })
                             continue
 
-                    yield build_sse_event(chunk)
+                        if event_kind == "done":
+                            break
+                        if event_kind == "error":
+                            raise event_payload
+
+                        chunk = event_payload
+
+                        full_response += chunk
+                        actual_content = actual_content_snapshot
+
+                        try:
+                            parsed_chunk = json.loads(chunk)
+                        except (json.JSONDecodeError, TypeError):
+                            parsed_chunk = None
+
+                        if isinstance(parsed_chunk, dict):
+                            chunk_type = parsed_chunk.get("type")
+                            payload = parsed_chunk.get("payload")
+                            if not chunk_type and isinstance(payload, dict):
+                                chunk_type = payload.get("type")
+                            if chunk_type == "done":
+                                pending_done_event = parsed_chunk
+                                continue
+
+                        yield build_sse_event(chunk)
+                finally:
+                    if not pump_task.done():
+                        pump_task.cancel()
+                        try:
+                            await pump_task
+                        except asyncio.CancelledError:
+                            pass
 
             except Exception as e:
                 logger.error(f"[Chat] 处理消息时出错: {str(e)}")

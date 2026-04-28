@@ -3,7 +3,11 @@
     <div class="login-card">
       <div class="login-header">
         <h1 class="app-title">MyPrivateAgent</h1>
-        <p class="app-subtitle">智能助手</p>
+        <p class="app-subtitle">{{ isBusinessAuthMode ? '业务模式登录入口' : '通用智能体演示入口' }}</p>
+      </div>
+
+      <div class="mode-banner" :class="{ business: isBusinessAuthMode, demo: !isBusinessAuthMode }">
+        {{ modeBannerText }}
       </div>
 
       <form @submit.prevent class="login-form">
@@ -50,11 +54,11 @@
           </button>
         </div>
 
-        <div class="divider">
+        <div v-if="!isBusinessAuthMode" class="divider">
           <span>或</span>
         </div>
 
-        <button type="button" class="guest-btn" :disabled="loading" @click="handleGuestLogin">
+        <button v-if="!isBusinessAuthMode" type="button" class="guest-btn" :disabled="loading" @click="handleGuestLogin">
           <span v-if="loading" class="loading-spinner"></span>
           <span v-else>游客登录</span>
         </button>
@@ -64,7 +68,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
@@ -78,8 +82,19 @@ const errorMessage = ref('')
 const successMessage = ref('')
 const loading = ref(false)
 const isRegistering = ref(false)
+const isBusinessAuthMode = computed(() => authStore.authMode === 'business_auth')
+const modeBannerText = computed(() => {
+  if (isBusinessAuthMode.value) {
+    return '当前运行在 business_auth 模式：登录页是正式入口，适合后续接入真实鉴权、组织和权限体系。'
+  }
+  return '当前运行在 demo_guest 模式：框架默认会自动游客登录，登录页不是演示主入口。'
+})
 
 const API_BASE_URL = '/api'
+
+onMounted(async () => {
+  await authStore.ensureRuntimeProfile()
+})
 
 async function handleLogin() {
   console.log('[Login] handleLogin called, username:', username.value)
@@ -188,6 +203,26 @@ async function handleGuestLogin() {
 .login-header {
   text-align: center;
   margin-bottom: var(--space-xl);
+}
+
+.mode-banner {
+  margin-bottom: var(--space-lg);
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.mode-banner.business {
+  color: #92400e;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.28);
+}
+
+.mode-banner.demo {
+  color: #1d4ed8;
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.22);
 }
 
 .app-title {

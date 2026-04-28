@@ -32,6 +32,8 @@ try:
     from services.runtime_learning_service import get_runtime_learning_service
     from services.skill_runtime_service import get_skill_runtime_service
     from services.subagent_service import get_subagent_runtime_service
+    from services.capability_profile_service import get_capability_profile_service
+    from services.agent_memory_service import get_agent_memory_service
 except ModuleNotFoundError:  # pragma: no cover - package import compatibility
     from backend.agent_framework import (
         get_artifact_store,
@@ -56,6 +58,8 @@ except ModuleNotFoundError:  # pragma: no cover - package import compatibility
     from backend.services.runtime_learning_service import get_runtime_learning_service
     from backend.services.skill_runtime_service import get_skill_runtime_service
     from backend.services.subagent_service import get_subagent_runtime_service
+    from backend.services.capability_profile_service import get_capability_profile_service
+    from backend.services.agent_memory_service import get_agent_memory_service
 
 register_default_tools()
 register_langchain_tools()
@@ -93,6 +97,13 @@ class SimplifiedOrchestrator:
         self.runtime_learning_service = get_runtime_learning_service()
         self.skill_runtime_service = get_skill_runtime_service()
         self.subagent_runtime_service = get_subagent_runtime_service()
+        self.capability_profile_service = get_capability_profile_service()
+        self.agent_memory_service = get_agent_memory_service()
+        try:
+            from services.completion_evaluator_service import get_completion_evaluator_service
+        except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+            from backend.services.completion_evaluator_service import get_completion_evaluator_service
+        self.completion_evaluator = get_completion_evaluator_service()
 
     async def process_message(
         self,
@@ -237,6 +248,26 @@ class SimplifiedOrchestrator:
         # 4. 获取工具
         self.mcp_runtime_service.sync_registry_tools(self.tool_registry)
         tools = self.tool_registry.list_all()
+        capability_profile = self.capability_profile_service.build_profile(
+            tool_registry=self.tool_registry,
+            runtime_skills=runtime_skills,
+            runtime_knowledge=runtime_knowledge,
+            execution_context=execution_context,
+        )
+        agent_memory = self.agent_memory_service.build_context()
+        yield json.dumps({
+            "type": "status",
+            "status_kind": "execution_progress",
+            "phase": "capability_profile",
+            "content": f"当前已识别 {len(capability_profile.tool_summaries)} 个工具、{len(capability_profile.enabled_mcp_capabilities)} 个 MCP capability，正在按现有能力规划执行。",
+        }, ensure_ascii=False) + "\n"
+        if not agent_memory.is_empty:
+            yield json.dumps({
+                "type": "status",
+                "status_kind": "execution_progress",
+                "phase": "memory_layers",
+                "content": f"已加载 {len(agent_memory.loaded_layers)} 层记忆 / 指令规则，当前按项目规则继续执行。",
+            }, ensure_ascii=False) + "\n"
 
         # 检测是否为豆包模型（豆包模型不支持 tool_choice="auto"）
         is_doubao = "doubao" in selected_model.lower()
@@ -254,6 +285,12 @@ class SimplifiedOrchestrator:
 
         # 6. 构建消息列表
         messages = []
+        messages.append(SystemMessage(content=capability_profile.system_prompt))
+        if not agent_memory.is_empty and agent_memory.system_prompt:
+            messages.append(SystemMessage(content=agent_memory.system_prompt))
+        intent_system_prompt = self.completion_evaluator.build_synthesis_instruction(user_message)
+        if intent_system_prompt:
+            messages.append(SystemMessage(content=intent_system_prompt))
         if not runtime_knowledge.is_empty:
             messages.append(SystemMessage(content=runtime_knowledge.system_prompt))
         if not runtime_skills.is_empty:

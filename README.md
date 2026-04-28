@@ -38,12 +38,90 @@ npm run dev
 当前 demo 默认使用：
 
 - `SQLite` 本地存储
+- `AUTH_MODE=demo_guest` 免登录演示模式
 - 数据文件默认位于：`D:\AI\AIcode\MyPrivateAgent\.myagent\app.db`
 
 这意味着：
 
 - 演示和本地开发默认不需要额外安装 MySQL
+- 前端默认不会阻塞在登录页，会自动使用 guest 身份进入聊天
 - 会话、计划、反馈、artifact 等状态可直接本地持久化
+
+## 通用智能体运行时约定
+
+当前框架已经补上两层通用底座能力：
+
+- `Agent Identity`：主智能体会以“通用协调智能体”的身份运行，而不是裸模型直出
+- `Capability Profile`：每轮会汇总当前工具、Skill、MCP capability，并据此判断能做什么、不能做什么、缺什么能力
+- `Layered Agent Memory`：主智能体支持按层加载 `GLOBAL_AGENT.md / PROJECT_AGENT.md / PROJECT_AGENT.local.md`，用于沉淀长期规则层
+
+这意味着后续做垂域智能体时，重点不再是反复改主执行链，而是：
+
+- 补工具层
+- 补 Skill 层
+- 补 MCP capability
+
+框架会尽量基于现有能力给出：
+
+- 已完成部分
+- 当前缺口
+- 建议补强能力
+
+当触发能力边界降级时，对应事件也会写入 run trace，方便后续统计：
+
+- 当前最常缺什么能力
+- 更适合补工具、Skill，还是补 MCP
+
+## 模型与 Provider 配置
+
+前端模型下拉不再写死，默认从后端动态获取 `/api/models`。
+
+当前已支持：
+
+- `volcengine-ark`（豆包 / Ark 兼容模型）
+- `ollama`（本地模型，优先探测已安装模型）
+
+运行时能力面还支持通过 `/api/runtime-profile` 读取当前：
+
+- `auth_mode`
+- `default_model`
+- provider 列表
+- model 目录
+
+并通过 `PATCH /api/runtime-profile` 持久化修改 demo 安全配置项：
+
+- `auth_mode`
+- `default_model`
+
+配置会写入本地：
+
+- `.myagent/runtime_surface.json`
+
+同时可通过 `/api/capability-gaps` 聚合查看近期能力缺口：
+
+- 高频缺失能力类型
+- 建议补强方向
+- 近期典型案例
+
+关键配置：
+
+```env
+DEFAULT_MODEL=doubao
+ARK_BASE_URL=https://ark.cn-beijing.volces.com/api/v3
+ARK_API_KEY=your_key
+ARK_MODEL=doubao-seed-2-0-mini-260215
+ARK_MODEL_ALIAS=doubao
+ARK_MODEL_DISPLAY_NAME=豆包 (火山引擎)
+ARK_EXTRA_MODELS=
+OLLAMA_BASE_URL=http://localhost:11434
+AUTH_MODE=demo_guest
+```
+
+其中 `ARK_EXTRA_MODELS` 支持按别名追加更多 Ark 模型，格式为：
+
+```env
+ARK_EXTRA_MODELS=ark-pro=doubao-pro-32k|豆包 Pro|false,ark-reasoner=deepseek-r1|推理模型|true
+```
 
 如果后续要接入业务数据库，再显式配置：
 
@@ -124,6 +202,8 @@ python -m uvicorn examples.weather_demo_app:app --port 8010
 - Starter 指南：`docs/agent_framework_starter_guide.md`
 - Demo 指南：`docs/agent_framework_demo_guide.md`
 - Demo 运行手册：`docs/demo_runbook.md`
+- 通用框架实施清单：`docs/framework_execution_roadmap.md`
+- Claude 对齐完善方案：`docs/claude_alignment_improvement_plan.md`
 - 测试手册：`docs/test_manual.md`
 - Card Schema：`docs/agent_framework_card_schemas.md`
 - 阶段记录索引：`问题记录/README.md`

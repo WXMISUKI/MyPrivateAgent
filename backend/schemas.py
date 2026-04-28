@@ -134,6 +134,16 @@ class ChatResponse(BaseModel):
 class ModelInfo(BaseModel):
     name: str
     display_name: str
+    provider: Optional[str] = None
+    provider_label: Optional[str] = None
+    type: Optional[str] = None
+    has_reasoning: Optional[bool] = None
+    available: Optional[bool] = None
+    configured: Optional[bool] = None
+    is_default: Optional[bool] = None
+    base_url: Optional[str] = None
+    actual_model: Optional[str] = None
+    source: Optional[str] = None
 
 
 # ============ Planner / Todo 相关 ============

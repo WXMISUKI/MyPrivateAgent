@@ -1,10 +1,12 @@
 <template>
   <div v-if="hasDebugContent" class="runtime-debug-panel">
-    <div class="debug-header">
+    <button class="debug-header" type="button" @click="collapsed = !collapsed">
       <span class="debug-icon">🧭</span>
       <span class="debug-title">运行调试信息</span>
-    </div>
+      <span class="debug-toggle">{{ collapsed ? '展开' : '收起' }}</span>
+    </button>
 
+    <template v-if="!collapsed">
     <div v-if="runtimeKnowledge" class="debug-section">
       <div class="section-title">Runtime Knowledge</div>
       <div class="meta-line">
@@ -43,11 +45,12 @@
         <span v-if="toolExecution.status">status: {{ toolExecution.status }}</span>
       </div>
     </div>
+    </template>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 const props = defineProps({
   runtimeKnowledge: {
@@ -63,6 +66,8 @@ const props = defineProps({
 const hasDebugContent = computed(() => {
   return !!props.runtimeKnowledge || !!props.toolExecution
 })
+
+const collapsed = ref(true)
 
 function formatDuration(value) {
   const numeric = Number(value)
@@ -84,10 +89,22 @@ function formatDuration(value) {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
+  justify-content: space-between;
   margin-bottom: var(--space-sm);
   font-size: var(--text-sm);
   font-weight: 600;
   color: var(--text-primary);
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.debug-toggle {
+  font-size: 12px;
+  color: var(--text-tertiary);
 }
 
 .debug-section + .debug-section {

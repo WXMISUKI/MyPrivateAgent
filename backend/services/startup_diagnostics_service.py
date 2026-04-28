@@ -9,12 +9,14 @@ from sqlalchemy import text
 
 try:
     from agent_server.config import PROJECT_ROOT, get_available_server_presets
-    from config import ARK_API_KEY, DATABASE_URL, DB_MODE, DEFAULT_MODEL, SQLITE_PATH
+    from config import ARK_API_KEY, AUTH_MODE, DATABASE_URL, DB_MODE, DEFAULT_MODEL, SQLITE_PATH
     from database import engine
+    from services.runtime_surface_service import get_runtime_surface_service
 except ModuleNotFoundError:  # pragma: no cover - package import compatibility
     from backend.agent_server.config import PROJECT_ROOT, get_available_server_presets
-    from backend.config import ARK_API_KEY, DATABASE_URL, DB_MODE, DEFAULT_MODEL, SQLITE_PATH
+    from backend.config import ARK_API_KEY, AUTH_MODE, DATABASE_URL, DB_MODE, DEFAULT_MODEL, SQLITE_PATH
     from backend.database import engine
+    from backend.services.runtime_surface_service import get_runtime_surface_service
 
 
 class StartupDiagnosticsService:
@@ -60,6 +62,7 @@ class StartupDiagnosticsService:
             details.append(f"默认模型: {DEFAULT_MODEL}")
 
         details.append(f"存储模式: {DB_MODE}")
+        details.append(f"鉴权模式: {AUTH_MODE}")
         if DB_MODE == "sqlite":
             details.append(f"本地 SQLite 路径: {SQLITE_PATH}")
         else:
@@ -117,13 +120,13 @@ class StartupDiagnosticsService:
     def _check_models(self) -> Dict[str, Any]:
         details: List[str] = []
         status = "ok"
-        available = {"doubao", "deepseek-r1:7b", "qwen2.5:7b", "llama3.1"}
-
+        available = {item["name"] for item in get_runtime_surface_service().list_models()}
         if DEFAULT_MODEL not in available:
             status = "warn"
-            details.append(f"默认模型 `{DEFAULT_MODEL}` 不在内置已知列表中，请确认配置")
+            details.append(f"默认模型 `{DEFAULT_MODEL}` 不在当前运行时模型目录中，请确认 provider 配置")
         else:
-            details.append(f"默认模型 `{DEFAULT_MODEL}` 在已知列表中")
+            details.append(f"默认模型 `{DEFAULT_MODEL}` 在当前运行时模型目录中")
+        details.append(f"已发现模型数量: {len(available)}")
 
         return {"status": status, "details": details}
 

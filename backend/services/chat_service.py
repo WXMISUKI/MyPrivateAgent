@@ -63,6 +63,23 @@ def _excerpt_text(value: Any, limit: int = 180) -> str:
     return text[: limit - 3].rstrip() + "..."
 
 
+def _infer_error_category_from_text(result_text: str) -> str:
+    text = str(result_text or "").lower()
+    if "timeout" in text:
+        return "provider_timeout"
+    if "connection" in text:
+        return "provider_connection"
+    if "network" in text:
+        return "provider_network"
+    if "rate limit" in text or "429" in text:
+        return "provider_rate_limit"
+    if "503" in text or "502" in text or "unavailable" in text:
+        return "provider_unavailable"
+    if "validation error" in text:
+        return "tool_validation"
+    return ""
+
+
 def _build_run_trace_from_runtime_event(event: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     event_type = str(event.get("type") or "").strip()
     if not event_type:
@@ -112,6 +129,46 @@ def _build_run_trace_from_runtime_event(event: Dict[str, Any]) -> Optional[Dict[
                     "agent_role": agent_role,
                 },
             }
+        if status_kind == "execution_progress":
+            phase = str(extract_event_field(event, "phase", "") or "").strip()
+            content = str(extract_event_field(event, "content", "") or "").strip()
+            completion_check = extract_event_field(event, "completion_check", {}) or {}
+            profile = str(completion_check.get("profile") or "").strip()
+            completion_stage = str(completion_check.get("stage") or phase or "").strip()
+            if phase == "completion_retry":
+                missing_parts = completion_check.get("missing_parts") or []
+                return {
+                    "source": "agent",
+                    "event_type": "completion_retry",
+                    "summary": "框架已触发一次受控补查",
+                    "detail": content,
+                    "severity": "info",
+                    "payload": {
+                        "phase": phase,
+                        "profile": profile,
+                        "completion_stage": completion_stage,
+                        "missing_parts": missing_parts,
+                        "completion_check": completion_check,
+                    },
+                }
+            if phase == "boundary_fallback":
+                missing_parts = completion_check.get("missing_parts") or []
+                missing_text = ", ".join(str(item) for item in missing_parts)
+                return {
+                    "source": "agent",
+                    "event_type": "capability_gap_fallback",
+                    "summary": "框架已触发能力边界降级收口",
+                    "detail": content,
+                    "severity": "warning",
+                    "payload": {
+                        "phase": phase,
+                        "profile": profile,
+                        "completion_stage": completion_stage,
+                        "missing_parts": missing_parts,
+                        "missing_text": missing_text,
+                        "completion_check": completion_check,
+                    },
+                }
 
     if event_type == "tool_denied":
         tool_name = str(extract_event_field(event, "name", "") or "").strip()
@@ -129,6 +186,22 @@ def _build_run_trace_from_runtime_event(event: Dict[str, Any]) -> Optional[Dict[
         }
 
     if event_type != "tool_result":
+        if event_type == "content":
+            completion_check = extract_event_field(event, "completion_check", {}) or {}
+            if completion_check:
+                return {
+                    "source": "agent",
+                    "event_type": "completion_finalized",
+                    "summary": "框架已基于完成度评估生成最终收尾",
+                    "detail": _excerpt_text(extract_event_field(event, "content", "")),
+                    "severity": "info",
+                    "payload": {
+                        "profile": str(completion_check.get("profile") or "").strip(),
+                        "completion_stage": str(completion_check.get("stage") or "finalized").strip(),
+                        "completion_check": completion_check,
+                        "framework_notice": bool(extract_event_field(event, "framework_notice", False)),
+                    },
+                }
         return None
 
     tool_name = str(extract_event_field(event, "name", "") or "").strip()
@@ -137,6 +210,9 @@ def _build_run_trace_from_runtime_event(event: Dict[str, Any]) -> Optional[Dict[
     result_source = str(extract_event_field(event, "result_source", tool_execution.get("result_source", "")) or "").strip()
     duration_ms = extract_event_field(event, "duration_ms", tool_execution.get("duration_ms"))
     cache_hit = extract_event_field(event, "cache_hit", tool_execution.get("cache_hit"))
+    error_category = str(
+        extract_event_field(event, "error_category", tool_execution.get("error_category", "")) or ""
+    ).strip()
     result_text = str(extract_event_field(event, "result", "") or "").strip()
     tool_call_id = str(extract_event_field(event, "tool_call_id", "") or "").strip()
     is_mcp_tool = tool_name.startswith("mcp_")
@@ -148,6 +224,8 @@ def _build_run_trace_from_runtime_event(event: Dict[str, Any]) -> Optional[Dict[
         summary = f"{'MCP 能力' if is_mcp_tool else '工具'} `{tool_name or 'unknown'}` 执行失败"
         severity = "error"
         trace_event_type = "mcp_tool_failed" if is_mcp_tool else "tool_failed"
+        if not error_category:
+            error_category = _infer_error_category_from_text(result_text)
     else:
         summary = f"{'MCP 能力' if is_mcp_tool else '工具'} `{tool_name or 'unknown'}` 执行完成"
         severity = "success" if status in {"ok", "cached"} else "info"
@@ -166,6 +244,7 @@ def _build_run_trace_from_runtime_event(event: Dict[str, Any]) -> Optional[Dict[
             "result_source": result_source,
             "duration_ms": duration_ms,
             "cache_hit": cache_hit,
+            "error_category": error_category,
         },
     }
 

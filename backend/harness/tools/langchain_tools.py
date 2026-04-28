@@ -24,6 +24,44 @@ except ModuleNotFoundError:  # pragma: no cover - package import compatibility
 logger = logging.getLogger(__name__)
 
 
+def normalize_search_query_payload(value: Any) -> str:
+    """兼容 provider 侧异常工具参数，尽量归一成 search.query。"""
+    if isinstance(value, str):
+        return value.strip()
+
+    if isinstance(value, dict):
+        query = value.get("query")
+        if isinstance(query, str) and query.strip():
+            return query.strip()
+
+        candidate_parts = []
+        for key, raw in value.items():
+            key_text = str(key or "").strip()
+            raw_text = raw if isinstance(raw, str) else json.dumps(raw, ensure_ascii=False)
+            raw_text = str(raw_text or "").strip()
+            if key_text and key_text not in {"query", "args", "arguments"}:
+                candidate_parts.append(key_text)
+            if raw_text:
+                candidate_parts.append(raw_text)
+
+        merged = " ".join(part for part in candidate_parts if part).strip()
+        if not merged:
+            return ""
+
+        merged = merged.replace("queryquery", "query")
+        merged = merged.replace("query :", "")
+        merged = merged.replace("query:", "")
+        merged = merged.replace('{"', "")
+        merged = merged.replace('"}', "")
+        merged = merged.replace('"', " ")
+        merged = merged.replace("{", " ")
+        merged = merged.replace("}", " ")
+        merged = " ".join(merged.split())
+        return merged.strip()
+
+    return ""
+
+
 class SearchInput(BaseModel):
     """搜索工具输入参数"""
     query: str = Field(
@@ -62,6 +100,14 @@ async def search(query: str) -> str:
         return "你好！有什么可以帮助你的吗？"
 
     return f"关于'{query}'的信息：我在知识库中未找到相关内容。"
+
+
+async def invoke_search_with_payload(payload: Any) -> str:
+    """对外提供一个宽容入口，便于异常 tool payload 在业务层被修复。"""
+    normalized_query = normalize_search_query_payload(payload)
+    if not normalized_query:
+        raise ValueError("search 工具缺少有效 query 参数")
+    return await search.ainvoke({"query": normalized_query})
 
 
 search_input_schema = {

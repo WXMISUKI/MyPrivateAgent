@@ -5,7 +5,7 @@
       <p>加载中...</p>
     </div>
 
-    <template v-else-if="isAuthenticated">
+    <template v-else-if="isAuthenticated || isDemoGuestMode">
       <AppHeader
         :theme="theme"
         :username="username"
@@ -63,6 +63,7 @@ const sidebarCollapsed = ref(false)
 const isLoading = ref(true)
 
 const isAuthenticated = computed(() => authStore.isAuthenticated)
+const isDemoGuestMode = computed(() => authStore.authMode === 'demo_guest')
 const activeConversationId = computed(() => conversationStore.activeId)
 const conversations = computed(() => conversationStore.conversations)
 
@@ -82,7 +83,7 @@ onMounted(async () => {
 })
 
 watch(() => authStore.isAuthenticated, (isAuth) => {
-  if (!isAuth) {
+  if (!isAuth && !isDemoGuestMode.value) {
     router.push('/login')
   }
 })
@@ -122,6 +123,11 @@ function updateCurrentConversation(data) {
 
 async function handleLogout() {
   await authStore.logout()
+  if (isDemoGuestMode.value) {
+    await authStore.loginGuest()
+    router.push('/chat')
+    return
+  }
   router.push('/login')
 }
 

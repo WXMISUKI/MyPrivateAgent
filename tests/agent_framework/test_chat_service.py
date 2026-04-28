@@ -113,6 +113,71 @@ class ChatServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(trace_event["event_type"], "runtime_skills_selected")
         self.assertIn("Frontend UI Review", trace_event["summary"])
 
+    async def test_boundary_fallback_status_maps_to_capability_gap_trace(self):
+        trace_event = _build_run_trace_from_runtime_event(
+            {
+                "type": "status",
+                "status_kind": "execution_progress",
+                "phase": "boundary_fallback",
+                "content": "当前缺少可靠交通建议。",
+                "completion_check": {
+                    "missing_parts": ["transport", "play"],
+                    "profile": "travel_planning",
+                    "stage": "boundary_fallback",
+                },
+            }
+        )
+
+        self.assertIsNotNone(trace_event)
+        self.assertEqual(trace_event["source"], "agent")
+        self.assertEqual(trace_event["event_type"], "capability_gap_fallback")
+        self.assertEqual(trace_event["payload"]["missing_parts"], ["transport", "play"])
+        self.assertEqual(trace_event["payload"]["profile"], "travel_planning")
+        self.assertEqual(trace_event["payload"]["completion_stage"], "boundary_fallback")
+
+    async def test_completion_retry_status_maps_to_run_trace(self):
+        trace_event = _build_run_trace_from_runtime_event(
+            {
+                "type": "status",
+                "status_kind": "execution_progress",
+                "phase": "completion_retry",
+                "content": "已拿到天气结果，正在补查交通与游玩建议。",
+                "completion_check": {
+                    "missing_parts": ["transport", "play"],
+                    "profile": "travel_planning",
+                    "stage": "retry",
+                },
+            }
+        )
+
+        self.assertIsNotNone(trace_event)
+        self.assertEqual(trace_event["event_type"], "completion_retry")
+        self.assertEqual(trace_event["payload"]["missing_parts"], ["transport", "play"])
+        self.assertEqual(trace_event["payload"]["profile"], "travel_planning")
+        self.assertEqual(trace_event["payload"]["completion_stage"], "retry")
+
+    async def test_content_with_completion_check_maps_to_completion_finalized_trace(self):
+        trace_event = _build_run_trace_from_runtime_event(
+            {
+                "type": "content",
+                "content": "我先根据当前已确认的信息给你一个阶段性建议。",
+                "framework_notice": True,
+                "completion_check": {
+                    "should_finalize": True,
+                    "stop_reason": "tool_result_incomplete",
+                    "missing_parts": ["transport"],
+                    "profile": "travel_planning",
+                    "stage": "boundary_fallback",
+                },
+            }
+        )
+
+        self.assertIsNotNone(trace_event)
+        self.assertEqual(trace_event["event_type"], "completion_finalized")
+        self.assertTrue(trace_event["payload"]["framework_notice"])
+        self.assertEqual(trace_event["payload"]["profile"], "travel_planning")
+        self.assertEqual(trace_event["payload"]["completion_stage"], "boundary_fallback")
+
 
 class _StubPlannerService:
     def __init__(self, db):
@@ -529,6 +594,7 @@ class RuntimeTraceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(_StubSchedulerServiceForStream.trace_events), 1)
         self.assertEqual(_StubSchedulerServiceForStream.trace_events[0]["source"], "tool")
         self.assertEqual(_StubSchedulerServiceForStream.trace_events[0]["event_type"], "tool_failed")
+        self.assertEqual(_StubSchedulerServiceForStream.trace_events[0]["payload"]["error_category"], "provider_timeout")
 
 
 if __name__ == "__main__":

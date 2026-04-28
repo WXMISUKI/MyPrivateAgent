@@ -12,6 +12,21 @@
 
     <div class="settings-sections">
       <section class="settings-section">
+        <h2>运行模式</h2>
+        <div class="setting-item">
+          <div class="setting-info">
+            <label>当前模式</label>
+            <span class="setting-desc">
+              {{ isDemoGuestMode ? 'Demo Guest：免登录直达，适合通用框架演示与能力盘点。' : 'Business Auth：保留登录入口，适合后续业务系统接入。' }}
+            </span>
+          </div>
+          <div class="mode-badge" :class="{ demo: isDemoGuestMode, business: !isDemoGuestMode }">
+            {{ isDemoGuestMode ? 'demo_guest' : 'business_auth' }}
+          </div>
+        </div>
+      </section>
+
+      <section class="settings-section">
         <h2>外观</h2>
         <div class="setting-item">
           <div class="setting-info">
@@ -40,13 +55,12 @@
         <div class="setting-item">
           <div class="setting-info">
             <label>默认模型</label>
-            <span class="setting-desc">选择默认使用的 AI 模型</span>
+            <span class="setting-desc">选择默认使用的 AI 模型。模型目录现在由后端动态下发。</span>
           </div>
           <select v-model="defaultModel" class="setting-select">
-            <option value="gpt-4">GPT-4</option>
-            <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-            <option value="claude-3">Claude 3</option>
-            <option value="deepseek">DeepSeek</option>
+            <option v-for="model in availableModels" :key="model.name" :value="model.name">
+              {{ model.display_name }}
+            </option>
           </select>
         </div>
 
@@ -98,18 +112,20 @@
         <h2>账户</h2>
         <div class="setting-item">
           <div class="setting-info">
-            <label>用户名</label>
+            <label>{{ isDemoGuestMode ? '当前身份' : '用户名' }}</label>
             <span class="setting-desc">{{ username }}</span>
           </div>
         </div>
 
         <div class="setting-item">
           <button @click="handleLogout" class="logout-btn">
-            退出登录
+            {{ isDemoGuestMode ? '重置 Demo 会话' : '退出登录' }}
           </button>
         </div>
       </section>
 
+      <CapabilityGapSummaryPanel />
+      <RuntimeSurfacePanel />
       <McpManagementPanel />
     </div>
 
@@ -127,6 +143,9 @@ import { useRouter } from 'vue-router'
 import { useSettingsStore } from '../stores/settings'
 import { useAuthStore } from '../stores/auth'
 import McpManagementPanel from '../components/McpManagementPanel.vue'
+import CapabilityGapSummaryPanel from '../components/CapabilityGapSummaryPanel.vue'
+import RuntimeSurfacePanel from '../components/RuntimeSurfacePanel.vue'
+import { runtimeSurfaceApi } from '../api'
 
 const emit = defineEmits(['close', 'theme-changed'])
 const router = useRouter()
@@ -139,14 +158,28 @@ const temperature = ref(0.7)
 const maxContextLength = ref(8192)
 const autoSave = ref(true)
 const username = ref('')
+const availableModels = ref([])
+const isDemoGuestMode = ref(false)
 
-onMounted(() => {
+onMounted(async () => {
   currentTheme.value = settingsStore.theme || 'dark'
-  defaultModel.value = settingsStore.defaultModel || 'gpt-4'
+  defaultModel.value = settingsStore.defaultModel || 'doubao'
   temperature.value = settingsStore.temperature || 0.7
   maxContextLength.value = settingsStore.maxContextLength || 8192
   autoSave.value = settingsStore.autoSave ?? true
   username.value = authStore.user?.username || '用户'
+  isDemoGuestMode.value = authStore.authMode === 'demo_guest'
+
+  try {
+    const response = await runtimeSurfaceApi.getProfile()
+    availableModels.value = Array.isArray(response.data?.models) ? response.data.models : []
+    if (!availableModels.value.find(item => item.name === defaultModel.value)) {
+      defaultModel.value = response.data?.default_model || availableModels.value.find(item => item.is_default)?.name || availableModels.value[0]?.name || 'doubao'
+    }
+  } catch (error) {
+    console.error('Failed to load runtime models in settings:', error)
+    availableModels.value = [{ name: 'doubao', display_name: '豆包 (火山引擎)' }]
+  }
 })
 
 function setTheme(theme) {
@@ -169,6 +202,11 @@ function saveSettings() {
 
 async function handleLogout() {
   await authStore.logout()
+  if (isDemoGuestMode.value) {
+    await authStore.loginGuest()
+    router.push('/chat')
+    return
+  }
   router.push('/login')
 }
 </script>
@@ -386,5 +424,24 @@ async function handleLogout() {
 
 .save-btn:hover {
   background: var(--primary-hover);
+}
+
+.mode-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  border: 1px solid var(--border-color);
+}
+
+.mode-badge.demo {
+  background: rgba(34, 197, 94, 0.14);
+  color: #15803d;
+}
+
+.mode-badge.business {
+  background: rgba(245, 158, 11, 0.14);
+  color: #b45309;
 }
 </style>

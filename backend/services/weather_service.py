@@ -137,19 +137,87 @@ class WeatherService:
         weather_keywords = ("天气", "气温", "温度", "下雨", "降雨", "weather", "forecast")
         return any(keyword in query or keyword in lowered for keyword in weather_keywords)
 
+    def is_pure_weather_query(self, query: str) -> bool:
+        """判断是否为可直接返回天气结果的纯天气查询。"""
+        if not self.is_weather_query(query):
+            return False
+
+        lowered = query.lower()
+        composite_keywords = (
+            "攻略",
+            "规划",
+            "交通",
+            "路线",
+            "行程",
+            "旅游",
+            "出发",
+            "怎么玩",
+            "怎么去",
+            "酒店",
+            "景点",
+            "预算",
+            "安排",
+            "plan",
+            "trip",
+            "travel",
+            "itinerary",
+            "route",
+        )
+        return not any(keyword in query or keyword in lowered for keyword in composite_keywords)
+
     def extract_city(self, query: str) -> Optional[str]:
         normalized = query.strip()
         lowered = normalized.lower()
+
+        travel_destination = self._extract_travel_destination(normalized)
+        if travel_destination:
+            return travel_destination
 
         for alias, city in CITY_ALIASES.items():
             if alias in lowered:
                 return city
 
+        matched_cities = []
         for city in sorted(CITY_COORDS.keys(), key=len, reverse=True):
-            if city in normalized or f"{city}市" in normalized:
-                return city
+            index = normalized.find(city)
+            if index != -1:
+                matched_cities.append((index, city))
+                continue
+            city_with_suffix = f"{city}市"
+            index = normalized.find(city_with_suffix)
+            if index != -1:
+                matched_cities.append((index, city))
+
+        if matched_cities:
+            matched_cities.sort(key=lambda item: item[0])
+            cities_in_order = [city for _index, city in matched_cities]
+            if self._is_travel_context(normalized, lowered) and len(cities_in_order) > 1:
+                return cities_in_order[-1]
+            return cities_in_order[0]
 
         return None
+
+    def _extract_travel_destination(self, query: str) -> Optional[str]:
+        """从“从A出发去B / 从A到B”这类表达中优先提取目的地。"""
+        city_pattern = "|".join(sorted(map(re.escape, CITY_COORDS.keys()), key=len, reverse=True))
+        patterns = [
+            rf"从(?:{city_pattern})(?:出发)?(?:去|到|前往)(?:{city_pattern})",
+            rf"(?:去|到|前往)(?:{city_pattern})",
+        ]
+
+        for pattern in patterns:
+            match = re.search(pattern, query)
+            if not match:
+                continue
+            matched_text = match.group(0)
+            matched_cities = [city for city in CITY_COORDS.keys() if city in matched_text]
+            if matched_cities:
+                return matched_cities[-1]
+        return None
+
+    def _is_travel_context(self, query: str, lowered: str) -> bool:
+        travel_keywords = ("出发", "到", "去", "前往", "旅游", "旅行", "玩", "攻略", "行程", "交通", "route", "travel", "trip")
+        return any(keyword in query or keyword in lowered for keyword in travel_keywords)
 
     async def get_weather_by_city(self, city: str) -> Dict[str, Any]:
         coords = CITY_COORDS.get(city)

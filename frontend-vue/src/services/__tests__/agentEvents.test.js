@@ -35,6 +35,41 @@ describe('normalizeAgentEvent', () => {
       status: 'in_progress'
     })
   })
+
+  it('keeps execution progress metadata available for UI summary rendering', () => {
+    const event = normalizeAgentEvent({
+      type: 'status',
+      payload: {
+        status_kind: 'execution_progress',
+        phase: 'tool_execution',
+        content: '正在检索天气信息'
+      }
+    })
+
+    expect(event.status_kind).toBe('execution_progress')
+    expect(event.phase).toBe('tool_execution')
+    expect(event.content).toBe('正在检索天气信息')
+  })
+
+  it('keeps completion check metadata available for framework fallback rendering', () => {
+    const event = normalizeAgentEvent({
+      type: 'content',
+      payload: {
+        content: '阶段性建议',
+        framework_notice: true,
+        completion_check: {
+          should_finalize: true,
+          missing_parts: ['transport']
+        }
+      }
+    })
+
+    expect(event.framework_notice).toBe(true)
+    expect(event.completion_check).toMatchObject({
+      should_finalize: true,
+      missing_parts: ['transport']
+    })
+  })
 })
 
 describe('createStreamingEventParser', () => {

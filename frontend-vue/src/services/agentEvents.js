@@ -25,6 +25,9 @@ export function normalizeAgentEvent(rawEvent) {
     practice_count: event.practice_count ?? payload.practice_count ?? 0,
     plan: event.plan ?? payload.plan ?? null,
     message_id: event.message_id ?? payload.message_id ?? null,
+    phase: event.phase ?? payload.phase ?? '',
+    completion_check: event.completion_check ?? payload.completion_check ?? null,
+    framework_notice: event.framework_notice ?? payload.framework_notice,
     card: event.card ?? payload.card ?? event.structured_content ?? payload.structured_content ?? null,
     card_schema: event.card_schema ?? payload.card_schema ?? event.card?.schema ?? payload.card?.schema ?? payload.tool_spec?.card_schema ?? null,
     render_mode: event.render_mode ?? payload.render_mode ?? payload.tool_spec?.render_mode ?? null

@@ -89,6 +89,7 @@ describe('conversation store', () => {
   it('streams assistant response into the active conversation', async () => {
     FakeXMLHttpRequest.responseText = [
       'data: {"type":"conversation_id","conversation_id":321}',
+      'data: {"type":"status","status_kind":"execution_progress","phase":"intent_routing","content":"正在识别你的复合需求"}',
       'data: {"type":"content","content":"你好"}',
       'data: {"type":"done","message_id":654,"content":"你好，世界"}',
       ''
@@ -114,7 +115,37 @@ describe('conversation store', () => {
       content: '你好，世界',
       isGenerating: false
     })
+    expect(store.currentConversation.messages[1].executionProgress).toHaveLength(1)
+    expect(store.currentConversation.messages[1].executionProgress[0]).toMatchObject({
+      phase: 'intent_routing',
+      content: '正在识别你的复合需求'
+    })
     expect(store.isLoading).toBe(false)
+  })
+
+  it('stores completion check metadata on assistant message when framework fallback content is emitted', async () => {
+    FakeXMLHttpRequest.responseText = [
+      'data: {"type":"content","content":"阶段性建议","framework_notice":true,"completion_check":{"should_finalize":true,"missing_parts":["transport","play"]}}',
+      'data: {"type":"done","content":"阶段性建议"}',
+      ''
+    ].join('\n')
+
+    const store = useConversationStore()
+
+    await store.addMessage({
+      id: 1,
+      role: 'user',
+      content: '测试阶段性建议',
+      timestamp: Date.now()
+    })
+
+    await store.sendMessage('测试阶段性建议', 'doubao')
+
+    expect(store.currentConversation.messages[1].frameworkNotice).toBe(true)
+    expect(store.currentConversation.messages[1].completionCheck).toMatchObject({
+      should_finalize: true,
+      missing_parts: ['transport', 'play']
+    })
   })
 
   it('finalizes assistant message when stream emits error event', async () => {
@@ -197,6 +228,37 @@ describe('conversation store', () => {
       isGenerating: false
     })
     expect(store.isLoading).toBe(false)
+  })
+
+  it('shows timeout message instead of user-stop message when stream watchdog aborts the request', async () => {
+    FakeXMLHttpRequest.autoComplete = false
+    FakeXMLHttpRequest.responseText = [
+      'data: {"type":"content","content":"正在整理"}',
+      ''
+    ].join('\n')
+
+    const store = useConversationStore()
+
+    await store.addMessage({
+      id: 1,
+      role: 'user',
+      content: '测试超时',
+      timestamp: Date.now()
+    })
+
+    const pendingResult = store.sendMessage('测试超时', 'doubao')
+    expect(FakeXMLHttpRequest.lastInstance).toBeTruthy()
+
+    FakeXMLHttpRequest.lastInstance._abortReason = 'timeout'
+    FakeXMLHttpRequest.lastInstance.abort()
+    const result = await pendingResult
+
+    expect(result.content).toBe('生成超时，请稍后重试')
+    expect(store.currentConversation.messages[1]).toMatchObject({
+      role: 'assistant',
+      content: '生成超时，请稍后重试',
+      isGenerating: false
+    })
   })
 
   it('submits positive feedback and updates the assistant message', async () => {

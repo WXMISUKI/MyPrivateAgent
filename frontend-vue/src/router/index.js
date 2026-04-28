@@ -69,13 +69,17 @@ router.beforeEach(async (to, from, next) => {
   }
 
   if (to.meta.requiresAuth) {
-    if (!authStore.isAuthenticated) {
+    if (!authStore.isAuthenticated && authStore.authMode !== 'demo_guest') {
       next('/login')
       return
     }
   }
 
   if (to.path === '/login') {
+    if (authStore.authMode === 'demo_guest') {
+      next('/chat')
+      return
+    }
     if (authStore.isAuthenticated) {
       next('/chat')
       return

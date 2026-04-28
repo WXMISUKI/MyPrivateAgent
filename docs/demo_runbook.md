@@ -12,6 +12,7 @@
 - 前端默认 `frontend-vue`
 - 后端默认本地运行
 - 存储默认 `SQLite`
+- 鉴权默认 `demo_guest`
 - 外部 MySQL 改为可选模式
 
 也就是说，**默认不需要额外安装 MySQL，就可以把 demo 跑起来。**
@@ -23,11 +24,13 @@
 当前 demo 默认使用：
 
 - `DB_MODE=sqlite`
+- `AUTH_MODE=demo_guest`
 - 本地 SQLite 文件：`D:\AI\AIcode\MyPrivateAgent\.myagent\app.db`
 
 特点：
 
 - 无需额外数据库基础设施
+- 默认自动游客登录，前端可直接进入聊天页
 - 适合 demo、本地开发、starter 框架复用
 - 会话、计划、反馈、artifact 等状态可以本地持久化
 
@@ -35,6 +38,63 @@
 
 - 后端 API：`http://localhost:8000`
 - 前端开发地址：`http://localhost:5173`
+
+### 2.3 默认模型目录行为
+
+当前前端模型列表由后端 `/api/models` 动态下发，不再写死在页面里。
+
+模型来源包括：
+
+- `volcengine-ark`：基于 `.env` 中的 Ark 配置生成
+- `ollama`：优先探测本地已安装模型；探测失败时回退到内置候选目录
+
+可通过 `/api/runtime-profile` 查看当前：
+
+- `auth_mode`
+- `default_model`
+- provider 列表
+- model 目录
+
+也可以通过设置页里的“运行时能力面”卡片修改最小安全配置：
+
+- `default_model`
+- `auth_mode`
+
+这些配置会持久化到：
+
+- `D:\AI\AIcode\MyPrivateAgent\.myagent\runtime_surface.json`
+
+说明：
+
+- 当前只开放 demo 安全配置，不在页面直接改敏感密钥
+- 更复杂的 provider/base_url/api_key 仍建议通过 `.env` 管理
+
+另外，设置页也会展示“能力缺口统计”：
+
+- 基于近期 run trace 聚合
+- 便于判断当前更该补工具、Skill 还是 MCP
+- 支持按缺口类型、关键词做筛选，适合从治理角度盘点“最近最常缺什么能力”
+- 支持按复合任务模板、收尾阶段、错误类型做筛选，适合定位“哪类请求最常补查或降级”
+
+当前设置页中的“运行时能力面”已分为三层：
+
+- 主智能体能力合同
+- 分层记忆 / 指令系统
+- 配置分层（默认值 / 本地覆写 / 当前生效值）
+- Provider 与模型目录
+
+当前还支持在设置页做最小运行时治理：
+
+- 切换默认模型
+- 切换鉴权模式
+- 对 provider 做本地启停覆写
+
+设置页也会明确显示当前运行在：
+
+- `demo_guest`：免登录直达，适合框架演示与能力盘点
+- `business_auth`：保留登录入口，适合后续业务接入
+
+这意味着后续切模型、切鉴权模式、检查当前配置来源时，不需要再回到代码或 `.env` 中手工比对。
 
 ## 3. 启动前提
 
@@ -170,8 +230,8 @@ npm run build
 
 如果你要向别人展示当前项目，建议按这个顺序：
 
-1. 打开登录页，演示游客登录
-2. 进入聊天页，发起一个普通问题
+1. 直接进入聊天页，确认 demo 已自动使用 guest 身份
+2. 发起一个普通问题
 3. 演示 Planner 右侧面板
 4. 演示设置页里的 MCP 管理面板
 5. 演示 Skills 管理页
@@ -322,3 +382,5 @@ python -m uvicorn main:app --reload --port 8000
 ## 10. 配套测试手册
 
 - 统一测试手册：[test\_manual.md](./test_manual.md)
+- 通用框架实施清单：[framework\_execution\_roadmap.md](./framework_execution_roadmap.md)
+- Claude 对齐完善方案：[claude\_alignment\_improvement\_plan.md](./claude_alignment_improvement_plan.md)

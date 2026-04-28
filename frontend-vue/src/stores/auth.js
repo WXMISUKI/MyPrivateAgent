@@ -9,12 +9,67 @@ export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('token') || '')
   const isAuthenticated = ref(false)
   const isInitialized = ref(false)
+  const authMode = ref('demo_guest')
+  const runtimeProfile = ref(null)
 
   const isLoggedIn = computed(() => isAuthenticated.value && !!token.value)
+  const isDemoGuestMode = computed(() => authMode.value === 'demo_guest')
+
+  async function ensureRuntimeProfile() {
+    if (runtimeProfile.value) {
+      return runtimeProfile.value
+    }
+    try {
+      const response = await axios.get(`${API_BASE_URL}/runtime-profile`)
+      runtimeProfile.value = response.data
+      authMode.value = response.data?.auth_mode || 'demo_guest'
+    } catch (error) {
+      console.error('[Auth] failed to load runtime profile:', error.response?.data || error.message)
+      runtimeProfile.value = { auth_mode: 'demo_guest' }
+      authMode.value = 'demo_guest'
+    }
+    return runtimeProfile.value
+  }
+
+  async function hydrateCurrentUser(activeToken) {
+    const response = await axios.get(`${API_BASE_URL}/auth/me`, {
+      headers: { Authorization: `Bearer ${activeToken}` }
+    })
+    user.value = response.data
+    isAuthenticated.value = true
+    return true
+  }
+
+  async function loginGuest() {
+    try {
+      const guestResponse = await axios.post(`${API_BASE_URL}/auth/guest`)
+      const receivedToken = guestResponse.data?.access_token
+      if (!receivedToken) {
+        return false
+      }
+      token.value = receivedToken
+      localStorage.setItem('token', receivedToken)
+      await hydrateCurrentUser(receivedToken)
+      return true
+    } catch (error) {
+      console.error('[Auth] guest login failed:', error.response?.data || error.message)
+      token.value = ''
+      localStorage.removeItem('token')
+      isAuthenticated.value = false
+      user.value = null
+      return false
+    }
+  }
 
   async function checkAuth() {
+    await ensureRuntimeProfile()
     console.log('[Auth] checkAuth called, current token:', token.value ? token.value.substring(0, 20) + '...' : 'empty')
     if (!token.value) {
+      if (isDemoGuestMode.value) {
+        const guestOk = await loginGuest()
+        isInitialized.value = true
+        return guestOk
+      }
       console.log('[Auth] No token, setting isAuthenticated to false')
       isAuthenticated.value = false
       isInitialized.value = true
@@ -23,16 +78,17 @@ export const useAuthStore = defineStore('auth', () => {
 
     try {
       console.log('[Auth] Fetching /auth/me with token:', token.value.substring(0, 20) + '...')
-      const response = await axios.get(`${API_BASE_URL}/auth/me`, {
-        headers: { Authorization: `Bearer ${token.value}` }
-      })
-      console.log('[Auth] /auth/me response:', response.data)
-      user.value = response.data
-      isAuthenticated.value = true
+      await hydrateCurrentUser(token.value)
     } catch (error) {
       console.error('[Auth] checkAuth failed:', error.response?.status, error.response?.data)
       token.value = ''
       localStorage.removeItem('token')
+      user.value = null
+      if (isDemoGuestMode.value) {
+        const guestOk = await loginGuest()
+        isInitialized.value = true
+        return guestOk
+      }
       isAuthenticated.value = false
     }
 
@@ -62,11 +118,7 @@ export const useAuthStore = defineStore('auth', () => {
       isAuthenticated.value = true
 
       console.log('[Auth] Token saved, fetching user info...')
-
-      const userResponse = await axios.get(`${API_BASE_URL}/auth/me`, {
-        headers: { Authorization: `Bearer ${receivedToken}` }
-      })
-      user.value = userResponse.data
+      await hydrateCurrentUser(receivedToken)
 
       console.log('[Auth] Login successful, user:', user.value)
       return true
@@ -114,8 +166,13 @@ export const useAuthStore = defineStore('auth', () => {
     token,
     isAuthenticated,
     isInitialized,
+    authMode,
+    runtimeProfile,
     isLoggedIn,
+    isDemoGuestMode,
+    ensureRuntimeProfile,
     checkAuth,
+    loginGuest,
     login,
     logout,
     getAuthHeaders,
