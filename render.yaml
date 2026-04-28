@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: myprivateagent-backend
+    runtime: python
+    pythonVersion: "3.11"
+    buildCommand: "cd backend && pip install -r requirements.txt"
+    startCommand: "cd backend && gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:10000"
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: LOG_LEVEL
+        value: info
+      - key: AGENT_SERVER_PRESET
+        value: api_only

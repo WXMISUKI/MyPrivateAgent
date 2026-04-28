@@ -1,4 +1,5 @@
 import logging
+import os
 try:
     from agent_server import create_app
 except ModuleNotFoundError:  # pragma: no cover - package import compatibility
@@ -11,7 +12,8 @@ logging.basicConfig(
     handlers=[logging.StreamHandler()],
 )
 
-app = create_app()
+preset = os.getenv("AGENT_SERVER_PRESET", "full_stack")
+app = create_app(preset=preset)
 
 
 if __name__ == "__main__":
