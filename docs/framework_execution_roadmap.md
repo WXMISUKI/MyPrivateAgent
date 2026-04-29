@@ -128,6 +128,17 @@
 - 能从真实请求中看出高频缺口
 - 可以指导后续垂域智能体补强顺序
 
+### 阶段五状态定义
+
+- `V1（当前目标）`：
+  - 打通能力缺口事件采集、聚合、筛选、前端展示
+  - 维度至少覆盖 `profile / completion_stage / error_category / hook_event_type / subagent_role`
+  - 可形成“已完成、缺口、补强建议”的治理闭环
+- `V2（后续增强）`：
+  - 增加跨 provider/model 的时序与对比分析
+  - 增加更细粒度的趋势与回归看板
+  - 增加更系统的治理报表导出能力
+
 ## 当前建议优先顺序
 
 1. 阶段一：主智能体治理层
@@ -135,3 +146,57 @@
 3. 阶段二：执行闭环增强
 4. 阶段五：能力缺口治理闭环增强
 5. 阶段四：Demo / Business 模式持续收口
+
+## 最新进展（2026-04-28）
+
+- 已落地分层记忆 / 指令系统最小闭环：
+  - `GLOBAL_AGENT.md`
+  - `PROJECT_AGENT.md`
+  - `agent_memory_service`
+  - runtime profile 中的 `memory_contract`
+- 已落地 Subagent 正式注册能力面最小版本：
+  - `researcher / planner / executor` 注册信息
+  - 角色描述、工具范围、模型偏好、触发条件
+  - runtime profile 中的 `subagent_contract`
+- 已落地 Hooks / Permission 治理层最小版本：
+  - `pre_tool_use / post_tool_use / on_fallback`
+  - 高风险工具关键字阻断策略（默认最小策略）
+  - runtime profile 中的 `hook_contract`
+  - AgentHarness 主链路已接入 pre/post/fallback hook
+  - hook 事件已接入 run trace（可区分治理阻断与普通权限拒绝）
+- 已推进 Subagent 调度对齐：
+  - 调度器角色推断已优先使用 Subagent 注册触发条件，再回退 legacy 关键字规则
+- 已推进阶段五治理台联动：
+  - 能力缺口统计已支持 `hook_event_type` 与 `subagent_role` 维度
+  - 可在同一视图联动筛选 `profile / completion_stage / error_category / hook / subagent`
+- 已推进阶段五 V2 第一批：
+  - 能力缺口统计新增 `provider / model` 维度聚合与筛选
+  - 治理面板可联动筛选 `provider` 与 `model_name`
+  - run trace 映射已为关键事件补充 `model_name / provider` 字段透传
+  - 能力缺口统计新增 `window_days(7/14/30)` 时间窗口过滤
+  - 新增 `profile-provider-model` 三维组合对比，支持按模板与模型联动分析
+  - 新增时间窗口环比：本窗口 vs 上窗口 缺口事件变化
+  - 新增 Top 回归风险模型：按窗口增量识别高风险 provider/model 组合
+  - 新增阶段六最小评测包：回归健康度（4个关键断言）并接入能力缺口看板
+  - 新增阶段六门禁阈值：回归健康度默认阈值 80 分，并输出 gate 状态
+  - CI 已纳入能力缺口治理相关测试，防止执行链回归无感进入主分支
+  - 新增固定 benchmark 用例集（`backend/config/benchmark_cases.json`）并纳入覆盖率门禁
+  - 新增固定用例场景分组与失败原因输出（缺事件/缺字段/超预算），用于快速定位回归根因
+  - 新增失败原因到修复建议映射，治理看板可直接给出整改方向
+  - 新增整改动作 ID 与动作手册（action playbook），为后续 /doctor 自动化整改预留标准动作层
+- 阶段五 `V1` 验收已通过（代码、测试、界面联动）：
+  - 后端单测通过（41 项）：`python -m unittest tests.agent_framework.test_chat_service tests.agent_framework.test_scheduler_service tests.agent_framework.test_subagent_service tests.agent_framework.test_capability_gap_service tests.agent_framework.test_health_router`
+  - 前端单测通过（33 项）：`npm test`
+  - 前端构建通过：`npm run build`
+
+## 阶段五验收结论（2026-04-28）
+
+- 结论：`阶段五 V1 已完成`，`阶段五 V2 未完成（按规划后续推进）`
+- 已完成能力：
+  - 缺口事件与执行阶段链路已稳定采集
+  - hook/subagent 治理维度已进入 run trace 与缺口聚合
+  - 治理面板已支持多维筛选与聚合展示
+  - 能输出可行动的补强方向（工具 / Skill / MCP）
+- 后续建议（进入下一阶段）：
+  - 补齐 provider/model 跨模型质量看板
+  - 补齐时序趋势、回归对比、导出能力

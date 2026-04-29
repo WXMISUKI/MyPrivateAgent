@@ -156,6 +156,38 @@ class ChatServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(trace_event["payload"]["profile"], "travel_planning")
         self.assertEqual(trace_event["payload"]["completion_stage"], "retry")
 
+    async def test_hook_tool_denied_maps_to_hook_run_trace(self):
+        trace_event = _build_run_trace_from_runtime_event(
+            {
+                "type": "tool_denied",
+                "name": "mcp_filesystem_write",
+                "reason": "工具治理策略阻断：命中高风险工具治理策略",
+                "hook_decision": {"policy": "high_risk_tool_block"},
+            }
+        )
+
+        self.assertIsNotNone(trace_event)
+        self.assertEqual(trace_event["source"], "hook")
+        self.assertEqual(trace_event["event_type"], "pre_tool_use_blocked")
+
+    async def test_tool_result_includes_hook_post_payload(self):
+        trace_event = _build_run_trace_from_runtime_event(
+            {
+                "type": "tool_result",
+                "name": "search",
+                "status": "ok",
+                "result": "天气查询结果（舟山）",
+                "tool_execution": {
+                    "status": "ok",
+                    "hook_post": {"policy": "post_observation_recorded", "result_length": 12},
+                },
+            }
+        )
+
+        self.assertIsNotNone(trace_event)
+        self.assertEqual(trace_event["source"], "tool")
+        self.assertEqual(trace_event["payload"]["hook_post"]["policy"], "post_observation_recorded")
+
     async def test_content_with_completion_check_maps_to_completion_finalized_trace(self):
         trace_event = _build_run_trace_from_runtime_event(
             {

@@ -7,10 +7,14 @@ import logging
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from .bootstrap import init_database, load_environment
+from .middleware import RequestIDMiddleware, install_error_handlers
 from .config import (
     DEFAULT_SERVER_PRESET,
     AgentServerConfig,
@@ -45,10 +49,17 @@ def _build_dependency_overrides(config: AgentServerConfig) -> dict[object, objec
 def _create_lifespan(config: AgentServerConfig):
     @asynccontextmanager
     async def app_lifespan(_: FastAPI):
-        """Run startup bootstrap steps for the configured server app."""
+        """Run startup bootstrap steps and cleanup on shutdown."""
         if config.bootstrap.init_database:
             init_database()
+        logger.info("Application startup complete")
         yield
+        try:
+            from database import engine
+        except ModuleNotFoundError:
+            from backend.database import engine
+        engine.dispose()
+        logger.info("Application shutdown: database connections disposed")
 
     return app_lifespan
 
@@ -116,6 +127,16 @@ def create_app(
         allow_methods=list(app_config.cors_allow_methods),
         allow_headers=list(app_config.cors_allow_headers),
     )
+    app.add_middleware(RequestIDMiddleware)
+    install_error_handlers(app)
+
+    try:
+        from config import RATE_LIMIT_DEFAULT
+    except ModuleNotFoundError:
+        from backend.config import RATE_LIMIT_DEFAULT
+    limiter = Limiter(key_func=get_remote_address, default_limits=[RATE_LIMIT_DEFAULT])
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
     for dependency, override in _build_dependency_overrides(app_config).items():
         app.dependency_overrides[dependency] = override

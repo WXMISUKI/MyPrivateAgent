@@ -80,6 +80,8 @@
 
 - 主智能体能力合同
 - 分层记忆 / 指令系统
+- Subagent 注册能力面
+- Hooks / Permission 治理层
 - 配置分层（默认值 / 本地覆写 / 当前生效值）
 - Provider 与模型目录
 
@@ -220,6 +222,27 @@ npm run build
 ```
 
 当前这两条已经是 demo 可用性的最低回归门槛。
+
+建议新增一条框架治理门禁检查（阶段六最小包）：
+
+```powershell
+cd D:\AI\AIcode\MyPrivateAgent
+python -m unittest tests.agent_framework.test_capability_gap_service tests.agent_framework.test_health_router
+python backend/scripts/doctor.py --capability-gaps --window-days 14 --limit 200
+```
+
+这条检查会覆盖能力缺口治理看板中的回归健康度断言与门禁阈值（默认 80 分）。
+
+`doctor --capability-gaps` 的返回码约定：
+
+- `0`：治理门禁通过
+- `2`：治理门禁未通过（需按 `pending_actions` 修复）
+
+固定 benchmark 用例集位于：
+
+- `backend/config/benchmark_cases.json`
+
+建议在新增复合任务模板时，同步补充该文件中的样例定义，以保持门禁覆盖率稳定。
 
 说明：
 
@@ -364,6 +387,44 @@ python scripts/doctor.py
 python -m uvicorn main:app --reload --port 8000
 ```
 
+### 8.7 能力治理门禁失败（doctor 返回 2）
+
+先执行：
+
+```powershell
+cd D:\AI\AIcode\MyPrivateAgent
+python backend/scripts/doctor.py --capability-gaps --window-days 14 --limit 200 --max-open-actions 10
+```
+
+重点看输出里的：
+
+- `pending_actions[*].action_id`
+- `pending_actions[*].reason`
+- `remediation_targets[*].owner/module/files`（去重后的整改入口）
+- `missing_profiles`
+- `remediation_status_counts`
+- `non_closed_action_count`
+- `open_action_gate_breached`
+- `long_blocked_action_count`
+- `long_blocked_action_gate_breached`
+- `escalation_recommendations[*]`
+
+说明：
+
+- `--max-open-actions` 用于限制未闭环整改动作数量
+- 未闭环动作 = `open + in_progress + blocked`
+- 只要超过阈值，doctor 返回码仍为 `2`（即使 benchmark 分数通过）
+- `--max-long-blocked-actions` 用于限制长期阻塞动作数量（建议 CI 默认 `0`）
+- `escalation_recommendations` 会给出门禁失败后的优先整改建议，可直接用于分派。
+
+修复顺序建议：
+
+1. 先修 `fix_final_synthesis_chain` / `fix_retry_convergence_chain` 这类收尾链路问题  
+2. 再修 `fix_capability_boundary_fallback` / `fix_fallback_payload_missing_parts` 这类边界反馈问题  
+3. 最后处理 `expand_profile_benchmark_samples` 这类样本覆盖问题  
+
+完成后重复执行 doctor 门禁，直到返回码为 `0`。
+
 ## 9. 当前阶段的准确判断
 
 当前项目：
@@ -371,6 +432,14 @@ python -m uvicorn main:app --reload --port 8000
 - 作为 `demo / 通用智能体样板`：可以用
 - 作为 `starter / 垂域框架基础`：可以复用
 - 作为 `企业生产级正式系统`：还需要后续治理能力继续完善
+
+补充（demo 阶段）：
+
+- 能力缺口治理面板支持“后端不可用降级”：
+  - 读取本地缓存摘要
+  - 使用本地状态映射更新整改状态
+  - 记录本地批量操作审计
+- 因此在纯 demo 演示中，不要求先接入业务数据库或持久化服务。
 
 当前最重要的是：
 

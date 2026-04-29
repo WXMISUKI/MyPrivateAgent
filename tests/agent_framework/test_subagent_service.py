@@ -58,6 +58,27 @@ class SubagentRuntimeServiceTests(unittest.TestCase):
         self.assertEqual(spawn_event["agent_id"], "frontend-agent-p10-i23")
         self.assertIn("页面交互", collect_event["subagent_output_excerpt"])
 
+    def test_runtime_contract_exposes_registered_profiles(self):
+        contract = self.service.build_runtime_contract()
+        self.assertGreaterEqual(contract["total_profiles"], 3)
+        names = {item["name"] for item in contract["profiles"]}
+        self.assertIn("planner", names)
+        self.assertIn("researcher", names)
+        self.assertIn("executor", names)
+
+    def test_role_prompt_includes_profile_governance(self):
+        planner_context = SubagentContext(
+            agent_role="planner",
+            agent_id="planner-agent-p1-i2",
+            plan_id=1,
+            plan_item_id=2,
+            plan_item_title="拆解执行路线",
+            handoff_status="executing",
+        )
+        prompt = self.service.build_role_system_prompt(planner_context)
+        self.assertIn("可用工具范围", prompt)
+        self.assertIn("上下文策略", prompt)
+
     def test_get_subagent_runtime_service_returns_singleton(self):
         first = get_subagent_runtime_service()
         second = get_subagent_runtime_service()

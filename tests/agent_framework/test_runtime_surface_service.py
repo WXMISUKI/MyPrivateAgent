@@ -9,7 +9,9 @@ class RuntimeSurfaceServiceTests(unittest.TestCase):
     @patch("backend.services.runtime_surface_service.get_runtime_surface_config_service")
     @patch("backend.services.runtime_surface_service.get_capability_profile_service")
     @patch("backend.services.runtime_surface_service.get_agent_memory_service")
-    def test_runtime_profile_includes_models_and_providers(self, mock_memory_factory, mock_capability_factory, mock_config_factory, mock_router_factory):
+    @patch("backend.services.runtime_surface_service.get_subagent_runtime_service")
+    @patch("backend.services.runtime_surface_service.get_agent_hook_service")
+    def test_runtime_profile_includes_models_and_providers(self, mock_hook_factory, mock_subagent_factory, mock_memory_factory, mock_capability_factory, mock_config_factory, mock_router_factory):
         mock_router = mock_router_factory.return_value
         mock_config_factory.return_value.get_effective_config.return_value = {
             "auth_mode": "demo_guest",
@@ -36,6 +38,14 @@ class RuntimeSurfaceServiceTests(unittest.TestCase):
             "missing_layers": [{"name": "local", "path": "PROJECT_AGENT.local.md"}],
             "layer_order": ["global", "project", "local", "org_policy"],
             "active": True,
+        }
+        mock_subagent_factory.return_value.build_runtime_contract.return_value = {
+            "total_profiles": 1,
+            "profiles": [{"name": "planner"}],
+        }
+        mock_hook_factory.return_value.build_runtime_contract.return_value = {
+            "enabled_hooks": ["pre_tool_use", "post_tool_use"],
+            "governance_model": "minimal",
         }
         mock_router.list_available_models.return_value = {
             "doubao": {
@@ -82,12 +92,16 @@ class RuntimeSurfaceServiceTests(unittest.TestCase):
         self.assertIn("business_auth_description", profile["auth_mode_contract"])
         self.assertTrue(profile["memory_contract"]["active"])
         self.assertEqual(profile["memory_contract"]["loaded_layers"][0]["name"], "global")
+        self.assertEqual(profile["subagent_contract"]["total_profiles"], 1)
+        self.assertIn("pre_tool_use", profile["hook_contract"]["enabled_hooks"])
 
     @patch("backend.services.runtime_surface_service.get_model_router")
     @patch("backend.services.runtime_surface_service.get_runtime_surface_config_service")
     @patch("backend.services.runtime_surface_service.get_capability_profile_service")
     @patch("backend.services.runtime_surface_service.get_agent_memory_service")
-    def test_update_runtime_profile_validates_default_model(self, mock_memory_factory, mock_capability_factory, mock_config_factory, mock_router_factory):
+    @patch("backend.services.runtime_surface_service.get_subagent_runtime_service")
+    @patch("backend.services.runtime_surface_service.get_agent_hook_service")
+    def test_update_runtime_profile_validates_default_model(self, mock_hook_factory, mock_subagent_factory, mock_memory_factory, mock_capability_factory, mock_config_factory, mock_router_factory):
         mock_router = mock_router_factory.return_value
         mock_config = mock_config_factory.return_value
         mock_capability_factory.return_value.build_runtime_contract.return_value = {}
@@ -96,6 +110,14 @@ class RuntimeSurfaceServiceTests(unittest.TestCase):
             "missing_layers": [],
             "layer_order": [],
             "active": False,
+        }
+        mock_subagent_factory.return_value.build_runtime_contract.return_value = {
+            "total_profiles": 0,
+            "profiles": [],
+        }
+        mock_hook_factory.return_value.build_runtime_contract.return_value = {
+            "enabled_hooks": [],
+            "governance_model": "minimal",
         }
         mock_config.get_effective_config.return_value = {
             "auth_mode": "demo_guest",

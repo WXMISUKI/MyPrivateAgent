@@ -97,6 +97,54 @@
       </div>
     </div>
 
+    <div v-if="subagentContract" class="panel-card">
+      <div class="card-head">
+        <h3>Subagent 注册能力面</h3>
+        <span class="muted">角色化子智能体注册信息：描述、工具范围、模型偏好、触发条件</span>
+      </div>
+      <p class="section-desc">当前注册子智能体：{{ subagentContract.total_profiles || 0 }}</p>
+      <div class="provider-grid">
+        <div v-for="item in subagentContract.profiles || []" :key="item.name" class="provider-card">
+          <div class="provider-title-row">
+            <strong>{{ item.name }}</strong>
+            <span class="status-badge online">registered</span>
+          </div>
+          <p class="provider-meta">{{ item.description }}</p>
+          <p class="provider-endpoint">context_policy: {{ item.context_policy || '-' }}</p>
+          <p class="provider-endpoint">allowed_tools: {{ (item.allowed_tools || []).join(', ') || '-' }}</p>
+          <p class="provider-endpoint">preferred_models: {{ (item.preferred_models || []).join(', ') || '-' }}</p>
+          <p class="provider-endpoint">triggers: {{ (item.trigger_conditions || []).join(', ') || '-' }}</p>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="hookContract" class="panel-card">
+      <div class="card-head">
+        <h3>Hooks / Permission 治理层</h3>
+        <span class="muted">工具与收尾链路的框架治理钩子</span>
+      </div>
+      <div class="config-layer-grid">
+        <div class="contract-block">
+          <h4>已启用 Hook</h4>
+          <ul>
+            <li v-for="item in hookContract.enabled_hooks || []" :key="item"><code>{{ item }}</code></li>
+          </ul>
+        </div>
+        <div class="contract-block">
+          <h4>高风险工具关键字</h4>
+          <ul>
+            <li v-for="item in hookContract.high_risk_tool_keywords || []" :key="item"><code>{{ item }}</code></li>
+          </ul>
+        </div>
+        <div class="contract-block">
+          <h4>治理模型</h4>
+          <ul>
+            <li><code>{{ hookContract.governance_model || '-' }}</code></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
     <div v-if="configLayers" class="panel-card">
       <div class="card-head">
         <h3>配置分层</h3>
@@ -262,6 +310,8 @@ const models = computed(() => profile.value?.models || [])
 const providers = computed(() => profile.value?.providers || [])
 const capabilityContract = computed(() => profile.value?.capability_contract || null)
 const memoryContract = computed(() => profile.value?.memory_contract || null)
+const subagentContract = computed(() => profile.value?.subagent_contract || null)
+const hookContract = computed(() => profile.value?.hook_contract || null)
 const configLayers = computed(() => profile.value?.config_layers || null)
 const authModeDescription = computed(() => {
   const contract = profile.value?.auth_mode_contract || {}

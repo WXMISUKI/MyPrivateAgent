@@ -60,3 +60,26 @@ def load_model_catalog_config() -> list[dict]:
     if not isinstance(parsed, list):
         return []
     return [item for item in parsed if isinstance(item, dict)]
+
+
+_DEFAULT_SECRET_KEYS = frozenset({
+    "your-secret-key-change-in-production-2026",
+    "your-secret-key",
+    "changeme",
+    "secret",
+})
+
+
+def _is_default_secret_key(key: str) -> bool:
+    return key.strip() in _DEFAULT_SECRET_KEYS
+
+
+CORS_ALLOWED_ORIGINS: list[str] = [
+    origin.strip()
+    for origin in os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:8000").split(",")
+    if origin.strip()
+]
+
+RATE_LIMIT_DEFAULT = os.getenv("RATE_LIMIT_DEFAULT", "60/minute")
+RATE_LIMIT_CHAT = os.getenv("RATE_LIMIT_CHAT", "20/minute")
+DOUBAO_SUPPORTS_TOOL_CHOICE = os.getenv("DOUBAO_SUPPORTS_TOOL_CHOICE", "false").lower() == "true"

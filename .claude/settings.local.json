@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add *)",
+      "Bash(python -c \"from alembic.config import Config; c = Config\\('alembic.ini'\\); print\\('Alembic config OK'\\)\")",
+      "Bash(python *)",
+      "Bash(git status *)",
+      "Bash(conda run *)"
+    ]
+  }
+}

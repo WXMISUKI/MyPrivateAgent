@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
 
-const API_BASE_URL = '/api'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
 
 function createAxiosInstance() {
   const authStore = useAuthStore()
@@ -26,6 +26,18 @@ function createAxiosInstance() {
       if (error.response?.status === 401) {
         authStore.logout()
       }
+
+      const errorBody = error.response?.data?.error
+      if (errorBody) {
+        const message = errorBody.message || '请求失败'
+        const code = errorBody.code || 'UNKNOWN'
+        console.error(`[API Error] ${code}: ${message} (request_id: ${errorBody.request_id || '-'})`)
+      } else if (error.code === 'ECONNABORTED') {
+        console.error('[API Error] 请求超时，请检查网络连接')
+      } else if (!error.response) {
+        console.error('[API Error] 网络连接失败，请检查后端服务是否运行')
+      }
+
       return Promise.reject(error)
     }
   )
@@ -108,6 +120,14 @@ export const runtimeSurfaceApi = {
 export const capabilityGapApi = {
   getSummary(params = {}) {
     return api.get('/capability-gaps', { params })
+  },
+
+  getRemediationStatuses() {
+    return api.get('/remediation-status')
+  },
+
+  updateRemediationStatus(actionId, payload = {}) {
+    return api.patch(`/remediation-status/${encodeURIComponent(actionId)}`, payload)
   }
 }
 

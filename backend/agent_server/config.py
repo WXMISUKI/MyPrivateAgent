@@ -107,8 +107,8 @@ class AgentServerConfig:
     route_names: tuple[str, ...] | None = None
     bootstrap: AgentServerBootstrapConfig = field(default_factory=AgentServerBootstrapConfig)
     ui: AgentServerUIConfig = field(default_factory=AgentServerUIConfig)
-    cors_allow_origins: tuple[str, ...] = ("*",)
-    cors_allow_credentials: bool = False
+    cors_allow_origins: tuple[str, ...] = ("http://localhost:5173", "http://localhost:8000")
+    cors_allow_credentials: bool = True
     cors_allow_methods: tuple[str, ...] = ("*",)
     cors_allow_headers: tuple[str, ...] = ("*",)
     dependency_overrides: Mapping[DependencyCallable, DependencyCallable] = field(default_factory=dict)
@@ -118,7 +118,14 @@ class AgentServerConfig:
 def get_server_config_for_preset(preset: AgentServerPreset = DEFAULT_SERVER_PRESET) -> AgentServerConfig:
     """Return a reusable server config for a named deployment preset."""
     if preset == PRESET_FULL_STACK:
-        return AgentServerConfig()
+        try:
+            from config import CORS_ALLOWED_ORIGINS
+        except ModuleNotFoundError:
+            from backend.config import CORS_ALLOWED_ORIGINS
+        return AgentServerConfig(
+            cors_allow_origins=tuple(CORS_ALLOWED_ORIGINS),
+            cors_allow_credentials=True,
+        )
 
     if preset == PRESET_API_ONLY:
         return AgentServerConfig(

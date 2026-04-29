@@ -1,16 +1,15 @@
-import logging
 import os
 try:
     from agent_server import create_app
-except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+except ModuleNotFoundError:
     from backend.agent_server import create_app
 
+try:
+    from logging_config import setup_logging
+except ModuleNotFoundError:
+    from backend.logging_config import setup_logging
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler()],
-)
+setup_logging()
 
 preset = os.getenv("AGENT_SERVER_PRESET", "full_stack")
 app = create_app(preset=preset)

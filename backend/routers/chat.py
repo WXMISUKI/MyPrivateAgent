@@ -53,6 +53,26 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["对话"])
+
+
+def _prepare_chat_context(
+    db: Session,
+    user_id: int,
+    conversation_id: int,
+) -> tuple[dict | None, dict | None]:
+    """Run plan lifecycle checks and return (started_plan_state, execution_context)."""
+    started_plan_state = maybe_start_plan_for_chat(db=db, user_id=user_id, conversation_id=conversation_id)
+    execution_context = None
+    if started_plan_state:
+        execution_context = started_plan_state.get("execution_context")
+
+    executing_plan_state = maybe_mark_plan_handoff_executing(db=db, user_id=user_id, conversation_id=conversation_id)
+    if executing_plan_state:
+        execution_context = executing_plan_state.get("execution_context") or execution_context
+
+    return started_plan_state, execution_context
+
+
 # ============ API 路由 ============
 
 @router.get("/models", response_model=list[ModelInfo])
@@ -303,27 +323,13 @@ async def chat_non_stream(
         conversation_id=conversation.id,
         show_reasoning=show_reasoning,
     )
-    execution_context = None
-
-    started_plan_state = maybe_start_plan_for_chat(
-        db=db,
-        user_id=current_user.id,
-        conversation_id=conversation.id,
+    started_plan_state, execution_context = _prepare_chat_context(
+        db=db, user_id=current_user.id, conversation_id=conversation.id,
     )
-    if started_plan_state:
-        execution_context = started_plan_state.get("execution_context")
-        if started_plan_state.get("blocked"):
-            blocked_message = started_plan_state.get("blocked_message") or "当前步骤因能力依赖不满足而被阻塞。"
-            save_assistant_message(db, conversation.id, blocked_message)
-            return ChatResponse(message=blocked_message, conversation_id=conversation.id)
-
-    executing_plan_state = maybe_mark_plan_handoff_executing(
-        db=db,
-        user_id=current_user.id,
-        conversation_id=conversation.id,
-    )
-    if executing_plan_state:
-        execution_context = executing_plan_state.get("execution_context") or execution_context
+    if started_plan_state and started_plan_state.get("blocked"):
+        blocked_message = started_plan_state.get("blocked_message") or "当前步骤因能力依赖不满足而被阻塞。"
+        save_assistant_message(db, conversation.id, blocked_message)
+        return ChatResponse(message=blocked_message, conversation_id=conversation.id)
 
     try:
         if execution_context and execution_context.get("scheduler_mode") == "fan_out":

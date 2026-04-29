@@ -134,6 +134,16 @@ class SchedulerServiceTests(unittest.TestCase):
         self.assertEqual(trace[-1]["source"], "capability")
         self.assertEqual(trace[-1]["severity"], "error")
 
+    def test_resolve_child_roles_uses_subagent_registry_triggers(self):
+        self.item.item_metadata = {"required_capabilities": ["filesystem.read"]}
+        self.item.title = "做 research compare 并产出 planning 结论"
+        self.item.details = "需要事实比对和方案拆解"
+
+        roles = self.service._resolve_child_roles(self.item)
+
+        self.assertIn("researcher", roles)
+        self.assertIn("planner", roles)
+
 
 if __name__ == "__main__":
     unittest.main()

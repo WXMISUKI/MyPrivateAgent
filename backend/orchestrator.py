@@ -89,7 +89,11 @@ class SimplifiedOrchestrator:
         self.model_router = self.model_provider
         self.tool_registry = get_registry()
         self.context_store = get_context_store()
-        self.context_window = self.context_store.get_context(conversation_id, "deepseek-r1:7b")
+        try:
+            from config import DEFAULT_MODEL
+        except ModuleNotFoundError:
+            from backend.config import DEFAULT_MODEL
+        self.context_window = self.context_store.get_context(conversation_id, DEFAULT_MODEL)
         self.memory_store = get_memory_store()
         self.session = self.memory_store.create_session(conversation_id)
         self.artifact_store = get_artifact_store()
@@ -104,6 +108,86 @@ class SimplifiedOrchestrator:
         except ModuleNotFoundError:  # pragma: no cover - package import compatibility
             from backend.services.completion_evaluator_service import get_completion_evaluator_service
         self.completion_evaluator = get_completion_evaluator_service()
+
+    def _prepare_runtime_context(
+        self,
+        user_message: str,
+        execution_context: dict[str, Any] | None,
+    ) -> tuple[Any, Any, Any, Any, Any]:
+        runtime_knowledge = self.runtime_learning_service.get_runtime_context(
+            user_message=user_message, scope="chat",
+        )
+        subagent_context = self.subagent_runtime_service.normalize_context(execution_context)
+        runtime_skills = self.skill_runtime_service.get_runtime_context(
+            user_message=user_message, execution_context=execution_context,
+        )
+        self.mcp_runtime_service.sync_registry_tools(self.tool_registry)
+        capability_profile = self.capability_profile_service.build_profile(
+            tool_registry=self.tool_registry,
+            runtime_skills=runtime_skills,
+            runtime_knowledge=runtime_knowledge,
+            execution_context=execution_context,
+        )
+        agent_memory = self.agent_memory_service.build_context()
+        return runtime_knowledge, runtime_skills, subagent_context, capability_profile, agent_memory
+
+    def _build_messages(
+        self,
+        user_message: str,
+        capability_profile: Any,
+        agent_memory: Any,
+        runtime_knowledge: Any,
+        runtime_skills: Any,
+        subagent_context: Any,
+    ) -> list:
+        messages = [SystemMessage(content=capability_profile.system_prompt)]
+        if not agent_memory.is_empty and agent_memory.system_prompt:
+            messages.append(SystemMessage(content=agent_memory.system_prompt))
+        intent_prompt = self.completion_evaluator.build_synthesis_instruction(user_message)
+        if intent_prompt:
+            messages.append(SystemMessage(content=intent_prompt))
+        if not runtime_knowledge.is_empty:
+            messages.append(SystemMessage(content=runtime_knowledge.system_prompt))
+        if not runtime_skills.is_empty:
+            messages.append(SystemMessage(content=runtime_skills.system_prompt))
+        if subagent_context is not None:
+            messages.append(SystemMessage(content=self.subagent_runtime_service.build_role_system_prompt(subagent_context)))
+        messages.append(HumanMessage(content=user_message))
+        return messages
+
+    def _process_stream_chunk(
+        self,
+        chunk_data: dict,
+        stream_state: OrchestratorStreamState,
+        selected_model: str,
+        supports_reasoning: bool,
+    ) -> str | None:
+        chunk_type = chunk_data.get("type")
+
+        if chunk_type == "reasoning":
+            stream_state.last_reasoning += chunk_data.get("content", "")
+            if supports_reasoning and self.show_reasoning:
+                return json.dumps(chunk_data, ensure_ascii=False) + "\n"
+            return None
+
+        if chunk_type == "content":
+            content = chunk_data.get("content", "")
+            if content == stream_state.last_content_chunk:
+                return None
+            stream_state.last_content_chunk = content
+            stream_state.full_content += content
+            return json.dumps(chunk_data, ensure_ascii=False) + "\n"
+
+        if chunk_type == "tool_result":
+            persist_tool_artifact(
+                artifact_store=self.artifact_store,
+                conversation_id=self.conversation_id,
+                event_data=chunk_data,
+                selected_model=selected_model,
+            )
+            return json.dumps(chunk_data, ensure_ascii=False) + "\n"
+
+        return json.dumps(chunk_data, ensure_ascii=False) + "\n"
 
     async def process_message(
         self,
@@ -125,16 +209,8 @@ class SimplifiedOrchestrator:
         self.memory_store.update_session_activity(self.conversation_id)
         self.memory_store.increment_message_count(self.conversation_id)
 
-        runtime_knowledge = self.runtime_learning_service.get_runtime_context(
-            user_message=user_message,
-            scope="chat",
-        )
-
-        subagent_context = self.subagent_runtime_service.normalize_context(execution_context)
-        runtime_skills = self.skill_runtime_service.get_runtime_context(
-            user_message=user_message,
-            execution_context=execution_context,
-        )
+        runtime_knowledge, runtime_skills, subagent_context, capability_profile, agent_memory = \
+            self._prepare_runtime_context(user_message, execution_context)
 
         if subagent_context is not None:
             yield json.dumps(
@@ -246,15 +322,7 @@ class SimplifiedOrchestrator:
             return
 
         # 4. 获取工具
-        self.mcp_runtime_service.sync_registry_tools(self.tool_registry)
         tools = self.tool_registry.list_all()
-        capability_profile = self.capability_profile_service.build_profile(
-            tool_registry=self.tool_registry,
-            runtime_skills=runtime_skills,
-            runtime_knowledge=runtime_knowledge,
-            execution_context=execution_context,
-        )
-        agent_memory = self.agent_memory_service.build_context()
         yield json.dumps({
             "type": "status",
             "status_kind": "execution_progress",
@@ -270,8 +338,12 @@ class SimplifiedOrchestrator:
             }, ensure_ascii=False) + "\n"
 
         # 检测是否为豆包模型（豆包模型不支持 tool_choice="auto"）
+        try:
+            from config import DOUBAO_SUPPORTS_TOOL_CHOICE
+        except ModuleNotFoundError:
+            from backend.config import DOUBAO_SUPPORTS_TOOL_CHOICE
         is_doubao = "doubao" in selected_model.lower()
-        use_tool_choice = not is_doubao
+        use_tool_choice = DOUBAO_SUPPORTS_TOOL_CHOICE if is_doubao else True
 
         # 5. 使用 AgentHarness 处理
         harness = AgentHarness(
@@ -284,20 +356,10 @@ class SimplifiedOrchestrator:
         )
 
         # 6. 构建消息列表
-        messages = []
-        messages.append(SystemMessage(content=capability_profile.system_prompt))
-        if not agent_memory.is_empty and agent_memory.system_prompt:
-            messages.append(SystemMessage(content=agent_memory.system_prompt))
-        intent_system_prompt = self.completion_evaluator.build_synthesis_instruction(user_message)
-        if intent_system_prompt:
-            messages.append(SystemMessage(content=intent_system_prompt))
-        if not runtime_knowledge.is_empty:
-            messages.append(SystemMessage(content=runtime_knowledge.system_prompt))
-        if not runtime_skills.is_empty:
-            messages.append(SystemMessage(content=runtime_skills.system_prompt))
-        if subagent_context is not None:
-            messages.append(SystemMessage(content=self.subagent_runtime_service.build_role_system_prompt(subagent_context)))
-        messages.append(HumanMessage(content=user_message))
+        messages = self._build_messages(
+            user_message, capability_profile, agent_memory,
+            runtime_knowledge, runtime_skills, subagent_context,
+        )
 
         # 8. 运行 Agent 循环
         stream_state = OrchestratorStreamState()
@@ -307,33 +369,12 @@ class SimplifiedOrchestrator:
                 chunk_data = json.loads(chunk_str)
                 chunk_type = chunk_data.get('type')
 
-                if chunk_type == 'reasoning':
-                    # 推理内容
-                    reasoning = chunk_data.get('content', '')
-                    stream_state.last_reasoning += reasoning
-                    if supports_reasoning and self.show_reasoning:
-                        yield chunk_str
-
-                elif chunk_type == 'content':
-                    # 内容，进行去重
-                    content = chunk_data.get('content', '')
-
-                    # 简单的去重：如果内容和上次一样，跳过
-                    if content == stream_state.last_content_chunk:
-                        continue
-
-                    stream_state.last_content_chunk = content
-                    stream_state.full_content += content
-                    yield chunk_str
-
-                elif chunk_type == 'tool_result':
-                    persist_tool_artifact(
-                        artifact_store=self.artifact_store,
-                        conversation_id=self.conversation_id,
-                        event_data=chunk_data,
-                        selected_model=selected_model,
+                if chunk_type in ('reasoning', 'content', 'tool_result'):
+                    output = self._process_stream_chunk(
+                        chunk_data, stream_state, selected_model, supports_reasoning,
                     )
-                    yield chunk_str
+                    if output:
+                        yield output
 
                 elif chunk_type == 'done':
                     # 完成信号

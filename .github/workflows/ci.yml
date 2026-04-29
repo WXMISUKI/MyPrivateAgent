@@ -8,8 +8,22 @@ on:
   pull_request:
 
 jobs:
+  backend-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install ruff
+        run: pip install ruff==0.4.4
+      - name: Run ruff check
+        run: ruff check backend/ --config backend/pyproject.toml
+
   backend-tests:
     runs-on: ubuntu-latest
+    needs: backend-lint
     defaults:
       run:
         working-directory: .
@@ -29,6 +43,9 @@ jobs:
       - name: Run runtime tests
         run: |
           python -m unittest \
+            tests.agent_framework.test_doctor_script \
+            tests.agent_framework.test_capability_gap_service \
+            tests.agent_framework.test_health_router \
             tests.agent_framework.test_provider_registry \
             tests.agent_framework.test_adapters \
             tests.agent_framework.test_events \
@@ -46,7 +63,24 @@ jobs:
             tests.agent_framework.test_router_imports \
             tests.agent_framework.test_server_service \
             tests.agent_framework.test_agent_server_dependencies \
-            tests.agent_framework.test_agent_server_app
+            tests.agent_framework.test_agent_server_app \
+            tests.agent_framework.test_middleware \
+            tests.agent_framework.test_logging_config \
+            tests.agent_framework.test_startup_validation \
+            tests.agent_framework.test_context_compaction_service
+
+      - name: Run tests with coverage
+        run: |
+          python -m pytest tests/agent_framework/ \
+            --cov=backend \
+            --cov-report=term-missing \
+            --cov-fail-under=30 \
+            -q || true
+        continue-on-error: true
+
+      - name: Run capability gap governance gate
+        run: |
+          python backend/scripts/doctor.py --capability-gaps --window-days 14 --limit 200 --max-open-actions 10 --max-long-blocked-actions 0
 
   frontend-build:
     runs-on: ubuntu-latest

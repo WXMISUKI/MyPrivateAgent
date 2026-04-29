@@ -84,6 +84,8 @@ def _build_run_trace_from_runtime_event(event: Dict[str, Any]) -> Optional[Dict[
     event_type = str(event.get("type") or "").strip()
     if not event_type:
         return None
+    trace_model_name = str(extract_event_field(event, "model_name", "") or "").strip()
+    trace_provider = str(extract_event_field(event, "provider", "") or "").strip()
 
     if event_type == "tool_permission_required":
         tool_name = str(extract_event_field(event, "name", "") or "").strip()
@@ -154,6 +156,7 @@ def _build_run_trace_from_runtime_event(event: Dict[str, Any]) -> Optional[Dict[
             if phase == "boundary_fallback":
                 missing_parts = completion_check.get("missing_parts") or []
                 missing_text = ", ".join(str(item) for item in missing_parts)
+                hook_fallback = completion_check.get("hook_fallback") or {}
                 return {
                     "source": "agent",
                     "event_type": "capability_gap_fallback",
@@ -167,12 +170,31 @@ def _build_run_trace_from_runtime_event(event: Dict[str, Any]) -> Optional[Dict[
                         "missing_parts": missing_parts,
                         "missing_text": missing_text,
                         "completion_check": completion_check,
+                        "hook_fallback": hook_fallback,
+                        "model_name": trace_model_name,
+                        "provider": trace_provider,
                     },
                 }
 
     if event_type == "tool_denied":
         tool_name = str(extract_event_field(event, "name", "") or "").strip()
         reason = str(extract_event_field(event, "reason", "") or "").strip()
+        hook_decision = extract_event_field(event, "hook_decision", {}) or {}
+        if "治理策略阻断" in reason:
+            return {
+                "source": "hook",
+                "event_type": "pre_tool_use_blocked",
+                "summary": f"Hook 已阻断工具 `{tool_name or 'unknown'}` 自动执行",
+                "detail": reason,
+                "severity": "warning",
+                "payload": {
+                    "tool_name": tool_name,
+                    "reason": reason,
+                    "hook_decision": hook_decision,
+                    "model_name": trace_model_name,
+                    "provider": trace_provider,
+                },
+            }
         return {
             "source": "permission",
             "event_type": "tool_denied",
@@ -182,6 +204,8 @@ def _build_run_trace_from_runtime_event(event: Dict[str, Any]) -> Optional[Dict[
             "payload": {
                 "tool_name": tool_name,
                 "reason": reason,
+                "model_name": trace_model_name,
+                "provider": trace_provider,
             },
         }
 
@@ -200,6 +224,8 @@ def _build_run_trace_from_runtime_event(event: Dict[str, Any]) -> Optional[Dict[
                         "completion_stage": str(completion_check.get("stage") or "finalized").strip(),
                         "completion_check": completion_check,
                         "framework_notice": bool(extract_event_field(event, "framework_notice", False)),
+                        "model_name": trace_model_name,
+                        "provider": trace_provider,
                     },
                 }
         return None
@@ -216,6 +242,7 @@ def _build_run_trace_from_runtime_event(event: Dict[str, Any]) -> Optional[Dict[
     result_text = str(extract_event_field(event, "result", "") or "").strip()
     tool_call_id = str(extract_event_field(event, "tool_call_id", "") or "").strip()
     is_mcp_tool = tool_name.startswith("mcp_")
+    hook_post = tool_execution.get("hook_post") if isinstance(tool_execution, dict) else None
 
     if status == "pending_permission":
         return None
@@ -245,6 +272,9 @@ def _build_run_trace_from_runtime_event(event: Dict[str, Any]) -> Optional[Dict[
             "duration_ms": duration_ms,
             "cache_hit": cache_hit,
             "error_category": error_category,
+            "hook_post": hook_post or {},
+            "model_name": trace_model_name,
+            "provider": trace_provider,
         },
     }
 

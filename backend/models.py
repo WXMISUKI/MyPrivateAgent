@@ -364,3 +364,37 @@ class PlanItemRecord(Base):
 
     def __repr__(self):
         return f"<PlanItemRecord {self.id}: {self.title}>"
+
+
+class CapabilityRemediationStatus(str, enum.Enum):
+    """能力缺口整改状态。"""
+
+    OPEN = "open"
+    IN_PROGRESS = "in_progress"
+    BLOCKED = "blocked"
+    DONE = "done"
+    VERIFIED = "verified"
+
+
+class CapabilityRemediationRecord(Base):
+    """能力缺口整改状态记录。"""
+
+    __tablename__ = "capability_remediations"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    action_id = Column(String(120), unique=True, index=True, nullable=False)
+    status = Column(
+        SQLEnum(CapabilityRemediationStatus),
+        default=CapabilityRemediationStatus.OPEN,
+        nullable=False,
+    )
+    owner = Column(String(100))
+    module = Column(String(100))
+    note = Column(Text)
+    updated_by = Column(String(100))
+    remediation_metadata = Column("metadata", JSON)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    def __repr__(self):
+        return f"<CapabilityRemediationRecord {self.action_id}: {self.status}>"

@@ -426,6 +426,11 @@ class AgentHarness:
         except ModuleNotFoundError:  # pragma: no cover - package import compatibility
             from backend.services.completion_evaluator_service import get_completion_evaluator_service
         self.completion_evaluator = get_completion_evaluator_service()
+        try:
+            from services.agent_hook_service import get_agent_hook_service
+        except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+            from backend.services.agent_hook_service import get_agent_hook_service
+        self.agent_hook_service = get_agent_hook_service()
 
         self._setup_tools()
 
@@ -709,6 +714,44 @@ class AgentHarness:
                         continue
 
                     consecutive_invalid_tools = 0
+                    pre_hook_decision = self.agent_hook_service.pre_tool_use(
+                        tool_name=tool_name,
+                        tool_args=tool_args if isinstance(tool_args, dict) else {},
+                        context={
+                            "conversation_id": self.conversation_id,
+                            "iteration": iteration,
+                            "model_name": self.model_name,
+                        },
+                    )
+                    if not pre_hook_decision.allowed:
+                        deny_message = f"工具治理策略阻断：{pre_hook_decision.reason or '不允许自动执行该工具'}"
+                        yield event_factory.build(
+                            AgentEventType.TOOL_DENIED,
+                            {
+                                "name": tool_name,
+                                "reason": deny_message,
+                                "hook_decision": pre_hook_decision.metadata or {},
+                            },
+                            iteration=iteration,
+                        ).to_json()
+                        tool_results.append({
+                            "name": tool_name,
+                            "result": deny_message,
+                            "tool_call_id": tool_call_id,
+                            "tool_args": tool_args,
+                            "tool_execution": {
+                                "cache_hit": False,
+                                "duration_ms": 0.0,
+                                "result_source": "hook_pre_block",
+                                "status": "denied",
+                            },
+                        })
+                        tool_call_history.append({
+                            "name": tool_name,
+                            "args": tool_args,
+                            "result": deny_message,
+                        })
+                        continue
 
                     budget_check = self._check_tool_repetition_budget(
                         tool_name=tool_name,
@@ -775,6 +818,15 @@ class AgentHarness:
                         result = "等待用户授权..."
                     else:
                         result, execution_metadata = await self._execute_tool_with_metadata(tool_name, tool_args)
+                        execution_metadata["hook_post"] = self.agent_hook_service.post_tool_use(
+                            tool_name=tool_name,
+                            tool_result=result,
+                            context={
+                                "conversation_id": self.conversation_id,
+                                "iteration": iteration,
+                                "model_name": self.model_name,
+                            },
+                        )
                         if self._is_non_retryable_tool_validation_error(result):
                             consecutive_invalid_tools += 1
                             logger.warning(
@@ -934,9 +986,18 @@ class AgentHarness:
                         )
 
                 if completeness_check and completeness_check.get("should_finalize"):
+                    fallback_hook = self.agent_hook_service.on_fallback(
+                        reason=str(completeness_check.get("stop_reason") or "completion_incomplete"),
+                        context={
+                            "conversation_id": self.conversation_id,
+                            "iteration": iteration,
+                            "model_name": self.model_name,
+                        },
+                    )
                     completion_check_payload = {
                         **completeness_check,
                         "stage": "boundary_fallback",
+                        "hook_fallback": fallback_hook,
                     }
                     fallback_response = self._build_completion_fallback_response(
                         user_goal=user_goal,
@@ -972,6 +1033,13 @@ class AgentHarness:
 
             except asyncio.TimeoutError:
                 logger.warning("[AgentHarness] 最终答复合成超时，返回阶段性 fallback")
+                fallback_hook = self.agent_hook_service.on_fallback(
+                    reason="final_synthesis_timeout",
+                    context={
+                        "conversation_id": self.conversation_id,
+                        "model_name": self.model_name,
+                    },
+                )
                 fallback_response = self._build_completion_fallback_response(
                     user_goal=user_goal,
                     tool_call_history=tool_call_history,
@@ -987,6 +1055,7 @@ class AgentHarness:
                     "stop_reason": "final_synthesis_timeout",
                     "profile": self.completion_evaluator.detect_request_profile(user_goal),
                     "stage": "timeout_fallback",
+                    "hook_fallback": fallback_hook,
                 }
                 yield event_factory.build(
                     AgentEventType.STATUS,

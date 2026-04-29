@@ -8,14 +8,18 @@ try:
     from config import AUTH_MODE, DEFAULT_MODEL
     from model_router import get_model_router
     from services.agent_memory_service import get_agent_memory_service
+    from services.agent_hook_service import get_agent_hook_service
     from services.capability_profile_service import get_capability_profile_service
     from services.runtime_surface_config_service import get_runtime_surface_config_service
+    from services.subagent_service import get_subagent_runtime_service
 except ModuleNotFoundError:  # pragma: no cover - package import compatibility
     from backend.config import AUTH_MODE, DEFAULT_MODEL
     from backend.model_router import get_model_router
     from backend.services.agent_memory_service import get_agent_memory_service
+    from backend.services.agent_hook_service import get_agent_hook_service
     from backend.services.capability_profile_service import get_capability_profile_service
     from backend.services.runtime_surface_config_service import get_runtime_surface_config_service
+    from backend.services.subagent_service import get_subagent_runtime_service
 
 
 class RuntimeSurfaceService:
@@ -26,6 +30,8 @@ class RuntimeSurfaceService:
         self.config_service = get_runtime_surface_config_service()
         self.capability_profile_service = get_capability_profile_service()
         self.agent_memory_service = get_agent_memory_service()
+        self.agent_hook_service = get_agent_hook_service()
+        self.subagent_runtime_service = get_subagent_runtime_service()
 
     def _list_all_models(self) -> List[Dict[str, Any]]:
         models = list(self.model_router.list_available_models().values())
@@ -113,6 +119,8 @@ class RuntimeSurfaceService:
             "providers": list(providers.values()),
             "capability_contract": self.capability_profile_service.build_runtime_contract(),
             "memory_contract": self.agent_memory_service.build_runtime_contract(),
+            "subagent_contract": self.subagent_runtime_service.build_runtime_contract(),
+            "hook_contract": self.agent_hook_service.build_runtime_contract(),
             "config_layers": config_layers,
             "auth_mode_contract": {
                 "current_mode": effective_config.get("auth_mode", AUTH_MODE),

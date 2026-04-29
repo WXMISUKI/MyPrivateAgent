@@ -53,6 +53,9 @@ def init_database() -> None:
 
     Base.metadata.create_all(bind=engine)
     _ensure_feedback_uniqueness_constraint()
+    _stamp_alembic_head_if_needed()
+    _warn_default_secret_key()
+    validate_startup_config()
     logger.info("存储表结构已创建，模式=%s，URL=%s", DB_MODE, DATABASE_URL)
 
 
@@ -99,3 +102,50 @@ def _ensure_feedback_uniqueness_constraint() -> None:
             )
         )
         logger.info("已创建反馈唯一约束: %s", constraint_name)
+
+
+def _stamp_alembic_head_if_needed() -> None:
+    """Stamp alembic version table so future migrations start from current state."""
+    try:
+        from alembic.config import Config
+        from alembic import command
+        alembic_cfg = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
+        alembic_cfg.set_main_option("sqlalchemy.url", DATABASE_URL)
+        command.stamp(alembic_cfg, "head")
+        logger.info("Alembic version stamped to head")
+    except Exception as e:
+        logger.warning("Alembic stamp skipped: %s", e)
+
+
+def _warn_default_secret_key() -> None:
+    try:
+        from config import SECRET_KEY, AUTH_MODE, _is_default_secret_key
+    except ModuleNotFoundError:
+        from backend.config import SECRET_KEY, AUTH_MODE, _is_default_secret_key
+    if _is_default_secret_key(SECRET_KEY):
+        if AUTH_MODE == "demo_guest":
+            logger.warning("SECRET_KEY 使用默认值，当前为 demo 模式可接受，生产环境请务必修改")
+        else:
+            logger.error("SECRET_KEY 使用默认值且非 demo 模式，这是安全风险！请在 .env 中设置 SECRET_KEY")
+
+
+def validate_startup_config() -> list[str]:
+    """Validate critical configuration at startup. Returns list of warnings."""
+    warnings = []
+    try:
+        from config import SECRET_KEY, AUTH_MODE, ARK_API_KEY, OLLAMA_BASE_URL, _is_default_secret_key
+    except ModuleNotFoundError:
+        from backend.config import SECRET_KEY, AUTH_MODE, ARK_API_KEY, OLLAMA_BASE_URL, _is_default_secret_key
+
+    if _is_default_secret_key(SECRET_KEY) and AUTH_MODE != "demo_guest":
+        warnings.append("SECRET_KEY uses default value in non-demo mode")
+
+    has_ark = bool(ARK_API_KEY and ARK_API_KEY.strip())
+    has_ollama = bool(OLLAMA_BASE_URL and OLLAMA_BASE_URL.strip())
+    if not has_ark and not has_ollama:
+        warnings.append("No model provider configured (ARK_API_KEY and OLLAMA_BASE_URL both empty)")
+
+    for w in warnings:
+        logger.warning("Startup validation: %s", w)
+
+    return warnings

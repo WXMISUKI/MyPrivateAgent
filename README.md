@@ -202,6 +202,7 @@ python -m uvicorn examples.weather_demo_app:app --port 8010
 - Starter 指南：`docs/agent_framework_starter_guide.md`
 - Demo 指南：`docs/agent_framework_demo_guide.md`
 - Demo 运行手册：`docs/demo_runbook.md`
+- v0 冻结验收模板：`docs/v0_freeze_acceptance_report_template.md`
 - 通用框架实施清单：`docs/framework_execution_roadmap.md`
 - Claude 对齐完善方案：`docs/claude_alignment_improvement_plan.md`
 - 测试手册：`docs/test_manual.md`

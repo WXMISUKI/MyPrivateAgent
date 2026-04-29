@@ -1,0 +1,76 @@
+[
+  {
+    "id": "travel_weather_finalize",
+    "scenario": "travel",
+    "profile": "travel_planning",
+    "description": "旅行规划-天气查询后应进入最终收尾",
+    "required_events": ["tool_called", "completion_finalized"],
+    "max_tool_calls": 2
+  },
+  {
+    "id": "travel_gap_boundary",
+    "scenario": "travel",
+    "profile": "travel_planning",
+    "description": "旅行规划-能力不足时应走边界收尾并给出缺口",
+    "required_events": ["capability_gap_fallback"],
+    "required_missing_parts": ["transport", "play"]
+  },
+  {
+    "id": "travel_retry_then_converge",
+    "scenario": "travel",
+    "profile": "travel_planning",
+    "description": "旅行规划-补查后应收敛到 finalized/fallback",
+    "required_events": ["completion_retry", "completion_finalized"]
+  },
+  {
+    "id": "planning_finalize",
+    "scenario": "planning",
+    "profile": "planning",
+    "description": "任务规划-执行后必须完成最终收尾",
+    "required_events": ["completion_finalized"],
+    "max_tool_calls": 2
+  },
+  {
+    "id": "planning_boundary",
+    "scenario": "planning",
+    "profile": "planning",
+    "description": "任务规划-能力不足时应输出边界反馈",
+    "required_events": ["capability_gap_fallback"]
+  },
+  {
+    "id": "research_compare_finalize",
+    "scenario": "research",
+    "profile": "research_compare",
+    "description": "研究对比-多步处理后应有最终收尾",
+    "required_events": ["completion_finalized"],
+    "max_tool_calls": 3
+  },
+  {
+    "id": "research_compare_retry",
+    "scenario": "research",
+    "profile": "research_compare",
+    "description": "研究对比-补查链路可观测",
+    "required_events": ["completion_retry", "completion_finalized"]
+  },
+  {
+    "id": "provider_error_classified",
+    "scenario": "reliability",
+    "profile": "travel_planning",
+    "description": "Provider/工具失败应分类记录",
+    "required_events": ["tool_failed"]
+  },
+  {
+    "id": "hook_block_recorded",
+    "scenario": "governance",
+    "profile": "planning",
+    "description": "治理策略阻断应记录 hook 事件",
+    "required_events": ["pre_tool_use_blocked"]
+  },
+  {
+    "id": "subagent_role_observed",
+    "scenario": "governance",
+    "profile": "research_compare",
+    "description": "子智能体执行应有角色运行轨迹",
+    "required_events": ["child_completed"]
+  }
+]

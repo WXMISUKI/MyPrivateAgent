@@ -10,6 +10,11 @@ try:
 except ModuleNotFoundError:  # pragma: no cover - package import compatibility
     from backend.models import PlanHandoffStatus, PlanItemRecord, PlanRunRecord
 
+try:
+    from services.subagent_service import get_subagent_runtime_service
+except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+    from backend.services.subagent_service import get_subagent_runtime_service
+
 
 CHILD_STATUSES = {"queued", "running", "completed", "failed", "cancelled"}
 ROLE_ORDER = ("planner", "backend", "frontend", "qa", "docs")
@@ -23,6 +28,7 @@ class SchedulerService:
 
     def __init__(self, db):
         self.db = db
+        self.subagent_runtime_service = get_subagent_runtime_service()
 
     def prepare_execution(
         self,
@@ -627,19 +633,23 @@ class SchedulerService:
             for part in [str(getattr(item, "title", "") or ""), str(getattr(item, "details", "") or "")]
             if str(part).strip()
         ).lower()
-        roles = []
-        if any(keyword in text for keyword in ["规划", "拆解", "plan", "todo", "方案"]):
-            roles.append("planner")
-        if any(keyword in text for keyword in ["后端", "api", "backend", "服务", "接口", "数据库"]):
-            roles.append("backend")
-        if any(keyword in text for keyword in ["前端", "ui", "vue", "frontend", "页面", "组件", "交互"]):
-            roles.append("frontend")
-        if any(keyword in text for keyword in ["测试", "qa", "回归", "验证", "smoke"]):
-            roles.append("qa")
-        if any(keyword in text for keyword in ["文档", "docs", "readme", "说明", "日志"]):
-            roles.append("docs")
+        roles = self._normalize_roles(self.subagent_runtime_service.infer_roles_from_text(text))
+        if len(roles) > 1:
+            return roles
 
-        roles = self._normalize_roles(roles)
+        legacy_roles = []
+        if any(keyword in text for keyword in ["规划", "拆解", "plan", "todo", "方案"]):
+            legacy_roles.append("planner")
+        if any(keyword in text for keyword in ["后端", "api", "backend", "服务", "接口", "数据库"]):
+            legacy_roles.append("backend")
+        if any(keyword in text for keyword in ["前端", "ui", "vue", "frontend", "页面", "组件", "交互"]):
+            legacy_roles.append("frontend")
+        if any(keyword in text for keyword in ["测试", "qa", "回归", "验证", "smoke"]):
+            legacy_roles.append("qa")
+        if any(keyword in text for keyword in ["文档", "docs", "readme", "说明", "日志"]):
+            legacy_roles.append("docs")
+
+        roles = self._normalize_roles(legacy_roles)
         if len(roles) > 1:
             return roles
 

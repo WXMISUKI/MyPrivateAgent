@@ -1,9 +1,9 @@
-"""Minimal subagent runtime helpers for spawn/collect/merge execution."""
+"""Subagent runtime helpers with a formal role registry and runtime contract."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 
 ROLE_INSTRUCTIONS = {
@@ -13,6 +13,18 @@ ROLE_INSTRUCTIONS = {
     "docs": "聚焦设计说明、实施记录、迁移说明与使用文档整理。",
     "planner": "聚焦目标拆解、执行顺序、风险分级与下一步编排。",
 }
+
+
+@dataclass(frozen=True)
+class SubagentProfile:
+    """Declarative subagent profile used for role routing and governance."""
+
+    name: str
+    description: str
+    allowed_tools: Tuple[str, ...] = ()
+    preferred_models: Tuple[str, ...] = ()
+    context_policy: str = "isolated"
+    trigger_conditions: Tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -53,16 +65,118 @@ class SubagentContext:
 
 
 class SubagentRuntimeService:
-    """Build minimal spawn/collect/merge runtime protocol for subagent execution."""
+    """Build spawn/collect/merge runtime protocol for subagent execution."""
+
+    SUBAGENT_REGISTRY: Dict[str, SubagentProfile] = {
+        "frontend": SubagentProfile(
+            name="frontend",
+            description="聚焦前端界面、交互、组件结构、样式与用户体验实现。",
+            allowed_tools=("search", "mcp_filesystem_read"),
+            preferred_models=("doubao", "llama3.1"),
+            context_policy="ui_focused",
+            trigger_conditions=("frontend", "ui", "vue", "页面", "组件", "交互"),
+        ),
+        "backend": SubagentProfile(
+            name="backend",
+            description="聚焦后端接口、服务层、数据模型、持久化与稳定性实现。",
+            allowed_tools=("search", "mcp_filesystem_read"),
+            preferred_models=("doubao", "llama3.1"),
+            context_policy="service_focused",
+            trigger_conditions=("backend", "api", "服务", "接口", "数据库"),
+        ),
+        "qa": SubagentProfile(
+            name="qa",
+            description="聚焦测试策略、回归验证、失败场景与质量风险识别。",
+            allowed_tools=("search", "mcp_filesystem_read"),
+            preferred_models=("doubao",),
+            context_policy="verification_focused",
+            trigger_conditions=("qa", "测试", "回归", "验证", "smoke"),
+        ),
+        "docs": SubagentProfile(
+            name="docs",
+            description="聚焦设计说明、实施记录、迁移说明与使用文档整理。",
+            allowed_tools=("search", "mcp_filesystem_read"),
+            preferred_models=("doubao",),
+            context_policy="documentation_focused",
+            trigger_conditions=("docs", "文档", "readme", "说明", "日志"),
+        ),
+        "researcher": SubagentProfile(
+            name="researcher",
+            description="聚焦信息检索、事实整理、来源比对与证据摘要。",
+            allowed_tools=("search", "get_current_datetime", "mcp_filesystem_read"),
+            preferred_models=("doubao", "llama3.1"),
+            context_policy="isolated_with_summary",
+            trigger_conditions=("research", "compare", "fact_check", "benchmark"),
+        ),
+        "planner": SubagentProfile(
+            name="planner",
+            description="聚焦目标拆解、执行顺序、风险分级与计划追踪。",
+            allowed_tools=("search", "get_current_datetime"),
+            preferred_models=("doubao",),
+            context_policy="plan_oriented",
+            trigger_conditions=("planning", "todo", "decompose", "workflow"),
+        ),
+        "executor": SubagentProfile(
+            name="executor",
+            description="聚焦单步落地执行、结果交付与收尾检查。",
+            allowed_tools=("search", "get_current_datetime", "mcp_filesystem_read"),
+            preferred_models=("doubao", "llama3.1"),
+            context_policy="task_focused",
+            trigger_conditions=("execute", "implement", "deliver"),
+        ),
+    }
 
     def normalize_context(self, payload: Optional[Dict[str, Any]]) -> Optional[SubagentContext]:
         return SubagentContext.from_dict(payload)
 
+    def get_profile(self, role: str) -> Optional[SubagentProfile]:
+        role = str(role or "").strip().lower()
+        return self.SUBAGENT_REGISTRY.get(role)
+
+    def list_profiles(self) -> List[SubagentProfile]:
+        return [self.SUBAGENT_REGISTRY[key] for key in sorted(self.SUBAGENT_REGISTRY.keys())]
+
+    def infer_roles_from_text(self, text: str) -> List[str]:
+        normalized = str(text or "").strip().lower()
+        if not normalized:
+            return []
+        roles: List[str] = []
+        for profile in self.list_profiles():
+            if any(trigger.lower() in normalized for trigger in profile.trigger_conditions):
+                if profile.name not in roles:
+                    roles.append(profile.name)
+        return roles
+
+    def build_runtime_contract(self) -> Dict[str, Any]:
+        profiles = self.list_profiles()
+        return {
+            "total_profiles": len(profiles),
+            "profiles": [
+                {
+                    "name": item.name,
+                    "description": item.description,
+                    "allowed_tools": list(item.allowed_tools),
+                    "preferred_models": list(item.preferred_models),
+                    "context_policy": item.context_policy,
+                    "trigger_conditions": list(item.trigger_conditions),
+                }
+                for item in profiles
+            ],
+        }
+
     def build_role_system_prompt(self, context: SubagentContext) -> str:
+        profile = self.get_profile(context.agent_role)
         role_instruction = ROLE_INSTRUCTIONS.get(
             context.agent_role,
             "聚焦当前分配职责，输出清晰的执行结果、风险和后续建议。",
         )
+        profile_text = ""
+        if profile is not None:
+            profile_text = (
+                f"该角色注册描述：{profile.description}。"
+                f"可用工具范围：{', '.join(profile.allowed_tools) if profile.allowed_tools else '未限制'}。"
+                f"上下文策略：{profile.context_policy}。"
+            )
         title = context.plan_item_title or "当前计划项"
         capability_text = ""
         if context.required_capabilities:
@@ -72,6 +186,7 @@ class SubagentRuntimeService:
             f"agent_id={context.agent_id}。"
             f"计划项：{title}。"
             f"{capability_text}"
+            f"{profile_text}"
             f"{role_instruction}"
             "不要泛化成全栈答复，优先给出该角色负责范围内的可执行结果。"
         )
