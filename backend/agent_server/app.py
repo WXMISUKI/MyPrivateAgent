@@ -4,13 +4,14 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 import logging
+import re
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from .bootstrap import init_database, load_environment
@@ -26,6 +27,23 @@ from .router_registry import get_api_routers
 
 
 logger = logging.getLogger(__name__)
+
+
+def _is_origin_allowed(origin: str, config: AgentServerConfig) -> bool:
+    normalized_origin = str(origin or "").strip().rstrip("/")
+    if not normalized_origin:
+        return False
+    allowed_origins = {item.strip().rstrip("/") for item in config.cors_allow_origins if item.strip()}
+    if normalized_origin in allowed_origins:
+        return True
+    pattern = str(config.cors_allow_origin_regex or "").strip()
+    if pattern:
+        try:
+            if re.fullmatch(pattern, normalized_origin):
+                return True
+        except re.error:
+            return False
+    return False
 
 def _build_dependency_overrides(config: AgentServerConfig) -> dict[object, object]:
     """Merge framework-level dependency overrides into one mapping."""
@@ -131,6 +149,34 @@ def create_app(
         expose_headers=list(app_config.cors_expose_headers),
         max_age=app_config.cors_max_age,
     )
+
+    @app.middleware("http")
+    async def cors_fallback_middleware(request: Request, call_next):
+        """Fallback CORS layer to guarantee ACAO/OPTIONS in constrained edge environments."""
+        origin = str(request.headers.get("origin") or "").strip().rstrip("/")
+        is_allowed = _is_origin_allowed(origin, app_config)
+
+        if request.method == "OPTIONS" and request.headers.get("access-control-request-method"):
+            response = Response(status_code=204)
+        else:
+            response = await call_next(request)
+
+        if is_allowed and origin:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Vary"] = "Origin"
+            if app_config.cors_allow_credentials:
+                response.headers["Access-Control-Allow-Credentials"] = "true"
+            response.headers["Access-Control-Expose-Headers"] = ", ".join(app_config.cors_expose_headers)
+            response.headers["Access-Control-Allow-Methods"] = ", ".join(app_config.cors_allow_methods)
+            requested_headers = request.headers.get("access-control-request-headers")
+            if requested_headers:
+                response.headers["Access-Control-Allow-Headers"] = requested_headers
+            else:
+                response.headers["Access-Control-Allow-Headers"] = ", ".join(app_config.cors_allow_headers)
+            response.headers["Access-Control-Max-Age"] = str(app_config.cors_max_age)
+
+        return response
+
     install_error_handlers(app)
 
     try:
