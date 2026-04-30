@@ -43,7 +43,6 @@
         <MessageList
           ref="messagesContainer"
           :messages="messages"
-          :is-loading="isLoading"
           :expanded-thinking="expandedThinking"
           :feedback-reasons="feedbackReasons"
           :feedback-reason-selections="feedbackReasonSelections"

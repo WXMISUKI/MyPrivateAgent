@@ -50,8 +50,13 @@ class StartupDiagnosticsService:
         status = "ok"
 
         if not env_path.exists():
-            status = "fail"
-            details.append("缺少项目根目录 .env 文件")
+            import os
+            has_env_vars = os.getenv("DEFAULT_MODEL") or os.getenv("ARK_API_KEY")
+            if has_env_vars:
+                details.append("未找到 .env 文件，但已通过环境变量注入配置")
+            else:
+                status = "fail"
+                details.append("缺少项目根目录 .env 文件")
         else:
             details.append(f".env 已存在: {env_path}")
 

@@ -1,14 +1,5 @@
 <template>
   <div class="chat-messages">
-    <div v-if="messages.length === 0 && !isLoading" class="empty-state">
-      <div class="empty-icon">💬</div>
-      <h2>开始新对话</h2>
-      <p>输入消息与 AI 助手开始对话</p>
-      <div class="command-hints">
-        <p>输入 <kbd>/</kbd> 打开快捷命令</p>
-      </div>
-    </div>
-
     <ChatMessageItem
       v-for="(msg, index) in messages"
       :key="msg.id || index"
@@ -44,10 +35,6 @@ defineProps({
   messages: {
     type: Array,
     default: () => []
-  },
-  isLoading: {
-    type: Boolean,
-    default: false
   },
   expandedThinking: {
     type: Object,
@@ -105,44 +92,5 @@ const emit = defineEmits([
   display: flex;
   flex-direction: column;
   gap: var(--space-lg);
-}
-
-.empty-state {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  color: var(--text-secondary);
-}
-
-.empty-icon {
-  font-size: 4rem;
-  margin-bottom: var(--space-lg);
-}
-
-.empty-state h2 {
-  font-size: 1.5rem;
-  color: var(--text-primary);
-  margin-bottom: var(--space-sm);
-}
-
-.command-hints {
-  margin-top: var(--space-lg);
-}
-
-.command-hints p {
-  font-size: 0.875rem;
-  color: var(--text-tertiary);
-}
-
-.command-hints kbd {
-  padding: 4px 8px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-primary);
-  border-radius: var(--radius-sm);
-  font-family: inherit;
-  font-size: 0.875rem;
 }
 </style>
