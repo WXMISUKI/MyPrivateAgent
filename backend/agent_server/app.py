@@ -120,6 +120,7 @@ def create_app(
         description=app_config.description,
         lifespan=_create_lifespan(app_config),
     )
+    app.add_middleware(RequestIDMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=list(app_config.cors_allow_origins),
@@ -130,7 +131,6 @@ def create_app(
         expose_headers=list(app_config.cors_expose_headers),
         max_age=app_config.cors_max_age,
     )
-    app.add_middleware(RequestIDMiddleware)
     install_error_handlers(app)
 
     try:
