@@ -41,6 +41,7 @@
           </div>
         </div>
         <MessageList
+          v-else
           ref="messagesContainer"
           :messages="messages"
           :expanded-thinking="expandedThinking"
