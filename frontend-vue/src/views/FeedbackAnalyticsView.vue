@@ -162,6 +162,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
+import { buildApiUrl } from '../config/apiBase'
 
 const router = useRouter()
 
@@ -205,7 +206,7 @@ async function fetchAnalytics() {
   loading.value = true
   errorMessage.value = ''
   try {
-    const response = await axios.get('/api/conversations/analytics/feedback', {
+    const response = await axios.get(buildApiUrl('/conversations/analytics/feedback'), {
       params: {
         days: windowDays.value,
         min_samples_for_candidate: minSamplesForCandidate.value

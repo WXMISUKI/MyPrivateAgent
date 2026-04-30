@@ -138,6 +138,7 @@ import { useConversationStore } from '../stores/conversation'
 import { usePlannerStore } from '../stores/planner'
 import { useAuthStore } from '../stores/auth'
 import axios from 'axios'
+import { buildApiUrl } from '../config/apiBase'
 
 const CommandPalette = defineAsyncComponent(() => import('../components/CommandPalette.vue'))
 const MessageList = defineAsyncComponent(() => import('../components/chat/MessageList.vue'))
@@ -657,7 +658,7 @@ onMounted(async () => {
   })
 
   try {
-    const response = await axios.get('/api/models')
+    const response = await axios.get(buildApiUrl('/models'))
     if (response.data && Array.isArray(response.data)) {
       availableModels.value = response.data
       const defaultModel = response.data.find(model => model.is_default)?.name

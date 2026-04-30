@@ -8,7 +8,12 @@
       "Bash(conda run *)",
       "Bash(npm run *)",
       "Bash(npx vite *)",
-      "Bash(npx vue-tsc *)"
+      "Bash(npx vue-tsc *)",
+      "Bash(grep -oP '\\(resolveApi|API_BASE_URL|baseURL|vercel\\\\.app|\"/api\"\\)[^;]{0,80}' index-DLnbdMg8.js)",
+      "Bash(grep -oE '\\(resolveApi|API_BASE_URL|baseURL|vercel\\\\.app|\"/api\"\\)[^;]{0,80}' index-DLnbdMg8.js)",
+      "Bash(grep -oE '.{0,30}API_BASE.{0,50}' index-I9PTUzpq.js)",
+      "Bash(grep -oE '.{0,20}baseURL.{0,60}' index-I9PTUzpq.js)",
+      "Bash(grep -oE '\"/api\"[^;]{0,100}' index-I9PTUzpq.js)"
     ]
   }
 }

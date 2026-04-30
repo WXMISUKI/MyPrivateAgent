@@ -72,6 +72,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
+import { buildApiUrl } from '../config/apiBase'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -89,8 +90,6 @@ const modeBannerText = computed(() => {
   }
   return '当前运行在 demo_guest 模式：框架默认会自动游客登录，登录页不是演示主入口。'
 })
-
-const API_BASE_URL = '/api'
 
 onMounted(async () => {
   await authStore.ensureRuntimeProfile()
@@ -126,7 +125,7 @@ async function handleRegister() {
   loading.value = true
 
   try {
-    await axios.post(`${API_BASE_URL}/auth/register`, {
+    await axios.post(buildApiUrl('/auth/register'), {
       username: username.value,
       password: password.value
     })
@@ -156,13 +155,13 @@ async function handleGuestLogin() {
   loading.value = true
 
   try {
-    const response = await axios.post(`${API_BASE_URL}/auth/guest`)
+    const response = await axios.post(buildApiUrl('/auth/guest'))
     console.log('[Login] Guest response:', response.data)
 
     const token = response.data.access_token
     localStorage.setItem('token', token)
 
-    const userResponse = await axios.get(`${API_BASE_URL}/auth/me`, {
+    const userResponse = await axios.get(buildApiUrl('/auth/me'), {
       headers: { Authorization: `Bearer ${token}` }
     })
     console.log('[Login] Guest user info:', userResponse.data)

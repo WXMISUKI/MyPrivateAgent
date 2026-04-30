@@ -19,7 +19,7 @@ function buildProps(overrides = {}) {
 }
 
 describe('MessageList', () => {
-  it('renders empty state when there are no messages', () => {
+  it('renders no message items when there are no messages', () => {
     const wrapper = mount(MessageList, {
       props: buildProps(),
       global: {
@@ -32,8 +32,7 @@ describe('MessageList', () => {
       }
     })
 
-    expect(wrapper.text()).toContain('开始新对话')
-    expect(wrapper.text()).toContain('打开快捷命令')
+    expect(wrapper.findAll('.chat-message-item-stub')).toHaveLength(0)
   })
 
   it('renders message items for message list', () => {

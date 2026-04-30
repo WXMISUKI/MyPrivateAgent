@@ -1,8 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import axios from 'axios'
-
-const API_BASE_URL = '/api'
+import { buildApiUrl } from '../config/apiBase'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref(null)
@@ -20,7 +19,7 @@ export const useAuthStore = defineStore('auth', () => {
       return runtimeProfile.value
     }
     try {
-      const response = await axios.get(`${API_BASE_URL}/runtime-profile`)
+      const response = await axios.get(buildApiUrl('/runtime-profile'))
       runtimeProfile.value = response.data
       authMode.value = response.data?.auth_mode || 'demo_guest'
     } catch (error) {
@@ -32,7 +31,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function hydrateCurrentUser(activeToken) {
-    const response = await axios.get(`${API_BASE_URL}/auth/me`, {
+    const response = await axios.get(buildApiUrl('/auth/me'), {
       headers: { Authorization: `Bearer ${activeToken}` }
     })
     user.value = response.data
@@ -42,7 +41,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function loginGuest() {
     try {
-      const guestResponse = await axios.post(`${API_BASE_URL}/auth/guest`)
+      const guestResponse = await axios.post(buildApiUrl('/auth/guest'))
       const receivedToken = guestResponse.data?.access_token
       if (!receivedToken) {
         return false
@@ -98,7 +97,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function login(username, password) {
     try {
-      const loginResponse = await axios.post(`${API_BASE_URL}/auth/login`, {
+      const loginResponse = await axios.post(buildApiUrl('/auth/login'), {
         username,
         password
       }, {
@@ -130,7 +129,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function logout() {
     try {
-      await axios.post(`${API_BASE_URL}/auth/logout`, {}, {
+      await axios.post(buildApiUrl('/auth/logout'), {}, {
         headers: { Authorization: `Bearer ${token.value}` }
       })
     } catch (error) {

@@ -1,17 +1,8 @@
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
+import { getApiBaseUrl } from '../config/apiBase'
 
-function resolveApiBaseUrl() {
-  if (import.meta.env.VITE_API_BASE_URL) {
-    return import.meta.env.VITE_API_BASE_URL
-  }
-  if (typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')) {
-    return 'https://myprivateagent-backend-production.up.railway.app/api'
-  }
-  return '/api'
-}
-
-const API_BASE_URL = resolveApiBaseUrl()
+const API_BASE_URL = getApiBaseUrl()
 
 function createAxiosInstance() {
   const authStore = useAuthStore()

@@ -4,6 +4,7 @@ import storage from '../services/storage'
 import { createStreamingEventParser, normalizeAgentEvent } from '../services/agentEvents'
 import { usePlannerStore } from './planner'
 import axios from 'axios'
+import { buildApiUrl } from '../config/apiBase'
 
 export const useConversationStore = defineStore('conversation', () => {
   const plannerStore = usePlannerStore()
@@ -299,7 +300,7 @@ export const useConversationStore = defineStore('conversation', () => {
 
     try {
       const response = await axios.post(
-        `/api/conversations/${conversationId}/feedback`,
+        buildApiUrl(`/conversations/${conversationId}/feedback`),
         payload,
         {
           headers: getAuthHeaders()
@@ -406,7 +407,7 @@ export const useConversationStore = defineStore('conversation', () => {
       }
 
       const xhr = new XMLHttpRequest()
-      xhr.open('POST', '/api/chat', true)
+      xhr.open('POST', buildApiUrl('/chat'), true)
       xhr.setRequestHeader('Content-Type', 'application/json')
       const token = localStorage.getItem('token')
       if (token) {
@@ -667,7 +668,7 @@ export const useConversationStore = defineStore('conversation', () => {
 
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest()
-      xhr.open('POST', '/api/chat', true)
+      xhr.open('POST', buildApiUrl('/chat'), true)
       xhr.setRequestHeader('Content-Type', 'application/json')
       const token = localStorage.getItem('token')
       if (token) {

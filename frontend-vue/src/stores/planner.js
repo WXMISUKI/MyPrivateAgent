@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import axios from 'axios'
+import { buildApiUrl } from '../config/apiBase'
 
 export const usePlannerStore = defineStore('planner', () => {
   const plans = ref([])
@@ -26,7 +27,7 @@ export const usePlannerStore = defineStore('planner', () => {
   async function loadPlans({ conversationId = null } = {}) {
     isLoading.value = true
     try {
-      const response = await axios.get('/api/plans', {
+      const response = await axios.get(buildApiUrl('/plans'), {
         params: conversationId ? { conversation_id: conversationId } : {},
         headers: getAuthHeaders()
       })
@@ -41,7 +42,7 @@ export const usePlannerStore = defineStore('planner', () => {
   }
 
   async function createPlan({ objective, conversationId = null, items = [] }) {
-    const response = await axios.post('/api/plans', {
+    const response = await axios.post(buildApiUrl('/plans'), {
       objective,
       conversation_id: conversationId,
       source: 'manual',
@@ -56,7 +57,7 @@ export const usePlannerStore = defineStore('planner', () => {
   async function generatePlan({ objective, conversationId = null }) {
     isGenerating.value = true
     try {
-      const response = await axios.post('/api/plans/generate', {
+      const response = await axios.post(buildApiUrl('/plans/generate'), {
         objective,
         conversation_id: conversationId,
         source: 'chat_generate'
@@ -71,7 +72,7 @@ export const usePlannerStore = defineStore('planner', () => {
   }
 
   async function updatePlan(planId, payload) {
-    const response = await axios.patch(`/api/plans/${planId}`, payload, {
+    const response = await axios.patch(buildApiUrl(`/plans/${planId}`), payload, {
       headers: getAuthHeaders()
     })
     upsertPlan(response.data)
@@ -79,7 +80,7 @@ export const usePlannerStore = defineStore('planner', () => {
   }
 
   async function addPlanItem(planId, payload) {
-    const response = await axios.post(`/api/plans/${planId}/items`, payload, {
+    const response = await axios.post(buildApiUrl(`/plans/${planId}/items`), payload, {
       headers: getAuthHeaders()
     })
     upsertPlan(response.data)
@@ -87,7 +88,7 @@ export const usePlannerStore = defineStore('planner', () => {
   }
 
   async function updatePlanItem(planId, itemId, payload) {
-    const response = await axios.patch(`/api/plans/${planId}/items/${itemId}`, payload, {
+    const response = await axios.patch(buildApiUrl(`/plans/${planId}/items/${itemId}`), payload, {
       headers: getAuthHeaders()
     })
     upsertPlan(response.data)
@@ -95,7 +96,7 @@ export const usePlannerStore = defineStore('planner', () => {
   }
 
   async function deletePlanItem(planId, itemId) {
-    const response = await axios.delete(`/api/plans/${planId}/items/${itemId}`, {
+    const response = await axios.delete(buildApiUrl(`/plans/${planId}/items/${itemId}`), {
       headers: getAuthHeaders()
     })
     upsertPlan(response.data)

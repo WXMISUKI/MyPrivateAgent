@@ -117,10 +117,9 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
+import { buildApiUrl } from '../config/apiBase'
 
 const router = useRouter()
-
-const API_BASE_URL = '/api'
 
 function getAuthHeaders() {
   const token = localStorage.getItem('token')
@@ -178,7 +177,7 @@ const filteredItems = computed(() => {
 
 async function fetchStats() {
   try {
-    const response = await axios.get(`${API_BASE_URL}/learnings/stats`, { headers: getAuthHeaders() })
+    const response = await axios.get(buildApiUrl('/learnings/stats'), { headers: getAuthHeaders() })
     stats.value = {
       totalLearnings: response.data.total_learnings,
       pendingLearnings: response.data.pending_learnings,
@@ -193,7 +192,7 @@ async function fetchStats() {
 async function fetchLearnings() {
   try {
     loading.value = true
-    const response = await axios.get(`${API_BASE_URL}/learnings`, { headers: getAuthHeaders() })
+    const response = await axios.get(buildApiUrl('/learnings'), { headers: getAuthHeaders() })
     learnings.value = response.data
   } catch (error) {
     console.error('[Learnings] Failed to fetch learnings:', error)
@@ -205,7 +204,7 @@ async function fetchLearnings() {
 async function fetchErrors() {
   try {
     loading.value = true
-    const response = await axios.get(`${API_BASE_URL}/learnings/errors`, { headers: getAuthHeaders() })
+    const response = await axios.get(buildApiUrl('/learnings/errors'), { headers: getAuthHeaders() })
     errors.value = response.data
   } catch (error) {
     console.error('[Learnings] Failed to fetch errors:', error)
@@ -217,7 +216,7 @@ async function fetchErrors() {
 async function fetchFeatures() {
   try {
     loading.value = true
-    const response = await axios.get(`${API_BASE_URL}/learnings/features`, { headers: getAuthHeaders() })
+    const response = await axios.get(buildApiUrl('/learnings/features'), { headers: getAuthHeaders() })
     features.value = response.data
   } catch (error) {
     console.error('[Learnings] Failed to fetch features:', error)

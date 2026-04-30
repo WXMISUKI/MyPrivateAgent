@@ -87,6 +87,7 @@ import { ref, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import axios from 'axios'
+import { buildApiUrl } from '../config/apiBase'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -115,8 +116,8 @@ async function performSearch() {
     const headers = authStore.getAuthHeaders()
 
     const [convResponse, msgResponse] = await Promise.all([
-      axios.get(`/api/conversations/search?q=${encodeURIComponent(searchQuery.value)}`, { headers }),
-      axios.get(`/api/conversations/search/messages?q=${encodeURIComponent(searchQuery.value)}`, { headers })
+      axios.get(buildApiUrl(`/conversations/search?q=${encodeURIComponent(searchQuery.value)}`), { headers }),
+      axios.get(buildApiUrl(`/conversations/search/messages?q=${encodeURIComponent(searchQuery.value)}`), { headers })
     ])
 
     results.value = convResponse.data

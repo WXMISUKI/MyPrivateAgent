@@ -172,10 +172,9 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
+import { buildApiUrl } from '../config/apiBase'
 
 const router = useRouter()
-
-const API_BASE_URL = '/api'
 
 function getAuthHeaders() {
   const token = localStorage.getItem('token')
@@ -209,7 +208,7 @@ function goBack() {
 async function fetchSkills() {
   try {
     loading.value = true
-    const response = await axios.get(`${API_BASE_URL}/skills`, { headers: getAuthHeaders() })
+    const response = await axios.get(buildApiUrl('/skills'), { headers: getAuthHeaders() })
     skills.value = response.data.skills || []
   } catch (error) {
     console.error('[Skills] Failed to fetch:', error)
@@ -220,7 +219,7 @@ async function fetchSkills() {
 
 async function toggleSkill(skill) {
   try {
-    const response = await axios.post(`${API_BASE_URL}/skills/${skill.id}/toggle`, {}, { headers: getAuthHeaders() })
+    const response = await axios.post(buildApiUrl(`/skills/${skill.id}/toggle`), {}, { headers: getAuthHeaders() })
     const index = skills.value.findIndex(s => s.id === skill.id)
     if (index !== -1) {
       skills.value[index].is_enabled = response.data.is_enabled
@@ -234,7 +233,7 @@ async function deleteSkill(skill) {
   if (!confirm(`确定要删除 Skill "${skill.name}" 吗？`)) return
 
   try {
-    await axios.delete(`${API_BASE_URL}/skills/${skill.id}`, { headers: getAuthHeaders() })
+    await axios.delete(buildApiUrl(`/skills/${skill.id}`), { headers: getAuthHeaders() })
     skills.value = skills.value.filter(s => s.id !== skill.id)
   } catch (error) {
     console.error('[Skills] Delete failed:', error)
@@ -244,7 +243,7 @@ async function deleteSkill(skill) {
 
 async function previewSkill(skill) {
   try {
-    const response = await axios.get(`${API_BASE_URL}/skills/${skill.id}/content`, { headers: getAuthHeaders() })
+    const response = await axios.get(buildApiUrl(`/skills/${skill.id}/content`), { headers: getAuthHeaders() })
     previewingSkill.value = response.data
   } catch (error) {
     console.error('[Skills] Preview failed:', error)
@@ -264,7 +263,7 @@ async function handleFileUpload(event) {
 
   try {
     uploadStatus.value = { type: 'info', message: '上传中...' }
-    const response = await axios.post(`${API_BASE_URL}/skills`, formData, {
+    const response = await axios.post(buildApiUrl('/skills'), formData, {
       headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' }
     })
 
@@ -302,7 +301,7 @@ async function createSkill() {
 
 请以 Markdown 格式返回。`
 
-    const response = await axios.post(`${API_BASE_URL}/skills/create`, {
+    const response = await axios.post(buildApiUrl('/skills/create'), {
       name: newSkill.value.name,
       description: newSkill.value.description,
       prompt: prompt
