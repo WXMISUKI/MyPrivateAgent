@@ -7,7 +7,6 @@ import logging
 import re
 
 from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -139,20 +138,9 @@ def create_app(
         lifespan=_create_lifespan(app_config),
     )
     app.add_middleware(RequestIDMiddleware)
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=list(app_config.cors_allow_origins),
-        allow_origin_regex=app_config.cors_allow_origin_regex,
-        allow_credentials=app_config.cors_allow_credentials,
-        allow_methods=list(app_config.cors_allow_methods),
-        allow_headers=list(app_config.cors_allow_headers),
-        expose_headers=list(app_config.cors_expose_headers),
-        max_age=app_config.cors_max_age,
-    )
-
     @app.middleware("http")
     async def cors_fallback_middleware(request: Request, call_next):
-        """Fallback CORS layer to guarantee ACAO/OPTIONS in constrained edge environments."""
+        """Primary CORS layer to guarantee stable behavior in edge environments."""
         origin = str(request.headers.get("origin") or "").strip().rstrip("/")
         is_allowed = _is_origin_allowed(origin, app_config)
 
