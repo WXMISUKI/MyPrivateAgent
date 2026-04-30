@@ -123,9 +123,12 @@ def create_app(
     app.add_middleware(
         CORSMiddleware,
         allow_origins=list(app_config.cors_allow_origins),
+        allow_origin_regex=app_config.cors_allow_origin_regex,
         allow_credentials=app_config.cors_allow_credentials,
         allow_methods=list(app_config.cors_allow_methods),
         allow_headers=list(app_config.cors_allow_headers),
+        expose_headers=list(app_config.cors_expose_headers),
+        max_age=app_config.cors_max_age,
     )
     app.add_middleware(RequestIDMiddleware)
     install_error_handlers(app)

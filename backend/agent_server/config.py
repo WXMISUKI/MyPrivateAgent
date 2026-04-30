@@ -111,9 +111,12 @@ class AgentServerConfig:
     bootstrap: AgentServerBootstrapConfig = field(default_factory=AgentServerBootstrapConfig)
     ui: AgentServerUIConfig = field(default_factory=AgentServerUIConfig)
     cors_allow_origins: tuple[str, ...] = ("http://localhost:5173", "http://localhost:8000")
+    cors_allow_origin_regex: str | None = None
     cors_allow_credentials: bool = True
-    cors_allow_methods: tuple[str, ...] = ("*",)
-    cors_allow_headers: tuple[str, ...] = ("*",)
+    cors_allow_methods: tuple[str, ...] = ("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+    cors_allow_headers: tuple[str, ...] = ("Authorization", "Content-Type", "X-Requested-With")
+    cors_expose_headers: tuple[str, ...] = ("X-Request-Id",)
+    cors_max_age: int = 600
     dependency_overrides: Mapping[DependencyCallable, DependencyCallable] = field(default_factory=dict)
     auth: AgentServerAuthConfig = field(default_factory=AgentServerAuthConfig)
 
@@ -122,11 +125,12 @@ def get_server_config_for_preset(preset: AgentServerPreset = DEFAULT_SERVER_PRES
     """Return a reusable server config for a named deployment preset."""
     if preset == PRESET_FULL_STACK:
         try:
-            from config import CORS_ALLOWED_ORIGINS
+            from config import CORS_ALLOWED_ORIGINS, CORS_ALLOWED_ORIGIN_REGEX
         except ModuleNotFoundError:
-            from backend.config import CORS_ALLOWED_ORIGINS
+            from backend.config import CORS_ALLOWED_ORIGINS, CORS_ALLOWED_ORIGIN_REGEX
         return AgentServerConfig(
             cors_allow_origins=tuple(CORS_ALLOWED_ORIGINS),
+            cors_allow_origin_regex=CORS_ALLOWED_ORIGIN_REGEX,
             cors_allow_credentials=True,
         )
 

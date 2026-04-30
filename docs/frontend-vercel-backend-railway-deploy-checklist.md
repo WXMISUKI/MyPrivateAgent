@@ -19,3 +19,12 @@
 - Railway 后端允许来自 Vercel 域名的 CORS。
 - `/api/*` 路由可正常响应 `OPTIONS` 预检请求。
 - 关键接口自检：`/api/models`、`/api/auth/me`、`/api/chat`。
+
+## 5. Railway CORS 环境变量（建议）
+- `CORS_ALLOWED_ORIGINS`:
+  - `https://my-private-agent.vercel.app,http://localhost:5173,http://localhost:8000`
+- `CORS_ALLOWED_ORIGIN_REGEX`:
+  - `https://.*\\.vercel\\.app`
+- 说明:
+  - `CORS_ALLOWED_ORIGINS` 用于生产域名精确匹配。
+  - `CORS_ALLOWED_ORIGIN_REGEX` 用于 Preview 域名匹配（每次预览子域不同）。
