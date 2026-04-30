@@ -9,10 +9,10 @@ from dotenv import load_dotenv
 from sqlalchemy import inspect, text
 
 try:
-    from config import DB_HOST, DB_MODE, DB_NAME, DB_PASSWORD, DB_PORT, DB_USER, DATABASE_URL, LOCAL_DATA_DIR, SQLITE_PATH
+    from config import DB_HOST, DB_MODE, DB_NAME, DB_PASSWORD, DB_PORT, DB_USER, DATABASE_URL, LOCAL_DATA_DIR, SQLITE_PATH, PROJECT_ROOT
     from database import Base, engine
 except ModuleNotFoundError:  # pragma: no cover - package import compatibility
-    from backend.config import DB_HOST, DB_MODE, DB_NAME, DB_PASSWORD, DB_PORT, DB_USER, DATABASE_URL, LOCAL_DATA_DIR, SQLITE_PATH
+    from backend.config import DB_HOST, DB_MODE, DB_NAME, DB_PASSWORD, DB_PORT, DB_USER, DATABASE_URL, LOCAL_DATA_DIR, SQLITE_PATH, PROJECT_ROOT
     from backend.database import Base, engine
 
 
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 def load_environment() -> Path:
     """Load environment variables from the project root .env file."""
-    env_path = Path(__file__).resolve().parents[2] / ".env"
+    env_path = PROJECT_ROOT / ".env"
     load_dotenv(dotenv_path=env_path)
     logger.info("已加载环境变量文件: %s", env_path)
     return env_path

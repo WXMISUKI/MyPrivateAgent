@@ -11,6 +11,7 @@ RUN pip install --no-cache-dir -r /app/requirements.txt
 
 COPY backend /app
 
+ENV PROJECT_ROOT=/app
 ENV PORT=8000
 
 EXPOSE ${PORT}

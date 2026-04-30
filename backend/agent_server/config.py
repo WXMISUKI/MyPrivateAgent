@@ -13,7 +13,10 @@ DependencyCallable = Callable[..., Any]
 AgentServerPreset = Literal["full_stack", "api_only", "embedded", "learning_demo", "weather_demo", "knowledge_demo"]
 AgentServerUiMode = Literal["spa", "disabled"]
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+try:
+    from config import PROJECT_ROOT
+except ModuleNotFoundError:
+    from backend.config import PROJECT_ROOT
 DEFAULT_ROUTE_GROUPS = (
     "auth",
     "core",

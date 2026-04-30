@@ -3,13 +3,29 @@ import json
 from pathlib import Path
 from dotenv import load_dotenv
 
-# 加载环境变量 - 确保从项目根目录加载
-project_root = Path(__file__).parent.parent
-env_path = project_root / ".env"
-load_dotenv(dotenv_path=env_path)
 
-# 项目根目录
-PROJECT_ROOT = Path(__file__).parent.parent
+def _resolve_project_root() -> Path:
+    """Resolve the project root directory.
+
+    Supports three scenarios:
+    - PROJECT_ROOT env var is set (e.g. in Dockerfile): use it directly
+    - Running from project root (local dev): parent.parent has a 'backend' dir
+    - Running inside Docker container where backend/ was copied to /app: use parent
+    """
+    env_root = os.getenv("PROJECT_ROOT")
+    if env_root:
+        return Path(env_root).resolve()
+    candidate = Path(__file__).resolve().parent.parent
+    if (candidate / "backend").is_dir():
+        return candidate
+    return Path(__file__).resolve().parent
+
+
+PROJECT_ROOT = _resolve_project_root()
+
+# 加载环境变量
+env_path = PROJECT_ROOT / ".env"
+load_dotenv(dotenv_path=env_path)
 
 # 存储 / 数据库配置
 DB_MODE = os.getenv("DB_MODE", "sqlite").strip().lower() or "sqlite"
