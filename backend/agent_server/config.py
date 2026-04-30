@@ -61,6 +61,19 @@ PRESET_KNOWLEDGE_DEMO = "knowledge_demo"
 DEFAULT_SERVER_PRESET: AgentServerPreset = PRESET_FULL_STACK
 
 
+def _load_cors_settings() -> dict[str, object]:
+    """Load shared CORS settings from environment-backed backend config."""
+    try:
+        from config import CORS_ALLOWED_ORIGINS, CORS_ALLOWED_ORIGIN_REGEX
+    except ModuleNotFoundError:
+        from backend.config import CORS_ALLOWED_ORIGINS, CORS_ALLOWED_ORIGIN_REGEX
+    return {
+        "cors_allow_origins": tuple(CORS_ALLOWED_ORIGINS),
+        "cors_allow_origin_regex": CORS_ALLOWED_ORIGIN_REGEX,
+        "cors_allow_credentials": True,
+    }
+
+
 @dataclass(frozen=True)
 class AgentServerBootstrapConfig:
     """Startup bootstrap toggles for reusable deployments."""
@@ -124,20 +137,15 @@ class AgentServerConfig:
 def get_server_config_for_preset(preset: AgentServerPreset = DEFAULT_SERVER_PRESET) -> AgentServerConfig:
     """Return a reusable server config for a named deployment preset."""
     if preset == PRESET_FULL_STACK:
-        try:
-            from config import CORS_ALLOWED_ORIGINS, CORS_ALLOWED_ORIGIN_REGEX
-        except ModuleNotFoundError:
-            from backend.config import CORS_ALLOWED_ORIGINS, CORS_ALLOWED_ORIGIN_REGEX
         return AgentServerConfig(
-            cors_allow_origins=tuple(CORS_ALLOWED_ORIGINS),
-            cors_allow_origin_regex=CORS_ALLOWED_ORIGIN_REGEX,
-            cors_allow_credentials=True,
+            **_load_cors_settings(),
         )
 
     if preset == PRESET_API_ONLY:
         return AgentServerConfig(
             route_groups=API_ONLY_ROUTE_GROUPS,
             ui=AgentServerUIConfig(enabled=False, mode="disabled"),
+            **_load_cors_settings(),
         )
 
     if preset == PRESET_EMBEDDED:
@@ -148,6 +156,7 @@ def get_server_config_for_preset(preset: AgentServerPreset = DEFAULT_SERVER_PRES
                 init_database=False,
             ),
             ui=AgentServerUIConfig(enabled=False, mode="disabled"),
+            **_load_cors_settings(),
         )
 
     if preset == PRESET_LEARNING_DEMO:
@@ -156,6 +165,7 @@ def get_server_config_for_preset(preset: AgentServerPreset = DEFAULT_SERVER_PRES
             description="带自学习与运行时知识注入的通用 Agent Demo",
             route_groups=LEARNING_DEMO_ROUTE_GROUPS,
             ui=AgentServerUIConfig(enabled=False, mode="disabled"),
+            **_load_cors_settings(),
         )
 
     if preset == PRESET_WEATHER_DEMO:
@@ -164,6 +174,7 @@ def get_server_config_for_preset(preset: AgentServerPreset = DEFAULT_SERVER_PRES
             description="面向天气与实时查询场景的通用 Agent Demo",
             route_groups=WEATHER_DEMO_ROUTE_GROUPS,
             ui=AgentServerUIConfig(mode="spa"),
+            **_load_cors_settings(),
         )
 
     if preset == PRESET_KNOWLEDGE_DEMO:
@@ -172,6 +183,7 @@ def get_server_config_for_preset(preset: AgentServerPreset = DEFAULT_SERVER_PRES
             description="面向知识问答与学习治理场景的通用 Agent Demo",
             route_groups=KNOWLEDGE_DEMO_ROUTE_GROUPS,
             ui=AgentServerUIConfig(mode="spa"),
+            **_load_cors_settings(),
         )
 
     raise ValueError(f"Unsupported agent server preset: {preset}")
