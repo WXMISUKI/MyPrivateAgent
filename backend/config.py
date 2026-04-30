@@ -90,12 +90,20 @@ def _is_default_secret_key(key: str) -> bool:
     return key.strip() in _DEFAULT_SECRET_KEYS
 
 
+def _normalize_origin(origin: str) -> str:
+    value = origin.strip().strip('"').strip("'")
+    return value.rstrip("/")
+
+
 CORS_ALLOWED_ORIGINS: list[str] = [
-    origin.strip()
-    for origin in os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:8000").split(",")
-    if origin.strip()
+    _normalize_origin(origin)
+    for origin in os.getenv(
+        "CORS_ALLOWED_ORIGINS",
+        "http://localhost:5173,http://localhost:8000",
+    ).split(",")
+    if _normalize_origin(origin)
 ]
-CORS_ALLOWED_ORIGIN_REGEX = os.getenv("CORS_ALLOWED_ORIGIN_REGEX", "").strip() or None
+CORS_ALLOWED_ORIGIN_REGEX = os.getenv("CORS_ALLOWED_ORIGIN_REGEX", "").strip().strip('"').strip("'") or None
 
 RATE_LIMIT_DEFAULT = os.getenv("RATE_LIMIT_DEFAULT", "60/minute")
 RATE_LIMIT_CHAT = os.getenv("RATE_LIMIT_CHAT", "20/minute")

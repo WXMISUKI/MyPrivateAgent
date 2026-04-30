@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException
+import re
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
 
@@ -9,6 +10,7 @@ try:
     from services.remediation_status_service import get_remediation_status_service
     from database import get_db
     from schemas_runtime_surface import RuntimeSurfaceUpdateRequest
+    from config import CORS_ALLOWED_ORIGINS, CORS_ALLOWED_ORIGIN_REGEX
 except ModuleNotFoundError:  # pragma: no cover - package import compatibility
     from backend.services.startup_diagnostics_service import get_startup_diagnostics_service
     from backend.services.runtime_surface_service import get_runtime_surface_service
@@ -16,6 +18,7 @@ except ModuleNotFoundError:  # pragma: no cover - package import compatibility
     from backend.services.remediation_status_service import get_remediation_status_service
     from backend.database import get_db
     from backend.schemas_runtime_surface import RuntimeSurfaceUpdateRequest
+    from backend.config import CORS_ALLOWED_ORIGINS, CORS_ALLOWED_ORIGIN_REGEX
 
 
 router = APIRouter(prefix="/api", tags=["系统"])
@@ -58,6 +61,38 @@ def readiness(db: Session = Depends(get_db)):
 def health_check():
     """轻量健康检查与启动诊断摘要。"""
     return get_startup_diagnostics_service().collect_report()
+
+
+@router.get("/health/cors")
+def cors_diagnostics(request: Request):
+    """Return effective CORS settings and match result for current request Origin."""
+    origin = str(request.headers.get("origin") or "").strip()
+    allowed_origins = [str(item).strip().rstrip("/") for item in CORS_ALLOWED_ORIGINS if str(item).strip()]
+    origin_regex = str(CORS_ALLOWED_ORIGIN_REGEX or "").strip() or None
+
+    exact_match = origin.rstrip("/") in allowed_origins if origin else False
+    regex_match = False
+    regex_error = None
+    if origin and origin_regex:
+        try:
+            regex_match = re.fullmatch(origin_regex, origin) is not None
+        except re.error as exc:
+            regex_error = str(exc)
+
+    return {
+        "request_origin": origin or None,
+        "allow_credentials": True,
+        "configured_allow_origins": allowed_origins,
+        "configured_allow_origin_regex": origin_regex,
+        "matched_by_exact_origin": exact_match,
+        "matched_by_regex": regex_match,
+        "is_allowed": bool(exact_match or regex_match),
+        "regex_error": regex_error,
+        "preflight_headers": {
+            "access-control-request-method": request.headers.get("access-control-request-method"),
+            "access-control-request-headers": request.headers.get("access-control-request-headers"),
+        },
+    }
 
 
 @router.get("/runtime-profile")
