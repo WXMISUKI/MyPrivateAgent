@@ -149,6 +149,8 @@ def create_app(
         else:
             response = await call_next(request)
 
+        response.headers["X-Cors-Debug"] = f"origin={'1' if bool(origin) else '0'};allowed={'1' if is_allowed else '0'}"
+
         if is_allowed and origin:
             response.headers["Access-Control-Allow-Origin"] = origin
             response.headers["Vary"] = "Origin"
