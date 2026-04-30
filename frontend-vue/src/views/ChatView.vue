@@ -1,12 +1,27 @@
 <template>
   <div class="chat-container">
     <div class="chat-header">
-      <div class="model-selector">
-        <select v-model="selectedModel" @change="handleModelChange" class="model-select">
-          <option v-for="model in availableModels" :key="model.name" :value="model.name">
-            {{ model.display_name }}
-          </option>
-        </select>
+      <div class="model-selector" ref="modelSelectorRef">
+        <button class="model-trigger" @click="modelDropdownOpen = !modelDropdownOpen">
+          <span class="model-name">{{ currentModelDisplay }}</span>
+          <span class="model-provider" v-if="currentModelProvider">{{ currentModelProvider }}</span>
+          <span class="dropdown-arrow">{{ modelDropdownOpen ? '▲' : '▼' }}</span>
+        </button>
+        <div v-if="modelDropdownOpen" class="model-dropdown">
+          <div
+            v-for="model in availableModels"
+            :key="model.name"
+            class="model-option"
+            :class="{ active: selectedModel === model.name, unavailable: model.available === false }"
+            @click="selectModel(model)"
+          >
+            <span class="option-dot" :class="{ online: model.available !== false }"></span>
+            <div class="option-info">
+              <span class="option-name">{{ model.display_name }}</span>
+              <span class="option-provider">{{ model.provider_label || model.provider || '' }}</span>
+            </div>
+          </div>
+        </div>
       </div>
       <button v-if="showPlannerConsole" class="planner-toggle-btn" @click="plannerCollapsed = !plannerCollapsed">
         {{ plannerCollapsed ? '打开 Planner' : '隐藏 Planner' }}
@@ -15,6 +30,16 @@
 
     <div class="chat-body">
       <div class="chat-main">
+        <div v-if="!messages.length && !isLoading" class="empty-state">
+          <div class="empty-icon">💬</div>
+          <h2 class="empty-title">开始新对话</h2>
+          <p class="empty-desc">输入你的问题，我会尽力帮助你。支持多轮对话、工具调用和计划执行。</p>
+          <div class="empty-hints">
+            <button class="hint-chip" @click="inputMessage = '你好，你能帮我做什么？'">你能帮我做什么？</button>
+            <button class="hint-chip" @click="inputMessage = '今天天气怎么样？'">查询天气</button>
+            <button class="hint-chip" @click="inputMessage = '帮我制定一个学习计划'">制定计划</button>
+          </div>
+        </div>
         <MessageList
           ref="messagesContainer"
           :messages="messages"
@@ -136,6 +161,8 @@ const plannerDraftObjective = ref('')
 const newPlanItemTitle = ref('')
 const plannerError = ref('')
 const availableModels = ref([])
+const modelDropdownOpen = ref(false)
+const modelSelectorRef = ref(null)
 
 const isLoading = computed(() => conversationStore.isLoading)
 const feedbackReasons = computed(() => conversationStore.feedbackReasons || [])
@@ -166,6 +193,23 @@ const currentModelName = computed(() => {
   const conv = conversationStore.currentConversation
   return conv?.modelName || 'doubao'
 })
+
+const currentModelDisplay = computed(() => {
+  const model = availableModels.value.find(m => m.name === selectedModel.value)
+  return model?.display_name || selectedModel.value
+})
+
+const currentModelProvider = computed(() => {
+  const model = availableModels.value.find(m => m.name === selectedModel.value)
+  return model?.provider_label || model?.provider || ''
+})
+
+function selectModel(model) {
+  if (model.available === false) return
+  selectedModel.value = model.name
+  modelDropdownOpen.value = false
+  handleModelChange()
+}
 
 watch(currentModelName, (newModel) => {
   if (newModel && newModel !== selectedModel.value) {
@@ -606,6 +650,12 @@ watch(inputMessage, () => {
 onMounted(async () => {
   scrollToBottom()
 
+  document.addEventListener('click', (e) => {
+    if (modelSelectorRef.value && !modelSelectorRef.value.contains(e.target)) {
+      modelDropdownOpen.value = false
+    }
+  })
+
   try {
     const response = await axios.get('/api/models')
     if (response.data && Array.isArray(response.data)) {
@@ -679,9 +729,107 @@ watch(inputMessage, (value) => {
 }
 
 .model-selector {
+  position: relative;
+}
+
+.model-trigger {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.model-trigger:hover {
+  border-color: var(--primary);
+}
+
+.model-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.model-provider {
+  font-size: 0.7rem;
+  color: var(--text-tertiary);
+  padding: 1px 6px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+}
+
+.dropdown-arrow {
+  font-size: 0.6rem;
+  color: var(--text-tertiary);
+  margin-left: 2px;
+}
+
+.model-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 240px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 100;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.model-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.model-option:hover {
+  background: var(--bg-secondary);
+}
+
+.model-option.active {
+  background: rgba(var(--primary-rgb, 99, 102, 241), 0.1);
+}
+
+.model-option.unavailable {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.option-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #6b7280;
+  flex-shrink: 0;
+}
+
+.option-dot.online {
+  background: #22c55e;
+}
+
+.option-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.option-name {
+  font-size: 0.875rem;
+  color: var(--text-primary);
+}
+
+.option-provider {
+  font-size: 0.7rem;
+  color: var(--text-tertiary);
 }
 
 .planner-toggle-btn,
@@ -696,22 +844,6 @@ watch(inputMessage, (value) => {
 .planner-toggle-btn {
   padding: var(--space-xs) var(--space-md);
   font-size: var(--text-sm);
-}
-
-.model-select {
-  padding: var(--space-xs) var(--space-md);
-  font-size: var(--text-sm);
-  color: var(--text-primary);
-  background: var(--bg-surface);
-  border: 1px solid var(--border-primary);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  outline: none;
-  min-width: 150px;
-}
-
-.model-select:focus {
-  border-color: var(--primary);
 }
 
 .chat-input-area {
@@ -807,5 +939,59 @@ watch(inputMessage, (value) => {
   .chat-body {
     flex-direction: column;
   }
+}
+
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--text-secondary);
+  padding: var(--space-xl);
+}
+
+.empty-icon {
+  font-size: 3rem;
+  opacity: 0.5;
+}
+
+.empty-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.empty-desc {
+  font-size: 0.875rem;
+  text-align: center;
+  max-width: 400px;
+  line-height: 1.5;
+}
+
+.empty-hints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+  justify-content: center;
+}
+
+.hint-chip {
+  padding: 8px 16px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.hint-chip:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+  background: rgba(var(--primary-rgb, 99, 102, 241), 0.08);
 }
 </style>

@@ -6,9 +6,9 @@ from dataclasses import dataclass
 from typing import Iterable, Sequence
 
 try:
-    from routers import auth, chat, conversations, health, learnings, mcp, memory, permissions, plans, skills
+    from routers import auth, chat, conversations, health, learnings, mcp, memory, permissions, plans, providers, skills
 except ModuleNotFoundError:  # pragma: no cover - package import compatibility
-    from backend.routers import auth, chat, conversations, health, learnings, mcp, memory, permissions, plans, skills
+    from backend.routers import auth, chat, conversations, health, learnings, mcp, memory, permissions, plans, providers, skills
 
 
 @dataclass(frozen=True)
@@ -23,6 +23,7 @@ class RouterRegistration:
 ROUTER_REGISTRATIONS = (
     RouterRegistration(name="auth", groups=("auth",), router=auth.router),
     RouterRegistration(name="health", groups=("core",), router=health.router),
+    RouterRegistration(name="providers", groups=("core",), router=providers.router),
     RouterRegistration(name="conversations", groups=("core",), router=conversations.router),
     RouterRegistration(name="chat", groups=("core",), router=chat.router),
     RouterRegistration(name="skills", groups=("skills",), router=skills.router),

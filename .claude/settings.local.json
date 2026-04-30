@@ -5,7 +5,10 @@
       "Bash(python -c \"from alembic.config import Config; c = Config\\('alembic.ini'\\); print\\('Alembic config OK'\\)\")",
       "Bash(python *)",
       "Bash(git status *)",
-      "Bash(conda run *)"
+      "Bash(conda run *)",
+      "Bash(npm run *)",
+      "Bash(npx vite *)",
+      "Bash(npx vue-tsc *)"
     ]
   }
 }

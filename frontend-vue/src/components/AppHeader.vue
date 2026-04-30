@@ -14,7 +14,6 @@
           v-model="searchQuery"
           placeholder="搜索会话..."
           @keydown.enter="navigateToSearch"
-          readonly
         />
       </div>
     </div>
@@ -23,7 +22,7 @@
       <button class="header-btn" @click="$emit('toggle-theme')" :title="theme === 'dark' ? '切换到亮色' : '切换到暗色'">
         <span class="icon">{{ theme === 'dark' ? '☀️' : '🌙' }}</span>
       </button>
-      <div class="user-menu">
+      <div class="user-menu" ref="userMenuRef">
         <button class="user-btn" @click="showUserMenu = !showUserMenu">
           <span class="avatar">👤</span>
           <span class="username">{{ username }}</span>
@@ -37,7 +36,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -59,8 +58,24 @@ const searchQuery = ref('')
 const showUserMenu = ref(false)
 
 function navigateToSearch() {
-  router.push('/search')
+  router.push({ path: '/search', query: searchQuery.value ? { q: searchQuery.value } : {} })
 }
+
+const userMenuRef = ref(null)
+
+function handleClickOutside(e) {
+  if (userMenuRef.value && !userMenuRef.value.contains(e.target)) {
+    showUserMenu.value = false
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
 </script>
 
 <style scoped>

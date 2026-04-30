@@ -36,6 +36,18 @@ from .providers import ModelProviderRegistry
 logger = logging.getLogger(__name__)
 
 
+def _get_effective_provider_config(provider_name: str) -> dict:
+    """Get effective provider config, preferring local overrides over env."""
+    try:
+        from services.provider_config_service import get_provider_config_service
+    except ModuleNotFoundError:
+        from backend.services.provider_config_service import get_provider_config_service
+    try:
+        return get_provider_config_service().get_effective_config(provider_name)
+    except Exception:
+        return {"api_key": "", "base_url": "", "config_source": "unconfigured"}
+
+
 def _coerce_bool(value: str) -> bool:
     return str(value or "").strip().lower() in {"1", "true", "yes", "y", "on"}
 
@@ -106,16 +118,22 @@ class DoubaoProviderBackend:
     def _create_client(self, alias: str) -> Any:
         if alias in self._clients:
             return self._clients[alias]
-        if not ARK_API_KEY:
+
+        effective = _get_effective_provider_config("volcengine-ark")
+        api_key = effective.get("api_key") or ARK_API_KEY
+        base_url = effective.get("base_url") or ARK_BASE_URL
+        effective_model = effective.get("model_name")
+
+        if not api_key:
             raise ValueError("ARK_API_KEY 未配置")
 
         from langchain_openai import ChatOpenAI
 
         config = self._models[alias]
         client = ChatOpenAI(
-            base_url=ARK_BASE_URL,
-            model=config["actual_model"],
-            api_key=ARK_API_KEY,
+            base_url=base_url,
+            model=effective_model or config["actual_model"],
+            api_key=api_key,
             temperature=0.7,
             max_tokens=2048,
             streaming=True,
@@ -129,7 +147,9 @@ class DoubaoProviderBackend:
         if alias not in self._models:
             raise ValueError(f"豆包 provider 不支持模型: {model_name}")
 
-        if ARK_API_KEY:
+        effective = _get_effective_provider_config("volcengine-ark")
+        effective_api_key = effective.get("api_key") or ARK_API_KEY
+        if effective_api_key:
             return self._create_client(alias)
 
         logger.warning("豆包 provider 未配置 API key，自动降级使用本地模型 llama3.1")
@@ -155,7 +175,9 @@ class DoubaoProviderBackend:
         }
 
     def is_model_available(self, model_name: str) -> bool:
-        return bool(ARK_API_KEY) and model_name.lower() in self._models
+        effective = _get_effective_provider_config("volcengine-ark")
+        has_key = bool(effective.get("api_key") or ARK_API_KEY)
+        return has_key and model_name.lower() in self._models
 
     def list_available_models(self) -> Dict[str, Dict[str, Any]]:
         models: Dict[str, Dict[str, Any]] = {}
@@ -167,8 +189,8 @@ class DoubaoProviderBackend:
                 "provider": self.provider_name,
                 "provider_label": "火山引擎 Ark",
                 "has_reasoning": bool(config.get("has_reasoning", False)),
-                "available": bool(ARK_API_KEY),
-                "configured": bool(ARK_API_KEY),
+                "available": bool(_get_effective_provider_config("volcengine-ark").get("api_key") or ARK_API_KEY),
+                "configured": bool(_get_effective_provider_config("volcengine-ark").get("api_key") or ARK_API_KEY),
                 "is_default": alias == DEFAULT_MODEL,
                 "base_url": ARK_BASE_URL,
                 "actual_model": config["actual_model"],
@@ -205,7 +227,9 @@ class OllamaProviderBackend:
 
         models: Dict[str, Dict[str, Any]] = {}
         try:
-            response = httpx.get(f"{OLLAMA_BASE_URL.rstrip('/')}/api/tags", timeout=2.5)
+            effective = _get_effective_provider_config("ollama")
+            effective_base_url = effective.get("base_url") or OLLAMA_BASE_URL
+            response = httpx.get(f"{effective_base_url.rstrip('/')}/api/tags", timeout=2.5)
             response.raise_for_status()
             payload = response.json()
             for item in payload.get("models", []):
@@ -239,9 +263,11 @@ class OllamaProviderBackend:
     def get_model(self, model_name: str, purpose: str = "main") -> Any:
         from langchain_ollama import ChatOllama
 
+        effective = _get_effective_provider_config("ollama")
+        effective_base_url = effective.get("base_url") or OLLAMA_BASE_URL
         return ChatOllama(
             model=model_name,
-            base_url=OLLAMA_BASE_URL,
+            base_url=effective_base_url,
             temperature=0.7,
             streaming=True,
         )

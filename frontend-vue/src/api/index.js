@@ -131,6 +131,20 @@ export const capabilityGapApi = {
   }
 }
 
+export const providerApi = {
+  list() {
+    return api.get('/providers')
+  },
+
+  update(providerName, payload) {
+    return api.patch(`/providers/${encodeURIComponent(providerName)}`, payload)
+  },
+
+  test(providerName) {
+    return api.post(`/providers/${encodeURIComponent(providerName)}/test`)
+  }
+}
+
 export const mcpApi = {
   listServers() {
     return api.get('/mcp/servers')

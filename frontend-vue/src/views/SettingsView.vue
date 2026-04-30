@@ -5,134 +5,132 @@
         <button @click="goBack" class="back-btn">
           <span>←</span> 返回
         </button>
-        <h1>⚙️ 设置</h1>
+        <h1>设置</h1>
       </div>
-      <p class="subtitle">配置您的个人偏好</p>
     </div>
 
-    <div class="settings-sections">
-      <section class="settings-section">
-        <h2>运行模式</h2>
-        <div class="setting-item">
-          <div class="setting-info">
-            <label>当前模式</label>
-            <span class="setting-desc">
-              {{ isDemoGuestMode ? 'Demo Guest：免登录直达，适合通用框架演示与能力盘点。' : 'Business Auth：保留登录入口，适合后续业务系统接入。' }}
-            </span>
-          </div>
-          <div class="mode-badge" :class="{ demo: isDemoGuestMode, business: !isDemoGuestMode }">
-            {{ isDemoGuestMode ? 'demo_guest' : 'business_auth' }}
-          </div>
-        </div>
-      </section>
-
-      <section class="settings-section">
-        <h2>外观</h2>
-        <div class="setting-item">
-          <div class="setting-info">
-            <label>主题</label>
-            <span class="setting-desc">选择浅色或深色主题</span>
-          </div>
-          <div class="theme-switcher">
-            <button
-              :class="{ active: currentTheme === 'light' }"
-              @click="setTheme('light')"
-            >
-              ☀️ 浅色
-            </button>
-            <button
-              :class="{ active: currentTheme === 'dark' }"
-              @click="setTheme('dark')"
-            >
-              🌙 深色
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <section class="settings-section">
-        <h2>模型设置</h2>
-        <div class="setting-item">
-          <div class="setting-info">
-            <label>默认模型</label>
-            <span class="setting-desc">选择默认使用的 AI 模型。模型目录现在由后端动态下发。</span>
-          </div>
-          <select v-model="defaultModel" class="setting-select">
-            <option v-for="model in availableModels" :key="model.name" :value="model.name">
-              {{ model.display_name }}
-            </option>
-          </select>
-        </div>
-
-        <div class="setting-item">
-          <div class="setting-info">
-            <label>温度参数</label>
-            <span class="setting-desc">控制输出的随机性 (0-1)</span>
-          </div>
-          <input
-            type="range"
-            v-model="temperature"
-            min="0"
-            max="1"
-            step="0.1"
-            class="setting-range"
-          />
-          <span class="range-value">{{ temperature }}</span>
-        </div>
-      </section>
-
-      <section class="settings-section">
-        <h2>对话设置</h2>
-        <div class="setting-item">
-          <div class="setting-info">
-            <label>最大上下文长度</label>
-            <span class="setting-desc">控制单次对话的最大 token 数</span>
-          </div>
-          <select v-model="maxContextLength" class="setting-select">
-            <option value="4096">4096 tokens</option>
-            <option value="8192">8192 tokens</option>
-            <option value="16384">16384 tokens</option>
-            <option value="32768">32768 tokens</option>
-          </select>
-        </div>
-
-        <div class="setting-item">
-          <div class="setting-info">
-            <label>自动保存对话</label>
-            <span class="setting-desc">自动保存对话历史</span>
-          </div>
-          <label class="toggle-switch">
-            <input type="checkbox" v-model="autoSave" />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-      </section>
-
-      <section class="settings-section">
-        <h2>账户</h2>
-        <div class="setting-item">
-          <div class="setting-info">
-            <label>{{ isDemoGuestMode ? '当前身份' : '用户名' }}</label>
-            <span class="setting-desc">{{ username }}</span>
-          </div>
-        </div>
-
-        <div class="setting-item">
-          <button @click="handleLogout" class="logout-btn">
-            {{ isDemoGuestMode ? '重置 Demo 会话' : '退出登录' }}
-          </button>
-        </div>
-      </section>
-
-      <CapabilityGapSummaryPanel />
-      <RuntimeSurfacePanel />
-      <McpManagementPanel />
-    </div>
-
-    <div class="settings-footer">
-      <button @click="saveSettings" class="save-btn">
-        保存设置
+    <div class="settings-tabs">
+      <button
+        v-for="tab in tabs"
+        :key="tab.id"
+        class="tab-btn"
+        :class="{ active: activeTab === tab.id }"
+        @click="activeTab = tab.id"
+      >
+        {{ tab.label }}
       </button>
+    </div>
+
+    <div class="settings-content">
+      <!-- 通用 Tab -->
+      <div v-if="activeTab === 'general'" class="tab-panel">
+        <section class="settings-section">
+          <h2>外观</h2>
+          <div class="setting-item">
+            <div class="setting-info">
+              <label>主题</label>
+              <span class="setting-desc">选择浅色或深色主题</span>
+            </div>
+            <div class="theme-switcher">
+              <button :class="{ active: currentTheme === 'light' }" @click="setTheme('light')">浅色</button>
+              <button :class="{ active: currentTheme === 'dark' }" @click="setTheme('dark')">深色</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="settings-section">
+          <h2>对话</h2>
+          <div class="setting-item">
+            <div class="setting-info">
+              <label>温度参数</label>
+              <span class="setting-desc">控制输出的随机性，值越高越有创意</span>
+            </div>
+            <div class="range-control">
+              <input type="range" v-model="temperature" min="0" max="1" step="0.1" class="setting-range" />
+              <span class="range-value">{{ temperature }}</span>
+            </div>
+          </div>
+          <div class="setting-item">
+            <div class="setting-info">
+              <label>最大上下文长度</label>
+              <span class="setting-desc">单次对话的最大 token 数</span>
+            </div>
+            <select v-model="maxContextLength" class="setting-select">
+              <option value="4096">4,096</option>
+              <option value="8192">8,192</option>
+              <option value="16384">16,384</option>
+              <option value="32768">32,768</option>
+            </select>
+          </div>
+          <div class="setting-item">
+            <div class="setting-info">
+              <label>自动保存对话</label>
+              <span class="setting-desc">自动保存对话历史到本地</span>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" v-model="autoSave" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </section>
+
+        <section class="settings-section">
+          <h2>账户</h2>
+          <div class="setting-item">
+            <div class="setting-info">
+              <label>{{ isDemoGuestMode ? '当前身份' : '用户名' }}</label>
+              <span class="setting-desc">{{ username }}</span>
+            </div>
+            <div class="mode-badge" :class="{ demo: isDemoGuestMode, business: !isDemoGuestMode }">
+              {{ isDemoGuestMode ? 'Demo' : 'Business' }}
+            </div>
+          </div>
+          <div class="setting-item">
+            <div class="setting-info">
+              <label>{{ isDemoGuestMode ? '重置会话' : '退出登录' }}</label>
+              <span class="setting-desc">{{ isDemoGuestMode ? '清除当前 Demo 会话数据' : '退出当前账户' }}</span>
+            </div>
+            <button @click="handleLogout" class="logout-btn">
+              {{ isDemoGuestMode ? '重置' : '退出' }}
+            </button>
+          </div>
+        </section>
+
+        <div class="tab-footer">
+          <button @click="saveSettings" class="save-btn">保存设置</button>
+        </div>
+      </div>
+
+      <!-- 模型与 Provider Tab -->
+      <div v-if="activeTab === 'model'" class="tab-panel">
+        <section class="settings-section">
+          <h2>默认模型</h2>
+          <div class="setting-item">
+            <div class="setting-info">
+              <label>对话模型</label>
+              <span class="setting-desc">新对话默认使用的模型，可在聊天页随时切换</span>
+            </div>
+            <select v-model="defaultModel" class="setting-select">
+              <option v-for="model in availableModels" :key="model.name" :value="model.name">
+                {{ model.display_name }}
+              </option>
+            </select>
+          </div>
+        </section>
+
+        <ProviderConfigPanel />
+
+        <div class="tab-footer">
+          <button @click="saveSettings" class="save-btn">保存设置</button>
+        </div>
+      </div>
+
+      <!-- 高级 Tab -->
+      <div v-if="activeTab === 'advanced'" class="tab-panel">
+        <RuntimeSurfacePanel />
+        <CapabilityGapSummaryPanel />
+        <McpManagementPanel />
+      </div>
     </div>
   </div>
 </template>
@@ -145,6 +143,7 @@ import { useAuthStore } from '../stores/auth'
 import McpManagementPanel from '../components/McpManagementPanel.vue'
 import CapabilityGapSummaryPanel from '../components/CapabilityGapSummaryPanel.vue'
 import RuntimeSurfacePanel from '../components/RuntimeSurfacePanel.vue'
+import ProviderConfigPanel from '../components/ProviderConfigPanel.vue'
 import { runtimeSurfaceApi } from '../api'
 
 const emit = defineEmits(['close', 'theme-changed'])
@@ -152,8 +151,15 @@ const router = useRouter()
 const settingsStore = useSettingsStore()
 const authStore = useAuthStore()
 
+const activeTab = ref('general')
+const tabs = [
+  { id: 'general', label: '通用' },
+  { id: 'model', label: '模型与 Provider' },
+  { id: 'advanced', label: '高级' },
+]
+
 const currentTheme = ref('dark')
-const defaultModel = ref('gpt-4')
+const defaultModel = ref('doubao')
 const temperature = ref(0.7)
 const maxContextLength = ref(8192)
 const autoSave = ref(true)
@@ -215,31 +221,31 @@ async function handleLogout() {
 .settings-container {
   width: 100%;
   height: 100%;
-  padding: var(--space-xl);
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
   background: var(--bg-primary);
+  overflow: hidden;
 }
 
 .settings-header {
-  margin-bottom: var(--space-xl);
+  padding: var(--space-lg) var(--space-xl) 0;
 }
 
 .header-row {
   display: flex;
   align-items: center;
   gap: var(--space-md);
-  margin-bottom: var(--space-sm);
 }
 
 .back-btn {
   display: flex;
   align-items: center;
   gap: var(--space-xs);
-  padding: var(--space-sm) var(--space-md);
+  padding: 6px 12px;
   font-size: 0.875rem;
   color: var(--text-secondary);
-  background: var(--bg-surface);
-  border: 1px solid var(--border-primary);
+  background: transparent;
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: all 0.2s;
@@ -247,69 +253,106 @@ async function handleLogout() {
 
 .back-btn:hover {
   color: var(--text-primary);
-  background: var(--bg-elevated);
   border-color: var(--primary);
 }
 
 .settings-header h1 {
-  font-size: 1.75rem;
+  font-size: 1.5rem;
+  font-weight: 600;
   color: var(--text-primary);
 }
 
-.subtitle {
-  color: var(--text-secondary);
+.settings-tabs {
+  display: flex;
+  gap: 2px;
+  padding: var(--space-md) var(--space-xl) 0;
+  border-bottom: 1px solid var(--border-color);
 }
 
-.settings-sections {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xl);
-  max-width: 700px;
+.tab-btn {
+  padding: 10px 20px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: -1px;
+}
+
+.tab-btn:hover {
+  color: var(--text-primary);
+}
+
+.tab-btn.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.settings-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-lg) var(--space-xl);
+}
+
+.tab-panel {
+  max-width: 680px;
+}
+
+.settings-section {
+  margin-bottom: var(--space-xl);
 }
 
 .settings-section h2 {
-  font-size: 1rem;
-  color: var(--text-secondary);
-  margin-bottom: var(--space-md);
-  padding-bottom: var(--space-sm);
-  border-bottom: 1px solid var(--border-color);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--space-sm);
 }
 
 .setting-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-md) 0;
+  padding: 14px 0;
   border-bottom: 1px solid var(--border-color);
+}
+
+.setting-item:last-child {
+  border-bottom: none;
 }
 
 .setting-info {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
+  gap: 2px;
 }
 
 .setting-info label {
   font-weight: 500;
+  font-size: 0.9rem;
   color: var(--text-primary);
 }
 
 .setting-desc {
-  font-size: 0.875rem;
+  font-size: 0.8rem;
   color: var(--text-tertiary);
 }
 
 .theme-switcher {
   display: flex;
-  gap: var(--space-sm);
-  background: var(--bg-surface);
-  padding: var(--space-xs);
+  background: var(--bg-secondary);
   border-radius: var(--radius-md);
+  padding: 3px;
 }
 
 .theme-switcher button {
-  padding: var(--space-sm) var(--space-md);
-  font-size: 0.875rem;
+  padding: 6px 16px;
+  font-size: 0.8rem;
   color: var(--text-secondary);
   background: transparent;
   border: none;
@@ -320,35 +363,45 @@ async function handleLogout() {
 
 .theme-switcher button.active {
   color: var(--text-primary);
-  background: var(--bg-elevated);
+  background: var(--bg-primary);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
 .setting-select {
-  padding: var(--space-sm) var(--space-md);
+  padding: 6px 12px;
   font-size: 0.875rem;
   color: var(--text-primary);
-  background: var(--bg-surface);
+  background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  min-width: 150px;
+  min-width: 140px;
+  cursor: pointer;
+}
+
+.range-control {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
 }
 
 .setting-range {
-  width: 150px;
+  width: 120px;
   accent-color: var(--primary);
 }
 
 .range-value {
-  min-width: 40px;
+  min-width: 32px;
   text-align: right;
   font-size: 0.875rem;
   color: var(--text-secondary);
+  font-family: monospace;
 }
 
 .toggle-switch {
   position: relative;
-  width: 48px;
-  height: 24px;
+  width: 44px;
+  height: 22px;
+  display: inline-block;
 }
 
 .toggle-switch input {
@@ -360,20 +413,17 @@ async function handleLogout() {
 .toggle-slider {
   position: absolute;
   cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: var(--bg-elevated);
-  border-radius: var(--radius-full);
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: var(--bg-elevated, #555);
+  border-radius: 22px;
   transition: 0.3s;
 }
 
 .toggle-slider::before {
   position: absolute;
   content: "";
-  height: 18px;
-  width: 18px;
+  height: 16px;
+  width: 16px;
   left: 3px;
   bottom: 3px;
   background: white;
@@ -386,33 +436,50 @@ async function handleLogout() {
 }
 
 .toggle-switch input:checked + .toggle-slider::before {
-  transform: translateX(24px);
+  transform: translateX(22px);
+}
+
+.mode-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.mode-badge.demo {
+  background: rgba(34, 197, 94, 0.12);
+  color: #22c55e;
+}
+
+.mode-badge.business {
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
 }
 
 .logout-btn {
-  padding: var(--space-sm) var(--space-lg);
-  font-size: 0.875rem;
-  color: var(--error);
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid var(--error);
+  padding: 6px 16px;
+  font-size: 0.8rem;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.3);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .logout-btn:hover {
-  background: rgba(239, 68, 68, 0.2);
+  background: rgba(239, 68, 68, 0.15);
 }
 
-.settings-footer {
-  margin-top: var(--space-xl);
+.tab-footer {
   padding-top: var(--space-lg);
+  margin-top: var(--space-md);
   border-top: 1px solid var(--border-color);
 }
 
 .save-btn {
-  padding: var(--space-md) var(--space-xl);
-  font-size: 1rem;
+  padding: 10px 28px;
+  font-size: 0.9rem;
   font-weight: 600;
   color: white;
   background: var(--primary);
@@ -423,25 +490,6 @@ async function handleLogout() {
 }
 
 .save-btn:hover {
-  background: var(--primary-hover);
-}
-
-.mode-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 6px 12px;
-  border-radius: 999px;
-  font-size: 0.8rem;
-  border: 1px solid var(--border-color);
-}
-
-.mode-badge.demo {
-  background: rgba(34, 197, 94, 0.14);
-  color: #15803d;
-}
-
-.mode-badge.business {
-  background: rgba(245, 158, 11, 0.14);
-  color: #b45309;
+  opacity: 0.9;
 }
 </style>
