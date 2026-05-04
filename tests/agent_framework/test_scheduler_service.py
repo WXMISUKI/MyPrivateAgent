@@ -99,6 +99,25 @@ class SchedulerServiceTests(unittest.TestCase):
         self.assertEqual(child["status"], "cancelled")
         self.assertEqual(child["error_kind"], "cancelled")
 
+    def test_mark_child_policy_selected_updates_child_route_fields(self):
+        state = self.service.prepare_execution(plan=self.plan, item=self.item)
+        child_id = state["execution_context"]["child_contexts"][0]["child_execution_id"]
+        self.service.mark_child_policy_selected(
+            plan=self.plan,
+            item_id=11,
+            child_execution_id=child_id,
+            model_name="llama3.1",
+            provider_name="ollama",
+            provider_order=["ollama", "volcengine-ark"],
+            provider_switch_count=1,
+            provider_history=[{"provider_name": "volcengine-ark", "model_name": "doubao", "reason": "initial"}],
+        )
+        child = self.item.item_metadata["child_execution_group"]["children"][0]
+        self.assertEqual(child["model_name"], "llama3.1")
+        self.assertEqual(child["provider_name"], "ollama")
+        self.assertEqual(child["provider_order"], ["ollama", "volcengine-ark"])
+        self.assertEqual(child["provider_switch_count"], 1)
+
     def test_append_audit_event_records_timeline_entry(self):
         self.service.prepare_execution(plan=self.plan, item=self.item)
 

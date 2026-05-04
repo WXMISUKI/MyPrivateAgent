@@ -169,6 +169,34 @@ npm run dev
 
 如果要演示，不建议直接打开页面就开始。建议先按下面顺序跑检查。
 
+### 5.0 一键质量门禁（推荐）
+
+可直接执行一条命令串联后端关键 smoke、治理回归、能力缺口门禁，以及前端健康告警 smoke：
+
+```powershell
+cd D:\AI\AIcode\MyPrivateAgent
+powershell -ExecutionPolicy Bypass -File backend/scripts/quality_gate_smoke.ps1 -CondaEnv myenv
+```
+
+通过标志：
+
+- 输出 `PASS: quality_gate_smoke`
+- 中间无非零退出
+
+当前覆盖：
+
+- 后端基础健康与模型目录 smoke
+- 后端鉴权 / 会话 smoke
+- 多智能体策略 smoke
+- 多 Provider failover smoke
+- 治理相关回归单测：
+  - `tests.agent_framework.test_doctor_script`
+  - `tests.agent_framework.test_health_router`
+  - `tests.agent_framework.test_runtime_surface_config_service`
+- 基于隔离基线数据的治理 smoke：
+  - `backend/scripts/capability_gap_governance_smoke.py`
+- 前端健康告警 smoke
+
 ### 5.1 环境与基础接口
 
 ```powershell
@@ -223,7 +251,14 @@ npm run build
 
 当前这两条已经是 demo 可用性的最低回归门槛。
 
-建议新增一条框架治理门禁检查（阶段六最小包）：
+如需单独排查治理 smoke，可直接执行：
+
+```powershell
+cd D:\AI\AIcode\MyPrivateAgent
+python backend/scripts/capability_gap_governance_smoke.py --window-days 14 --limit 200 --max-open-actions 10 --max-long-blocked-actions 0
+```
+
+如需查看当前本地真实治理状态，可继续执行下面这组命令：
 
 ```powershell
 cd D:\AI\AIcode\MyPrivateAgent

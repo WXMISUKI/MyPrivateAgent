@@ -72,7 +72,20 @@ async def approve_permission(req: PermissionApproveRequest, db: Session = Depend
         raise HTTPException(status_code=404, detail="请求不存在")
 
     if request is not None:
-        get_run_trace_service(db).append_latest_active_item_trace(
+        trace_service = get_run_trace_service(db)
+        snapshot_ref = trace_service.build_snapshot_ref(
+            source="permission",
+            event_type="permission_approved",
+            conversation_id=getattr(request, "conversation_id", None),
+        )
+        payload = {
+            "request_id": request.id,
+            "tool_name": request.tool_name,
+            "tool_args": dict(request.tool_args or {}),
+            "result": req.result,
+            "snapshot_ref": snapshot_ref,
+        }
+        trace_service.append_latest_active_item_trace(
             user_id=getattr(request, "user_id", None),
             conversation_id=getattr(request, "conversation_id", None),
             source="permission",
@@ -80,12 +93,14 @@ async def approve_permission(req: PermissionApproveRequest, db: Session = Depend
             summary=f"工具 `{request.tool_name}` 权限请求已批准",
             detail=str(req.result or "").strip(),
             severity="success",
-            payload={
-                "request_id": request.id,
-                "tool_name": request.tool_name,
-                "tool_args": dict(request.tool_args or {}),
-                "result": req.result,
-            },
+            payload=payload,
+        )
+        trace_service.append_latest_active_item_audit(
+            user_id=getattr(request, "user_id", None),
+            conversation_id=getattr(request, "conversation_id", None),
+            event_type="permission_approved",
+            content=f"工具 `{request.tool_name}` 权限请求已批准",
+            payload=payload,
         )
 
     return success_response("权限已批准")
@@ -103,7 +118,19 @@ async def deny_permission(req: PermissionDenyRequest, db: Session = Depends(get_
         raise HTTPException(status_code=404, detail="请求不存在")
 
     if request is not None:
-        get_run_trace_service(db).append_latest_active_item_trace(
+        trace_service = get_run_trace_service(db)
+        snapshot_ref = trace_service.build_snapshot_ref(
+            source="permission",
+            event_type="permission_denied",
+            conversation_id=getattr(request, "conversation_id", None),
+        )
+        payload = {
+            "request_id": request.id,
+            "tool_name": request.tool_name,
+            "tool_args": dict(request.tool_args or {}),
+            "snapshot_ref": snapshot_ref,
+        }
+        trace_service.append_latest_active_item_trace(
             user_id=getattr(request, "user_id", None),
             conversation_id=getattr(request, "conversation_id", None),
             source="permission",
@@ -111,11 +138,14 @@ async def deny_permission(req: PermissionDenyRequest, db: Session = Depends(get_
             summary=f"工具 `{request.tool_name}` 权限请求已拒绝",
             detail="用户拒绝了本次工具执行。",
             severity="warning",
-            payload={
-                "request_id": request.id,
-                "tool_name": request.tool_name,
-                "tool_args": dict(request.tool_args or {}),
-            },
+            payload=payload,
+        )
+        trace_service.append_latest_active_item_audit(
+            user_id=getattr(request, "user_id", None),
+            conversation_id=getattr(request, "conversation_id", None),
+            event_type="permission_denied",
+            content=f"工具 `{request.tool_name}` 权限请求已拒绝",
+            payload=payload,
         )
 
     return success_response("权限已拒绝")

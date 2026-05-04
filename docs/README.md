@@ -7,11 +7,13 @@
 - [agent_framework_demo_guide.md](./agent_framework_demo_guide.md)：当前 demo 的框架边界与复用方式
 
 ## 2. 架构与路线
+- [claude_alignment_improvement_plan.md](./claude_alignment_improvement_plan.md)：对齐 Claude Code 的下一阶段完善方案
 - [agent_framework_enterprise_roadmap.md](./agent_framework_enterprise_roadmap.md)：从 demo 到成熟通用智能体的路线图
 - [demo_storage_architecture_plan.md](./demo_storage_architecture_plan.md)：Demo 默认本地优先的存储架构方案
 - [planner_todo_framework_plan.md](./planner_todo_framework_plan.md)：Planner/Todo 建设计划
 - [mcp_registry_framework_plan.md](./mcp_registry_framework_plan.md)：MCP 注册中心与能力目录建设计划
 - [skill_runtime_framework_plan.md](./skill_runtime_framework_plan.md)：Skill Runtime 运行时集成计划
+- [feedback_learning_governance_plan.md](./feedback_learning_governance_plan.md)：反馈与学习治理进度和下一步规划
 
 ## 3. 协议与专项
 - [agent_framework_card_schemas.md](./agent_framework_card_schemas.md)：结构化卡片协议

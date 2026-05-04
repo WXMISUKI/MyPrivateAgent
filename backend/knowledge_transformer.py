@@ -6,7 +6,7 @@ from typing import Optional, Dict, List
 from datetime import datetime
 from sqlalchemy.orm import Session
 
-from models import Learning, BestPractice, SystemPrompt
+from models import Learning, BestPractice, SystemPrompt, LearningStatus
 from model_router import get_model_router
 from langchain_core.messages import HumanMessage, AIMessage
 
@@ -325,7 +325,8 @@ class KnowledgeTransformer:
                 best_practice = await self.extractor.create_best_practice(learning, db)
                 
                 # 更新学习记录状态
-                learning.status = "promoted"
+                learning.status = LearningStatus.PROMOTED_TO_SKILL
+                learning.promoted_to = best_practice.practice_id
                 db.commit()
                 
                 return {
@@ -345,8 +346,8 @@ class KnowledgeTransformer:
                 system_prompt = await self.extractor.create_system_prompt(learning, db)
                 
                 # 更新学习记录状态
-                learning.status = "promoted"
-                learning.promoted_to = "system_prompts"
+                learning.status = LearningStatus.PROMOTED
+                learning.promoted_to = system_prompt.prompt_key
                 db.commit()
                 
                 return {
@@ -385,7 +386,7 @@ class KnowledgeTransformer:
         # 获取重复次数高的学习记录
         learnings = db.query(Learning).filter(
             Learning.recurrence_count >= min_recurrence,
-            Learning.status == "pending"
+            Learning.status == LearningStatus.PENDING
         ).all()
         
         results = []

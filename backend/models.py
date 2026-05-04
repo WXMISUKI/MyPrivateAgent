@@ -92,6 +92,16 @@ class LearningStatus(str, enum.Enum):
     RESOLVED = "resolved"
     PROMOTED = "promoted"
     PROMOTED_TO_SKILL = "promoted_to_skill"
+    DISABLED = "disabled"
+    ROLLED_BACK = "rolled_back"
+
+
+class LearningReviewStatus(str, enum.Enum):
+    """学习审核状态。"""
+
+    APPROVED = "approved"
+    NEEDS_CHANGES = "needs_changes"
+    REJECTED = "rejected"
 
 
 class Area(str, enum.Enum):
@@ -132,6 +142,49 @@ class Learning(Base):
 
     def __repr__(self):
         return f"<Learning {self.learning_id}: {self.summary}>"
+
+
+class LearningReviewRecord(Base):
+    """学习审核记录。"""
+
+    __tablename__ = "learning_reviews"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    review_id = Column(String(50), unique=True, index=True, nullable=False)
+    learning_id = Column(String(50), index=True, nullable=False)
+    review_status = Column(SQLEnum(LearningReviewStatus), nullable=False)
+    quality_score = Column(Integer, nullable=True)
+    reviewer = Column(String(100), nullable=True)
+    review_note = Column(Text)
+    review_metadata = Column("metadata", JSON)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    def __repr__(self):
+        return f"<LearningReviewRecord {self.review_id}: {self.learning_id} ({self.review_status})>"
+
+
+class LearningVersionRecord(Base):
+    """学习记录版本快照。"""
+
+    __tablename__ = "learning_versions"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    version_id = Column(String(50), unique=True, index=True, nullable=False)
+    learning_id = Column(String(50), index=True, nullable=False)
+    event_type = Column(String(50), nullable=False)
+    actor = Column(String(100), nullable=True)
+    status = Column(String(50), nullable=False)
+    summary = Column(Text, nullable=False)
+    details = Column(Text)
+    tags = Column(JSON)
+    promoted_to = Column(String(200))
+    change_note = Column(Text)
+    version_metadata = Column("metadata", JSON)
+    created_at = Column(DateTime, server_default=func.now())
+
+    def __repr__(self):
+        return f"<LearningVersionRecord {self.version_id}: {self.learning_id} ({self.event_type})>"
 
 
 class Error(Base):

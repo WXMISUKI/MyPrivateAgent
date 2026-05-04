@@ -65,7 +65,45 @@ python scripts/chat_error_event_smoke.py
 python scripts/chat_stop_generation_smoke.py
 ```
 
-### 3.2 前端回归
+### 3.2 前端健康告警最小 E2E（本地）
+
+在仓库根目录执行：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File backend/scripts/frontend_health_alert_smoke.ps1
+```
+
+通过标准：
+- `src/components/__tests__/ChatView.test.js` 通过（高风险横幅与静默开关）
+- `src/components/__tests__/SettingsView.test.js` 通过（阈值告警与健康更新时间）
+
+### 3.3 一键质量门禁（后端 + 前端）
+
+在仓库根目录执行：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File backend/scripts/quality_gate_smoke.ps1 -CondaEnv myenv
+```
+
+门禁覆盖：
+- 后端基础健康与模型目录 smoke
+- 后端鉴权/会话 smoke
+- 多智能体策略 smoke
+- 多 Provider failover smoke
+- 治理相关回归单测：
+  - `tests.agent_framework.test_doctor_script`
+  - `tests.agent_framework.test_health_router`
+  - `tests.agent_framework.test_runtime_surface_config_service`
+- 基于隔离基线数据的治理 smoke：
+  - `backend/scripts/capability_gap_governance_smoke.py`
+- 前端健康告警 smoke
+
+通过标准：
+
+- 输出 `PASS: quality_gate_smoke`
+- 中间任一步失败都会中断，并返回非零退出码
+
+### 3.4 前端回归
 
 ```powershell
 cd D:\AI\AIcode\MyPrivateAgent\frontend-vue

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -16,7 +17,9 @@ class McpRegistryService:
     """Manage MCP server configuration records with lightweight JSON persistence."""
 
     def __init__(self, registry_path: Optional[Path] = None):
+        self._is_vercel = os.getenv("VERCEL", "").strip() == "1"
         self.registry_path = Path(registry_path or DEFAULT_MCP_REGISTRY_PATH)
+        self._memory_registry: List[dict] = []
 
     def list_servers(self) -> List[dict]:
         return sorted(self._load_registry(), key=lambda item: item["name"])
@@ -100,6 +103,8 @@ class McpRegistryService:
         ]
 
     def _load_registry(self) -> List[dict]:
+        if self._is_vercel:
+            return [self._normalize_server_payload(item) for item in self._memory_registry]
         if not self.registry_path.exists():
             return []
 
@@ -109,6 +114,9 @@ class McpRegistryService:
         return [self._normalize_server_payload(item) for item in data]
 
     def _write_registry(self, registry: List[dict]) -> None:
+        if self._is_vercel:
+            self._memory_registry = [dict(item) for item in registry]
+            return
         self.registry_path.parent.mkdir(parents=True, exist_ok=True)
         self.registry_path.write_text(
             json.dumps(registry, ensure_ascii=False, indent=2),

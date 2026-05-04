@@ -14,7 +14,6 @@
 - 打开浏览器控制台，确认请求目标为 Railway 域名而不是 `https://<vercel-domain>/api/...`。
 - 在 Vercel Deployments 的 Build Logs 中检查是否读取了 `VITE_API_BASE_URL`。
 - 确认当前部署 commit 与本地预期 commit 一致。
-- 访问 `GET /api/health/cors`（带 `Origin` 请求头）检查是否命中 CORS 白名单或正则。
 
 ## 4. 后端联调检查
 - Railway 后端允许来自 Vercel 域名的 CORS。

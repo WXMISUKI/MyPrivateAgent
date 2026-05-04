@@ -54,12 +54,13 @@ export const useMcpStore = defineStore('mcp', () => {
     await Promise.all([loadServers(), loadCatalog()])
   }
 
-  async function createServer(payload) {
+  async function createServer(payload, options = {}) {
     isSubmitting.value = true
     error.value = ''
     try {
-      await mcpApi.createServer(payload)
+      const response = await mcpApi.createServer(payload, options)
       await refreshAll()
+      return response.data
     } catch (err) {
       error.value = parseApiError(err, '创建 MCP 服务失败')
       throw err
@@ -68,12 +69,13 @@ export const useMcpStore = defineStore('mcp', () => {
     }
   }
 
-  async function updateServer(serverName, payload) {
+  async function updateServer(serverName, payload, options = {}) {
     isSubmitting.value = true
     error.value = ''
     try {
-      await mcpApi.updateServer(serverName, payload)
+      const response = await mcpApi.updateServer(serverName, payload, options)
       await refreshAll()
+      return response.data
     } catch (err) {
       error.value = parseApiError(err, '更新 MCP 服务失败')
       throw err
@@ -82,11 +84,11 @@ export const useMcpStore = defineStore('mcp', () => {
     }
   }
 
-  async function deleteServer(serverName) {
+  async function deleteServer(serverName, options = {}) {
     setActionState(`delete:${serverName}`, true)
     error.value = ''
     try {
-      await mcpApi.deleteServer(serverName)
+      const response = await mcpApi.deleteServer(serverName, options)
       const nextProbeResults = { ...probeResults.value }
       const nextHandshakeResults = { ...handshakeResults.value }
       const nextToolCallResults = { ...toolCallResults.value }
@@ -97,6 +99,7 @@ export const useMcpStore = defineStore('mcp', () => {
       handshakeResults.value = nextHandshakeResults
       toolCallResults.value = nextToolCallResults
       await refreshAll()
+      return response.data
     } catch (err) {
       error.value = parseApiError(err, '删除 MCP 服务失败')
       throw err
@@ -105,16 +108,18 @@ export const useMcpStore = defineStore('mcp', () => {
     }
   }
 
-  async function setServerEnabled(serverName, enabled) {
+  async function setServerEnabled(serverName, enabled, options = {}) {
     setActionState(`enable:${serverName}`, true)
     error.value = ''
     try {
+      let response
       if (enabled) {
-        await mcpApi.enableServer(serverName)
+        response = await mcpApi.enableServer(serverName, options)
       } else {
-        await mcpApi.disableServer(serverName)
+        response = await mcpApi.disableServer(serverName, options)
       }
       await refreshAll()
+      return response?.data
     } catch (err) {
       error.value = parseApiError(err, '更新 MCP 服务状态失败')
       throw err
@@ -123,11 +128,11 @@ export const useMcpStore = defineStore('mcp', () => {
     }
   }
 
-  async function probeServer(serverName) {
+  async function probeServer(serverName, options = {}) {
     setActionState(`probe:${serverName}`, true)
     error.value = ''
     try {
-      const response = await mcpApi.probeServer(serverName)
+      const response = await mcpApi.probeServer(serverName, options)
       probeResults.value = {
         ...probeResults.value,
         [serverName]: response.data
@@ -141,11 +146,11 @@ export const useMcpStore = defineStore('mcp', () => {
     }
   }
 
-  async function handshakeServer(serverName) {
+  async function handshakeServer(serverName, options = {}) {
     setActionState(`handshake:${serverName}`, true)
     error.value = ''
     try {
-      const response = await mcpApi.handshakeServer(serverName)
+      const response = await mcpApi.handshakeServer(serverName, options)
       handshakeResults.value = {
         ...handshakeResults.value,
         [serverName]: response.data
@@ -159,12 +164,12 @@ export const useMcpStore = defineStore('mcp', () => {
     }
   }
 
-  async function callTool(serverName, toolName, argumentsPayload = {}) {
+  async function callTool(serverName, toolName, argumentsPayload = {}, options = {}) {
     const actionKey = `call:${serverName}:${toolName}`
     setActionState(actionKey, true)
     error.value = ''
     try {
-      const response = await mcpApi.callTool(serverName, toolName, argumentsPayload)
+      const response = await mcpApi.callTool(serverName, toolName, argumentsPayload, options)
       toolCallResults.value = {
         ...toolCallResults.value,
         [serverName]: response.data

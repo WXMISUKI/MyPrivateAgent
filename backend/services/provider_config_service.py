@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from pathlib import Path
 from typing import Any, Optional
 
@@ -37,6 +38,8 @@ CONFIG_FILENAME = "provider_config.json"
 
 class ProviderConfigService:
     def __init__(self, data_dir: Path | None = None):
+        self._is_vercel = os.getenv("VERCEL", "").strip() == "1"
+        self._memory_overrides: dict[str, dict[str, Any]] = {}
         if data_dir is None:
             try:
                 from config import LOCAL_DATA_DIR
@@ -47,6 +50,8 @@ class ProviderConfigService:
         self._config_path = self._data_dir / CONFIG_FILENAME
 
     def _load_local_overrides(self) -> dict[str, dict[str, Any]]:
+        if self._is_vercel:
+            return dict(self._memory_overrides)
         if not self._config_path.exists():
             return {}
         try:
@@ -57,6 +62,9 @@ class ProviderConfigService:
             return {}
 
     def _save_local_overrides(self, overrides: dict[str, dict[str, Any]]) -> None:
+        if self._is_vercel:
+            self._memory_overrides = dict(overrides)
+            return
         self._data_dir.mkdir(parents=True, exist_ok=True)
         self._config_path.write_text(
             json.dumps(overrides, ensure_ascii=False, indent=2),

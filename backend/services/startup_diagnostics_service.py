@@ -9,12 +9,12 @@ from sqlalchemy import text
 
 try:
     from agent_server.config import PROJECT_ROOT, get_available_server_presets
-    from config import ARK_API_KEY, AUTH_MODE, DATABASE_URL, DB_MODE, DEFAULT_MODEL, SQLITE_PATH
+    from config import ARK_API_KEY, AUTH_MODE, DATABASE_URL, DB_MODE, DEFAULT_MODEL, IS_VERCEL, SQLITE_PATH
     from database import engine
     from services.runtime_surface_service import get_runtime_surface_service
 except ModuleNotFoundError:  # pragma: no cover - package import compatibility
     from backend.agent_server.config import PROJECT_ROOT, get_available_server_presets
-    from backend.config import ARK_API_KEY, AUTH_MODE, DATABASE_URL, DB_MODE, DEFAULT_MODEL, SQLITE_PATH
+    from backend.config import ARK_API_KEY, AUTH_MODE, DATABASE_URL, DB_MODE, DEFAULT_MODEL, IS_VERCEL, SQLITE_PATH
     from backend.database import engine
     from backend.services.runtime_surface_service import get_runtime_surface_service
 
@@ -67,9 +67,12 @@ class StartupDiagnosticsService:
             details.append(f"默认模型: {DEFAULT_MODEL}")
 
         details.append(f"存储模式: {DB_MODE}")
+        details.append(f"部署平台: {'vercel' if IS_VERCEL else 'local'}")
         details.append(f"鉴权模式: {AUTH_MODE}")
         if DB_MODE == "sqlite":
             details.append(f"本地 SQLite 路径: {SQLITE_PATH}")
+        elif DB_MODE == "memory":
+            details.append("当前启用进程内内存存储，实例重启后数据会丢失")
         else:
             details.append("当前启用外部 MySQL 模式")
 
@@ -104,6 +107,9 @@ class StartupDiagnosticsService:
         for label, path in required_paths.items():
             if path.exists():
                 details.append(f"{label} 已存在")
+            elif IS_VERCEL:
+                status = "warn" if status == "ok" else status
+                details.append(f"{label} 缺失，Vercel 只读环境下跳过自动创建")
             else:
                 path.mkdir(parents=True, exist_ok=True)
                 status = "warn" if status == "ok" else status

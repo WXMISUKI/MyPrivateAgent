@@ -22,14 +22,17 @@ def _resolve_project_root() -> Path:
 
 
 PROJECT_ROOT = _resolve_project_root()
+IS_VERCEL = os.getenv("VERCEL", "").strip() == "1"
 
 # 加载环境变量
 env_path = PROJECT_ROOT / ".env"
 load_dotenv(dotenv_path=env_path)
 
 # 存储 / 数据库配置
-DB_MODE = os.getenv("DB_MODE", "sqlite").strip().lower() or "sqlite"
-LOCAL_DATA_DIR = Path(os.getenv("LOCAL_DATA_DIR", str(PROJECT_ROOT / ".myagent"))).resolve()
+_default_db_mode = "memory" if IS_VERCEL else "sqlite"
+DB_MODE = os.getenv("DB_MODE", _default_db_mode).strip().lower() or _default_db_mode
+_default_local_data_dir = "/tmp/myprivateagent" if IS_VERCEL else str(PROJECT_ROOT / ".myagent")
+LOCAL_DATA_DIR = Path(os.getenv("LOCAL_DATA_DIR", _default_local_data_dir)).resolve()
 SQLITE_PATH = Path(os.getenv("SQLITE_PATH", str(LOCAL_DATA_DIR / "app.db"))).resolve()
 DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_PORT = int(os.getenv("DB_PORT", "3306"))
@@ -39,6 +42,8 @@ DB_PASSWORD = os.getenv("DB_PASSWORD", "root")
 
 if DB_MODE == "mysql":
     DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+elif DB_MODE == "memory":
+    DATABASE_URL = "sqlite://"
 else:
     DATABASE_URL = f"sqlite:///{SQLITE_PATH.as_posix()}"
 

@@ -6,7 +6,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from models import (
-    Learning, LearningCategory, LearningStatus, Priority, Area,
+    Learning, LearningCategory, LearningReviewRecord, LearningStatus, Priority, Area,
     Error, FeatureRequest
 )
 from smart_detector import get_smart_detector, ErrorDetection, LearningOpportunity
@@ -348,6 +348,25 @@ class LearningManager:
         resolved_learnings = db.query(Learning).filter(
             Learning.status == LearningStatus.RESOLVED
         ).count()
+        disabled_learnings = db.query(Learning).filter(
+            Learning.status == LearningStatus.DISABLED
+        ).count()
+        rolled_back_learnings = db.query(Learning).filter(
+            Learning.status == LearningStatus.ROLLED_BACK
+        ).count()
+        latest_reviews = db.query(LearningReviewRecord).order_by(
+            LearningReviewRecord.learning_id.asc(),
+            LearningReviewRecord.created_at.desc(),
+            LearningReviewRecord.id.desc()
+        ).all()
+        latest_review_map = {}
+        for review in latest_reviews:
+            latest_review_map.setdefault(review.learning_id, review)
+        reviewed_learnings = len(latest_review_map)
+        average_quality_score = None
+        quality_scores = [review.quality_score for review in latest_review_map.values() if review.quality_score is not None]
+        if quality_scores:
+            average_quality_score = round(sum(quality_scores) / len(quality_scores), 2)
         
         total_errors = db.query(Error).count()
         pending_errors = db.query(Error).filter(Error.status == "pending").count()
@@ -361,7 +380,11 @@ class LearningManager:
             "learnings": {
                 "total": total_learnings,
                 "pending": pending_learnings,
-                "resolved": resolved_learnings
+                "resolved": resolved_learnings,
+                "disabled": disabled_learnings,
+                "rolled_back": rolled_back_learnings,
+                "reviewed": reviewed_learnings,
+                "average_quality_score": average_quality_score,
             },
             "errors": {
                 "total": total_errors,

@@ -38,16 +38,29 @@ class _StubPermissionService:
 
 class _StubRunTraceService:
     calls = []
+    audit_calls = []
 
     def append_latest_active_item_trace(self, **kwargs):
         self.__class__.calls.append(kwargs)
         return True
+
+    def append_latest_active_item_audit(self, **kwargs):
+        self.__class__.audit_calls.append(kwargs)
+        return True
+
+    def build_snapshot_ref(self, **kwargs):
+        return {
+            "snapshot_id": "PERM-REF-99",
+            "generated_at": "2026-05-02T00:00:00Z",
+            **kwargs,
+        }
 
 
 class PermissionsRouterTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.permission_service = _StubPermissionService()
         _StubRunTraceService.calls = []
+        _StubRunTraceService.audit_calls = []
 
     @patch("backend.routers.permissions.get_run_trace_service", return_value=_StubRunTraceService())
     @patch("backend.routers.permissions.get_permission_service")
@@ -63,6 +76,9 @@ class PermissionsRouterTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(_StubRunTraceService.calls), 1)
         self.assertEqual(_StubRunTraceService.calls[0]["event_type"], "permission_approved")
         self.assertEqual(_StubRunTraceService.calls[0]["source"], "permission")
+        self.assertEqual(_StubRunTraceService.calls[0]["payload"]["snapshot_ref"]["snapshot_id"], "PERM-REF-99")
+        self.assertEqual(len(_StubRunTraceService.audit_calls), 1)
+        self.assertEqual(_StubRunTraceService.audit_calls[0]["event_type"], "permission_approved")
 
     @patch("backend.routers.permissions.get_run_trace_service", return_value=_StubRunTraceService())
     @patch("backend.routers.permissions.get_permission_service")
@@ -78,6 +94,9 @@ class PermissionsRouterTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(_StubRunTraceService.calls), 1)
         self.assertEqual(_StubRunTraceService.calls[0]["event_type"], "permission_denied")
         self.assertEqual(_StubRunTraceService.calls[0]["severity"], "warning")
+        self.assertEqual(_StubRunTraceService.calls[0]["payload"]["snapshot_ref"]["snapshot_id"], "PERM-REF-99")
+        self.assertEqual(len(_StubRunTraceService.audit_calls), 1)
+        self.assertEqual(_StubRunTraceService.audit_calls[0]["event_type"], "permission_denied")
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-const DEFAULT_REMOTE_API_BASE_URL = 'https://myprivateagent-backend-production.up.railway.app/api'
+const DEFAULT_API_BASE_URL = '/api'
 
 function normalizeBaseUrl(url) {
   const value = String(url || '').trim()
@@ -10,7 +10,7 @@ function inferApiBaseByHostname(hostname) {
   const host = String(hostname || '').toLowerCase()
   if (!host) return ''
   if (host === 'localhost' || host === '127.0.0.1') return '/api'
-  if (host.endsWith('.vercel.app')) return DEFAULT_REMOTE_API_BASE_URL
+  if (host.endsWith('.vercel.app')) return '/api'
   return ''
 }
 
@@ -28,7 +28,7 @@ export function getApiBaseUrl() {
   )
   if (inferred) return inferred
 
-  return DEFAULT_REMOTE_API_BASE_URL
+  return DEFAULT_API_BASE_URL
 }
 
 export function buildApiUrl(path = '') {
@@ -36,4 +36,3 @@ export function buildApiUrl(path = '') {
   const normalizedPath = String(path || '').startsWith('/') ? String(path || '') : `/${String(path || '')}`
   return `${base}${normalizedPath}`
 }
-

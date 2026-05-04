@@ -22,6 +22,45 @@ class AgentState(str, Enum):
     ABORTED = "aborted"
 
 
+_STATE_TRANSITIONS: dict[AgentState, set[AgentState]] = {
+    AgentState.INIT: {AgentState.GENERATING, AgentState.FAILED, AgentState.ABORTED},
+    AgentState.GENERATING: {
+        AgentState.TOOL_CALLING,
+        AgentState.WAITING_PERMISSION,
+        AgentState.OBSERVING,
+        AgentState.FINALIZING,
+        AgentState.DONE,
+        AgentState.FAILED,
+        AgentState.ABORTED,
+    },
+    AgentState.TOOL_CALLING: {
+        AgentState.WAITING_PERMISSION,
+        AgentState.OBSERVING,
+        AgentState.FINALIZING,
+        AgentState.FAILED,
+        AgentState.ABORTED,
+    },
+    AgentState.WAITING_PERMISSION: {
+        AgentState.TOOL_CALLING,
+        AgentState.OBSERVING,
+        AgentState.FINALIZING,
+        AgentState.FAILED,
+        AgentState.ABORTED,
+    },
+    AgentState.OBSERVING: {
+        AgentState.GENERATING,
+        AgentState.FINALIZING,
+        AgentState.DONE,
+        AgentState.FAILED,
+        AgentState.ABORTED,
+    },
+    AgentState.FINALIZING: {AgentState.DONE, AgentState.FAILED, AgentState.ABORTED},
+    AgentState.DONE: {AgentState.DONE, AgentState.FAILED, AgentState.ABORTED},
+    AgentState.FAILED: {AgentState.FAILED, AgentState.ABORTED},
+    AgentState.ABORTED: {AgentState.ABORTED, AgentState.FAILED},
+}
+
+
 @dataclass
 class AgentRunContext:
     """Mutable execution context that survives across loop iterations."""
@@ -34,17 +73,52 @@ class AgentRunContext:
     iteration: int = 0
     stop_reason: Optional[str] = None
     tool_history: List[Dict[str, Any]] = field(default_factory=list)
+    state_history: List[Dict[str, Any]] = field(default_factory=list)
+    last_state_transition: Dict[str, Any] = field(default_factory=dict)
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     def begin_iteration(self) -> int:
         self.iteration += 1
-        self.state = AgentState.GENERATING
+        self.transition_to(AgentState.GENERATING)
         return self.iteration
 
-    def set_state(self, state: AgentState, *, stop_reason: Optional[str] = None) -> None:
+    def set_state(self, state: AgentState, *, stop_reason: Optional[str] = None) -> Dict[str, Any]:
+        return self.transition_to(state, stop_reason=stop_reason)
+
+    def transition_to(self, state: AgentState, *, stop_reason: Optional[str] = None) -> Dict[str, Any]:
+        if not isinstance(state, AgentState):
+            state = AgentState(str(state))
+        previous_state = self.state
+        if state != previous_state and state not in _STATE_TRANSITIONS.get(previous_state, set()):
+            raise ValueError(f"非法状态迁移: {previous_state.value} -> {state.value}")
         self.state = state
         if stop_reason is not None:
             self.stop_reason = stop_reason
+        transition = {
+            "previous_state": previous_state.value,
+            "state": self.state.value,
+            "stop_reason": self.stop_reason,
+            "iteration": self.iteration,
+        }
+        self.last_state_transition = transition
+        self.state_history.append(dict(transition))
+        self.metadata["last_state_transition"] = dict(transition)
+        self.metadata["state_history"] = list(self.state_history)
+        return transition
+
+    def snapshot(self) -> Dict[str, Any]:
+        return {
+            "run_id": self.run_id,
+            "conversation_id": self.conversation_id,
+            "user_id": self.user_id,
+            "model_name": self.model_name,
+            "state": self.state.value,
+            "iteration": self.iteration,
+            "stop_reason": self.stop_reason,
+            "tool_history": list(self.tool_history),
+            "state_history": list(self.state_history),
+            "metadata": dict(self.metadata),
+        }
 
     def record_tool_result(
         self,

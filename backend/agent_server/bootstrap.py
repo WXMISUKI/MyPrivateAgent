@@ -47,6 +47,8 @@ def init_database() -> None:
                 logger.info("数据库 '%s' 已创建或已存在", DB_NAME)
         finally:
             connection.close()
+    elif DB_MODE == "memory":
+        logger.info("使用进程内 SQLite 内存存储（无持久化）")
     else:
         Path(LOCAL_DATA_DIR).mkdir(parents=True, exist_ok=True)
         logger.info("使用本地 SQLite 存储: %s", SQLITE_PATH)

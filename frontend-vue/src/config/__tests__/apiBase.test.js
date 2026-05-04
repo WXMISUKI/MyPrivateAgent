@@ -24,11 +24,11 @@ describe('apiBase', () => {
     expect(buildApiUrl('/chat')).toBe('https://runtime-config.example.com/api/chat')
   })
 
-  it('falls back to railway url on vercel host', () => {
+  it('uses same-origin /api on vercel host', () => {
     setHostname('my-private-agent.vercel.app')
 
-    expect(getApiBaseUrl()).toContain('railway.app/api')
-    expect(buildApiUrl('/models')).toContain('/api/models')
+    expect(getApiBaseUrl()).toBe('/api')
+    expect(buildApiUrl('/models')).toBe('/api/models')
   })
 
   it('uses local /api proxy for localhost', () => {
@@ -38,4 +38,3 @@ describe('apiBase', () => {
     expect(buildApiUrl('/auth/me')).toBe('/api/auth/me')
   })
 })
-

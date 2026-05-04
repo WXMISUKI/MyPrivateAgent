@@ -20,6 +20,7 @@ except ModuleNotFoundError:  # pragma: no cover - package import compatibility
     from backend.models import Skill
 
 router = APIRouter(prefix="/api/skills", tags=["Skills"])
+IS_VERCEL = os.getenv("VERCEL", "").strip() == "1"
 
 # Skill 存储目录
 SKILL_STORE_DIR = PROJECT_ROOT / "skill_store"
@@ -27,6 +28,8 @@ SKILL_STORE_DIR = PROJECT_ROOT / "skill_store"
 
 def ensure_skill_dir():
     """确保Skill存储目录存在"""
+    if IS_VERCEL:
+        raise HTTPException(status_code=503, detail="Vercel 环境已禁用 Skill 文件写入，请在本地开发环境维护 Skills。")
     SKILL_STORE_DIR.mkdir(exist_ok=True)
 
 
@@ -121,6 +124,8 @@ async def import_skill(
     2. 上传 ZIP 文件 - 解压后验证包含 SKILL.md
     3. 上传单个 SKILL.md 文件 - 仅复制该文件（不推荐）
     """
+    if IS_VERCEL:
+        raise HTTPException(status_code=503, detail="Vercel 环境已禁用 Skill 导入能力，请在本地开发环境操作。")
     ensure_skill_dir()
     
     # 判断是哪种上传方式
@@ -370,6 +375,8 @@ def delete_skill(
     db: Annotated[Session, Depends(get_db)]
 ):
     """删除 Skill"""
+    if IS_VERCEL:
+        raise HTTPException(status_code=503, detail="Vercel 环境已禁用 Skill 删除能力，请在本地开发环境操作。")
     skill = db.query(Skill).filter(Skill.id == skill_id).first()
     if not skill:
         raise HTTPException(status_code=404, detail="Skill 不存在")
@@ -451,6 +458,9 @@ def create_skill_by_ai(
         "prompt": "详细需求描述"
     }
     """
+    if IS_VERCEL:
+        raise HTTPException(status_code=503, detail="Vercel 环境已禁用 Skill 创建能力，请在本地开发环境操作。")
+
     skill_name = request.get("name", "").strip()
     skill_description = request.get("description", "").strip()
     prompt = request.get("prompt", "")

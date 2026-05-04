@@ -13,6 +13,27 @@
     <p v-if="error" class="inline-error">{{ error }}</p>
     <p v-if="bulkOperationResult" class="inline-info">{{ bulkOperationResult }}</p>
 
+    <div v-if="latestSnapshotRef" class="panel-card snapshot-card">
+      <div class="card-head">
+        <h3>最近治理快照</h3>
+        <button class="secondary-btn" @click="openSnapshotTimeline">查看时间线</button>
+      </div>
+      <div class="summary-grid remediation-summary-grid">
+        <div class="summary-card">
+          <span class="summary-label">快照 ID</span>
+          <strong>{{ latestSnapshotRef.snapshot_id }}</strong>
+        </div>
+        <div class="summary-card">
+          <span class="summary-label">来源</span>
+          <strong>{{ latestSnapshotRef.source || '-' }}</strong>
+        </div>
+        <div class="summary-card">
+          <span class="summary-label">事件</span>
+          <strong>{{ latestSnapshotRef.event_type || '-' }}</strong>
+        </div>
+      </div>
+    </div>
+
     <div v-if="bulkOperationHistory.length" class="panel-card">
       <div class="card-head">
         <h3>批量操作审计</h3>
@@ -564,7 +585,10 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { capabilityGapApi } from '../api'
+import { useConversationStore } from '../stores/conversation'
+import { usePlannerStore } from '../stores/planner'
 
 const STORAGE_KEYS = {
   auditHistory: 'cap_gap_bulk_audit_history',
@@ -572,9 +596,14 @@ const STORAGE_KEYS = {
   cachedSummary: 'cap_gap_cached_summary'
 }
 
+const router = useRouter()
+const conversationStore = useConversationStore()
+const plannerStore = usePlannerStore()
+
 const summary = ref(null)
 const loading = ref(false)
 const error = ref('')
+const latestSnapshotRef = ref(null)
 const selectedMissingPart = ref('')
 const keyword = ref('')
 const selectedProfile = ref('')
@@ -745,6 +774,47 @@ const activeFilterLabel = computed(() => {
   }
   return labels.length ? labels.join(' / ') : '未筛选'
 })
+const currentConversationId = computed(() => {
+  const id = Number(conversationStore.currentConversation?.id)
+  return Number.isFinite(id) ? id : null
+})
+
+function normalizeSnapshotRef(snapshotRef) {
+  if (!snapshotRef || typeof snapshotRef !== 'object') {
+    return null
+  }
+  const snapshotId = String(snapshotRef.snapshot_id || '').trim()
+  if (!snapshotId) {
+    return null
+  }
+  return {
+    snapshot_id: snapshotId,
+    generated_at: String(snapshotRef.generated_at || '').trim(),
+    conversation_id: snapshotRef.conversation_id ?? null,
+    source: String(snapshotRef.source || '').trim(),
+    event_type: String(snapshotRef.event_type || '').trim(),
+  }
+}
+
+function extractLatestSnapshotFromPlan() {
+  const items = plannerStore.currentPlan?.items || []
+  for (const item of items) {
+    for (const entry of item.run_trace || []) {
+      const snapshotRef = normalizeSnapshotRef(entry?.payload?.snapshot_ref)
+      if (snapshotRef) {
+        return snapshotRef
+      }
+    }
+  }
+  return null
+}
+
+function openSnapshotTimeline() {
+  if (!latestSnapshotRef.value?.snapshot_id) {
+    return
+  }
+  router.push(`/settings?tab=advanced&governance_snapshot=${encodeURIComponent(latestSnapshotRef.value.snapshot_id)}`)
+}
 
 function formatPart(name) {
   return partLabelMap[name] || name
@@ -833,6 +903,25 @@ async function loadSummary() {
   } finally {
     loading.value = false
   }
+  const extractedSnapshot = extractLatestSnapshotFromPlan()
+  if (extractedSnapshot) {
+    latestSnapshotRef.value = extractedSnapshot
+  }
+}
+
+async function refreshTimelinePlan() {
+  if (currentConversationId.value === null) {
+    return
+  }
+  try {
+    await plannerStore.loadPlans({ conversationId: currentConversationId.value })
+    const extractedSnapshot = extractLatestSnapshotFromPlan()
+    if (extractedSnapshot) {
+      latestSnapshotRef.value = extractedSnapshot
+    }
+  } catch (_err) {
+    // best effort refresh for governance timeline
+  }
 }
 
 function syncBulkRemediationInputs() {
@@ -851,13 +940,16 @@ async function onChangeRemediationStatus(target, event) {
     return
   }
   try {
-    await capabilityGapApi.updateRemediationStatus(target.action_id, {
+    const response = await capabilityGapApi.updateRemediationStatus(target.action_id, {
       status: nextStatus,
       owner: target.owner || undefined,
       module: target.module || undefined,
-      updated_by: 'runtime-panel'
+      updated_by: 'runtime-panel',
+      conversation_id: currentConversationId.value ?? undefined
     })
+    latestSnapshotRef.value = normalizeSnapshotRef(response?.data?.timeline_recording?.snapshot_ref)
     await loadSummary()
+    await refreshTimelinePlan()
   } catch (err) {
     applyLocalStatusUpdate(target.action_id, {
       status: nextStatus,
@@ -896,13 +988,16 @@ async function promoteActionToInProgress(actionId) {
     item => String(item?.action_id || '').trim() === String(actionId).trim()
   )
   try {
-    await capabilityGapApi.updateRemediationStatus(actionId, {
+    const response = await capabilityGapApi.updateRemediationStatus(actionId, {
       status: 'in_progress',
       owner: target?.owner || undefined,
       module: target?.module || undefined,
-      updated_by: 'runtime-panel'
+      updated_by: 'runtime-panel',
+      conversation_id: currentConversationId.value ?? undefined
     })
+    latestSnapshotRef.value = normalizeSnapshotRef(response?.data?.timeline_recording?.snapshot_ref)
     await loadSummary()
+    await refreshTimelinePlan()
   } catch (err) {
     applyLocalStatusUpdate(actionId, {
       status: 'in_progress',
@@ -932,13 +1027,15 @@ async function promoteRecommendationActions(item) {
         current => String(current?.action_id || '').trim() === String(actionId).trim()
       )
       try {
-        await capabilityGapApi.updateRemediationStatus(actionId, {
+        const response = await capabilityGapApi.updateRemediationStatus(actionId, {
           status: 'in_progress',
           owner: target?.owner || undefined,
           module: target?.module || undefined,
           note: note || undefined,
-          updated_by: updatedBy
+          updated_by: updatedBy,
+          conversation_id: currentConversationId.value ?? undefined
         })
+        latestSnapshotRef.value = normalizeSnapshotRef(response?.data?.timeline_recording?.snapshot_ref) || latestSnapshotRef.value
         successCount += 1
       } catch (_err) {
         applyLocalStatusUpdate(actionId, {
@@ -952,6 +1049,7 @@ async function promoteRecommendationActions(item) {
       }
     }
     await loadSummary()
+    await refreshTimelinePlan()
     bulkOperationResult.value = failedActions.length
       ? `批量更新完成：成功 ${successCount} 条，失败 ${failedActions.length} 条（${failedActions.join('、')}）。`
       : `批量更新完成：成功 ${successCount} 条。`

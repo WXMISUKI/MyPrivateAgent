@@ -19,6 +19,10 @@
       </button>
     </div>
 
+    <div v-if="isVercelRuntime" class="runtime-notice">
+      当前为 Vercel 线上运行环境。Skills 仅支持查看，导入、创建、删除等文件写入能力已禁用，请在本地开发环境维护。
+    </div>
+
     <div class="skills-stats">
       <div class="stat-card">
         <div class="stat-value">{{ skills.length }}</div>
@@ -175,6 +179,7 @@ import axios from 'axios'
 import { buildApiUrl } from '../config/apiBase'
 
 const router = useRouter()
+const isVercelRuntime = typeof window !== 'undefined' && window.location.hostname.endsWith('.vercel.app')
 
 function getAuthHeaders() {
   const token = localStorage.getItem('token')
@@ -218,6 +223,10 @@ async function fetchSkills() {
 }
 
 async function toggleSkill(skill) {
+  if (isVercelRuntime) {
+    alert('Vercel 线上环境已禁用 Skill 写操作，请在本地开发环境维护。')
+    return
+  }
   try {
     const response = await axios.post(buildApiUrl(`/skills/${skill.id}/toggle`), {}, { headers: getAuthHeaders() })
     const index = skills.value.findIndex(s => s.id === skill.id)
@@ -230,6 +239,10 @@ async function toggleSkill(skill) {
 }
 
 async function deleteSkill(skill) {
+  if (isVercelRuntime) {
+    alert('Vercel 线上环境已禁用 Skill 删除，请在本地开发环境维护。')
+    return
+  }
   if (!confirm(`确定要删除 Skill "${skill.name}" 吗？`)) return
 
   try {
@@ -251,6 +264,10 @@ async function previewSkill(skill) {
 }
 
 function triggerFileInput() {
+  if (isVercelRuntime) {
+    uploadStatus.value = { type: 'error', message: 'Vercel 线上环境已禁用 Skill 导入，请在本地开发环境操作。' }
+    return
+  }
   fileInput.value?.click()
 }
 
@@ -281,6 +298,10 @@ async function handleFileUpload(event) {
 }
 
 async function createSkill() {
+  if (isVercelRuntime) {
+    createStatus.value = { type: 'error', message: 'Vercel 线上环境已禁用 Skill 创建，请在本地开发环境操作。' }
+    return
+  }
   if (!newSkill.value.name) return
 
   creating.value = true
@@ -443,6 +464,16 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
+}
+
+.runtime-notice {
+  margin-bottom: var(--space-lg);
+  padding: var(--space-md);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: var(--radius-lg);
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+  line-height: 1.6;
 }
 
 .skill-item {

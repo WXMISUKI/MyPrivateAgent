@@ -21,22 +21,51 @@
         </div>
 
         <div v-if="filteredCommands.length > 0" class="command-list">
-          <div
-            v-for="(cmd, index) in filteredCommands"
-            :key="cmd.id"
-            class="command-item"
-            :class="{ active: index === activeIndex }"
-            @click="executeCommandItem(cmd)"
-            @mouseenter="activeIndex = index"
-          >
-            <span class="command-item-icon">{{ cmd.icon }}</span>
-            <div class="command-item-content">
-              <span class="command-item-name">/{{ cmd.name }}</span>
-              <span class="command-item-desc">{{ cmd.description }}</span>
+          <div v-if="filteredRecentCommands.length > 0" class="command-section">
+            <div class="command-section-title">最近治理快照</div>
+            <div
+              v-for="(cmd, index) in filteredRecentCommands"
+              :key="cmd.id"
+              class="command-item"
+              :class="{ active: index === activeIndex }"
+              @click="executeCommandItem(cmd)"
+              @mouseenter="activeIndex = index"
+            >
+              <span class="command-item-icon">{{ cmd.icon }}</span>
+              <div class="command-item-content">
+                <div class="command-item-name-row">
+                  <span class="command-item-name">{{ cmd.display_name || `/${cmd.name}` }}</span>
+                  <span class="command-item-badge">最近</span>
+                </div>
+                <span class="command-item-desc">{{ cmd.description }}</span>
+              </div>
+              <span v-if="cmd.has_param || cmd.hasParam" class="command-param-hint">
+                {{ cmd.param_hint || cmd.paramHint }}
+              </span>
             </div>
-            <span v-if="cmd.hasParam" class="command-param-hint">
-              {{ cmd.paramHint }}
-            </span>
+          </div>
+
+          <div v-if="filteredRecentCommands.length > 0 && filteredBaseCommands.length > 0" class="command-section-divider"></div>
+
+          <div v-if="filteredBaseCommands.length > 0" class="command-section">
+            <div class="command-section-title">全部命令</div>
+            <div
+              v-for="(cmd, index) in filteredBaseCommands"
+              :key="cmd.id"
+              class="command-item"
+              :class="{ active: index + filteredRecentCommands.length === activeIndex }"
+              @click="executeCommandItem(cmd)"
+              @mouseenter="activeIndex = index + filteredRecentCommands.length"
+            >
+              <span class="command-item-icon">{{ cmd.icon }}</span>
+              <div class="command-item-content">
+                <span class="command-item-name">{{ cmd.display_name || `/${cmd.name}` }}</span>
+                <span class="command-item-desc">{{ cmd.description }}</span>
+              </div>
+              <span v-if="cmd.has_param || cmd.hasParam" class="command-param-hint">
+                {{ cmd.param_hint || cmd.paramHint }}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -57,8 +86,10 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue'
-import { commands, filterCommands, parseCommand } from '../services/commands'
+import { ref, computed, watch, nextTick, onMounted } from 'vue'
+import { localCommands, parseCommand } from '../services/commands'
+import { commandApi } from '../api'
+import { loadRecentSnapshotCommands } from '../services/governanceSnapshotCommands'
 
 const props = defineProps({
   visible: {
@@ -72,8 +103,37 @@ const emit = defineEmits(['close', 'execute'])
 const inputRef = ref(null)
 const query = ref('')
 const activeIndex = ref(0)
+const baseCommands = ref([...localCommands])
+const recentCommands = ref([])
 
-const filteredCommands = computed(() => filterCommands(query.value))
+const filteredRecentCommands = computed(() => {
+  if (!query.value) return recentCommands.value
+  const lower = query.value.toLowerCase()
+  return recentCommands.value.filter(cmd =>
+    (cmd.name || '').toLowerCase().includes(lower) ||
+    (cmd.description || '').toLowerCase().includes(lower) ||
+    (cmd.display_name || '').toLowerCase().includes(lower) ||
+    (cmd.command_text || '').toLowerCase().includes(lower)
+  )
+})
+
+const filteredBaseCommands = computed(() => {
+  if (!query.value) return baseCommands.value
+  const lower = query.value.toLowerCase()
+  return baseCommands.value.filter(cmd =>
+    (cmd.name || '').toLowerCase().includes(lower) ||
+    (cmd.description || '').toLowerCase().includes(lower) ||
+    (cmd.display_name || '').toLowerCase().includes(lower) ||
+    (cmd.command_text || '').toLowerCase().includes(lower)
+  )
+})
+
+const filteredCommands = computed(() => {
+  return [
+    ...filteredRecentCommands.value,
+    ...filteredBaseCommands.value
+  ]
+})
 
 const selectedCommand = computed(() => {
   if (filteredCommands.value.length > 0 && activeIndex.value >= 0) {
@@ -86,6 +146,7 @@ watch(() => props.visible, (newVal) => {
   if (newVal) {
     query.value = ''
     activeIndex.value = 0
+    hydrateRecentCommands()
     nextTick(() => {
       inputRef.value?.focus()
     })
@@ -94,6 +155,22 @@ watch(() => props.visible, (newVal) => {
 
 watch(query, () => {
   activeIndex.value = 0
+})
+
+onMounted(async () => {
+  hydrateRecentCommands()
+  try {
+    const response = await commandApi.list()
+    if (Array.isArray(response.data) && response.data.length > 0) {
+      baseCommands.value = response.data.map(cmd => ({
+        ...cmd,
+        has_param: Boolean(cmd.has_param || cmd.hasParam),
+        param_hint: cmd.param_hint || cmd.paramHint || ''
+      }))
+    }
+  } catch (error) {
+    console.warn('[CommandPalette] 使用本地命令集', error)
+  }
 })
 
 function navigateUp() {
@@ -109,19 +186,44 @@ function navigateDown() {
 }
 
 function executeCommand() {
-  if (selectedCommand.value) {
+  const parsed = parseCommand('/' + query.value)
+  if (parsed && !parsed.error) {
+    emit('execute', parsed)
+    close()
+  } else if (selectedCommand.value) {
     executeCommandItem(selectedCommand.value)
-  } else if (query.value) {
-    const parsed = parseCommand('/' + query.value)
-    if (parsed && parsed.error === 'unknown_command') {
-      close()
-    }
+  } else if (parsed && parsed.error === 'unknown_command') {
+    close()
   }
 }
 
 function executeCommandItem(cmd) {
+  if (Array.isArray(cmd.presetParams)) {
+    emit('execute', {
+      command: cmd,
+      params: [...cmd.presetParams]
+    })
+    close()
+    return
+  }
   emit('execute', cmd)
   close()
+}
+
+function hydrateRecentCommands() {
+  recentCommands.value = loadRecentSnapshotCommands().map(item => ({
+    id: `recent-${item.snapshotId}`,
+    name: item.commandName,
+    display_name: item.commandText,
+    command_text: item.commandText,
+    description: `最近治理快照 · ${item.snapshotId}`,
+    icon: '🧷',
+    action: item.action,
+    category: 'recent',
+    hasParam: true,
+    paramHint: item.commandText,
+    presetParams: item.params,
+  }))
 }
 
 function close() {
@@ -213,6 +315,27 @@ function close() {
   padding: var(--space-sm);
 }
 
+.command-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.command-section-title {
+  padding: 8px 12px 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.command-section-divider {
+  height: 1px;
+  margin: 8px 12px;
+  background: var(--border-primary);
+}
+
 .command-item {
   display: flex;
   align-items: center;
@@ -246,6 +369,12 @@ function close() {
   gap: 2px;
 }
 
+.command-item-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .command-item-name {
   font-size: 0.9rem;
   font-weight: 500;
@@ -256,6 +385,15 @@ function close() {
 .command-item-desc {
   font-size: 0.75rem;
   color: var(--text-secondary);
+}
+
+.command-item-badge {
+  font-size: 0.65rem;
+  color: var(--text-accent);
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.2);
 }
 
 .command-param-hint {

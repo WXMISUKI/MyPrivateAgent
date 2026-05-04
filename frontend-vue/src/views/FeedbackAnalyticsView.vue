@@ -66,6 +66,7 @@
               <th>总数</th>
               <th>负反馈</th>
               <th>负反馈率</th>
+              <th>操作</th>
             </tr>
           </thead>
           <tbody>
@@ -75,6 +76,16 @@
               <td>{{ item.total }}</td>
               <td>{{ item.negative }}</td>
               <td>{{ formatRate(item.negative_rate) }}</td>
+              <td>
+                <button
+                  class="drilldown-btn"
+                  type="button"
+                  :data-testid="`rollback-drilldown-${item.kind}-${item.key}`"
+                  @click="openLearningDrilldown(item.kind, item.key)"
+                >
+                  查看学习
+                </button>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -89,6 +100,7 @@
               <th>总数</th>
               <th>负反馈</th>
               <th>负反馈率</th>
+              <th>操作</th>
             </tr>
           </thead>
           <tbody>
@@ -97,9 +109,19 @@
               <td>{{ item.total }}</td>
               <td>{{ item.negative }}</td>
               <td>{{ formatRate(item.negative_rate) }}</td>
+              <td>
+                <button
+                  class="drilldown-btn"
+                  type="button"
+                  :data-testid="`scope-drilldown-${item.key}`"
+                  @click="openLearningDrilldown('scope', item.key)"
+                >
+                  查看学习
+                </button>
+              </td>
             </tr>
             <tr v-if="scopeStats.length === 0">
-              <td colspan="4" class="empty-text">暂无数据</td>
+              <td colspan="5" class="empty-text">暂无数据</td>
             </tr>
           </tbody>
         </table>
@@ -114,6 +136,7 @@
               <th>总数</th>
               <th>负反馈</th>
               <th>负反馈率</th>
+              <th>操作</th>
             </tr>
           </thead>
           <tbody>
@@ -122,9 +145,19 @@
               <td>{{ item.total }}</td>
               <td>{{ item.negative }}</td>
               <td>{{ formatRate(item.negative_rate) }}</td>
+              <td>
+                <button
+                  class="drilldown-btn"
+                  type="button"
+                  :data-testid="`prompt-drilldown-${item.key}`"
+                  @click="openLearningDrilldown('prompt', item.key)"
+                >
+                  查看学习
+                </button>
+              </td>
             </tr>
             <tr v-if="promptStats.length === 0">
-              <td colspan="4" class="empty-text">暂无数据</td>
+              <td colspan="5" class="empty-text">暂无数据</td>
             </tr>
           </tbody>
         </table>
@@ -139,6 +172,7 @@
               <th>总数</th>
               <th>负反馈</th>
               <th>负反馈率</th>
+              <th>操作</th>
             </tr>
           </thead>
           <tbody>
@@ -147,9 +181,19 @@
               <td>{{ item.total }}</td>
               <td>{{ item.negative }}</td>
               <td>{{ formatRate(item.negative_rate) }}</td>
+              <td>
+                <button
+                  class="drilldown-btn"
+                  type="button"
+                  :data-testid="`practice-drilldown-${item.key}`"
+                  @click="openLearningDrilldown('practice', item.key)"
+                >
+                  查看学习
+                </button>
+              </td>
             </tr>
             <tr v-if="practiceStats.length === 0">
-              <td colspan="4" class="empty-text">暂无数据</td>
+              <td colspan="5" class="empty-text">暂无数据</td>
             </tr>
           </tbody>
         </table>
@@ -200,6 +244,26 @@ function formatRate(value) {
   const numeric = Number(value)
   if (Number.isNaN(numeric)) return '-'
   return `${(numeric * 100).toFixed(1)}%`
+}
+
+function openLearningDrilldown(kind, key) {
+  const normalizedKey = String(key || '').trim()
+  if (!normalizedKey) return
+  const params = new URLSearchParams({
+    tab: 'learnings',
+    source: 'user_feedback',
+    search: normalizedKey
+  })
+  if (kind === 'scope') {
+    params.set('tag', `scope:${normalizedKey}`)
+  } else if (kind === 'prompt') {
+    params.set('tag', `prompt:${normalizedKey}`)
+  } else if (kind === 'practice') {
+    params.set('tag', `practice:${normalizedKey}`)
+  } else {
+    params.set('tag', `${kind}:${normalizedKey}`)
+  }
+  router.push(`/learnings?${params.toString()}`)
 }
 
 async function fetchAnalytics() {
@@ -386,5 +450,15 @@ onMounted(() => {
 .empty-text {
   color: var(--text-tertiary);
   text-align: center;
+}
+
+.drilldown-btn {
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  background: rgba(99, 102, 241, 0.1);
+  color: var(--primary);
+  font-size: 0.8rem;
+  cursor: pointer;
 }
 </style>

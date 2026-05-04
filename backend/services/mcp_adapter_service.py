@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import shutil
 from copy import deepcopy
 from asyncio.subprocess import PIPE
@@ -23,6 +24,7 @@ class McpAdapterService:
 
     def __init__(self):
         self.registry_service = get_mcp_registry_service()
+        self._is_vercel = os.getenv("VERCEL", "").strip() == "1"
 
     def probe_server(self, server_name: str) -> dict:
         server = self.registry_service.get_server(server_name)
@@ -120,6 +122,16 @@ class McpAdapterService:
         return await self._dispatch_json_payload(server, payload)
 
     def _probe_stdio(self, server: Dict[str, Any]) -> dict:
+        if self._is_vercel:
+            return {
+                "server_name": server["name"],
+                "transport": "stdio",
+                "status": "unsupported_runtime",
+                "command": str(server.get("command") or "").strip(),
+                "resolved_command": None,
+                "args": list(server.get("args") or []),
+                "detail": "Vercel Serverless 不支持本地 stdio MCP 进程，请改用远程 http MCP。",
+            }
         command = str(server.get("command") or "").strip()
         resolved_command = shutil.which(command) if command else None
         status = "ready" if resolved_command else "missing_command"
@@ -189,6 +201,8 @@ class McpAdapterService:
         return data
 
     async def _dispatch_stdio_payload(self, server: Dict[str, Any], payload: Dict[str, Any]) -> str:
+        if self._is_vercel:
+            raise ValueError("Vercel Serverless 不支持本地 stdio MCP 进程，请改用远程 http MCP。")
         command = str(server.get("command") or "").strip()
         args = [str(item) for item in (server.get("args") or [])]
         timeout_seconds = self._resolve_timeout_seconds(server)

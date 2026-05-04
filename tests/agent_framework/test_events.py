@@ -7,6 +7,20 @@ from backend.agent_framework.tools import ToolRenderMode, ToolSpec
 
 
 class AgentEventTests(unittest.TestCase):
+    def test_state_event_type_serializes(self):
+        factory = AgentEventFactory("run_999", conversation_id=8)
+        event = factory.build_state_event(
+            previous_state="generating",
+            state="tool_calling",
+            iteration=3,
+        )
+
+        data = event.to_dict()
+        self.assertEqual(data["type"], "state")
+        self.assertEqual(data["payload"]["previous_state"], "generating")
+        self.assertEqual(data["payload"]["state"], "tool_calling")
+        self.assertEqual(data["payload"]["status_kind"], "agent_state")
+
     def test_event_factory_flattens_payload(self):
         factory = AgentEventFactory("run_123", conversation_id=42)
         event = factory.build(
@@ -41,8 +55,11 @@ class AgentRuntimeTests(unittest.TestCase):
         iteration = context.begin_iteration()
         self.assertEqual(iteration, 1)
         self.assertEqual(context.state, AgentState.GENERATING)
+        self.assertTrue(context.state_history)
 
-        context.set_state(AgentState.TOOL_CALLING)
+        transition = context.set_state(AgentState.TOOL_CALLING)
+        self.assertEqual(transition["previous_state"], "generating")
+        self.assertEqual(transition["state"], "tool_calling")
         context.record_tool_result(
             "search",
             {"query": "舟山天气"},
@@ -50,13 +67,19 @@ class AgentRuntimeTests(unittest.TestCase):
             "call_1",
             execution={"cache_hit": True, "duration_ms": 1.25},
         )
-        context.set_state(AgentState.DONE, stop_reason="completed")
+        context.set_state(AgentState.FINALIZING, stop_reason="completed")
+        context.set_state(AgentState.DONE)
 
         self.assertEqual(context.stop_reason, "completed")
         self.assertEqual(len(context.tool_history), 1)
         self.assertEqual(context.tool_history[0]["tool_name"], "search")
         self.assertEqual(context.tool_history[0]["iteration"], 1)
         self.assertTrue(context.tool_history[0]["execution"]["cache_hit"])
+
+    def test_invalid_transition_raises(self):
+        context = AgentRunContext(conversation_id=7, user_id=9, model_name="doubao")
+        with self.assertRaises(ValueError):
+            context.transition_to(AgentState.DONE)
 
 
 class ToolSpecTests(unittest.TestCase):

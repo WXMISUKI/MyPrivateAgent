@@ -17,13 +17,14 @@ class RuntimeSurfaceServiceTests(unittest.TestCase):
             "auth_mode": "demo_guest",
             "default_model": "doubao",
             "enabled_providers": ["volcengine-ark"],
+            "failover_thresholds": {"medium": 0.2, "high": 0.4},
         }
         mock_config_factory.return_value.get_config_layers.return_value = {
-            "defaults": {"auth_mode": "demo_guest", "default_model": "doubao", "enabled_providers": []},
+            "defaults": {"auth_mode": "demo_guest", "default_model": "doubao", "enabled_providers": [], "failover_thresholds": {"medium": 0.2, "high": 0.4}},
             "overrides": {"enabled_providers": ["volcengine-ark"]},
-            "effective": {"auth_mode": "demo_guest", "default_model": "doubao", "enabled_providers": ["volcengine-ark"]},
+            "effective": {"auth_mode": "demo_guest", "default_model": "doubao", "enabled_providers": ["volcengine-ark"], "failover_thresholds": {"medium": 0.2, "high": 0.4}},
             "override_path": ".myagent/runtime_surface.json",
-            "editable_keys": ["auth_mode", "default_model", "enabled_providers"],
+            "editable_keys": ["auth_mode", "default_model", "enabled_providers", "failover_thresholds"],
         }
         mock_capability_factory.return_value.build_runtime_contract.return_value = {
             "identity_summary": "主协调智能体",
@@ -83,7 +84,9 @@ class RuntimeSurfaceServiceTests(unittest.TestCase):
         self.assertEqual({item["provider_id"] for item in profile["providers"]}, {"volcengine-ark", "ollama"})
         self.assertEqual(profile["providers"][0]["models"], ["doubao"])
         self.assertEqual(profile["capability_contract"]["identity_summary"], "主协调智能体")
-        self.assertEqual(profile["config_layers"]["editable_keys"], ["auth_mode", "default_model", "enabled_providers"])
+        self.assertEqual(profile["config_layers"]["editable_keys"], ["auth_mode", "default_model", "enabled_providers", "failover_thresholds"])
+        self.assertEqual(profile["failover_thresholds"]["medium"], 0.2)
+        self.assertEqual(profile["failover_thresholds"]["high"], 0.4)
         self.assertIn("configured_model_count", profile["providers"][0])
         self.assertEqual(profile["config_layers"]["provider_resolution"]["enabled_provider_ids"], ["volcengine-ark"])
         self.assertEqual(profile["providers"][1]["enabled"], False)
@@ -94,6 +97,8 @@ class RuntimeSurfaceServiceTests(unittest.TestCase):
         self.assertEqual(profile["memory_contract"]["loaded_layers"][0]["name"], "global")
         self.assertEqual(profile["subagent_contract"]["total_profiles"], 1)
         self.assertIn("pre_tool_use", profile["hook_contract"]["enabled_hooks"])
+        self.assertIn("command_contract", profile)
+        self.assertGreaterEqual(profile["command_contract"]["total_commands"], 10)
 
     @patch("backend.services.runtime_surface_service.get_model_router")
     @patch("backend.services.runtime_surface_service.get_runtime_surface_config_service")
@@ -123,13 +128,14 @@ class RuntimeSurfaceServiceTests(unittest.TestCase):
             "auth_mode": "demo_guest",
             "default_model": "doubao",
             "enabled_providers": [],
+            "failover_thresholds": {"medium": 0.2, "high": 0.4},
         }
         mock_config.get_config_layers.return_value = {
-            "defaults": {"auth_mode": "demo_guest", "default_model": "doubao", "enabled_providers": []},
+            "defaults": {"auth_mode": "demo_guest", "default_model": "doubao", "enabled_providers": [], "failover_thresholds": {"medium": 0.2, "high": 0.4}},
             "overrides": {},
-            "effective": {"auth_mode": "demo_guest", "default_model": "doubao", "enabled_providers": []},
+            "effective": {"auth_mode": "demo_guest", "default_model": "doubao", "enabled_providers": [], "failover_thresholds": {"medium": 0.2, "high": 0.4}},
             "override_path": ".myagent/runtime_surface.json",
-            "editable_keys": ["auth_mode", "default_model", "enabled_providers"],
+            "editable_keys": ["auth_mode", "default_model", "enabled_providers", "failover_thresholds"],
         }
         mock_router.list_available_models.return_value = {
             "doubao": {

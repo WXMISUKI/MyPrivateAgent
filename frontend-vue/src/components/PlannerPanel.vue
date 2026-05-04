@@ -84,24 +84,30 @@
                 <span>负责人：{{ item.owner || '未指定' }}</span>
                 <span>Agent ID：{{ item.agent_id || '待分配' }}</span>
               </div>
-              <div v-if="item.merge_summary || (item.child_executions && item.child_executions.length)" class="scheduler-block">
+              <div v-if="item.scheduler_snapshot || item.merge_summary || (item.child_executions && item.child_executions.length)" class="scheduler-block">
                 <div class="scheduler-header">
                   <span class="scheduler-title">调度状态</span>
                   <span
-                    v-if="item.merge_summary?.merge_status"
+                    v-if="item.scheduler_snapshot?.merge_status || item.merge_summary?.merge_status"
                     class="scheduler-badge"
-                    :class="`merge-${item.merge_summary.merge_status}`"
+                    :class="`merge-${item.scheduler_snapshot?.merge_status || item.merge_summary.merge_status}`"
                   >
-                    {{ formatMergeStatus(item.merge_summary.merge_status) }}
+                    {{ formatMergeStatus(item.scheduler_snapshot?.merge_status || item.merge_summary.merge_status) }}
                   </span>
                 </div>
                 <div class="scheduler-meta">
-                  <span>子执行：{{ item.merge_summary?.child_count ?? item.child_executions?.length ?? 0 }}</span>
-                  <span v-if="item.merge_summary?.merge_strategy">合并策略：{{ item.merge_summary.merge_strategy }}</span>
+                  <span>子执行：{{ item.scheduler_snapshot?.child_count ?? item.merge_summary?.child_count ?? item.child_executions?.length ?? 0 }}</span>
+                  <span v-if="item.scheduler_snapshot?.merge_strategy || item.merge_summary?.merge_strategy">合并策略：{{ item.scheduler_snapshot?.merge_strategy || item.merge_summary.merge_strategy }}</span>
+                  <span v-if="item.scheduler_snapshot?.active_children !== undefined">运行中：{{ item.scheduler_snapshot.active_children }}</span>
                 </div>
-                <div v-if="item.child_executions && item.child_executions.length" class="child-execution-list">
+                <div v-if="item.scheduler_snapshot?.child_status_counts" class="child-status-counts">
+                  <span v-for="(count, status) in item.scheduler_snapshot.child_status_counts" :key="status" class="child-status-count">
+                    {{ formatChildStatus(status) }} {{ count }}
+                  </span>
+                </div>
+                <div v-if="item.scheduler_snapshot?.children && item.scheduler_snapshot.children.length" class="child-execution-list">
                   <div
-                    v-for="child in item.child_executions"
+                    v-for="child in item.scheduler_snapshot.children"
                     :key="child.child_execution_id || child.agent_id"
                     class="child-execution-item"
                     :class="`child-${child.status}`"
@@ -111,12 +117,29 @@
                       <span class="child-status">{{ formatChildStatus(child.status) }}</span>
                     </div>
                     <div class="child-meta">Agent：{{ child.agent_id || '待分配' }}</div>
+                    <div v-if="child.provider_name || child.model_name" class="child-meta">
+                      策略：{{ child.provider_name || 'unknown' }} / {{ child.model_name || 'unknown' }}
+                    </div>
+                    <div v-if="Number(child.provider_switch_count || 0) > 0" class="child-meta">
+                      切换次数：{{ child.provider_switch_count }}
+                    </div>
+                    <div v-if="child.provider_history && child.provider_history.length" class="child-history">
+                      <div class="child-history-title">Provider 路由历史</div>
+                      <div
+                        v-for="(route, routeIndex) in child.provider_history"
+                        :key="`${child.child_execution_id || child.agent_id}-route-${routeIndex}`"
+                        class="child-history-item"
+                      >
+                        <span>{{ route.provider_name || 'unknown' }} / {{ route.model_name || 'unknown' }}</span>
+                        <span class="child-history-reason">{{ route.reason || 'unknown' }}</span>
+                      </div>
+                    </div>
                     <div v-if="child.summary" class="child-summary">{{ child.summary }}</div>
                     <div v-else-if="child.error" class="child-error">{{ child.error }}</div>
                   </div>
                 </div>
-              <div v-if="item.merge_summary?.merged_output" class="merge-output">
-                  {{ item.merge_summary.merged_output }}
+              <div v-if="item.scheduler_snapshot?.merged_output || item.merge_summary?.merged_output" class="merge-output">
+                  {{ item.scheduler_snapshot?.merged_output || item.merge_summary.merged_output }}
                 </div>
               </div>
               <div v-if="item.audit_trail && item.audit_trail.length" class="timeline-block">
@@ -354,6 +377,7 @@ function formatAuditEvent(eventType) {
   const labelMap = {
     scheduler_fanout_prepared: '已拆分',
     scheduler_execution_started: '开始执行',
+    subagent_policy_selected: '策略装载',
     child_running: '子执行启动',
     child_completed: '子执行完成',
     child_failed: '子执行失败',
@@ -378,6 +402,7 @@ function formatTraceSource(source) {
   const labelMap = {
     scheduler: 'Scheduler',
     subagent: 'Subagent',
+    policy: 'Policy',
     capability: 'Capability',
     tool: 'Tool',
     mcp: 'MCP',
@@ -688,6 +713,35 @@ function formatTraceSource(source) {
   white-space: pre-wrap;
   line-height: 1.5;
   font-size: 0.8rem;
+}
+
+.child-history {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.child-history-title {
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.child-history-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.74rem;
+  color: var(--text-secondary);
+}
+
+.child-history-reason {
+  color: var(--text-tertiary);
 }
 
 .child-summary,

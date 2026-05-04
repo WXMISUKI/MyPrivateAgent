@@ -493,6 +493,24 @@ class AgentHarness:
             for tool in registry.list_all():
                 self.tool_map[tool.name] = tool
 
+    def _emit_state_transition_event(
+        self,
+        event_factory: AgentEventFactory,
+        run_context: AgentRunContext,
+        *,
+        iteration: int,
+    ) -> Optional[str]:
+        transition = dict(run_context.last_state_transition or {})
+        if not transition:
+            return None
+        return event_factory.build_state_event(
+            previous_state=transition.get("previous_state", run_context.state.value),
+            state=transition.get("state", run_context.state.value),
+            stop_reason=transition.get("stop_reason"),
+            iteration=iteration,
+            payload={"run_id": run_context.run_id},
+        ).to_json()
+
     async def run(self, messages: List[Any]) -> AsyncGenerator[str, None]:
         """
         运行 Agent 循环
@@ -525,6 +543,9 @@ class AgentHarness:
         while iteration < self.max_iterations:
             iteration = run_context.begin_iteration()
             logger.info(f"[AgentHarness] 第 {iteration} 次迭代")
+            state_event = self._emit_state_transition_event(event_factory, run_context, iteration=iteration)
+            if state_event:
+                yield state_event
 
             response_content = ""
             reasoning_content = ""
@@ -647,10 +668,16 @@ class AgentHarness:
                     full_response += response_content
                     full_reasoning += reasoning_content
                     run_context.set_state(AgentState.FINALIZING, stop_reason="model_completed")
+                    state_event = self._emit_state_transition_event(event_factory, run_context, iteration=iteration)
+                    if state_event:
+                        yield state_event
                     break
 
                 logger.info(f"[AgentHarness] 检测到 {len(tool_calls_from_response)} 个工具调用")
                 run_context.set_state(AgentState.TOOL_CALLING)
+                state_event = self._emit_state_transition_event(event_factory, run_context, iteration=iteration)
+                if state_event:
+                    yield state_event
                 yield event_factory.build(
                     AgentEventType.TOOL_CALL_START,
                     {"count": len(tool_calls_from_response)},
@@ -770,6 +797,9 @@ class AgentHarness:
                         ).to_json()
                         full_response = budget_check["message"]
                         run_context.set_state(AgentState.FINALIZING, stop_reason="tool_repetition_budget")
+                        state_event = self._emit_state_transition_event(event_factory, run_context, iteration=iteration)
+                        if state_event:
+                            yield state_event
                         abort_due_to_tool_budget = True
                         break
 
@@ -795,6 +825,9 @@ class AgentHarness:
                     if permission_level == 'ask':
                         logger.info(f"[AgentHarness] 工具 {tool_name} 需要用户确认")
                         run_context.set_state(AgentState.WAITING_PERMISSION)
+                        state_event = self._emit_state_transition_event(event_factory, run_context, iteration=iteration)
+                        if state_event:
+                            yield state_event
                         from .permission_service import get_permission_service
 
                         permission_request = get_permission_service().create_request(
@@ -882,6 +915,9 @@ class AgentHarness:
                             "请你换一种更直接的问法，或我可以先基于已有常识给你一个不依赖实时检索的草案。"
                         )
                         run_context.set_state(AgentState.FINALIZING, stop_reason="tool_schema_validation_failed")
+                        state_event = self._emit_state_transition_event(event_factory, run_context, iteration=iteration)
+                        if state_event:
+                            yield state_event
                         break
 
                 if abort_due_to_tool_budget:
@@ -901,6 +937,9 @@ class AgentHarness:
                 if direct_response:
                     full_response += direct_response
                     run_context.set_state(AgentState.FINALIZING, stop_reason="tool_passthrough")
+                    state_event = self._emit_state_transition_event(event_factory, run_context, iteration=iteration)
+                    if state_event:
+                        yield state_event
                     final_response_metadata = self._build_content_event_metadata(
                         tool_name=tool_results[0].get("name", ""),
                         tool_result=direct_response,
@@ -1007,6 +1046,9 @@ class AgentHarness:
                     final_text = fallback_response or completeness_check["message"]
                     full_response += final_text
                     run_context.set_state(AgentState.FINALIZING, stop_reason=completeness_check["stop_reason"])
+                    state_event = self._emit_state_transition_event(event_factory, run_context, iteration=iteration)
+                    if state_event:
+                        yield state_event
                     yield event_factory.build(
                         AgentEventType.STATUS,
                         {
@@ -1029,6 +1071,9 @@ class AgentHarness:
                     break
 
                 run_context.set_state(AgentState.OBSERVING)
+                state_event = self._emit_state_transition_event(event_factory, run_context, iteration=iteration)
+                if state_event:
+                    yield state_event
                 consecutive_invalid_tools = 0
 
             except asyncio.TimeoutError:
@@ -1050,6 +1095,9 @@ class AgentHarness:
                 ) or "当前整理最终答复超时，我先返回阶段性结果。"
                 full_response += fallback_response
                 run_context.set_state(AgentState.FINALIZING, stop_reason="final_synthesis_timeout")
+                state_event = self._emit_state_transition_event(event_factory, run_context, iteration=iteration)
+                if state_event:
+                    yield state_event
                 timeout_completion_check = {
                     "should_finalize": True,
                     "stop_reason": "final_synthesis_timeout",
@@ -1083,6 +1131,9 @@ class AgentHarness:
                     if use_bind_tools_this_run and iteration == 1:
                         logger.warning(f"[AgentHarness] 模型不支持工具调用，通知 orchestrator 重试")
                         run_context.set_state(AgentState.FAILED, stop_reason="tool_binding_unsupported")
+                        state_event = self._emit_state_transition_event(event_factory, run_context, iteration=iteration)
+                        if state_event:
+                            yield state_event
                         yield event_factory.build(
                             AgentEventType.ERROR,
                             {"content": f"Model does not support tools: {error_msg}"},
@@ -1091,6 +1142,9 @@ class AgentHarness:
                         break
                 logger.error(f"[AgentHarness] 生成响应时出错: {e}")
                 run_context.set_state(AgentState.FAILED, stop_reason="runtime_exception")
+                state_event = self._emit_state_transition_event(event_factory, run_context, iteration=iteration)
+                if state_event:
+                    yield state_event
                 yield event_factory.build(
                     AgentEventType.ERROR,
                     {"content": f"处理错误: {str(e)}"},
@@ -1100,6 +1154,9 @@ class AgentHarness:
 
         if run_context.state not in (AgentState.FAILED, AgentState.ABORTED):
             run_context.set_state(AgentState.DONE, stop_reason=run_context.stop_reason or "completed")
+            state_event = self._emit_state_transition_event(event_factory, run_context, iteration=run_context.iteration)
+            if state_event:
+                yield state_event
 
         yield event_factory.build(
             AgentEventType.DONE,

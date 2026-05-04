@@ -145,6 +145,60 @@
       </div>
     </div>
 
+    <div v-if="commandContract" class="panel-card">
+      <div class="card-head">
+        <h3>Slash Command 层</h3>
+        <span class="muted">框架级命令入口，统一暴露 doctor / plan / gaps / permissions / mcp / memory / model</span>
+      </div>
+      <div class="config-layer-grid">
+        <div class="contract-block">
+          <h4>命令统计</h4>
+          <ul>
+            <li><code>total_commands</code>: {{ commandContract.total_commands || 0 }}</li>
+            <li><code>framework_commands</code>: {{ (commandContract.framework_commands || []).length }}</li>
+            <li><code>governance_commands</code>: {{ (commandContract.governance_commands || []).length }}</li>
+          </ul>
+        </div>
+        <div class="contract-block">
+          <h4>框架命令</h4>
+          <ul>
+            <li v-for="item in commandContract.framework_commands || []" :key="item.id">
+              <code>/{{ item.name }}</code> - {{ item.description }}
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="recentSnapshotCommands.length" class="panel-card">
+      <div class="card-head">
+        <h3>最近治理快照命令</h3>
+        <span class="muted">最近从治理时间线复制的 slash command，可直接复用</span>
+      </div>
+      <div class="recent-command-list">
+        <div
+          v-for="item in recentSnapshotCommands"
+          :key="`${item.snapshotId}-${item.copiedAt}`"
+          class="recent-command-item"
+        >
+          <div class="recent-command-main">
+            <div class="recent-command-text"><code>{{ item.commandText }}</code></div>
+            <div class="recent-command-meta">
+              <span v-if="item.domain">域: {{ item.domain }}</span>
+              <span>快照: {{ item.snapshotId }}</span>
+              <span v-if="item.copiedAt">复制于: {{ formatCopiedAt(item.copiedAt) }}</span>
+            </div>
+          </div>
+          <button class="secondary-btn recent-copy-btn" @click="copySnapshotCommand(item.commandText)">
+            {{ copiedSnapshotCommandText === item.commandText ? '已复制' : '复制命令' }}
+          </button>
+        </div>
+      </div>
+      <p v-if="copiedSnapshotCommandText" class="recent-command-note">
+        最近复制：<code>{{ copiedSnapshotCommandText }}</code>
+      </p>
+    </div>
+
     <div v-if="configLayers" class="panel-card">
       <div class="card-head">
         <h3>配置分层</h3>
@@ -294,14 +348,18 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { runtimeSurfaceApi } from '../api'
+import { loadRecentSnapshotCommands } from '../services/governanceSnapshotCommands'
 
 const profile = ref(null)
 const loading = ref(false)
 const saving = ref(false)
 const error = ref('')
 const saveMessage = ref('')
+const recentSnapshotCommands = ref([])
+const copiedSnapshotCommandText = ref('')
+let copiedSnapshotResetTimer = null
 const editableAuthMode = ref('demo_guest')
 const editableDefaultModel = ref('')
 const editableEnabledProviders = ref([])
@@ -312,6 +370,7 @@ const capabilityContract = computed(() => profile.value?.capability_contract || 
 const memoryContract = computed(() => profile.value?.memory_contract || null)
 const subagentContract = computed(() => profile.value?.subagent_contract || null)
 const hookContract = computed(() => profile.value?.hook_contract || null)
+const commandContract = computed(() => profile.value?.command_contract || null)
 const configLayers = computed(() => profile.value?.config_layers || null)
 const authModeDescription = computed(() => {
   const contract = profile.value?.auth_mode_contract || {}
@@ -379,7 +438,70 @@ function formatProviderConfig(value, isOverride = false) {
   return value.join(', ')
 }
 
-onMounted(loadProfile)
+function loadRecentCommands() {
+  recentSnapshotCommands.value = loadRecentSnapshotCommands()
+}
+
+function copySnapshotCommand(commandText) {
+  const text = String(commandText || '').trim()
+  if (!text) return
+
+  const markCopied = () => {
+    copiedSnapshotCommandText.value = text
+    if (copiedSnapshotResetTimer) {
+      clearTimeout(copiedSnapshotResetTimer)
+    }
+    copiedSnapshotResetTimer = setTimeout(() => {
+      copiedSnapshotCommandText.value = ''
+      copiedSnapshotResetTimer = null
+    }, 1800)
+  }
+
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(text).then(markCopied).catch(() => fallbackCopy(text, markCopied))
+    return
+  }
+  fallbackCopy(text, markCopied)
+}
+
+function fallbackCopy(text, onSuccess) {
+  try {
+    const textarea = document.createElement('textarea')
+    textarea.value = text
+    textarea.setAttribute('readonly', 'true')
+    textarea.style.position = 'fixed'
+    textarea.style.left = '-9999px'
+    document.body.appendChild(textarea)
+    textarea.select()
+    const success = document.execCommand('copy')
+    document.body.removeChild(textarea)
+    if (success) {
+      onSuccess()
+    }
+  } catch (_err) {
+    // ignore clipboard fallback failure
+  }
+}
+
+function formatCopiedAt(value) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return value || '-'
+  }
+  return date.toLocaleString()
+}
+
+onMounted(async () => {
+  await loadProfile()
+  loadRecentCommands()
+})
+
+onUnmounted(() => {
+  if (copiedSnapshotResetTimer) {
+    clearTimeout(copiedSnapshotResetTimer)
+    copiedSnapshotResetTimer = null
+  }
+})
 </script>
 
 <style scoped>
@@ -616,6 +738,54 @@ onMounted(loadProfile)
   color: var(--text-primary);
   border-radius: var(--radius-md);
   cursor: pointer;
+}
+
+.recent-command-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+}
+
+.recent-command-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+}
+
+.recent-command-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.recent-command-text {
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+.recent-command-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  color: var(--text-tertiary);
+  font-size: 0.8rem;
+}
+
+.recent-copy-btn {
+  flex-shrink: 0;
+}
+
+.recent-command-note {
+  margin-top: var(--space-sm);
+  color: var(--text-tertiary);
+  font-size: 0.82rem;
 }
 
 .inline-error {

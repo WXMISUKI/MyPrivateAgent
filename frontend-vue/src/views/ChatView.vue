@@ -27,6 +27,10 @@
         {{ plannerCollapsed ? '打开 Planner' : '隐藏 Planner' }}
       </button>
     </div>
+    <div v-if="healthAlertLevel" class="chat-health-alert" :class="`risk-${healthAlertLevel}`">
+      {{ healthAlertText }}
+      <span v-if="healthUpdatedAt" class="alert-updated-at">更新时间 {{ new Date(healthUpdatedAt).toLocaleTimeString() }}</span>
+    </div>
 
     <div class="chat-body">
       <div class="chat-main">
@@ -88,6 +92,12 @@
             <span>Enter 发送</span>
             <span>Shift + Enter 换行</span>
             <span>/ 快捷命令</span>
+            <span v-if="showPlannerConsole && latestPlannerPolicyHint">
+              当前策略 Provider: {{ latestPlannerPolicyHint.selected_provider }} ({{ latestPlannerPolicyHint.reason }})
+            </span>
+            <span v-if="showPlannerConsole && latestPlannerRouteSummary">
+              路由落点: {{ latestPlannerRouteSummary.providerName }} / {{ latestPlannerRouteSummary.modelName }} · 切换{{ latestPlannerRouteSummary.totalSwitches }}次
+            </span>
             <button
               v-if="showPlannerConsole"
               class="inline-plan-btn"
@@ -132,13 +142,16 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick, onMounted, defineAsyncComponent } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useConversationStore } from '../stores/conversation'
 import { usePlannerStore } from '../stores/planner'
 import { useAuthStore } from '../stores/auth'
+import { useSettingsStore } from '../stores/settings'
 import axios from 'axios'
 import { buildApiUrl } from '../config/apiBase'
+import { healthApi } from '../api'
+import { buildRecentSnapshotCommandsHelp } from '../services/governanceSnapshotCommands'
 
 const CommandPalette = defineAsyncComponent(() => import('../components/CommandPalette.vue'))
 const MessageList = defineAsyncComponent(() => import('../components/chat/MessageList.vue'))
@@ -150,6 +163,7 @@ const route = useRoute()
 const conversationStore = useConversationStore()
 const plannerStore = usePlannerStore()
 const authStore = useAuthStore()
+const settingsStore = useSettingsStore()
 
 const messagesContainer = ref(null)
 const textareaRef = ref(null)
@@ -164,6 +178,9 @@ const plannerError = ref('')
 const availableModels = ref([])
 const modelDropdownOpen = ref(false)
 const modelSelectorRef = ref(null)
+const healthFailover = ref(null)
+const healthUpdatedAt = ref(null)
+let healthPollTimer = null
 
 const isLoading = computed(() => conversationStore.isLoading)
 const feedbackReasons = computed(() => conversationStore.feedbackReasons || [])
@@ -203,6 +220,44 @@ const currentModelDisplay = computed(() => {
 const currentModelProvider = computed(() => {
   const model = availableModels.value.find(m => m.name === selectedModel.value)
   return model?.provider_label || model?.provider || ''
+})
+
+const latestPlannerPolicyHint = computed(() => {
+  const items = currentPlan.value?.items || []
+  const activeItem = items.find(item => item.status === 'in_progress') || items[0]
+  const traces = [...(activeItem?.run_trace || [])].reverse()
+  const policyTrace = traces.find(entry => entry?.source === 'policy' && entry?.event_type === 'subagent_policy_selected')
+  return policyTrace?.payload?.provider_hint || null
+})
+
+const latestPlannerRouteSummary = computed(() => {
+  const items = currentPlan.value?.items || []
+  const activeItem = items.find(item => item.status === 'in_progress') || items[0]
+  const children = activeItem?.child_executions || []
+  if (!children.length) return null
+  const switched = children.filter(child => Number(child.provider_switch_count || 0) > 0)
+  const totalSwitches = switched.reduce((sum, child) => sum + Number(child.provider_switch_count || 0), 0)
+  const latest = [...children].reverse().find(child => child.provider_name || child.model_name) || children[0]
+  if (!latest) return null
+  return {
+    totalSwitches,
+    providerName: latest.provider_name || 'unknown',
+    modelName: latest.model_name || 'unknown',
+    switchedChildren: switched.length
+  }
+})
+
+const healthAlertLevel = computed(() => {
+  if (settingsStore.muteHealthAlerts) return ''
+  const level = String(healthFailover.value?.alert_level || '').trim().toLowerCase()
+  if (level === 'high' || level === 'medium') return level
+  return ''
+})
+
+const healthAlertText = computed(() => {
+  if (healthAlertLevel.value === 'high') return '系统告警：Provider Failover 高风险，请优先检查上游模型服务稳定性。'
+  if (healthAlertLevel.value === 'medium') return '系统提醒：Provider Failover 中风险，建议关注近期路由切换。'
+  return ''
 })
 
 function selectModel(model) {
@@ -369,8 +424,75 @@ function handleKeyDown(e) {
   }
 }
 
-function handleCommandExecute(command) {
-  console.log('[Command] Executing:', command.action)
+function normalizeCommandExecution(request) {
+  if (request?.command) {
+    return {
+      command: request.command,
+      params: Array.isArray(request.params) ? request.params : []
+    }
+  }
+  return {
+    command: request,
+    params: []
+  }
+}
+
+function resolveDoctorMode(params = []) {
+  const mode = String(params[0] || '').trim().toLowerCase()
+  if (mode === 'governance' || mode === 'gaps' || mode === 'gate') {
+    return 'governance'
+  }
+  return 'startup'
+}
+
+function resolveDoctorSeverity(params = []) {
+  const hint = params.map(item => String(item || '').trim().toLowerCase())
+  return hint.includes('warning') ? 'warning' : 'all'
+}
+
+function resolveGovernanceSeverity(params = []) {
+  const mode = String(params[0] || '').trim().toLowerCase()
+  return mode === 'warning' ? 'warning' : 'all'
+}
+
+function resolveSnapshotId(params = []) {
+  const first = String(params[0] || '').trim().toLowerCase()
+  if (first === 'snapshot') {
+    return String(params[1] || '').trim()
+  }
+  return ''
+}
+
+function resolveDirectSnapshotId(params = []) {
+  const first = String(params[0] || '').trim()
+  if (!first) {
+    return ''
+  }
+  if (first.toLowerCase() === 'snapshot') {
+    return String(params[1] || '').trim()
+  }
+  return first
+}
+
+function buildGovernanceRoute(domain, params = []) {
+  const query = new URLSearchParams({
+    tab: 'advanced',
+    governance_filter: domain,
+  })
+  const snapshotId = resolveSnapshotId(params)
+  if (snapshotId) {
+    query.set('governance_snapshot', snapshotId)
+  }
+  const severity = resolveGovernanceSeverity(params)
+  if (severity === 'warning' && !snapshotId) {
+    query.set('governance_severity', 'warning')
+  }
+  return `/settings?${query.toString()}`
+}
+
+function handleCommandExecute(request) {
+  const { command, params } = normalizeCommandExecution(request)
+  console.log('[Command] Executing:', command.action, params)
 
   switch (command.action) {
     case 'new_conversation':
@@ -404,14 +526,101 @@ function handleCommandExecute(command) {
       router.push('/settings')
       break
 
+    case 'open_planner':
+      showPlannerConsole.value = true
+      break
+
+    case 'open_gaps':
+      router.push(buildGovernanceRoute('governance', params))
+      break
+
+    case 'open_permissions':
+      router.push(buildGovernanceRoute('permission', params))
+      break
+
+    case 'open_mcp':
+      router.push(buildGovernanceRoute('mcp', params))
+      break
+
+    case 'open_memory':
+      router.push('/settings?tab=advanced')
+      break
+
+    case 'open_snapshot':
+      {
+        const snapshotId = resolveDirectSnapshotId(params)
+        if (!snapshotId) {
+          router.push('/settings?tab=advanced')
+          break
+        }
+        router.push(`/settings?tab=advanced&governance_snapshot=${encodeURIComponent(snapshotId)}`)
+      }
+      break
+
+    case 'open_model':
+      if (params.length > 0) {
+        const requestedModel = String(params[0] || '').trim()
+        const targetModel = availableModels.value.find(model => String(model.name || '').toLowerCase() === requestedModel.toLowerCase())
+        if (targetModel) {
+          selectModel(targetModel)
+          break
+        }
+      }
+      router.push('/settings?tab=model')
+      break
+
+    case 'run_doctor':
+      {
+        const query = new URLSearchParams({
+          tab: 'advanced',
+          doctor: resolveDoctorMode(params),
+        })
+        if (resolveDoctorSeverity(params) === 'warning') {
+          query.set('governance_severity', 'warning')
+        }
+        router.push(`/settings?${query.toString()}`)
+      }
+      break
+
     case 'open_search':
+      if (params.length > 0) {
+        router.push(`/search?q=${encodeURIComponent(params.join(' '))}`)
+        break
+      }
       router.push('/search')
       break
 
     case 'show_help':
-      inputMessage.value = '/help 可用命令:\n/new - 新建对话\n/clear - 清空对话\n/search - 搜索会话\n/export - 导出对话\n/skills - Skills管理\n/learnings - 学习记录\n/feedback - 反馈分析\n/settings - 设置'
+      inputMessage.value = buildHelpMessage()
       break
   }
+}
+
+function buildHelpMessage() {
+  const baseLines = [
+    '/help 可用命令:',
+    '/new - 新建对话',
+    '/clear - 清空对话',
+    '/search <query> - 搜索会话',
+    '/export - 导出对话',
+    '/skills - Skills管理',
+    '/learnings - 学习记录',
+    '/feedback - 反馈分析',
+    '/settings - 设置',
+    '/plan - 打开计划',
+    '/gaps <all|warning|snapshot <id>> - 查看整改治理',
+    '/memory - 查看记忆',
+    '/mcp <all|warning|snapshot <id>> - 查看MCP治理',
+    '/permissions <all|warning|snapshot <id>> - 查看权限治理',
+    '/snapshot <id> - 打开治理快照定位视图',
+    '/model <name> - 切换模型',
+    '/doctor <startup|governance> [warning] - 运行检查'
+  ]
+  const recentHelp = buildRecentSnapshotCommandsHelp(3)
+  if (recentHelp) {
+    baseLines.push('', recentHelp)
+  }
+  return baseLines.join('\n')
 }
 
 async function refreshPlans() {
@@ -614,9 +823,11 @@ async function handleSend(e) {
 
   if (inputMessage.value.trim().startsWith('/')) {
     const parsed = parseCommand(inputMessage.value.trim())
-    if (parsed && !parsed.command.hasParam) {
-      handleCommandExecute(parsed.command)
-      inputMessage.value = ''
+    if (parsed && !parsed.error) {
+      handleCommandExecute(parsed)
+      if (parsed.command?.action !== 'show_help') {
+        inputMessage.value = ''
+      }
       return
     }
   }
@@ -641,6 +852,17 @@ function autoResizeTextarea() {
   if (textareaRef.value) {
     textareaRef.value.style.height = 'auto'
     textareaRef.value.style.height = Math.min(textareaRef.value.scrollHeight, 120) + 'px'
+  }
+}
+
+async function loadHealthAlert() {
+  try {
+    const response = await healthApi.getHealth()
+    healthFailover.value = response.data?.failover || null
+    healthUpdatedAt.value = Date.now()
+  } catch (error) {
+    console.error('Failed to load health alert:', error)
+    healthFailover.value = null
   }
 }
 
@@ -674,6 +896,11 @@ onMounted(async () => {
     selectedModel.value = authStore.runtimeProfile.default_model
   }
 
+  await loadHealthAlert()
+  healthPollTimer = setInterval(() => {
+    loadHealthAlert()
+  }, 60000)
+
   plannerDraftObjective.value = inputMessage.value.trim()
   if (showPlannerConsole.value) {
     await refreshPlans()
@@ -693,6 +920,13 @@ watch(currentConversationId, async () => {
 watch(inputMessage, (value) => {
   if (!currentPlan.value) {
     plannerDraftObjective.value = value.trim()
+  }
+})
+
+onUnmounted(() => {
+  if (healthPollTimer) {
+    clearInterval(healthPollTimer)
+    healthPollTimer = null
   }
 })
 </script>
@@ -720,6 +954,34 @@ watch(inputMessage, (value) => {
   flex: 1;
   display: flex;
   min-height: 0;
+}
+
+.chat-health-alert {
+  margin: 8px var(--space-lg) 0;
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
+  font-size: 0.8rem;
+  border: 1px solid var(--border-primary);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+}
+
+.chat-health-alert.risk-medium {
+  border-color: rgba(245, 158, 11, 0.45);
+  background: rgba(245, 158, 11, 0.1);
+  color: #b45309;
+}
+
+.chat-health-alert.risk-high {
+  border-color: rgba(239, 68, 68, 0.45);
+  background: rgba(239, 68, 68, 0.1);
+  color: #b91c1c;
+}
+
+.alert-updated-at {
+  margin-left: 10px;
+  font-size: 0.72rem;
+  opacity: 0.8;
 }
 
 .chat-main {

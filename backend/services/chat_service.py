@@ -46,6 +46,14 @@ def _get_orchestrator_factory():
     return get_orchestrator
 
 
+def _get_policy_engine_service():
+    try:
+        from services.policy_engine_service import get_policy_engine_service
+    except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+        from backend.services.policy_engine_service import get_policy_engine_service
+    return get_policy_engine_service()
+
+
 def extract_event_field(event: Dict[str, Any], key: str, default: Any = "") -> Any:
     """Read a field from canonical events, supporting both top-level and payload locations."""
     payload = event.get("payload") or {}
@@ -86,6 +94,25 @@ def _build_run_trace_from_runtime_event(event: Dict[str, Any]) -> Optional[Dict[
         return None
     trace_model_name = str(extract_event_field(event, "model_name", "") or "").strip()
     trace_provider = str(extract_event_field(event, "provider", "") or "").strip()
+
+    if event_type == "state":
+        previous_state = str(extract_event_field(event, "previous_state", "") or "").strip()
+        state = str(extract_event_field(event, "state", "") or "").strip()
+        stop_reason = str(extract_event_field(event, "stop_reason", "") or "").strip()
+        return {
+            "source": "runtime",
+            "event_type": "agent_state_changed",
+            "summary": f"Agent 状态迁移到 `{state or 'unknown'}`",
+            "detail": f"{previous_state} -> {state}" + (f" | stop_reason={stop_reason}" if stop_reason else ""),
+            "severity": "warning" if state in {"failed", "aborted"} else "info",
+            "payload": {
+                "previous_state": previous_state,
+                "state": state,
+                "stop_reason": stop_reason,
+                "model_name": trace_model_name,
+                "provider": trace_provider,
+            },
+        }
 
     if event_type == "tool_permission_required":
         tool_name = str(extract_event_field(event, "name", "") or "").strip()
@@ -889,7 +916,13 @@ async def stream_scheduled_orchestrator_events(
     planner_service = _get_planner_service_cls()(db)
     scheduler_service = _get_scheduler_service_cls()(db)
     subagent_runtime_service = get_subagent_runtime_service()
+    policy_engine = _get_policy_engine_service()
     orchestrator_factory = _get_orchestrator_factory()
+    model_catalog = []
+    try:
+        model_catalog = list((orchestrator.model_provider.list_available_models() or {}).values())
+    except Exception:
+        model_catalog = []
     plan = planner_service.get_latest_plan_for_conversation(user_id=user_id, conversation_id=conversation_id)
     actual_content = ""
     show_reasoning = bool(getattr(orchestrator, "show_reasoning", False))
@@ -912,6 +945,27 @@ async def stream_scheduled_orchestrator_events(
         child_context = subagent_runtime_service.normalize_context(child_payload)
         if child_context is None:
             continue
+        provider_hint = policy_engine.select_provider_hint(
+            requested_model=model_name,
+            context={"agent_role": child_context.agent_role},
+        )
+        model_route = policy_engine.select_model_for_provider(
+            requested_model=model_name,
+            selected_provider=str(provider_hint.get("selected_provider") or ""),
+            available_models=model_catalog,
+        )
+        child_payload["model_name"] = model_route.get("resolved_model") or model_name
+        child_payload["provider_name"] = model_route.get("resolved_provider") or provider_hint.get("selected_provider")
+        child_payload["provider_hint"] = provider_hint
+        child_payload["provider_order"] = list(provider_hint.get("provider_order") or [])
+        scheduler_service.mark_child_policy_selected(
+            plan=plan,
+            item_id=execution_context.get("plan_item_id"),
+            child_execution_id=child_payload.get("child_execution_id"),
+            model_name=str(child_payload.get("model_name") or model_name),
+            provider_name=str(child_payload.get("provider_name") or ""),
+            provider_order=list(child_payload.get("provider_order") or []),
+        )
 
         scheduler_service.mark_child_running(
             plan=plan,
@@ -928,6 +982,46 @@ async def stream_scheduled_orchestrator_events(
             subagent_runtime_service.build_spawn_event(child_context),
             ensure_ascii=False,
         ), actual_content
+        scheduler_service.append_run_trace_event(
+            plan=plan,
+            item_id=execution_context.get("plan_item_id"),
+            source="policy",
+            event_type="subagent_policy_selected",
+            summary=f"{child_context.agent_role} 子智能体策略已加载",
+            detail=(
+                f"provider={child_payload.get('provider_name')}, "
+                f"model={child_payload.get('model_name')}, "
+                f"reason={model_route.get('reason')}"
+            ),
+            severity="info",
+            payload={
+                "agent_role": child_context.agent_role,
+                "agent_id": child_context.agent_id,
+                "provider_hint": provider_hint,
+                "model_route": model_route,
+            },
+        )
+        if plan is not None:
+            yield json.dumps({
+                "type": "plan_updated",
+                "conversation_id": conversation_id,
+                "plan": planner_service.serialize_plan(plan),
+            }, ensure_ascii=False), actual_content
+        yield json.dumps({
+            "type": "status",
+            "status_kind": "subagent_policy_selected",
+            "conversation_id": conversation_id,
+            "agent_role": child_context.agent_role,
+            "agent_id": child_context.agent_id,
+            "model_name": child_payload.get("model_name"),
+            "provider_name": child_payload.get("provider_name"),
+            "content": (
+                f"{child_context.agent_role} 子智能体将优先使用 "
+                f"{child_payload.get('provider_name')} provider / {child_payload.get('model_name')} model"
+            ),
+            "provider_hint": provider_hint,
+            "model_route": model_route,
+        }, ensure_ascii=False), actual_content
         child_tasks.append(
             asyncio.create_task(
                 _run_parallel_child_execution(
@@ -937,10 +1031,12 @@ async def stream_scheduled_orchestrator_events(
                     conversation_id=conversation_id,
                     show_reasoning=show_reasoning,
                     user_message=user_message,
-                    model_name=model_name,
+                    model_name=str(child_payload.get("model_name") or model_name),
                     child_payload=child_payload,
                     child_context=child_context,
                     scheduler_policy=scheduler_policy,
+                    policy_engine=policy_engine,
+                    model_catalog=model_catalog,
                 )
             )
         )
@@ -951,6 +1047,40 @@ async def stream_scheduled_orchestrator_events(
             child_payload, child_context, child_output, outcome = await completed_task
             pending_tasks.discard(completed_task)
             retry_count = outcome.get("retry_count", 0)
+            provider_switch_count = int(outcome.get("provider_switch_count", 0) or 0)
+            provider_history = list(outcome.get("provider_history") or [])
+            scheduler_service.mark_child_policy_selected(
+                plan=plan,
+                item_id=execution_context.get("plan_item_id"),
+                child_execution_id=child_payload.get("child_execution_id"),
+                model_name=str(child_payload.get("model_name") or model_name),
+                provider_name=str(child_payload.get("provider_name") or ""),
+                provider_order=list(child_payload.get("provider_order") or []),
+                provider_switch_count=provider_switch_count,
+                provider_history=provider_history,
+            )
+            if provider_switch_count > 0:
+                if plan is not None:
+                    yield json.dumps({
+                        "type": "plan_updated",
+                        "conversation_id": conversation_id,
+                        "plan": planner_service.serialize_plan(plan),
+                    }, ensure_ascii=False), actual_content
+                yield json.dumps({
+                    "type": "status",
+                    "status_kind": "subagent_provider_switched",
+                    "conversation_id": conversation_id,
+                    "agent_role": child_context.agent_role,
+                    "agent_id": child_context.agent_id,
+                    "provider_name": child_payload.get("provider_name"),
+                    "model_name": child_payload.get("model_name"),
+                    "provider_switch_count": provider_switch_count,
+                    "provider_history": provider_history,
+                    "content": (
+                        f"{child_context.agent_role} 子智能体已切换 provider {provider_switch_count} 次，"
+                        f"当前使用 {child_payload.get('provider_name')} / {child_payload.get('model_name')}"
+                    ),
+                }, ensure_ascii=False), actual_content
             if retry_count > 0:
                 scheduler_service.mark_child_retrying(
                     plan=plan,
@@ -1139,6 +1269,8 @@ async def _run_parallel_child_execution(
     child_payload: Dict[str, Any],
     child_context: Any,
     scheduler_policy: Dict[str, Any],
+    policy_engine: Any,
+    model_catalog: List[Dict[str, Any]],
 ) -> tuple[Dict[str, Any], Any, str, Dict[str, Any]]:
     child_orchestrator = orchestrator_factory(
         conversation_id=conversation_id,
@@ -1149,15 +1281,25 @@ async def _run_parallel_child_execution(
     attempt = 0
     last_error = ""
     last_error_kind = "failed"
+    provider_order = list(child_payload.get("provider_order") or [])
+    provider_pointer = 0
+    if not provider_order and child_payload.get("provider_name"):
+        provider_order = [str(child_payload.get("provider_name"))]
+    provider_history: List[Dict[str, Any]] = [{
+        "provider_name": str(child_payload.get("provider_name") or ""),
+        "model_name": str(child_payload.get("model_name") or model_name),
+        "reason": "initial",
+    }]
 
     while attempt <= max_retries:
         attempt += 1
+        current_model_name = str(child_payload.get("model_name") or model_name)
         try:
             output_text = await asyncio.wait_for(
                 collect_orchestrator_response(
                     orchestrator=child_orchestrator,
                     user_message=user_message,
-                    model_name=model_name,
+                    model_name=current_model_name,
                     execution_context=child_payload,
                     db=db,
                     user_id=user_id,
@@ -1170,6 +1312,8 @@ async def _run_parallel_child_execution(
                 "retry_count": max(0, attempt - 1),
                 "last_error": last_error,
                 "error_kind": None,
+                "provider_switch_count": max(0, provider_pointer),
+                "provider_history": provider_history,
             }
         except asyncio.CancelledError:
             return child_payload, child_context, "", {
@@ -1178,6 +1322,8 @@ async def _run_parallel_child_execution(
                 "last_error": last_error,
                 "error": "调度器已取消该子执行",
                 "error_kind": "cancelled",
+                "provider_switch_count": max(0, provider_pointer),
+                "provider_history": provider_history,
             }
         except TimeoutError:
             last_error = f"子执行超过 {timeout_seconds} 秒未完成"
@@ -1186,10 +1332,28 @@ async def _run_parallel_child_execution(
             last_error = str(exc)
             last_error_kind = "failed"
 
+        if provider_order and provider_pointer + 1 < len(provider_order) and attempt <= max_retries:
+            provider_pointer += 1
+            next_provider = provider_order[provider_pointer]
+            route = policy_engine.select_model_for_provider(
+                requested_model=model_name,
+                selected_provider=next_provider,
+                available_models=model_catalog,
+            )
+            child_payload["provider_name"] = route.get("resolved_provider") or next_provider
+            child_payload["model_name"] = route.get("resolved_model") or model_name
+            provider_history.append({
+                "provider_name": str(child_payload.get("provider_name") or ""),
+                "model_name": str(child_payload.get("model_name") or model_name),
+                "reason": str(route.get("reason") or "fallback"),
+            })
+
     return child_payload, child_context, "", {
         "status": "failed",
         "retry_count": max(0, attempt - 1),
         "last_error": last_error,
         "error": last_error,
         "error_kind": last_error_kind,
+        "provider_switch_count": max(0, provider_pointer),
+        "provider_history": provider_history,
     }

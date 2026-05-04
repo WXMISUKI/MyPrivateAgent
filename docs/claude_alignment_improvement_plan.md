@@ -1,136 +1,181 @@
-# 通用智能体框架对齐 Claude Code 的完善方案
+# 通用智能体框架下一阶段完善方案
 
-本文档用于记录 `MyPrivateAgent` 作为通用智能体框架 demo，继续向 Claude Code 一类成熟智能体靠拢时的重点完善方向。目标不是补单点业务工具，而是补齐底座级能力，方便后续快速承载垂域智能体。
+本文档记录 `MyPrivateAgent` 作为通用智能体框架，继续向 Claude Code 类成熟智能体靠拢时的下一阶段方案。目标不是继续堆单点功能，而是把现有能力收口成一套可治理、可评测、可复用的运行时底座。
 
-## 当前判断
+## 结论
 
-项目已经从“能跑 demo”进入“具备治理意识的 Agent 基座”阶段，已有基础包括：
+当前项目已经具备以下基础：
 
-- 主智能体身份与能力边界
-- 复合任务执行闭环
-- 工具调用与单次补查
-- 能力缺口反馈
-- runtime surface 雏形
-- demo_guest 运行模式
-- 治理统计第一层
+- `AgentHarness + Orchestrator + ChatService` 主链路
+- planner / todo 域
+- pseudo-subagent 到 scheduler 的过渡层
+- hooks / permissions / doctor / quality gate
+- MCP registry / runtime / session 骨架
+- skill runtime、learning governance、run trace、runtime surface
 
-但距离 Claude Code 一类成熟智能体，还存在以下关键差距：
+下一阶段最重要的不是再加 UI，而是补齐三件事：
 
-- 缺少真正的分层记忆 / 指令系统
-- 缺少正式的 subagent 注册与权限面
-- 缺少 hooks / permission 治理层
-- 缺少工作流命令层
-- 缺少 provider / model 质量治理
-- 缺少系统性评测与回归基线
+1. 统一运行时协议和状态机
+2. 把 scheduler / subagent / hook / MCP 收口到同一套治理内核
+3. 把 Claude 风格的记忆、settings、subagents、slash commands 变成框架级能力面
 
-## 六条主线
+## Claude 公开机制对照
 
-### 1. 分层记忆与指令系统
+根据 Claude Code 的公开文档，成熟框架通常具备这些结构：
 
-目标：把主智能体行为从“代码里写死的 prompt”升级为“框架级身份 + 项目级规则 + 本地级偏好 + 运行时能力面”的组合。
+- 分层记忆：`CLAUDE.md`、项目记忆、用户记忆、企业策略
+- 子智能体：`.claude/agents/` 下的角色化 subagents
+- hooks：`PreToolUse`、`PostToolUse`、`SessionStart`、`Stop` 等事件
+- slash commands：`/doctor`、`/model`、`/permissions`、`/memory`、`/agents`、`/mcp`
+- MCP：作为外部能力发现和调用的标准协议
 
-建议分层：
+对应到本项目，说明我们不缺“功能点”，缺的是“统一组织方式”。
 
-- `GLOBAL_AGENT.md`
-  - 通用底座级规则
-- `PROJECT_AGENT.md`
-  - 项目共享规则
-- `PROJECT_AGENT.local.md`
-  - 本地实验规则
-- `ORG_POLICY.md`
-  - 后续预留企业策略位
+## 当前差距
 
-### 2. Subagent 正式能力面
+### 已有，但还没收口
 
-目标：把当前偏调度单元的 subagent，升级成可治理的角色化子智能体。
+- planner 具备了执行状态，但还不是真正的调度中枢
+- subagent 已有注册和角色信息，但还没完全变成第一类运行时对象
+- hooks 已接入主链路，但治理边界仍需统一到事件协议
+- quality gate 已可一键执行，但还需要与运行时 trace / CI artifact 更深绑定
 
-建议注册字段：
+### 仍需补齐
 
-- `name`
-- `description`
-- `allowed_tools`
-- `preferred_models`
-- `context_policy`
-- `trigger_conditions`
+- 统一 `AgentRun` / `AgentEvent` / `RunTrace` 协议
+- 明确状态机：`INIT / PLANNING / ACTING / WAITING_PERMISSION / OBSERVING / FINALIZING / DONE / FAILED / ABORTED`
+- 真正的 fan-out / collect / merge 调度层
+- 命令层：把常用治理动作固化为 `/doctor`、`/plan`、`/gaps`、`/permissions`、`/mcp`、`/model`
+- 分层记忆：把 `GLOBAL_AGENT.md`、`PROJECT_AGENT.md`、local 覆写、运行时能力面合并成一致入口
+- 系统性评测：benchmark、回归基线、失败分类、报告产物
 
-建议先落三类通用子智能体：
+## 下一阶段方案
 
-- `researcher`
-- `planner`
-- `executor`
+### P0: 统一运行时内核
 
-### 3. Hooks / Permission 治理层
+目标：让所有执行路径共用同一套状态、事件、trace 和停止原因。
 
-目标：把工具调用和关键执行阶段纳入统一治理。
+工作项：
 
-建议最小事件面：
+1. 定义统一事件协议
+2. 定义统一运行状态机
+3. 统一 planner / tool / hook / subagent / MCP 的 trace 入口
+4. 让 doctor 和 capability gate 直接消费统一 trace
 
-- `PreToolUse`
-- `PostToolUse`
-- `OnFallback`
-- `OnSubagentSpawn`
-- `OnFinalSynthesis`
+验收标准：
 
-### 4. Workflow / Slash Command 层
+- 任意一次执行都能回放
+- 任意一次失败都能定位到状态和事件
+- planner、hook、subagent、MCP 不再是散点日志
 
-目标：把高频框架操作沉淀成稳定命令层，而不是每次靠自然语言触发。
+### P1: 真正的调度器
 
-建议优先支持：
+目标：把“计划项”升级成“父子执行模型”，而不是聊天链路里的临时分支。
 
-- `/runtime`
-- `/capabilities`
-- `/plan`
-- `/doctor`
-- `/gaps`
-- `/model`
-- `/permissions`
+工作项：
 
-### 5. Provider / Model 质量治理
+1. planner item -> child run 映射
+2. fan-out / collect / merge
+3. child run 状态：`queued / running / completed / failed / cancelled`
+4. 统一 child run 审计和 merge summary
+5. 让 scheduler policy 决定是否允许 spawn、fallback、retry
 
-目标：不只是能切模型，而是知道哪个 provider / model 更适合哪类复合任务。
+验收标准：
 
-建议统计：
+- 一个 plan item 可以稳定生成多个 child run
+- 失败不会静默消失
+- merge 结果和原始 child 结果都可追踪
+
+### P2: Claude 风格的配置与命令层
+
+目标：把高频操作变成可发现、可复用、可组合的命令和配置。
+
+工作项：
+
+1. 分层记忆
+   - `GLOBAL_AGENT.md`
+   - `PROJECT_AGENT.md`
+   - `PROJECT_AGENT.local.md`
+   - 企业策略位预留
+2. 子智能体正式注册
+   - `name`
+   - `description`
+   - `tools`
+   - `preferred_models`
+   - `trigger_conditions`
+3. slash command 层
+   - `/doctor`
+   - `/plan`
+   - `/gaps`
+   - `/permissions`
+   - `/mcp`
+   - `/model`
+4. settings / policy 分层
+   - 项目级
+   - 用户级
+   - 本地覆写级
+
+验收标准：
+
+- 框架能力不再依赖“记住某条操作”
+- 配置、权限、角色、命令都可发现
+- 子智能体选择和工具白名单可解释
+
+### P3: 评测、治理与回归
+
+目标：让框架演进可控，而不是靠人工感觉判断。
+
+工作项：
+
+1. 固定 benchmark cases
+2. 回归健康度门禁
+3. provider / model 质量指标
+4. failure taxonomy
+5. artifact 输出和 CI summary
+
+建议指标：
 
 - 首 token 时间
-- completion timeout 次数
+- completion timeout
 - fallback 触发率
 - tool failure rate
+- 回归健康度分数
 
-### 6. 评测与回归基线
+验收标准：
 
-目标：让框架演进可控，而不是每次修改后靠人工感觉判断。
+- 每次改动都能自动判断是否回归
+- CI 能输出可读摘要和机器可消费产物
+- 失败可直接映射到修复建议
 
-建议覆盖：
+### P4: 前端治理台
 
-- 纯工具请求
-- 复合任务
-- 能力不足场景
-- provider 异常场景
+目标：把内部治理变成可见的工作台，而不是只能读日志。
 
-## 实施顺序
+工作项：
 
-### P0
+1. scheduler timeline
+2. subagent 运行视图
+3. hook / permission 视图
+4. MCP 健康和调用历史
+5. learning / capability gap 运营视图
 
-1. 分层记忆 / 指令系统
-2. Subagent 注册与权限面
-3. Hooks 基础框架
+## 推荐实施顺序
 
-### P1
+1. P0 统一运行时内核
+2. P1 真正的调度器
+3. P2 Claude 风格配置与命令层
+4. P3 评测、治理与回归
+5. P4 前端治理台
 
-1. Workflow / Slash Command 层
-2. Provider / Model 质量治理
+## 本阶段建议先做的 3 件事
 
-### P2
+1. 先把统一事件协议和状态机定下来
+2. 再把 scheduler 做成第一类服务
+3. 最后补齐 memory / command / settings 的框架层入口
 
-1. 评测与回归基线
-2. 治理台与统计面板继续增强
+## 参考资料
 
-## 本轮落地范围
-
-本轮先做：
-
-1. 方案文档入库
-2. 分层记忆 / 指令系统最小闭环
-3. 将记忆层加载状态接入运行时能力面
-
-后续按 [framework_execution_roadmap.md](./framework_execution_roadmap.md) 与本文档并行推进：前者负责现有框架演进里程碑，本文档负责与 Claude Code 对齐的能力方向。
+- Claude Code memory: https://docs.anthropic.com/en/docs/claude-code/memory
+- Claude Code subagents: https://docs.anthropic.com/en/docs/claude-code/sub-agents
+- Claude Code hooks: https://docs.anthropic.com/en/docs/claude-code/hooks
+- Claude Code slash commands: https://docs.anthropic.com/en/docs/claude-code/slash-commands

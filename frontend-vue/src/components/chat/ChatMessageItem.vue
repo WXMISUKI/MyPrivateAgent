@@ -106,6 +106,34 @@
         :tool-execution="message.toolExecution"
       />
 
+      <div v-if="message.role === 'assistant' && message.feedback" class="feedback-knowledge-bridge">
+        <div class="bridge-title">反馈 / 学习闭环</div>
+        <div class="bridge-meta">
+          <span v-if="message.feedback.runtime_scope">scope: {{ message.feedback.runtime_scope }}</span>
+          <span v-if="message.feedback.metadata?.selected_count !== undefined">命中: {{ message.feedback.metadata.selected_count }}</span>
+          <span v-if="message.feedback.created_learning_id">learning: {{ message.feedback.created_learning_id }}</span>
+        </div>
+        <div v-if="feedbackPromptKeys.length" class="bridge-tags">
+          <span v-for="item in feedbackPromptKeys" :key="`prompt-${item}`" class="bridge-tag">
+            prompt: {{ item }}
+          </span>
+        </div>
+        <div v-if="feedbackPracticeIds.length" class="bridge-tags">
+          <span v-for="item in feedbackPracticeIds" :key="`practice-${item}`" class="bridge-tag">
+            practice: {{ item }}
+          </span>
+        </div>
+        <div v-if="message.feedback.created_learning_id" class="bridge-actions">
+          <button
+            class="bridge-link-btn"
+            type="button"
+            @click="onOpenLearningRecord"
+          >
+            查看学习
+          </button>
+        </div>
+      </div>
+
       <MessageTextRenderer
         v-if="hasVisibleMessageText"
         :content="message.content"
@@ -193,11 +221,13 @@
 
 <script setup>
 import { computed, defineAsyncComponent, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { hasStructuredCardSchema } from '../cards/registry'
 
 const MessageTextRenderer = defineAsyncComponent(() => import('./MessageTextRenderer.vue'))
 const AgentRuntimeDebugPanel = defineAsyncComponent(() => import('../AgentRuntimeDebugPanel.vue'))
 const AgentStructuredCard = defineAsyncComponent(() => import('../cards/AgentStructuredCard.vue'))
+const router = useRouter()
 
 const props = defineProps({
   message: {
@@ -286,6 +316,20 @@ const feedbackReasonLabels = computed(() => {
   return reasonIds.map(item => reasonMap.get(item) || String(item))
 })
 
+const feedbackPromptKeys = computed(() => {
+  const metadata = props.message?.feedback?.metadata || {}
+  return Array.isArray(metadata.prompt_keys)
+    ? metadata.prompt_keys.map(item => String(item || '').trim()).filter(Boolean).slice(0, 4)
+    : []
+})
+
+const feedbackPracticeIds = computed(() => {
+  const metadata = props.message?.feedback?.metadata || {}
+  return Array.isArray(metadata.practice_ids)
+    ? metadata.practice_ids.map(item => String(item || '').trim()).filter(Boolean).slice(0, 4)
+    : []
+})
+
 function formatTime(timestamp) {
   if (!timestamp) return ''
   const date = new Date(timestamp)
@@ -346,6 +390,12 @@ function onUpdateFeedbackComment(event) {
 
 function onSubmitNegativeFeedback() {
   emit('submit-negative-feedback', props.message, props.index)
+}
+
+function onOpenLearningRecord() {
+  const learningId = String(props.message?.feedback?.created_learning_id || '').trim()
+  if (!learningId) return
+  router.push(`/learnings?tab=learnings&learning_id=${encodeURIComponent(learningId)}&source=user_feedback`)
 }
 </script>
 
@@ -542,6 +592,57 @@ function onSubmitNegativeFeedback() {
 
 .feedback-result.feedback-negative {
   color: #f97316;
+}
+
+.feedback-knowledge-bridge {
+  padding: var(--space-sm);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: var(--radius-md);
+  background: rgba(59, 130, 246, 0.06);
+}
+
+.bridge-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.bridge-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.bridge-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.bridge-tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.14);
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+}
+
+.bridge-actions {
+  margin-top: 8px;
+}
+
+.bridge-link-btn {
+  padding: 4px 10px;
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  border-radius: var(--radius-sm);
+  background: rgba(99, 102, 241, 0.1);
+  color: var(--primary);
+  font-size: 0.75rem;
+  cursor: pointer;
 }
 
 .feedback-panel {

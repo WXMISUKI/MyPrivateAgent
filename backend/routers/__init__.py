@@ -7,5 +7,6 @@ from . import permissions
 from . import memory
 from . import plans
 from . import mcp
+from . import commands
 
-__all__ = ['auth', 'conversations', 'chat', 'skills', 'learnings', 'permissions', 'memory', 'plans', 'mcp']
+__all__ = ['auth', 'conversations', 'chat', 'skills', 'learnings', 'permissions', 'memory', 'plans', 'mcp', 'commands']

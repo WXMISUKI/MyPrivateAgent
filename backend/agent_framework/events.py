@@ -11,6 +11,7 @@ from typing import Any, Dict, Optional, Union
 class AgentEventType(str, Enum):
     """Canonical event types emitted by the runtime."""
 
+    STATE = "state"
     STATUS = "status"
     REASONING = "reasoning"
     CONTENT = "content"
@@ -72,3 +73,23 @@ class AgentEventFactory:
             iteration=iteration,
             payload=payload or {},
         )
+
+    def build_state_event(
+        self,
+        *,
+        previous_state: str,
+        state: str,
+        stop_reason: Optional[str] = None,
+        iteration: Optional[int] = None,
+        payload: Optional[Dict[str, Any]] = None,
+    ) -> AgentEvent:
+        event_payload: Dict[str, Any] = {
+            "status_kind": "agent_state",
+            "previous_state": previous_state,
+            "state": state,
+        }
+        if stop_reason is not None:
+            event_payload["stop_reason"] = stop_reason
+        if payload:
+            event_payload.update(payload)
+        return self.build(AgentEventType.STATE, event_payload, iteration=iteration)

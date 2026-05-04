@@ -7,7 +7,10 @@ try:
     from services.startup_diagnostics_service import get_startup_diagnostics_service
     from services.runtime_surface_service import get_runtime_surface_service
     from services.capability_gap_service import get_capability_gap_service
+    from services.doctor_runtime_service import get_doctor_runtime_service
+    from services.run_trace_service import get_run_trace_service
     from services.remediation_status_service import get_remediation_status_service
+    from services.provider_failover_analytics_service import get_provider_failover_analytics_service
     from database import get_db
     from schemas_runtime_surface import RuntimeSurfaceUpdateRequest
     from config import CORS_ALLOWED_ORIGINS, CORS_ALLOWED_ORIGIN_REGEX
@@ -15,7 +18,10 @@ except ModuleNotFoundError:  # pragma: no cover - package import compatibility
     from backend.services.startup_diagnostics_service import get_startup_diagnostics_service
     from backend.services.runtime_surface_service import get_runtime_surface_service
     from backend.services.capability_gap_service import get_capability_gap_service
+    from backend.services.doctor_runtime_service import get_doctor_runtime_service
+    from backend.services.run_trace_service import get_run_trace_service
     from backend.services.remediation_status_service import get_remediation_status_service
+    from backend.services.provider_failover_analytics_service import get_provider_failover_analytics_service
     from backend.database import get_db
     from backend.schemas_runtime_surface import RuntimeSurfaceUpdateRequest
     from backend.config import CORS_ALLOWED_ORIGINS, CORS_ALLOWED_ORIGIN_REGEX
@@ -38,6 +44,160 @@ def _parse_iso_datetime(value: str | None) -> datetime | None:
         return None
 
 
+def _resolve_failover_alert_level(switch_rate: float, medium: float, high: float) -> str:
+    if switch_rate > high:
+        return "high"
+    if switch_rate > medium:
+        return "medium"
+    return "low"
+
+
+def _record_doctor_timeline(
+    *,
+    db: Session,
+    conversation_id: int | None,
+    scope: str,
+    params: dict,
+    report: dict,
+) -> dict:
+    trace_service = get_run_trace_service(db)
+    snapshot_ref = trace_service.build_snapshot_ref(
+        source="doctor",
+        event_type="doctor_run_completed",
+        conversation_id=conversation_id,
+    )
+    base_payload = {
+        "scope": scope,
+        "conversation_id": conversation_id,
+        "params": dict(params or {}),
+        "snapshot_ref": snapshot_ref,
+    }
+    started_trace = trace_service.append_latest_active_item_trace(
+        user_id=None,
+        conversation_id=conversation_id,
+        source="doctor",
+        event_type="doctor_run_started",
+        summary=f"Doctor `{scope}` 诊断已开始",
+        detail="已发起一次框架诊断执行。",
+        severity="info",
+        payload=base_payload,
+    )
+    started_audit = trace_service.append_latest_active_item_audit(
+        user_id=None,
+        conversation_id=conversation_id,
+        event_type="doctor_run_started",
+        content=f"Doctor `{scope}` 诊断已开始",
+        payload=base_payload,
+    )
+
+    result_payload = {
+        **base_payload,
+        "status": report.get("status"),
+        "exit_code": report.get("exit_code"),
+        "gate_passed": report.get("gate_passed"),
+        "non_closed_action_count": report.get("non_closed_action_count"),
+        "score": report.get("score"),
+    }
+    completed_trace = trace_service.append_latest_active_item_trace(
+        user_id=None,
+        conversation_id=conversation_id,
+        source="doctor",
+        event_type="doctor_run_completed",
+        summary=f"Doctor `{scope}` 诊断已完成",
+        detail=f"status={report.get('status')} exit_code={report.get('exit_code')}",
+        severity="success" if int(report.get("exit_code") or 0) == 0 else "warning",
+        payload=result_payload,
+    )
+    completed_audit = trace_service.append_latest_active_item_audit(
+        user_id=None,
+        conversation_id=conversation_id,
+        event_type="doctor_run_completed",
+        content=f"Doctor `{scope}` 诊断已完成",
+        payload=result_payload,
+    )
+
+    gate_trace = False
+    gate_audit = False
+    if report.get("gate_passed") is False or int(report.get("exit_code") or 0) > 0:
+        gate_trace = trace_service.append_latest_active_item_trace(
+            user_id=None,
+            conversation_id=conversation_id,
+            source="doctor",
+            event_type="doctor_gate_failed",
+            summary=f"Doctor `{scope}` 门禁未通过",
+            detail=(
+                f"exit_code={report.get('exit_code')} "
+                f"non_closed_action_count={report.get('non_closed_action_count')}"
+            ).strip(),
+            severity="warning",
+            payload=result_payload,
+        )
+        gate_audit = trace_service.append_latest_active_item_audit(
+            user_id=None,
+            conversation_id=conversation_id,
+            event_type="doctor_gate_failed",
+            content=f"Doctor `{scope}` 门禁未通过",
+            payload=result_payload,
+        )
+
+    return {
+        "trace_started": started_trace,
+        "audit_started": started_audit,
+        "trace_completed": completed_trace,
+        "audit_completed": completed_audit,
+        "trace_gate_failed": gate_trace,
+        "audit_gate_failed": gate_audit,
+        "conversation_id": conversation_id,
+        "snapshot_ref": snapshot_ref,
+    }
+
+
+def _record_governance_action(
+    *,
+    db: Session,
+    conversation_id: int | None,
+    source: str,
+    event_type: str,
+    summary: str,
+    detail: str = "",
+    severity: str = "info",
+    payload: dict | None = None,
+) -> dict:
+    trace_service = get_run_trace_service(db)
+    snapshot_ref = trace_service.build_snapshot_ref(
+        source=source,
+        event_type=event_type,
+        conversation_id=conversation_id,
+    )
+    payload = {
+        **(payload or {}),
+        "snapshot_ref": snapshot_ref,
+    }
+    trace_written = trace_service.append_latest_active_item_trace(
+        user_id=None,
+        conversation_id=conversation_id,
+        source=source,
+        event_type=event_type,
+        summary=summary,
+        detail=detail,
+        severity=severity,
+        payload=payload,
+    )
+    audit_written = trace_service.append_latest_active_item_audit(
+        user_id=None,
+        conversation_id=conversation_id,
+        event_type=event_type,
+        content=summary,
+        payload=payload,
+    )
+    return {
+        "trace_written": trace_written,
+        "audit_written": audit_written,
+        "conversation_id": conversation_id,
+        "snapshot_ref": snapshot_ref,
+    }
+
+
 @router.get("/health/live")
 def liveness():
     """Lightweight liveness probe — confirms the process is running."""
@@ -58,9 +218,22 @@ def readiness(db: Session = Depends(get_db)):
 
 
 @router.get("/health")
-def health_check():
+def health_check(db: Session = Depends(get_db)):
     """轻量健康检查与启动诊断摘要。"""
-    return get_startup_diagnostics_service().collect_report()
+    report = get_startup_diagnostics_service().collect_report()
+    try:
+        failover_summary = get_provider_failover_analytics_service(db).get_summary(window_days=7, limit=500)
+        runtime_profile = get_runtime_surface_service().get_runtime_profile()
+        thresholds = runtime_profile.get("failover_thresholds") or {}
+        medium = float(thresholds.get("medium", 0.2))
+        high = float(thresholds.get("high", 0.4))
+        switch_rate = float(failover_summary.get("switch_rate", 0.0))
+        failover_summary["alert_thresholds"] = {"medium": medium, "high": high}
+        failover_summary["alert_level"] = _resolve_failover_alert_level(switch_rate, medium, high)
+        report["failover"] = failover_summary
+    except Exception as exc:
+        report["failover"] = {"status": "unavailable", "error": str(exc)}
+    return report
 
 
 @router.get("/health/cors")
@@ -99,6 +272,48 @@ def cors_diagnostics(request: Request):
 def get_runtime_profile():
     """返回当前 demo/runtime 的可配置表面。"""
     return get_runtime_surface_service().get_runtime_profile()
+
+
+@router.get("/doctor")
+def run_doctor(
+    capability_gaps: bool = False,
+    window_days: int = 0,
+    limit: int = 100,
+    max_open_actions: int | None = None,
+    max_long_blocked_actions: int | None = None,
+    conversation_id: int | None = None,
+    db: Session = Depends(get_db),
+):
+    service = get_doctor_runtime_service()
+    if capability_gaps:
+        report = service.run_capability_gap_report(
+            limit=limit,
+            window_days=window_days,
+            max_open_actions=max_open_actions,
+            max_long_blocked_actions=max_long_blocked_actions,
+        )
+        report["timeline_recording"] = _record_doctor_timeline(
+            db=db,
+            conversation_id=conversation_id,
+            scope="capability_gap",
+            params={
+                "window_days": window_days,
+                "limit": limit,
+                "max_open_actions": max_open_actions,
+                "max_long_blocked_actions": max_long_blocked_actions,
+            },
+            report=report,
+        )
+        return report
+    report = service.run_startup_report()
+    report["timeline_recording"] = _record_doctor_timeline(
+        db=db,
+        conversation_id=conversation_id,
+        scope="startup",
+        params={},
+        report=report,
+    )
+    return report
 
 
 @router.patch("/runtime-profile")
@@ -226,4 +441,23 @@ def update_remediation_status(
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    conversation_id = payload.get("conversation_id")
+    timeline_recording = _record_governance_action(
+        db=db,
+        conversation_id=int(conversation_id) if conversation_id is not None else None,
+        source="governance",
+        event_type="remediation_status_updated",
+        summary=f"整改动作 `{action_id}` 已更新为 `{updated.get('status')}`",
+        detail=f"owner={updated.get('owner') or '-'} updated_by={updated.get('updated_by') or '-'}",
+        severity="success" if updated.get("status") in {"done", "verified"} else "info",
+        payload={
+            "action_id": action_id,
+            "status": updated.get("status"),
+            "owner": updated.get("owner"),
+            "module": updated.get("module"),
+            "updated_by": updated.get("updated_by"),
+            "note": updated.get("note"),
+        },
+    )
+    updated["timeline_recording"] = timeline_recording
     return updated

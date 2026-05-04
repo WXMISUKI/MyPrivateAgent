@@ -267,6 +267,7 @@ class PlannerService:
                     "agent_id": item.agent_id,
                     "handoff_status": item.handoff_status.value if hasattr(item.handoff_status, "value") else str(item.handoff_status),
                     "required_capabilities": list((item.item_metadata or {}).get("required_capabilities", [])),
+                    "scheduler_snapshot": scheduler_service.get_scheduler_snapshot(item),
                     "child_executions": scheduler_service.serialize_child_executions(item),
                     "merge_summary": scheduler_service.get_merge_summary(item),
                     "audit_trail": scheduler_service.get_audit_trail(item),

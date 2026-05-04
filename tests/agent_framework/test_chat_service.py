@@ -38,6 +38,31 @@ class _NamedOrchestrator(_StubOrchestrator):
         self.label = label
 
 
+class _StubProviderAwareOrchestrator(_StubOrchestrator):
+    def __init__(self):
+        super().__init__([
+            json_for_content("provider aware content"),
+            json_for_done("provider aware done"),
+        ])
+        self.show_reasoning = False
+        self.model_provider = SimpleNamespace(
+            list_available_models=lambda: {
+                "doubao": {
+                    "name": "doubao",
+                    "provider": "volcengine-ark",
+                    "available": True,
+                    "is_default": True,
+                },
+                "llama3.1": {
+                    "name": "llama3.1",
+                    "provider": "ollama",
+                    "available": True,
+                    "is_default": True,
+                },
+            }
+        )
+
+
 def json_for_content(content):
     return f'{{"type":"content","content":"{content}"}}'
 
@@ -169,6 +194,22 @@ class ChatServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(trace_event)
         self.assertEqual(trace_event["source"], "hook")
         self.assertEqual(trace_event["event_type"], "pre_tool_use_blocked")
+
+    async def test_state_event_maps_to_runtime_trace(self):
+        trace_event = _build_run_trace_from_runtime_event(
+            {
+                "type": "state",
+                "previous_state": "generating",
+                "state": "tool_calling",
+                "stop_reason": "",
+            }
+        )
+
+        self.assertIsNotNone(trace_event)
+        self.assertEqual(trace_event["source"], "runtime")
+        self.assertEqual(trace_event["event_type"], "agent_state_changed")
+        self.assertEqual(trace_event["payload"]["previous_state"], "generating")
+        self.assertEqual(trace_event["payload"]["state"], "tool_calling")
 
     async def test_tool_result_includes_hook_post_payload(self):
         trace_event = _build_run_trace_from_runtime_event(
@@ -376,6 +417,20 @@ class _StubSchedulerServiceForStream:
     def mark_child_running(self, *, plan, item_id, child_execution_id):
         return plan
 
+    def mark_child_policy_selected(
+        self,
+        *,
+        plan,
+        item_id,
+        child_execution_id,
+        model_name,
+        provider_name,
+        provider_order=None,
+        provider_switch_count=None,
+        provider_history=None,
+    ):
+        return plan
+
     def mark_child_completed(self, *, plan, item_id, child_execution_id, output_text):
         self.completed.append((child_execution_id, output_text))
         return plan
@@ -541,6 +596,135 @@ class ScheduledStreamTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("subagent_failed", joined)
         self.assertIn("scheduler_cancelled", joined)
         self.assertGreaterEqual(attempts["backend-child-p10-i23-c1"], 2)
+
+    @patch("backend.services.chat_service._get_scheduler_service_cls", return_value=_StubSchedulerServiceForStream)
+    @patch("backend.services.chat_service._get_planner_service_cls", return_value=_StubPlannerServiceForStream)
+    async def test_stream_scheduled_orchestrator_events_routes_model_by_provider_policy(self, _mock_planner_cls, _mock_scheduler_cls):
+        class _StubPolicyEngine:
+            @staticmethod
+            def select_provider_hint(*, requested_model, context):
+                role = (context or {}).get("agent_role")
+                return {
+                    "selected_provider": "ollama" if role == "backend" else "volcengine-ark",
+                    "provider_order": ["ollama", "volcengine-ark"],
+                    "reason": "default_provider_order",
+                    "model_name": requested_model,
+                    "agent_role": role,
+                }
+
+            @staticmethod
+            def select_model_for_provider(*, requested_model, selected_provider, available_models):
+                if selected_provider == "ollama":
+                    return {
+                        "resolved_model": "llama3.1",
+                        "resolved_provider": "ollama",
+                        "reason": "provider_fallback_model_selected",
+                    }
+                return {
+                    "resolved_model": requested_model,
+                    "resolved_provider": selected_provider,
+                    "reason": "requested_model_matches_provider",
+                }
+
+        def orchestrator_factory(*, conversation_id, show_reasoning):
+            return _StubOrchestrator([
+                json_for_content("ok"),
+                json_for_done("ok"),
+            ])
+
+        with (
+            patch("backend.services.chat_service._get_orchestrator_factory", return_value=orchestrator_factory),
+            patch("backend.services.chat_service._get_policy_engine_service", return_value=_StubPolicyEngine()),
+        ):
+            events = []
+            async for chunk, actual_content in stream_scheduled_orchestrator_events(
+                orchestrator=_StubProviderAwareOrchestrator(),
+                db=object(),
+                user_id=1,
+                conversation_id=99,
+                user_message="执行任务",
+                model_name="doubao",
+                execution_context={
+                    "scheduler_mode": "fan_out",
+                    "scheduler_run_id": "sched-p10-i23",
+                    "plan_id": 10,
+                    "plan_item_id": 23,
+                    "child_contexts": [
+                        {
+                            "plan_id": 10,
+                            "plan_item_id": 23,
+                            "plan_item_title": "联调",
+                            "agent_role": "backend",
+                            "agent_id": "backend-agent-p10-i23-c1",
+                            "child_execution_id": "backend-child-p10-i23-c1",
+                        },
+                    ],
+                },
+            ):
+                events.append((chunk, actual_content))
+
+        joined = "\n".join(chunk for chunk, _content in events)
+        self.assertIn("subagent_policy_selected", joined)
+        self.assertIn("\"model_name\": \"llama3.1\"", joined)
+        self.assertIn("\"provider_name\": \"ollama\"", joined)
+
+    async def test_run_parallel_child_execution_switches_provider_on_failure(self):
+        class _FailThenPassOrchestrator:
+            def __init__(self):
+                self.calls = []
+
+            async def process_message(self, user_message: str, selected_model: str, execution_context=None):
+                self.calls.append(selected_model)
+                if selected_model == "doubao":
+                    raise RuntimeError("provider failure")
+                yield json_for_content("ok")
+                yield json_for_done("ok")
+
+        class _PolicyEngine:
+            @staticmethod
+            def select_model_for_provider(*, requested_model, selected_provider, available_models):
+                if selected_provider == "ollama":
+                    return {"resolved_model": "llama3.1", "resolved_provider": "ollama", "reason": "fallback"}
+                return {"resolved_model": requested_model, "resolved_provider": selected_provider, "reason": "keep"}
+
+        orchestrator_instance = _FailThenPassOrchestrator()
+
+        def _factory(*, conversation_id, show_reasoning):
+            return orchestrator_instance
+
+        child_payload = {
+            "child_execution_id": "backend-child-p10-i23-c1",
+            "agent_role": "backend",
+            "agent_id": "backend-agent-p10-i23-c1",
+            "model_name": "doubao",
+            "provider_name": "volcengine-ark",
+            "provider_order": ["volcengine-ark", "ollama"],
+        }
+
+        from backend.services.chat_service import _run_parallel_child_execution
+        result = await _run_parallel_child_execution(
+            orchestrator_factory=_factory,
+            db=None,
+            user_id=1,
+            conversation_id=99,
+            show_reasoning=False,
+            user_message="执行任务",
+            model_name="doubao",
+            child_payload=child_payload,
+            child_context=SimpleNamespace(agent_role="backend", agent_id="backend-agent-p10-i23-c1"),
+            scheduler_policy={"timeout_seconds": 2, "max_retries": 1},
+            policy_engine=_PolicyEngine(),
+            model_catalog=[
+                {"name": "doubao", "provider": "volcengine-ark"},
+                {"name": "llama3.1", "provider": "ollama"},
+            ],
+        )
+        _payload, _ctx, output_text, outcome = result
+        self.assertEqual(outcome["status"], "completed")
+        self.assertEqual(output_text, "ok")
+        self.assertEqual(child_payload["provider_name"], "ollama")
+        self.assertEqual(child_payload["model_name"], "llama3.1")
+        self.assertEqual(outcome["provider_switch_count"], 1)
 
     @patch("backend.services.chat_service._get_mcp_adapter_service", return_value=_StubCapabilityAdapterBlocked())
     @patch("backend.services.chat_service._get_planner_service_cls", return_value=_StubPlannerService)

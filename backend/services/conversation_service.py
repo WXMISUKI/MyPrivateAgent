@@ -170,6 +170,8 @@ class ConversationService:
         runtime_metadata = dict(getattr(runtime_effect, "artifact_metadata", {}) or {})
         normalized_comment = comment.strip() if isinstance(comment, str) and comment.strip() else None
         normalized_selected_reasons = [str(item) for item in (selected_reasons or []) if str(item).strip()]
+        runtime_prompt_keys = [str(item).strip() for item in (runtime_metadata.get("prompt_keys", []) or []) if str(item).strip()]
+        runtime_practice_ids = [str(item).strip() for item in (runtime_metadata.get("practice_ids", []) or []) if str(item).strip()]
         feedback_metadata = {
             "selected_count": runtime_metadata.get("selected_count", 0),
             "practice_ids": runtime_metadata.get("practice_ids", []),
@@ -214,11 +216,27 @@ class ConversationService:
                 details=(
                     f"反馈说明: {feedback.comment or '未提供'}\n"
                     f"助手回复摘录: {assistant_preview[:500]}"
+                    + (
+                        f"\n命中的 Prompt: {', '.join(runtime_prompt_keys)}"
+                        if runtime_prompt_keys
+                        else ""
+                    )
+                    + (
+                        f"\n命中的 Practice: {', '.join(runtime_practice_ids)}"
+                        if runtime_practice_ids
+                        else ""
+                    )
                 ),
                 suggested_action="检查本次运行命中的 runtime knowledge 与工具输出，确认是否需要回滚或调整知识注入。",
                 source="user_feedback",
                 related_files=[],
-                tags=["user-feedback", "runtime-evaluation", f"scope:{feedback.runtime_scope or 'chat'}"],
+                tags=[
+                    "user-feedback",
+                    "runtime-evaluation",
+                    f"scope:{feedback.runtime_scope or 'chat'}",
+                    *[f"prompt:{item}" for item in runtime_prompt_keys],
+                    *[f"practice:{item}" for item in runtime_practice_ids],
+                ],
                 pattern_key=f"user_feedback:conversation:{conversation.id}",
                 recurrence_count=1,
                 first_seen=datetime.now(),

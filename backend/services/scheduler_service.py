@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from datetime import datetime, timezone
 from typing import Iterable, Optional
 
@@ -77,10 +78,21 @@ class SchedulerService:
                 "agent_id": agent_id,
                 "status": status,
                 "title": getattr(active_item, "title", ""),
+                "scheduler_run_id": str(group.get("run_id") or "").strip() or self._build_scheduler_run_id(plan=plan, item=active_item),
                 "summary": str(existing.get("summary") or "").strip() if existing else "",
                 "error": str(existing.get("error") or "").strip() if existing else "",
+                "error_kind": str(existing.get("error_kind") or "").strip() if existing else "",
+                "retry_count": int(existing.get("retry_count") or 0) if existing else 0,
+                "model_name": str(existing.get("model_name") or "").strip() if existing else "",
+                "provider_name": str(existing.get("provider_name") or "").strip() if existing else "",
+                "provider_order": list(existing.get("provider_order") or []) if existing else [],
+                "provider_switch_count": int(existing.get("provider_switch_count") or 0) if existing else 0,
+                "provider_history": list(existing.get("provider_history") or []) if existing else [],
                 "created_at": str(existing.get("created_at") if existing else now_text),
                 "updated_at": now_text,
+                "started_at": str(existing.get("started_at") or "").strip() if existing else "",
+                "completed_at": str(existing.get("completed_at") or "").strip() if existing else "",
+                "cancelled_at": str(existing.get("cancelled_at") or "").strip() if existing else "",
             }
             children.append(child)
 
@@ -236,6 +248,50 @@ class SchedulerService:
                 "child_execution_id": child_execution_id,
                 "agent_role": child.get("agent_role"),
                 "agent_id": child.get("agent_id"),
+            },
+            commit=False,
+        )
+        self._commit_refresh(plan)
+        return plan
+
+    def mark_child_policy_selected(
+        self,
+        *,
+        plan: Optional[PlanRunRecord],
+        item_id: int,
+        child_execution_id: str,
+        model_name: str,
+        provider_name: str,
+        provider_order: Optional[list[str]] = None,
+        provider_switch_count: Optional[int] = None,
+        provider_history: Optional[list[dict]] = None,
+    ) -> Optional[PlanRunRecord]:
+        active_item = self._get_active_item(plan, item_id=item_id)
+        child = self._find_child(active_item, child_execution_id) if active_item is not None else None
+        if child is None:
+            return plan
+        child["model_name"] = str(model_name or "").strip()
+        child["provider_name"] = str(provider_name or "").strip()
+        child["provider_order"] = list(provider_order or [])
+        if provider_switch_count is not None:
+            child["provider_switch_count"] = max(0, int(provider_switch_count))
+        if provider_history is not None:
+            child["provider_history"] = list(provider_history)
+        child["updated_at"] = self._now_text()
+        active_item.item_metadata = dict(active_item.item_metadata or {})
+        self.append_audit_event(
+            plan=plan,
+            item_id=item_id,
+            event_type="child_policy_selected",
+            content=f"{child.get('agent_role', 'general')} 子执行策略已装载",
+            payload={
+                "child_execution_id": child_execution_id,
+                "agent_role": child.get("agent_role"),
+                "agent_id": child.get("agent_id"),
+                "model_name": child.get("model_name"),
+                "provider_name": child.get("provider_name"),
+                "provider_order": child.get("provider_order"),
+                "provider_switch_count": child.get("provider_switch_count", 0),
             },
             commit=False,
         )
@@ -530,7 +586,7 @@ class SchedulerService:
 
     def serialize_child_executions(self, item: Optional[PlanItemRecord]) -> list[dict]:
         group = self._get_child_group(item)
-        return [dict(child) for child in (group or {}).get("children") or []]
+        return [self._serialize_child_execution(child, group) for child in (group or {}).get("children") or []]
 
     def get_audit_trail(self, item: Optional[PlanItemRecord]) -> list[dict]:
         if item is None:
@@ -546,16 +602,32 @@ class SchedulerService:
         trace = metadata.get("run_trace") or []
         return [dict(entry) for entry in trace if isinstance(entry, dict)]
 
-    def get_merge_summary(self, item: Optional[PlanItemRecord]) -> dict:
+    def get_scheduler_snapshot(self, item: Optional[PlanItemRecord]) -> dict:
         group = self._get_child_group(item) or {}
+        children = [self._serialize_child_execution(child, group) for child in (group.get("children") or [])]
+        counts = self._count_child_statuses(children)
         return {
             "scheduler_run_id": str(group.get("run_id") or "").strip() or None,
             "merge_strategy": str(group.get("merge_strategy") or "").strip() or None,
             "merge_status": str(group.get("merge_status") or "").strip() or None,
             "merged_output": str(group.get("merged_output") or "").strip() or None,
-            "child_count": len((group.get("children") or [])),
             "policy": dict(group.get("policy") or {}),
-            "last_merge_at": group.get("last_merge_at"),
+            "child_count": len(children),
+            "child_status_counts": counts,
+            "active_children": counts.get("queued", 0) + counts.get("running", 0),
+            "children": children,
+        }
+
+    def get_merge_summary(self, item: Optional[PlanItemRecord]) -> dict:
+        snapshot = self.get_scheduler_snapshot(item)
+        return {
+            "scheduler_run_id": snapshot["scheduler_run_id"],
+            "merge_strategy": snapshot["merge_strategy"],
+            "merge_status": snapshot["merge_status"],
+            "merged_output": snapshot["merged_output"],
+            "child_count": snapshot["child_count"],
+            "policy": snapshot["policy"],
+            "last_merge_at": (self._get_child_group(item) or {}).get("last_merge_at"),
         }
 
     def append_audit_event(
@@ -682,6 +754,39 @@ class SchedulerService:
             "timeout_seconds": timeout_seconds,
             "max_retries": max_retries,
             "cancel_on_failure": bool(cancel_on_failure),
+        }
+
+    def _count_child_statuses(self, children: list[dict]) -> dict:
+        counter = Counter()
+        for child in children:
+            status = str((child or {}).get("status") or "").strip().lower() or "unknown"
+            counter[status] += 1
+        return dict(counter)
+
+    def _serialize_child_execution(self, child: Optional[dict], group: Optional[dict] = None) -> dict:
+        data = dict(child or {})
+        scheduler_run_id = str((group or {}).get("run_id") or "").strip() or None
+        return {
+            "child_execution_id": str(data.get("child_execution_id") or "").strip() or None,
+            "scheduler_run_id": str(data.get("scheduler_run_id") or scheduler_run_id or "").strip() or None,
+            "agent_role": str(data.get("agent_role") or "").strip() or None,
+            "agent_id": str(data.get("agent_id") or "").strip() or None,
+            "status": str(data.get("status") or "").strip() or "queued",
+            "title": str(data.get("title") or "").strip() or None,
+            "summary": str(data.get("summary") or "").strip() or None,
+            "error": str(data.get("error") or "").strip() or None,
+            "error_kind": str(data.get("error_kind") or "").strip() or None,
+            "retry_count": max(0, int(data.get("retry_count") or 0)),
+            "model_name": str(data.get("model_name") or "").strip() or None,
+            "provider_name": str(data.get("provider_name") or "").strip() or None,
+            "provider_order": list(data.get("provider_order") or []),
+            "provider_switch_count": max(0, int(data.get("provider_switch_count") or 0)),
+            "provider_history": [dict(entry) for entry in (data.get("provider_history") or []) if isinstance(entry, dict)],
+            "created_at": data.get("created_at"),
+            "updated_at": data.get("updated_at"),
+            "started_at": data.get("started_at") or None,
+            "completed_at": data.get("completed_at") or None,
+            "cancelled_at": data.get("cancelled_at") or None,
         }
 
     def _get_child_group(self, item: Optional[PlanItemRecord]) -> Optional[dict]:

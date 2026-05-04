@@ -132,6 +132,18 @@ export const capabilityGapApi = {
   }
 }
 
+export const healthApi = {
+  getHealth() {
+    return api.get('/health')
+  }
+}
+
+export const doctorApi = {
+  getReport(params = {}) {
+    return api.get('/doctor', { params })
+  }
+}
+
 export const providerApi = {
   list() {
     return api.get('/providers')
@@ -143,6 +155,10 @@ export const providerApi = {
 
   test(providerName) {
     return api.post(`/providers/${encodeURIComponent(providerName)}/test`)
+  },
+
+  getFailoverAnalytics(params = {}) {
+    return api.get('/failover-analytics', { params })
   }
 }
 
@@ -151,42 +167,48 @@ export const mcpApi = {
     return api.get('/mcp/servers')
   },
 
-  createServer(payload) {
-    return api.post('/mcp/servers', payload)
+  createServer(payload, params = {}) {
+    return api.post('/mcp/servers', payload, { params })
   },
 
-  updateServer(serverName, payload) {
-    return api.patch(`/mcp/servers/${serverName}`, payload)
+  updateServer(serverName, payload, params = {}) {
+    return api.patch(`/mcp/servers/${serverName}`, payload, { params })
   },
 
-  deleteServer(serverName) {
-    return api.delete(`/mcp/servers/${serverName}`)
+  deleteServer(serverName, params = {}) {
+    return api.delete(`/mcp/servers/${serverName}`, { params })
   },
 
-  enableServer(serverName) {
-    return api.post(`/mcp/servers/${serverName}/enable`)
+  enableServer(serverName, params = {}) {
+    return api.post(`/mcp/servers/${serverName}/enable`, null, { params })
   },
 
-  disableServer(serverName) {
-    return api.post(`/mcp/servers/${serverName}/disable`)
+  disableServer(serverName, params = {}) {
+    return api.post(`/mcp/servers/${serverName}/disable`, null, { params })
   },
 
   getCatalog() {
     return api.get('/mcp/catalog')
   },
 
-  probeServer(serverName) {
-    return api.post(`/mcp/servers/${serverName}/probe`)
+  probeServer(serverName, params = {}) {
+    return api.post(`/mcp/servers/${serverName}/probe`, null, { params })
   },
 
-  handshakeServer(serverName) {
-    return api.post(`/mcp/servers/${serverName}/handshake`)
+  handshakeServer(serverName, params = {}) {
+    return api.post(`/mcp/servers/${serverName}/handshake`, null, { params })
   },
 
-  callTool(serverName, toolName, argumentsPayload = {}) {
+  callTool(serverName, toolName, argumentsPayload = {}, params = {}) {
     return api.post(`/mcp/servers/${serverName}/tools/${toolName}/call`, {
       arguments: argumentsPayload
-    })
+    }, { params })
+  }
+}
+
+export const commandApi = {
+  list() {
+    return api.get('/commands')
   }
 }
 

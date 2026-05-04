@@ -77,6 +77,8 @@ class PlannerServiceTests(unittest.TestCase):
         serialized = service.serialize_plan(plan)
 
         self.assertEqual(serialized["items"][0]["required_capabilities"], ["filesystem.read", "search.query"])
+        self.assertEqual(serialized["items"][0]["scheduler_snapshot"]["child_count"], 1)
+        self.assertEqual(serialized["items"][0]["scheduler_snapshot"]["child_status_counts"]["completed"], 1)
         self.assertEqual(serialized["items"][0]["child_executions"][0]["agent_role"], "backend")
         self.assertEqual(serialized["items"][0]["merge_summary"]["merge_status"], "completed")
         self.assertEqual(serialized["items"][0]["audit_trail"][0]["event_type"], "scheduler_fanout_prepared")

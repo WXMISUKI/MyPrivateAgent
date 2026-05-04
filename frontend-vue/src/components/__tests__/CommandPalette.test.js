@@ -1,7 +1,13 @@
 import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import CommandPalette from '../CommandPalette.vue'
+
+vi.mock('../../api', () => ({
+  commandApi: {
+    list: vi.fn().mockResolvedValue({ data: [] })
+  }
+}))
 
 async function mountPalette(props = {}) {
   const wrapper = mount(CommandPalette, {
@@ -28,6 +34,11 @@ function getCommandItems() {
   return Array.from(document.body.querySelectorAll('.command-item'))
 }
 
+afterEach(() => {
+  localStorage.removeItem('governance_recent_snapshot_commands')
+  document.body.innerHTML = ''
+})
+
 describe('CommandPalette', () => {
   it('renders the default command list when visible', async () => {
     const wrapper = await mountPalette()
@@ -36,6 +47,30 @@ describe('CommandPalette', () => {
     expect(items.length).toBeGreaterThanOrEqual(5)
     expect(document.body.textContent).toContain('/new')
     expect(document.body.textContent).toContain('/feedback')
+
+    wrapper.unmount()
+  })
+
+  it('shows recent snapshot commands ahead of the base command list', async () => {
+    localStorage.setItem('governance_recent_snapshot_commands', JSON.stringify([
+      {
+        commandText: '/mcp snapshot MCP-REF-1',
+        commandName: 'mcp',
+        action: 'open_mcp',
+        params: ['snapshot', 'MCP-REF-1'],
+        domain: 'mcp',
+        snapshotId: 'MCP-REF-1',
+        copiedAt: '2026-05-03T01:00:00Z'
+      }
+    ]))
+
+    const wrapper = await mountPalette()
+
+    const items = getCommandItems()
+    expect(document.body.textContent).toContain('最近治理快照')
+    expect(document.body.textContent).toContain('全部命令')
+    expect(items[0].textContent).toContain('/mcp snapshot MCP-REF-1')
+    expect(items[0].textContent).toContain('最近')
 
     wrapper.unmount()
   })
@@ -73,6 +108,32 @@ describe('CommandPalette', () => {
     expect(wrapper.emitted('execute')[0][0]).toMatchObject({
       id: 'clear',
       action: 'clear_conversation'
+    })
+
+    wrapper.unmount()
+  })
+
+  it('executes recent snapshot command suggestions with preset params', async () => {
+    localStorage.setItem('governance_recent_snapshot_commands', JSON.stringify([
+      {
+        commandText: '/snapshot MCP-REF-1',
+        commandName: 'snapshot',
+        action: 'open_snapshot',
+        params: ['MCP-REF-1'],
+        domain: '',
+        snapshotId: 'MCP-REF-1',
+        copiedAt: '2026-05-03T01:00:00Z'
+      }
+    ]))
+
+    const wrapper = await mountPalette()
+    const firstItem = getCommandItems()[0]
+    firstItem.click()
+    await nextTick()
+
+    expect(wrapper.emitted('execute')).toHaveLength(1)
+    expect(wrapper.emitted('execute')[0][0]).toMatchObject({
+      params: ['MCP-REF-1']
     })
 
     wrapper.unmount()

@@ -3,14 +3,18 @@
 import logging
 
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 
 try:
     from services.provider_config_service import get_provider_config_service
+    from services.provider_failover_analytics_service import get_provider_failover_analytics_service
+    from database import get_db
 except ModuleNotFoundError:
     from backend.services.provider_config_service import get_provider_config_service
+    from backend.services.provider_failover_analytics_service import get_provider_failover_analytics_service
+    from backend.database import get_db
 
 logger = logging.getLogger(__name__)
 
@@ -106,3 +110,17 @@ def _test_volcengine_ark(base_url: str, api_key: str) -> dict:
         return {"status": "error", "message": f"无法连接到 {base_url}"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+
+@router.get("/failover-analytics")
+def get_failover_analytics(
+    window_days: int = 7,
+    limit: int = 500,
+    db=Depends(get_db),
+):
+    """Return provider failover analytics summary for runtime operations."""
+    if window_days not in {7, 14, 30}:
+        raise HTTPException(status_code=400, detail="window_days 仅支持 7/14/30")
+    if limit < 1 or limit > 5000:
+        raise HTTPException(status_code=400, detail="limit 范围应在 1-5000")
+    return get_provider_failover_analytics_service(db).get_summary(window_days=window_days, limit=limit)

@@ -10,6 +10,27 @@
       </button>
     </div>
 
+    <div v-if="latestSnapshotRef" class="panel-card snapshot-card">
+      <div class="card-head">
+        <h3>最近治理快照</h3>
+        <button class="secondary-btn" @click="openSnapshotTimeline">查看时间线</button>
+      </div>
+      <div class="catalog-grid snapshot-grid">
+        <div class="catalog-card">
+          <span class="catalog-label">快照 ID</span>
+          <strong>{{ latestSnapshotRef.snapshot_id }}</strong>
+        </div>
+        <div class="catalog-card">
+          <span class="catalog-label">来源</span>
+          <strong>{{ latestSnapshotRef.source || '-' }}</strong>
+        </div>
+        <div class="catalog-card">
+          <span class="catalog-label">事件</span>
+          <strong>{{ latestSnapshotRef.event_type || '-' }}</strong>
+        </div>
+      </div>
+    </div>
+
     <div class="catalog-grid">
       <div class="catalog-card">
         <span class="catalog-label">总服务数</span>
@@ -226,9 +247,15 @@
 
 <script setup>
 import { computed, onMounted, reactive } from 'vue'
+import { useRouter } from 'vue-router'
 import { useMcpStore } from '../stores/mcp'
+import { useConversationStore } from '../stores/conversation'
+import { usePlannerStore } from '../stores/planner'
 
+const router = useRouter()
 const mcpStore = useMcpStore()
+const conversationStore = useConversationStore()
+const plannerStore = usePlannerStore()
 
 const form = reactive({
   name: '',
@@ -244,13 +271,19 @@ const form = reactive({
 const toolDrafts = reactive({})
 const state = reactive({
   editingServerName: '',
-  formError: ''
+  formError: '',
+  latestSnapshotRef: null
 })
 
 const servers = computed(() => mcpStore.servers || [])
 const catalogEntries = computed(() => mcpStore.catalog?.capabilities || [])
 const editingServerName = computed(() => state.editingServerName)
 const formError = computed(() => state.formError)
+const latestSnapshotRef = computed(() => state.latestSnapshotRef)
+const currentConversationId = computed(() => {
+  const id = Number(conversationStore.currentConversation?.id)
+  return Number.isFinite(id) ? id : null
+})
 
 onMounted(async () => {
   await refreshData()
@@ -334,6 +367,70 @@ function buildPayload() {
   return payload
 }
 
+function buildTimelineOptions() {
+  if (currentConversationId.value === null) {
+    return {}
+  }
+  return { conversation_id: currentConversationId.value }
+}
+
+function normalizeSnapshotRef(snapshotRef) {
+  if (!snapshotRef || typeof snapshotRef !== 'object') {
+    return null
+  }
+  const snapshotId = String(snapshotRef.snapshot_id || '').trim()
+  if (!snapshotId) {
+    return null
+  }
+  return {
+    snapshot_id: snapshotId,
+    generated_at: String(snapshotRef.generated_at || '').trim(),
+    conversation_id: snapshotRef.conversation_id ?? null,
+    source: String(snapshotRef.source || '').trim(),
+    event_type: String(snapshotRef.event_type || '').trim(),
+  }
+}
+
+function extractLatestSnapshotFromPlan() {
+  const items = plannerStore.currentPlan?.items || []
+  for (const item of items) {
+    for (const entry of item.run_trace || []) {
+      const snapshotRef = normalizeSnapshotRef(entry?.payload?.snapshot_ref)
+      if (snapshotRef) {
+        return snapshotRef
+      }
+    }
+  }
+  return null
+}
+
+async function refreshTimelinePlan() {
+  if (currentConversationId.value === null) return
+  try {
+    await plannerStore.loadPlans({ conversationId: currentConversationId.value })
+    const extractedSnapshot = extractLatestSnapshotFromPlan()
+    if (extractedSnapshot) {
+      state.latestSnapshotRef = extractedSnapshot
+    }
+  } catch (_err) {
+    // best effort
+  }
+}
+
+function updateLatestSnapshotFromResult(result) {
+  const nextSnapshot = normalizeSnapshotRef(result?.timeline_recording?.snapshot_ref)
+  if (nextSnapshot) {
+    state.latestSnapshotRef = nextSnapshot
+  }
+}
+
+function openSnapshotTimeline() {
+  if (!state.latestSnapshotRef?.snapshot_id) {
+    return
+  }
+  router.push(`/settings?tab=advanced&governance_snapshot=${encodeURIComponent(state.latestSnapshotRef.snapshot_id)}`)
+}
+
 async function submitForm() {
   state.formError = ''
   try {
@@ -352,10 +449,13 @@ async function submitForm() {
     }
 
     if (editingServerName.value) {
-      await mcpStore.updateServer(editingServerName.value, payload)
+      const result = await mcpStore.updateServer(editingServerName.value, payload, buildTimelineOptions())
+      updateLatestSnapshotFromResult(result)
     } else {
-      await mcpStore.createServer(payload)
+      const result = await mcpStore.createServer(payload, buildTimelineOptions())
+      updateLatestSnapshotFromResult(result)
     }
+    await refreshTimelinePlan()
     resetForm()
   } catch (error) {
     state.formError = error?.response?.data?.detail || error?.message || '提交失败'
@@ -378,19 +478,27 @@ async function refreshData() {
 }
 
 async function toggleEnabled(server) {
-  await mcpStore.setServerEnabled(server.name, !server.enabled)
+  const result = await mcpStore.setServerEnabled(server.name, !server.enabled, buildTimelineOptions())
+  updateLatestSnapshotFromResult(result)
+  await refreshTimelinePlan()
 }
 
 async function removeServer(serverName) {
-  await mcpStore.deleteServer(serverName)
+  const result = await mcpStore.deleteServer(serverName, buildTimelineOptions())
+  updateLatestSnapshotFromResult(result)
+  await refreshTimelinePlan()
 }
 
 async function runProbe(serverName) {
-  await mcpStore.probeServer(serverName)
+  const result = await mcpStore.probeServer(serverName, buildTimelineOptions())
+  updateLatestSnapshotFromResult(result)
+  await refreshTimelinePlan()
 }
 
 async function runHandshake(serverName) {
-  const result = await mcpStore.handshakeServer(serverName)
+  const result = await mcpStore.handshakeServer(serverName, buildTimelineOptions())
+  updateLatestSnapshotFromResult(result)
+  await refreshTimelinePlan()
   const draft = ensureToolDraft(serverName)
   if (!draft.toolName && result?.tools?.length) {
     draft.toolName = result.tools[0].name || ''
@@ -413,7 +521,9 @@ async function runToolCall(serverName) {
     return
   }
 
-  await mcpStore.callTool(serverName, draft.toolName, argumentsPayload)
+  const result = await mcpStore.callTool(serverName, draft.toolName, argumentsPayload, buildTimelineOptions())
+  updateLatestSnapshotFromResult(result)
+  await refreshTimelinePlan()
 }
 
 function formatJson(value) {
