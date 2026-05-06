@@ -9,7 +9,8 @@ class _StubPlannerService:
     def __init__(self, db):
         self.db = db
         self.active_item = SimpleNamespace(id=23, title="执行步骤")
-        self.plan = SimpleNamespace(id=10, active_item_id=23, items=[self.active_item])
+        self.runtime_item = SimpleNamespace(id=24, title="子执行步骤")
+        self.plan = SimpleNamespace(id=10, active_item_id=23, items=[self.active_item, self.runtime_item])
 
     def get_latest_plan_for_conversation(self, *, user_id, conversation_id):
         if user_id == 1 and conversation_id == 99:
@@ -18,6 +19,27 @@ class _StubPlannerService:
 
     def get_active_item(self, *, plan):
         return self.active_item
+
+    def resolve_runtime_target(
+        self,
+        *,
+        user_id,
+        conversation_id=None,
+        plan_id=None,
+        item_id=None,
+        run_id=None,
+        child_run_id=None,
+        search_limit=50,
+    ):
+        if user_id != 1:
+            return None, None
+        if item_id == 24:
+            return self.plan, self.runtime_item
+        if run_id == "sched-p10-i24" or child_run_id == "backend-child-p10-i24-c1":
+            return self.plan, self.runtime_item
+        if conversation_id == 99:
+            return self.plan, self.active_item
+        return None, None
 
 
 class _StubSchedulerService:
@@ -140,6 +162,36 @@ class RunTraceServiceTests(unittest.TestCase):
 
         self.assertFalse(success)
         self.assertEqual(_StubSchedulerService.calls, [])
+
+    @patch.object(RunTraceService, "_get_planner_service", return_value=_StubPlannerService)
+    @patch.object(RunTraceService, "_get_scheduler_service", return_value=_StubSchedulerService)
+    def test_append_runtime_trace_supports_run_scope_lookup(self, _mock_scheduler, _mock_planner):
+        success = self.service.append_runtime_trace(
+            user_id=1,
+            conversation_id=99,
+            run_id="sched-p10-i24",
+            source="scheduler",
+            event_type="scheduler_merged",
+            summary="调度器已合并",
+        )
+
+        self.assertTrue(success)
+        self.assertEqual(_StubSchedulerService.calls[-1]["item_id"], 24)
+        self.assertEqual(_StubSchedulerService.calls[-1]["payload"]["run_id"], "sched-p10-i24")
+
+    @patch.object(RunTraceService, "_get_planner_service", return_value=_StubPlannerService)
+    @patch.object(RunTraceService, "_get_scheduler_service", return_value=_StubSchedulerService)
+    def test_append_runtime_audit_supports_child_run_scope_lookup(self, _mock_scheduler, _mock_planner):
+        success = self.service.append_runtime_audit(
+            user_id=1,
+            conversation_id=99,
+            child_run_id="backend-child-p10-i24-c1",
+            event_type="child_completed",
+            content="子执行完成",
+        )
+
+        self.assertTrue(success)
+        self.assertEqual(_StubSchedulerService.audit_calls[-1]["item_id"], 24)
 
 
 if __name__ == "__main__":

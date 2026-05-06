@@ -243,6 +243,7 @@ class PlannerService:
     def serialize_plan(self, plan: PlanRunRecord) -> dict:
         progress = self._build_progress(plan.items)
         scheduler_service = SchedulerService(self.db)
+        runtime_persistence = scheduler_service.get_runtime_persistence_descriptor()
         return {
             "id": plan.id,
             "user_id": plan.user_id,
@@ -267,11 +268,14 @@ class PlannerService:
                     "agent_id": item.agent_id,
                     "handoff_status": item.handoff_status.value if hasattr(item.handoff_status, "value") else str(item.handoff_status),
                     "required_capabilities": list((item.item_metadata or {}).get("required_capabilities", [])),
+                    "scheduler_run": scheduler_service.serialize_scheduler_run(item),
                     "scheduler_snapshot": scheduler_service.get_scheduler_snapshot(item),
                     "child_executions": scheduler_service.serialize_child_executions(item),
                     "merge_summary": scheduler_service.get_merge_summary(item),
                     "audit_trail": scheduler_service.get_audit_trail(item),
                     "run_trace": scheduler_service.get_run_trace(item),
+                    "runtime_persistence": runtime_persistence,
+                    "runtime_summary": self.serialize_plan_item_runtime(item)["runtime_summary"],
                     "created_at": item.created_at,
                     "updated_at": item.updated_at,
                 }
@@ -288,6 +292,139 @@ class PlannerService:
         if active_item is None and plan.active_item_id is not None:
             active_item = next((item for item in plan.items if item.id == plan.active_item_id), None)
         return active_item
+
+    def get_plan_item(self, *, plan: Optional[PlanRunRecord], item_id: int) -> Optional[PlanItemRecord]:
+        if plan is None:
+            return None
+        return next((item for item in plan.items if item.id == item_id), None)
+
+    def resolve_runtime_target(
+        self,
+        *,
+        user_id: int,
+        conversation_id: Optional[int] = None,
+        plan_id: Optional[int] = None,
+        item_id: Optional[int] = None,
+        run_id: Optional[str] = None,
+        child_run_id: Optional[str] = None,
+        search_limit: int = 50,
+    ) -> tuple[Optional[PlanRunRecord], Optional[PlanItemRecord]]:
+        scheduler_service = SchedulerService(self.db)
+        candidate_plans: List[PlanRunRecord] = []
+
+        if plan_id is not None:
+            plan = self.get_plan(plan_id=plan_id, user_id=user_id)
+            if plan is None:
+                return None, None
+            candidate_plans = [plan]
+        elif conversation_id is not None:
+            latest_plan = self.get_latest_plan_for_conversation(user_id=user_id, conversation_id=conversation_id)
+            if latest_plan is not None:
+                candidate_plans.append(latest_plan)
+            extra_plans = self.list_plans(user_id=user_id, conversation_id=conversation_id, limit=max(1, search_limit))
+            seen_ids = {plan.id for plan in candidate_plans}
+            for plan in extra_plans:
+                if plan.id not in seen_ids:
+                    candidate_plans.append(plan)
+                    seen_ids.add(plan.id)
+        else:
+            candidate_plans = self.list_plans(user_id=user_id, conversation_id=None, limit=max(1, search_limit))
+
+        for plan in candidate_plans:
+            if item_id is not None:
+                item = self.get_plan_item(plan=plan, item_id=item_id)
+                if item is not None:
+                    return plan, item
+                continue
+            if run_id or child_run_id:
+                for item in plan.items:
+                    if scheduler_service.matches_runtime_scope(item, run_id=run_id, child_run_id=child_run_id):
+                        return plan, item
+                continue
+            active_item = self.get_active_item(plan=plan)
+            if active_item is not None:
+                return plan, active_item
+        return None, None
+
+    def serialize_plan_item_runtime(self, item: PlanItemRecord) -> dict:
+        scheduler_service = SchedulerService(self.db)
+        scheduler_run = scheduler_service.serialize_scheduler_run(item)
+        child_runs = scheduler_service.serialize_child_executions(item)
+        run_trace = scheduler_service.get_run_trace(item)
+        audit_trail = scheduler_service.get_audit_trail(item)
+        approval_requests = scheduler_service.get_approval_requests(item)
+        background_runs = scheduler_service.get_background_runs(item)
+        worktree_runs = scheduler_service.get_worktree_runs(item)
+        runtime_persistence = scheduler_service.get_runtime_persistence_descriptor()
+        runtime_summary = {
+            "scheduler_run_id": scheduler_run.get("run_id"),
+            "child_run_count": len(child_runs),
+            "run_trace_count": len(run_trace),
+            "audit_event_count": len(audit_trail),
+            "approval_request_count": len(approval_requests),
+            "pending_approval_count": len(
+                [request for request in approval_requests if str(request.get("status") or "").strip().lower() == "pending"]
+            ),
+            "background_run_count": len(background_runs),
+            "worktree_run_count": len(worktree_runs),
+            "active_child_count": int(scheduler_run.get("active_children") or 0),
+            "latest_trace_event": run_trace[-1] if run_trace else None,
+            "runtime_persistence": runtime_persistence,
+        }
+        return {
+            "plan_id": item.plan_id,
+            "item_id": item.id,
+            "title": item.title,
+            "agent_role": item.agent_role,
+            "agent_id": item.agent_id,
+            "handoff_status": item.handoff_status.value if hasattr(item.handoff_status, "value") else str(item.handoff_status),
+            "required_capabilities": list((item.item_metadata or {}).get("required_capabilities", [])),
+            "scheduler_run": scheduler_run,
+            "scheduler_snapshot": scheduler_service.get_scheduler_snapshot(item),
+            "child_runs": child_runs,
+            "merge_summary": scheduler_service.get_merge_summary(item),
+            "audit_trail": audit_trail,
+            "run_trace": run_trace,
+            "approval_requests": approval_requests,
+            "background_runs": background_runs,
+            "worktree_runs": worktree_runs,
+            "runtime_persistence": runtime_persistence,
+            "runtime_summary": runtime_summary,
+        }
+
+    def serialize_plan_item_trace(
+        self,
+        item: PlanItemRecord,
+        *,
+        run_id: Optional[str] = None,
+        child_run_id: Optional[str] = None,
+        source: Optional[str] = None,
+        event_type: Optional[str] = None,
+        limit: Optional[int] = None,
+    ) -> dict:
+        scheduler_service = SchedulerService(self.db)
+        filtered_events = scheduler_service.filter_run_trace(
+            item,
+            run_id=run_id,
+            child_run_id=child_run_id,
+            source=source,
+            event_type=event_type,
+            limit=limit,
+        )
+        return {
+            "plan_id": item.plan_id,
+            "item_id": item.id,
+            "runtime_persistence": scheduler_service.get_runtime_persistence_descriptor(),
+            "filters": {
+                "run_id": run_id,
+                "child_run_id": child_run_id,
+                "source": source,
+                "event_type": event_type,
+                "limit": limit,
+            },
+            "summary": scheduler_service.build_run_trace_summary(filtered_events),
+            "events": filtered_events,
+        }
 
     def begin_execution(self, *, plan: Optional[PlanRunRecord]) -> Optional[PlanRunRecord]:
         if plan is None:

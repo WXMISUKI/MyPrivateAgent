@@ -8,16 +8,17 @@ import asyncio
 import logging
 import time
 from typing import AsyncGenerator, Dict, Any, List, Optional, Union
+from uuid import uuid4
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage, SystemMessage
 from langchain_core.messages.tool import tool_call as create_tool_call
 from langchain_core.tools import BaseTool
 
 try:
     from agent_framework.events import AgentEventFactory, AgentEventType
-    from agent_framework.runtime import AgentRunContext, AgentState
+    from agent_framework.runtime import AgentRunContext, AgentRunKind, AgentState
 except ModuleNotFoundError:  # pragma: no cover - package import compatibility
     from backend.agent_framework.events import AgentEventFactory, AgentEventType
-    from backend.agent_framework.runtime import AgentRunContext, AgentState
+    from backend.agent_framework.runtime import AgentRunContext, AgentRunKind, AgentState
 
 try:
     from json_repair import repair_json
@@ -406,7 +407,8 @@ class AgentHarness:
         conversation_id: int = None,
         max_retries: int = 3,
         use_tool_choice: bool = True,
-        parallel_tool_calls: bool = True
+        parallel_tool_calls: bool = True,
+        runtime_scope: Optional[Dict[str, Any]] = None,
     ):
         self.original_model = model
         self.model = model
@@ -419,6 +421,7 @@ class AgentHarness:
         self.error_handler = ErrorHandler(max_retries=max_retries)
         self.use_tool_choice = use_tool_choice
         self.parallel_tool_calls = parallel_tool_calls
+        self.runtime_scope = dict(runtime_scope or {})
         self.tool_call_tracker = StreamingToolCallTracker()
         self.max_similar_tool_calls = 2
         try:
@@ -511,6 +514,35 @@ class AgentHarness:
             payload={"run_id": run_context.run_id},
         ).to_json()
 
+    def _resolve_run_kind(self, value: object) -> AgentRunKind:
+        text = str(value or "").strip().lower()
+        if not text:
+            return AgentRunKind.CHAT
+        try:
+            return AgentRunKind(text)
+        except ValueError:
+            return AgentRunKind.CHAT
+
+    def _build_permission_runtime_scope(
+        self,
+        *,
+        run_context: AgentRunContext,
+        tool_call_id: str,
+    ) -> Dict[str, Any]:
+        scope = dict(self.runtime_scope or {})
+        return {
+            "plan_id": scope.get("plan_id"),
+            "plan_item_id": scope.get("plan_item_id"),
+            "run_id": run_context.run_id,
+            "parent_run_id": run_context.parent_run_id,
+            "child_run_id": scope.get("child_run_id"),
+            "scheduler_run_id": scope.get("scheduler_run_id"),
+            "run_kind": run_context.run_kind.value if hasattr(run_context.run_kind, "value") else str(run_context.run_kind),
+            "tool_call_id": tool_call_id,
+            "model_name": self.model_name,
+            "iteration": run_context.iteration,
+        }
+
     async def run(self, messages: List[Any]) -> AsyncGenerator[str, None]:
         """
         运行 Agent 循环
@@ -532,10 +564,14 @@ class AgentHarness:
             conversation_id=self.conversation_id,
             user_id=self.user_id,
             model_name=self.model_name,
+            run_id=str(self.runtime_scope.get("run_id") or "").strip() or f"run_{uuid4().hex}",
+            parent_run_id=str(self.runtime_scope.get("parent_run_id") or "").strip() or None,
+            run_kind=self._resolve_run_kind(self.runtime_scope.get("run_kind")),
         )
         event_factory = AgentEventFactory(
             run_id=run_context.run_id,
             conversation_id=self.conversation_id,
+            parent_run_id=run_context.parent_run_id,
         )
         tool_call_history: List[Dict[str, Any]] = []
         user_goal = self._extract_latest_user_goal(messages)
@@ -836,6 +872,15 @@ class AgentHarness:
                             permission_level=permission_level,
                             user_id=self.user_id,
                             conversation_id=self.conversation_id,
+                            runtime_scope=self._build_permission_runtime_scope(
+                                run_context=run_context,
+                                tool_call_id=tool_call_id,
+                            ),
+                            request_metadata={
+                                "model_name": self.model_name,
+                                "tool_call_id": tool_call_id,
+                                "iteration": run_context.iteration,
+                            },
                         )
                         yield event_factory.build(
                             AgentEventType.TOOL_PERMISSION_REQUIRED,

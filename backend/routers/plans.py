@@ -11,7 +11,9 @@ try:
         PlanGenerateRequest,
         PlanItemCreate,
         PlanItemUpdate,
+        PlanItemRuntimeResponse,
         PlanResponse,
+        PlanTraceResponse,
         PlanUpdate,
     )
     from services.planner_service import PlannerService
@@ -24,7 +26,9 @@ except ModuleNotFoundError:  # pragma: no cover - package import compatibility
         PlanGenerateRequest,
         PlanItemCreate,
         PlanItemUpdate,
+        PlanItemRuntimeResponse,
         PlanResponse,
+        PlanTraceResponse,
         PlanUpdate,
     )
     from backend.services.planner_service import PlannerService
@@ -190,3 +194,41 @@ def delete_plan_item(
         return service.serialize_plan(updated)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.get("/{plan_id}/items/{item_id}/runtime", response_model=PlanItemRuntimeResponse)
+def get_plan_item_runtime(
+    plan_id: int,
+    item_id: int,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    service = PlannerService(db)
+    plan = ensure_exists(service.get_plan(plan_id=plan_id, user_id=current_user.id), "计划不存在")
+    item = ensure_exists(service.get_plan_item(plan=plan, item_id=item_id), "计划项不存在")
+    return service.serialize_plan_item_runtime(item)
+
+
+@router.get("/{plan_id}/items/{item_id}/trace", response_model=PlanTraceResponse)
+def get_plan_item_trace(
+    plan_id: int,
+    item_id: int,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+    run_id: Optional[str] = None,
+    child_run_id: Optional[str] = None,
+    source: Optional[str] = None,
+    event_type: Optional[str] = None,
+    limit: Optional[int] = None,
+):
+    service = PlannerService(db)
+    plan = ensure_exists(service.get_plan(plan_id=plan_id, user_id=current_user.id), "计划不存在")
+    item = ensure_exists(service.get_plan_item(plan=plan, item_id=item_id), "计划项不存在")
+    return service.serialize_plan_item_trace(
+        item,
+        run_id=run_id,
+        child_run_id=child_run_id,
+        source=source,
+        event_type=event_type,
+        limit=limit,
+    )

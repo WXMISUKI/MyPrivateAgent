@@ -286,7 +286,15 @@ class PermissionRequestRecord(Base):
     status = Column(String(20), default="pending", nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     conversation_id = Column(Integer, ForeignKey("conversations.id"), nullable=True)
+    plan_id = Column(Integer, ForeignKey("plan_runs.id"), nullable=True, index=True)
+    plan_item_id = Column(Integer, ForeignKey("plan_items.id"), nullable=True, index=True)
+    run_id = Column(String(120), nullable=True, index=True)
+    parent_run_id = Column(String(120), nullable=True)
+    child_run_id = Column(String(120), nullable=True, index=True)
+    scheduler_run_id = Column(String(120), nullable=True, index=True)
+    run_kind = Column(String(50), nullable=True)
     result = Column(Text)
+    request_metadata = Column("metadata", JSON)
     created_at = Column(DateTime, server_default=func.now())
     completed_at = Column(DateTime)
 
@@ -417,6 +425,130 @@ class PlanItemRecord(Base):
 
     def __repr__(self):
         return f"<PlanItemRecord {self.id}: {self.title}>"
+
+
+class SchedulerRunRecord(Base):
+    """独立持久化的调度运行记录。"""
+
+    __tablename__ = "scheduler_runs"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    scheduler_run_id = Column(String(120), unique=True, index=True, nullable=False)
+    plan_id = Column(Integer, ForeignKey("plan_runs.id"), nullable=False, index=True)
+    plan_item_id = Column(Integer, ForeignKey("plan_items.id"), nullable=False, index=True)
+    parent_run_id = Column(String(120), nullable=True)
+    run_kind = Column(String(50), nullable=False, default="scheduler")
+    state = Column(String(50), nullable=True)
+    merge_strategy = Column(String(100), nullable=True)
+    merge_status = Column(String(100), nullable=True)
+    merged_output = Column(Text)
+    policy = Column(JSON)
+    runtime_metadata = Column("metadata", JSON)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    last_merge_at = Column(DateTime, nullable=True)
+
+    def __repr__(self):
+        return f"<SchedulerRunRecord {self.scheduler_run_id}: {self.merge_status}>"
+
+
+class ChildRunRecord(Base):
+    """独立持久化的子执行运行记录。"""
+
+    __tablename__ = "child_runs"
+    __table_args__ = (
+        UniqueConstraint("plan_item_id", "child_execution_id", name="uq_child_runs_item_execution"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    child_run_id = Column(String(120), unique=True, index=True, nullable=False)
+    child_execution_id = Column(String(120), nullable=False, index=True)
+    scheduler_run_ref_id = Column(Integer, ForeignKey("scheduler_runs.id"), nullable=True, index=True)
+    scheduler_run_id = Column(String(120), nullable=True, index=True)
+    plan_id = Column(Integer, ForeignKey("plan_runs.id"), nullable=False, index=True)
+    plan_item_id = Column(Integer, ForeignKey("plan_items.id"), nullable=False, index=True)
+    parent_run_id = Column(String(120), nullable=True)
+    run_id = Column(String(120), nullable=False, index=True)
+    run_kind = Column(String(50), nullable=False, default="child")
+    agent_role = Column(String(100), nullable=True)
+    agent_id = Column(String(120), nullable=True)
+    status = Column(String(50), nullable=False, default="queued")
+    title = Column(String(255), nullable=True)
+    summary = Column(Text)
+    error = Column(Text)
+    error_kind = Column(String(100), nullable=True)
+    retry_count = Column(Integer, default=0, nullable=False)
+    model_name = Column(String(120), nullable=True)
+    provider_name = Column(String(120), nullable=True)
+    provider_order = Column(JSON)
+    provider_switch_count = Column(Integer, default=0, nullable=False)
+    provider_history = Column(JSON)
+    child_metadata = Column("metadata", JSON)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    started_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+    cancelled_at = Column(DateTime, nullable=True)
+
+    def __repr__(self):
+        return f"<ChildRunRecord {self.child_run_id}: {self.status}>"
+
+
+class BackgroundRunRecord(Base):
+    """独立持久化的后台运行记录。"""
+
+    __tablename__ = "background_runs"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    background_run_id = Column(String(120), unique=True, index=True, nullable=False)
+    plan_id = Column(Integer, ForeignKey("plan_runs.id"), nullable=False, index=True)
+    plan_item_id = Column(Integer, ForeignKey("plan_items.id"), nullable=False, index=True)
+    run_id = Column(String(120), nullable=True, index=True)
+    parent_run_id = Column(String(120), nullable=True)
+    scheduler_run_id = Column(String(120), nullable=True, index=True)
+    status = Column(String(50), nullable=False, default="running")
+    source = Column(String(100), nullable=True)
+    event_type = Column(String(100), nullable=True)
+    title = Column(String(255), nullable=True)
+    detail = Column(Text)
+    artifact_id = Column(String(120), nullable=True, index=True)
+    artifact_kind = Column(String(100), nullable=True)
+    run_metadata = Column("metadata", JSON)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    started_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+
+    def __repr__(self):
+        return f"<BackgroundRunRecord {self.background_run_id}: {self.status}>"
+
+
+class WorktreeRunRecord(Base):
+    """独立持久化的工作区运行记录。"""
+
+    __tablename__ = "worktree_runs"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    worktree_run_id = Column(String(120), unique=True, index=True, nullable=False)
+    plan_id = Column(Integer, ForeignKey("plan_runs.id"), nullable=False, index=True)
+    plan_item_id = Column(Integer, ForeignKey("plan_items.id"), nullable=False, index=True)
+    run_id = Column(String(120), nullable=True, index=True)
+    parent_run_id = Column(String(120), nullable=True)
+    scheduler_run_id = Column(String(120), nullable=True, index=True)
+    status = Column(String(50), nullable=False, default="running")
+    source = Column(String(100), nullable=True)
+    event_type = Column(String(100), nullable=True)
+    workspace_path = Column(String(500), nullable=True)
+    branch_name = Column(String(255), nullable=True)
+    detail = Column(Text)
+    run_metadata = Column("metadata", JSON)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    started_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+
+    def __repr__(self):
+        return f"<WorktreeRunRecord {self.worktree_run_id}: {self.status}>"
 
 
 class CapabilityRemediationStatus(str, enum.Enum):

@@ -42,6 +42,14 @@ class AgentEventTests(unittest.TestCase):
         self.assertEqual(data["name"], "search")
         self.assertEqual(data["tool_spec"]["render_mode"], "plain_text")
 
+    def test_event_factory_includes_parent_run_id(self):
+        factory = AgentEventFactory("run_child_1", conversation_id=7, parent_run_id="run_parent_1")
+        event = factory.build(AgentEventType.STATUS, {"status_kind": "subagent_spawned"})
+
+        data = event.to_dict()
+        self.assertEqual(data["parent_run_id"], "run_parent_1")
+        self.assertTrue(data["event_id"].startswith("evt_"))
+
     def test_event_json_contains_unicode_content(self):
         factory = AgentEventFactory("run_abc", conversation_id=1)
         event = factory.build(AgentEventType.CONTENT, {"content": "天气查询结果（舟山）"}, iteration=1)
@@ -75,6 +83,7 @@ class AgentRuntimeTests(unittest.TestCase):
         self.assertEqual(context.tool_history[0]["tool_name"], "search")
         self.assertEqual(context.tool_history[0]["iteration"], 1)
         self.assertTrue(context.tool_history[0]["execution"]["cache_hit"])
+        self.assertEqual(context.snapshot()["run_kind"], "chat")
 
     def test_invalid_transition_raises(self):
         context = AgentRunContext(conversation_id=7, user_id=9, model_name="doubao")

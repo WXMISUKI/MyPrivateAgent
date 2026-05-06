@@ -189,10 +189,13 @@ class PlanItemResponse(BaseModel):
     agent_id: Optional[str] = None
     handoff_status: str
     required_capabilities: List[str] = []
+    scheduler_run: Optional[dict] = None
     child_executions: List[dict] = []
     merge_summary: Optional[dict] = None
     audit_trail: List[dict] = []
     run_trace: List[dict] = []
+    runtime_persistence: Optional[dict] = None
+    runtime_summary: Optional[dict] = None
     created_at: datetime
     updated_at: datetime
 
@@ -240,6 +243,36 @@ class PlanResponse(BaseModel):
     updated_at: datetime
     items: List[PlanItemResponse] = []
     progress: PlanProgressSummary
+
+
+class PlanItemRuntimeResponse(BaseModel):
+    plan_id: int
+    item_id: int
+    title: str
+    agent_role: Optional[str] = None
+    agent_id: Optional[str] = None
+    handoff_status: str
+    required_capabilities: List[str] = []
+    scheduler_run: dict = {}
+    scheduler_snapshot: dict = {}
+    child_runs: List[dict] = []
+    merge_summary: dict = {}
+    audit_trail: List[dict] = []
+    run_trace: List[dict] = []
+    approval_requests: List[dict] = []
+    background_runs: List[dict] = []
+    worktree_runs: List[dict] = []
+    runtime_persistence: dict = {}
+    runtime_summary: dict = {}
+
+
+class PlanTraceResponse(BaseModel):
+    plan_id: int
+    item_id: int
+    runtime_persistence: dict = {}
+    filters: dict = {}
+    summary: dict = {}
+    events: List[dict] = []
 
 
 # ============ MCP Registry 相关 ============

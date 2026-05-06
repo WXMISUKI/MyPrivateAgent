@@ -6,6 +6,7 @@ import json
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, Optional, Union
+from uuid import uuid4
 
 
 class AgentEventType(str, Enum):
@@ -30,6 +31,8 @@ class AgentEvent:
 
     type: str
     run_id: str
+    event_id: str = field(default_factory=lambda: f"evt_{uuid4().hex}")
+    parent_run_id: Optional[str] = None
     conversation_id: Optional[int] = None
     iteration: Optional[int] = None
     payload: Dict[str, Any] = field(default_factory=dict)
@@ -37,7 +40,9 @@ class AgentEvent:
     def to_dict(self) -> Dict[str, Any]:
         data: Dict[str, Any] = {
             "type": self.type,
+            "event_id": self.event_id,
             "run_id": self.run_id,
+            "parent_run_id": self.parent_run_id,
             "conversation_id": self.conversation_id,
             "iteration": self.iteration,
             "payload": dict(self.payload),
@@ -54,9 +59,16 @@ class AgentEvent:
 class AgentEventFactory:
     """Builds consistent agent events for a single run."""
 
-    def __init__(self, run_id: str, conversation_id: Optional[int] = None):
+    def __init__(
+        self,
+        run_id: str,
+        conversation_id: Optional[int] = None,
+        *,
+        parent_run_id: Optional[str] = None,
+    ):
         self.run_id = run_id
         self.conversation_id = conversation_id
+        self.parent_run_id = parent_run_id
 
     def build(
         self,
@@ -69,6 +81,7 @@ class AgentEventFactory:
         return AgentEvent(
             type=event_name,
             run_id=self.run_id,
+            parent_run_id=self.parent_run_id,
             conversation_id=self.conversation_id,
             iteration=iteration,
             payload=payload or {},

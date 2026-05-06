@@ -31,6 +31,14 @@ class PermissionRequest:
     created_at: datetime = field(default_factory=datetime.now)
     user_id: Optional[int] = None
     conversation_id: Optional[int] = None
+    plan_id: Optional[int] = None
+    plan_item_id: Optional[int] = None
+    run_id: Optional[str] = None
+    parent_run_id: Optional[str] = None
+    child_run_id: Optional[str] = None
+    scheduler_run_id: Optional[str] = None
+    run_kind: Optional[str] = None
+    request_metadata: Dict = field(default_factory=dict)
     result: Optional[str] = None  # 执行结果
 
 
@@ -69,6 +77,14 @@ class PermissionService:
             created_at=record.created_at or datetime.now(),
             user_id=record.user_id,
             conversation_id=record.conversation_id,
+            plan_id=getattr(record, "plan_id", None),
+            plan_item_id=getattr(record, "plan_item_id", None),
+            run_id=getattr(record, "run_id", None),
+            parent_run_id=getattr(record, "parent_run_id", None),
+            child_run_id=getattr(record, "child_run_id", None),
+            scheduler_run_id=getattr(record, "scheduler_run_id", None),
+            run_kind=getattr(record, "run_kind", None),
+            request_metadata=dict(getattr(record, "request_metadata", {}) or {}),
             result=record.result,
         )
 
@@ -95,6 +111,14 @@ class PermissionService:
                 record.status = request.status.value
                 record.user_id = request.user_id
                 record.conversation_id = request.conversation_id
+                record.plan_id = request.plan_id
+                record.plan_item_id = request.plan_item_id
+                record.run_id = request.run_id
+                record.parent_run_id = request.parent_run_id
+                record.child_run_id = request.child_run_id
+                record.scheduler_run_id = request.scheduler_run_id
+                record.run_kind = request.run_kind
+                record.request_metadata = dict(request.request_metadata or {})
                 record.result = request.result
                 if request.status in (PermissionStatus.APPROVED, PermissionStatus.DENIED, PermissionStatus.TIMEOUT):
                     record.completed_at = datetime.now()
@@ -131,7 +155,9 @@ class PermissionService:
         tool_args: Dict,
         permission_level: str,
         user_id: int = None,
-        conversation_id: int = None
+        conversation_id: int = None,
+        runtime_scope: Optional[Dict] = None,
+        request_metadata: Optional[Dict] = None,
     ) -> PermissionRequest:
         """
         创建权限请求
@@ -148,6 +174,7 @@ class PermissionService:
         """
         import uuid
         request_id = str(uuid.uuid4())[:8]
+        normalized_runtime_scope = self._normalize_runtime_scope(runtime_scope)
 
         request = PermissionRequest(
             id=request_id,
@@ -155,7 +182,15 @@ class PermissionService:
             tool_args=tool_args,
             permission_level=permission_level,
             user_id=user_id,
-            conversation_id=conversation_id
+            conversation_id=conversation_id,
+            plan_id=normalized_runtime_scope.get("plan_id"),
+            plan_item_id=normalized_runtime_scope.get("plan_item_id"),
+            run_id=normalized_runtime_scope.get("run_id"),
+            parent_run_id=normalized_runtime_scope.get("parent_run_id"),
+            child_run_id=normalized_runtime_scope.get("child_run_id"),
+            scheduler_run_id=normalized_runtime_scope.get("scheduler_run_id"),
+            run_kind=normalized_runtime_scope.get("run_kind"),
+            request_metadata=dict(request_metadata or {}),
         )
 
         self._pending_requests[request_id] = request
@@ -163,6 +198,33 @@ class PermissionService:
         logger.info(f"[PermissionService] 创建权限请求: {request_id} - {tool_name}")
 
         return request
+
+    def _normalize_runtime_scope(self, runtime_scope: Optional[Dict]) -> Dict:
+        scope = dict(runtime_scope or {})
+        normalized = {
+            "plan_id": scope.get("plan_id"),
+            "plan_item_id": scope.get("plan_item_id"),
+            "run_id": self._normalize_optional_text(scope.get("run_id")),
+            "parent_run_id": self._normalize_optional_text(scope.get("parent_run_id")),
+            "child_run_id": self._normalize_optional_text(scope.get("child_run_id")),
+            "scheduler_run_id": self._normalize_optional_text(scope.get("scheduler_run_id")),
+            "run_kind": self._normalize_optional_text(scope.get("run_kind")),
+        }
+        try:
+            if normalized["plan_id"] is not None:
+                normalized["plan_id"] = int(normalized["plan_id"])
+        except (TypeError, ValueError):
+            normalized["plan_id"] = None
+        try:
+            if normalized["plan_item_id"] is not None:
+                normalized["plan_item_id"] = int(normalized["plan_item_id"])
+        except (TypeError, ValueError):
+            normalized["plan_item_id"] = None
+        return normalized
+
+    def _normalize_optional_text(self, value: object) -> Optional[str]:
+        text = str(value or "").strip()
+        return text or None
 
     def get_request(self, request_id: str) -> Optional[PermissionRequest]:
         """获取权限请求"""

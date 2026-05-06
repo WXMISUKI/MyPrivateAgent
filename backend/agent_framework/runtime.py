@@ -12,30 +12,64 @@ class AgentState(str, Enum):
     """Explicit agent execution states."""
 
     INIT = "init"
+    PLANNING = "planning"
     GENERATING = "generating"
     TOOL_CALLING = "tool_calling"
+    WAITING_APPROVAL = "waiting_approval"
     WAITING_PERMISSION = "waiting_permission"
     OBSERVING = "observing"
+    MERGING = "merging"
     FINALIZING = "finalizing"
     DONE = "done"
     FAILED = "failed"
     ABORTED = "aborted"
 
 
+class AgentRunKind(str, Enum):
+    """Top-level run categories for execution tracking."""
+
+    CHAT = "chat"
+    PLANNER = "planner"
+    CHILD = "child"
+    BACKGROUND = "background"
+    GOVERNANCE = "governance"
+
+
 _STATE_TRANSITIONS: dict[AgentState, set[AgentState]] = {
-    AgentState.INIT: {AgentState.GENERATING, AgentState.FAILED, AgentState.ABORTED},
+    AgentState.INIT: {AgentState.PLANNING, AgentState.GENERATING, AgentState.FAILED, AgentState.ABORTED},
+    AgentState.PLANNING: {
+        AgentState.GENERATING,
+        AgentState.TOOL_CALLING,
+        AgentState.WAITING_APPROVAL,
+        AgentState.WAITING_PERMISSION,
+        AgentState.FINALIZING,
+        AgentState.FAILED,
+        AgentState.ABORTED,
+    },
     AgentState.GENERATING: {
         AgentState.TOOL_CALLING,
+        AgentState.WAITING_APPROVAL,
         AgentState.WAITING_PERMISSION,
         AgentState.OBSERVING,
+        AgentState.MERGING,
         AgentState.FINALIZING,
         AgentState.DONE,
         AgentState.FAILED,
         AgentState.ABORTED,
     },
     AgentState.TOOL_CALLING: {
+        AgentState.WAITING_APPROVAL,
         AgentState.WAITING_PERMISSION,
         AgentState.OBSERVING,
+        AgentState.MERGING,
+        AgentState.FINALIZING,
+        AgentState.FAILED,
+        AgentState.ABORTED,
+    },
+    AgentState.WAITING_APPROVAL: {
+        AgentState.TOOL_CALLING,
+        AgentState.OBSERVING,
+        AgentState.MERGING,
         AgentState.FINALIZING,
         AgentState.FAILED,
         AgentState.ABORTED,
@@ -43,11 +77,20 @@ _STATE_TRANSITIONS: dict[AgentState, set[AgentState]] = {
     AgentState.WAITING_PERMISSION: {
         AgentState.TOOL_CALLING,
         AgentState.OBSERVING,
+        AgentState.MERGING,
         AgentState.FINALIZING,
         AgentState.FAILED,
         AgentState.ABORTED,
     },
     AgentState.OBSERVING: {
+        AgentState.GENERATING,
+        AgentState.MERGING,
+        AgentState.FINALIZING,
+        AgentState.DONE,
+        AgentState.FAILED,
+        AgentState.ABORTED,
+    },
+    AgentState.MERGING: {
         AgentState.GENERATING,
         AgentState.FINALIZING,
         AgentState.DONE,
@@ -69,6 +112,8 @@ class AgentRunContext:
     user_id: Optional[int] = None
     model_name: str = "unknown"
     run_id: str = field(default_factory=lambda: f"run_{uuid4().hex}")
+    parent_run_id: Optional[str] = None
+    run_kind: AgentRunKind = AgentRunKind.CHAT
     state: AgentState = AgentState.INIT
     iteration: int = 0
     stop_reason: Optional[str] = None
@@ -109,6 +154,8 @@ class AgentRunContext:
     def snapshot(self) -> Dict[str, Any]:
         return {
             "run_id": self.run_id,
+            "parent_run_id": self.parent_run_id,
+            "run_kind": self.run_kind.value,
             "conversation_id": self.conversation_id,
             "user_id": self.user_id,
             "model_name": self.model_name,

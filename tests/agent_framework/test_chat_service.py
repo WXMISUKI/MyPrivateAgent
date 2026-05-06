@@ -343,6 +343,8 @@ class PlannerChatLifecycleTests(unittest.TestCase):
         self.assertEqual(state["events"][0]["type"], "plan_updated")
         self.assertEqual(state["events"][1]["type"], "plan_updated")
         self.assertEqual(state["events"][2]["status_kind"], "agent_handoff")
+        self.assertEqual(state["execution_context"]["run_id"], "handoff-p10-i23")
+        self.assertEqual(state["execution_context"]["run_kind"], "subagent")
         self.assertEqual(state["execution_context"]["agent_role"], "frontend")
         self.assertEqual(state["execution_context"]["agent_id"], "frontend-agent-p10-i23")
         self.assertEqual(state["execution_context"]["required_capabilities"], ["filesystem.read", "search.query"])
@@ -359,6 +361,7 @@ class PlannerChatLifecycleTests(unittest.TestCase):
         self.assertIsNotNone(state)
         self.assertEqual(len(state["events"]), 2)
         self.assertEqual(state["events"][1]["status_kind"], "agent_execution")
+        self.assertEqual(state["execution_context"]["run_id"], "handoff-p10-i23")
         self.assertEqual(state["execution_context"]["handoff_status"], "executing")
 
     @patch("backend.services.chat_service._get_mcp_adapter_service", return_value=_StubCapabilityAdapterReady())
@@ -372,8 +375,11 @@ class PlannerChatLifecycleTests(unittest.TestCase):
 
         self.assertIsNotNone(state)
         self.assertEqual(state["events"][-1]["status_kind"], "scheduler_fanout_prepared")
+        self.assertEqual(state["execution_context"]["run_id"], "sched-p10-i23")
+        self.assertEqual(state["execution_context"]["run_kind"], "scheduler")
         self.assertEqual(state["execution_context"]["scheduler_mode"], "fan_out")
         self.assertEqual(len(state["execution_context"]["child_contexts"]), 3)
+        self.assertEqual(state["execution_context"]["child_contexts"][0]["parent_run_id"], "sched-p10-i23")
 
 
 class _StubPlannerServiceForStream:
@@ -784,6 +790,7 @@ class RuntimeTraceTests(unittest.IsolatedAsyncioTestCase):
         permission_event, mcp_event, denied_event = _StubSchedulerServiceForStream.trace_events
         self.assertEqual(permission_event["source"], "permission")
         self.assertEqual(permission_event["event_type"], "tool_permission_required")
+        self.assertEqual(permission_event["execution_context"]["agent_role"], "frontend")
         self.assertEqual(mcp_event["source"], "mcp")
         self.assertEqual(mcp_event["event_type"], "mcp_tool_called")
         self.assertEqual(denied_event["event_type"], "tool_denied")

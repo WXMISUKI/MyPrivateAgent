@@ -11,12 +11,18 @@ try:
 except ModuleNotFoundError:  # pragma: no cover - package import compatibility
     from backend.models import PlanItemRecord
 
+try:
+    from services.scheduler_service import SchedulerService
+except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+    from backend.services.scheduler_service import SchedulerService
+
 
 class ProviderFailoverAnalyticsService:
     """Summarize provider failover behavior for runtime operations visibility."""
 
     def __init__(self, db):
         self.db = db
+        self.scheduler_service = SchedulerService(db)
 
     def get_summary(self, *, window_days: int = 7, limit: int = 500) -> Dict[str, Any]:
         window_days = max(1, int(window_days))
@@ -46,15 +52,7 @@ class ProviderFailoverAnalyticsService:
             if updated_dt is None or updated_dt < window_start:
                 continue
 
-            metadata = dict(item.item_metadata or {})
-            group = metadata.get("child_execution_group") or {}
-            children = group.get("children") or []
-            if not isinstance(children, list):
-                continue
-
-            for child in children:
-                if not isinstance(child, dict):
-                    continue
+            for child in self.scheduler_service.serialize_child_executions(item):
                 total_children += 1
                 switch_count = max(0, int(child.get("provider_switch_count") or 0))
                 target_provider = str(child.get("provider_name") or "").strip()
@@ -122,4 +120,3 @@ class ProviderFailoverAnalyticsService:
 
 def get_provider_failover_analytics_service(db) -> ProviderFailoverAnalyticsService:
     return ProviderFailoverAnalyticsService(db)
-

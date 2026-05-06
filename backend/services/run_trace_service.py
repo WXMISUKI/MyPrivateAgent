@@ -34,21 +34,9 @@ class RunTraceService:
             return False
 
         try:
-            planner_service = self._get_planner_service()(self.db)
-            plan = planner_service.get_latest_plan_for_conversation(
+            return self.append_runtime_trace(
                 user_id=user_id,
                 conversation_id=conversation_id,
-            )
-            if plan is None:
-                return False
-
-            item = planner_service.get_active_item(plan=plan)
-            if item is None:
-                return False
-
-            self._get_scheduler_service()(self.db).append_run_trace_event(
-                plan=plan,
-                item_id=item.id,
                 source=source,
                 event_type=event_type,
                 summary=summary,
@@ -56,7 +44,6 @@ class RunTraceService:
                 severity=severity,
                 payload=payload,
             )
-            return True
         except Exception as exc:  # pragma: no cover - defensive runtime logging
             logger.warning(f"[RunTraceService] 追加 Trace 失败: {exc}")
             return False
@@ -76,29 +63,108 @@ class RunTraceService:
             return False
 
         try:
-            planner_service = self._get_planner_service()(self.db)
-            plan = planner_service.get_latest_plan_for_conversation(
+            return self.append_runtime_audit(
                 user_id=user_id,
                 conversation_id=conversation_id,
-            )
-            if plan is None:
-                return False
-
-            item = planner_service.get_active_item(plan=plan)
-            if item is None:
-                return False
-
-            self._get_scheduler_service()(self.db).append_audit_event(
-                plan=plan,
-                item_id=item.id,
                 event_type=event_type,
                 content=content,
                 payload=payload,
             )
-            return True
         except Exception as exc:  # pragma: no cover - defensive runtime logging
             logger.warning(f"[RunTraceService] 追加 Audit 失败: {exc}")
             return False
+
+    def append_runtime_trace(
+        self,
+        *,
+        user_id: Optional[int],
+        conversation_id: Optional[int] = None,
+        plan_id: Optional[int] = None,
+        item_id: Optional[int] = None,
+        run_id: Optional[str] = None,
+        child_run_id: Optional[str] = None,
+        source: str,
+        event_type: str,
+        summary: str,
+        detail: str = "",
+        severity: str = "info",
+        payload: Optional[dict[str, Any]] = None,
+    ) -> bool:
+        if self.db is None or user_id is None:
+            user_id = self._resolve_user_id(user_id=user_id, conversation_id=conversation_id)
+        if self.db is None or user_id is None:
+            return False
+        target = self._resolve_plan_item_target(
+            user_id=user_id,
+            conversation_id=conversation_id,
+            plan_id=plan_id,
+            item_id=item_id,
+            run_id=run_id,
+            child_run_id=child_run_id,
+            prefer_active_when_unspecified=True,
+        )
+        if target is None:
+            return False
+        plan, item = target
+        payload_data = dict(payload or {})
+        if run_id and "run_id" not in payload_data:
+            payload_data["run_id"] = run_id
+        if child_run_id and "child_run_id" not in payload_data:
+            payload_data["child_run_id"] = child_run_id
+        self._get_scheduler_service()(self.db).append_run_trace_event(
+            plan=plan,
+            item_id=item.id,
+            source=source,
+            event_type=event_type,
+            summary=summary,
+            detail=detail,
+            severity=severity,
+            payload=payload_data,
+        )
+        return True
+
+    def append_runtime_audit(
+        self,
+        *,
+        user_id: Optional[int],
+        conversation_id: Optional[int] = None,
+        plan_id: Optional[int] = None,
+        item_id: Optional[int] = None,
+        run_id: Optional[str] = None,
+        child_run_id: Optional[str] = None,
+        event_type: str,
+        content: str,
+        payload: Optional[dict[str, Any]] = None,
+    ) -> bool:
+        if self.db is None or user_id is None:
+            user_id = self._resolve_user_id(user_id=user_id, conversation_id=conversation_id)
+        if self.db is None or user_id is None:
+            return False
+        target = self._resolve_plan_item_target(
+            user_id=user_id,
+            conversation_id=conversation_id,
+            plan_id=plan_id,
+            item_id=item_id,
+            run_id=run_id,
+            child_run_id=child_run_id,
+            prefer_active_when_unspecified=True,
+        )
+        if target is None:
+            return False
+        plan, item = target
+        payload_data = dict(payload or {})
+        if run_id and "run_id" not in payload_data:
+            payload_data["run_id"] = run_id
+        if child_run_id and "child_run_id" not in payload_data:
+            payload_data["child_run_id"] = child_run_id
+        self._get_scheduler_service()(self.db).append_audit_event(
+            plan=plan,
+            item_id=item.id,
+            event_type=event_type,
+            content=content,
+            payload=payload_data,
+        )
+        return True
 
     def build_snapshot_ref(
         self,
@@ -144,6 +210,41 @@ class RunTraceService:
             logger.warning(f"[RunTraceService] 解析会话 owner 失败: {exc}")
             return None
         return getattr(conversation, "user_id", None) if conversation is not None else None
+
+    def _resolve_plan_item_target(
+        self,
+        *,
+        user_id: int,
+        conversation_id: Optional[int],
+        plan_id: Optional[int],
+        item_id: Optional[int],
+        run_id: Optional[str],
+        child_run_id: Optional[str],
+        prefer_active_when_unspecified: bool,
+    ) -> Optional[tuple[Any, Any]]:
+        planner_service = self._get_planner_service()(self.db)
+        plan, item = planner_service.resolve_runtime_target(
+            user_id=user_id,
+            conversation_id=conversation_id,
+            plan_id=plan_id,
+            item_id=item_id,
+            run_id=run_id,
+            child_run_id=child_run_id,
+        )
+        if plan is not None and item is not None:
+            return plan, item
+        if not prefer_active_when_unspecified:
+            return None
+        plan = planner_service.get_latest_plan_for_conversation(
+            user_id=user_id,
+            conversation_id=conversation_id,
+        )
+        if plan is None:
+            return None
+        item = planner_service.get_active_item(plan=plan)
+        if item is None:
+            return None
+        return plan, item
 
     def _get_planner_service(self):
         try:

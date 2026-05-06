@@ -17,6 +17,9 @@ class SubagentRuntimeServiceTests(unittest.TestCase):
             plan_item_id=23,
             plan_item_title="实现聊天页交互",
             handoff_status="executing",
+            execution_mode="parallel",
+            run_id="frontend-child-p10-i23-c1",
+            parent_run_id="sched-p10-i23",
         )
 
     def test_normalize_context_returns_none_for_general_role(self):
@@ -34,11 +37,15 @@ class SubagentRuntimeServiceTests(unittest.TestCase):
             "plan_item_id": 2,
             "plan_item_title": "实现 plans API",
             "handoff_status": "handed_off",
+            "run_id": "backend-child-p9-i2-c1",
+            "parent_run_id": "sched-p9-i2",
         })
 
         self.assertIsNotNone(context)
         self.assertEqual(context.agent_role, "backend")
         self.assertEqual(context.plan_item_title, "实现 plans API")
+        self.assertEqual(context.run_id, "backend-child-p9-i2-c1")
+        self.assertEqual(context.parent_run_id, "sched-p9-i2")
 
     def test_build_role_system_prompt_mentions_role_and_scope(self):
         prompt = self.service.build_role_system_prompt(self.context)
@@ -56,6 +63,8 @@ class SubagentRuntimeServiceTests(unittest.TestCase):
         self.assertEqual(collect_event["status_kind"], "subagent_collected")
         self.assertEqual(merge_event["status_kind"], "subagent_merged")
         self.assertEqual(spawn_event["agent_id"], "frontend-agent-p10-i23")
+        self.assertEqual(spawn_event["run_id"], "frontend-child-p10-i23-c1")
+        self.assertEqual(spawn_event["parent_run_id"], "sched-p10-i23")
         self.assertIn("页面交互", collect_event["subagent_output_excerpt"])
 
     def test_runtime_contract_exposes_registered_profiles(self):

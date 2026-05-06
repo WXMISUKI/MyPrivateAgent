@@ -306,6 +306,26 @@ def _build_run_trace_from_runtime_event(event: Dict[str, Any]) -> Optional[Dict[
     }
 
 
+def _extract_execution_run_scope(execution_context: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    context = dict(execution_context or {})
+    scope = {
+        "run_id": context.get("run_id"),
+        "parent_run_id": context.get("parent_run_id"),
+        "child_run_id": context.get("child_run_id") or context.get("child_execution_id"),
+        "run_kind": context.get("run_kind"),
+        "scheduler_run_id": context.get("scheduler_run_id"),
+        "plan_id": context.get("plan_id"),
+        "plan_item_id": context.get("plan_item_id"),
+        "agent_role": context.get("agent_role"),
+        "agent_id": context.get("agent_id"),
+    }
+    return {
+        key: value
+        for key, value in scope.items()
+        if value not in (None, "")
+    }
+
+
 def maybe_append_runtime_run_trace(
     *,
     db: Optional[Session],
@@ -333,6 +353,12 @@ def maybe_append_runtime_run_trace(
         )
         if plan is None:
             return
+        trace_payload = dict(trace_event["payload"])
+        trace_payload.update({
+            key: value
+            for key, value in _extract_execution_run_scope(execution_context).items()
+            if key not in trace_payload
+        })
         _get_scheduler_service_cls()(db).append_run_trace_event(
             plan=plan,
             item_id=plan_item_id,
@@ -341,7 +367,8 @@ def maybe_append_runtime_run_trace(
             summary=trace_event["summary"],
             detail=trace_event["detail"],
             severity=trace_event["severity"],
-            payload=trace_event["payload"],
+            payload=trace_payload,
+            execution_context=execution_context,
         )
     except Exception as exc:  # pragma: no cover - defensive runtime logging
         logger.warning(f"[Chat] 追加运行 Trace 失败: {exc}")
@@ -577,6 +604,9 @@ def maybe_start_plan_for_chat(
                 })
 
                 execution_context = {
+                    "run_id": f"handoff-p{handed_off_plan.id}-i{active_item.id}",
+                    "parent_run_id": None,
+                    "run_kind": "subagent",
                     "plan_id": handed_off_plan.id,
                     "plan_item_id": active_item.id,
                     "plan_item_title": active_item.title,
@@ -634,21 +664,11 @@ def maybe_mark_plan_handoff_executing(
         if executing_item is None:
             return None
 
-        scheduler_group = ((executing_item.item_metadata or {}).get("child_execution_group") or {})
-        child_contexts = [
-            {
-                "plan_id": updated.id,
-                "plan_item_id": executing_item.id,
-                "plan_item_title": executing_item.title,
-                "agent_role": child.get("agent_role"),
-                "agent_id": child.get("agent_id"),
-                "required_capabilities": list((executing_item.item_metadata or {}).get("required_capabilities", [])),
-                "handoff_status": "executing",
-                "child_execution_id": child.get("child_execution_id"),
-                "scheduler_run_id": scheduler_group.get("run_id"),
-            }
-            for child in (scheduler_group.get("children") or [])
-        ]
+        scheduler_execution_context = scheduler_service.build_execution_context(
+            plan=updated,
+            item=executing_item,
+        )
+        child_contexts = list((scheduler_execution_context or {}).get("child_contexts") or [])
         if len(child_contexts) > 1:
             return {
                 "events": [
@@ -669,23 +689,7 @@ def maybe_mark_plan_handoff_executing(
                         "child_count": len(child_contexts),
                     },
                 ],
-                "execution_context": {
-                    "scheduler_mode": "fan_out",
-                    "scheduler_run_id": scheduler_group.get("run_id"),
-                    "merge_strategy": scheduler_group.get("merge_strategy"),
-                    "plan_id": updated.id,
-                    "plan_item_id": executing_item.id,
-                    "plan_item_title": executing_item.title,
-                    "agent_role": str(executing_item.agent_role or "scheduler").strip() or "scheduler",
-                    "agent_id": executing_item.agent_id,
-                    "required_capabilities": list((executing_item.item_metadata or {}).get("required_capabilities", [])),
-                    "handoff_status": (
-                        executing_item.handoff_status.value
-                        if hasattr(executing_item.handoff_status, "value")
-                        else str(executing_item.handoff_status)
-                    ),
-                    "child_contexts": child_contexts,
-                },
+                "execution_context": scheduler_execution_context,
             }
 
         return {
@@ -708,6 +712,9 @@ def maybe_mark_plan_handoff_executing(
                 },
             ],
             "execution_context": {
+                "run_id": f"handoff-p{updated.id}-i{executing_item.id}",
+                "parent_run_id": None,
+                "run_kind": "subagent",
                 "plan_id": updated.id,
                 "plan_item_id": executing_item.id,
                 "plan_item_title": executing_item.title,

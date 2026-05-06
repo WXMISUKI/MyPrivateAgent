@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 try:
     from services.startup_diagnostics_service import get_startup_diagnostics_service
     from services.runtime_surface_service import get_runtime_surface_service
+    from services.scheduler_runtime_diagnostics_service import get_scheduler_runtime_diagnostics_service
     from services.capability_gap_service import get_capability_gap_service
     from services.doctor_runtime_service import get_doctor_runtime_service
     from services.run_trace_service import get_run_trace_service
@@ -17,6 +18,7 @@ try:
 except ModuleNotFoundError:  # pragma: no cover - package import compatibility
     from backend.services.startup_diagnostics_service import get_startup_diagnostics_service
     from backend.services.runtime_surface_service import get_runtime_surface_service
+    from backend.services.scheduler_runtime_diagnostics_service import get_scheduler_runtime_diagnostics_service
     from backend.services.capability_gap_service import get_capability_gap_service
     from backend.services.doctor_runtime_service import get_doctor_runtime_service
     from backend.services.run_trace_service import get_run_trace_service
@@ -233,6 +235,10 @@ def health_check(db: Session = Depends(get_db)):
         report["failover"] = failover_summary
     except Exception as exc:
         report["failover"] = {"status": "unavailable", "error": str(exc)}
+    try:
+        report["runtime_backend"] = get_scheduler_runtime_diagnostics_service(db).collect_status(limit=20)
+    except Exception as exc:
+        report["runtime_backend"] = {"status": "unavailable", "error": str(exc)}
     return report
 
 
@@ -272,6 +278,30 @@ def cors_diagnostics(request: Request):
 def get_runtime_profile():
     """返回当前 demo/runtime 的可配置表面。"""
     return get_runtime_surface_service().get_runtime_profile()
+
+
+@router.get("/runtime-backend")
+def get_runtime_backend_status(
+    limit: int = 50,
+    db: Session = Depends(get_db),
+):
+    """返回 scheduler runtime backend 诊断状态。"""
+    return get_scheduler_runtime_diagnostics_service(db).collect_status(limit=limit)
+
+
+@router.post("/runtime-backend/reconcile")
+def reconcile_runtime_backend(
+    plan_id: int | None = None,
+    item_id: int | None = None,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+):
+    """将 metadata runtime 显式回填到 relational runtime 表。"""
+    return get_scheduler_runtime_diagnostics_service(db).reconcile_to_relational(
+        plan_id=plan_id,
+        item_id=item_id,
+        limit=limit,
+    )
 
 
 @router.get("/doctor")

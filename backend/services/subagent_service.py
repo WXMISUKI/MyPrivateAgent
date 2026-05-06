@@ -29,7 +29,10 @@ class SubagentContext:
     plan_item_id: Optional[int] = None
     plan_item_title: str = ""
     handoff_status: str = ""
+    execution_mode: str = ""
     required_capabilities: Tuple[str, ...] = ()
+    run_id: str = ""
+    parent_run_id: str = ""
 
     @classmethod
     def from_dict(cls, payload: Optional[Dict[str, Any]]) -> Optional["SubagentContext"]:
@@ -42,12 +45,15 @@ class SubagentContext:
             return None
 
         return cls(
+            run_id=str(payload.get("run_id") or "").strip(),
+            parent_run_id=str(payload.get("parent_run_id") or "").strip(),
             agent_role=role,
             agent_id=agent_id,
             plan_id=payload.get("plan_id"),
             plan_item_id=payload.get("plan_item_id"),
             plan_item_title=str(payload.get("plan_item_title") or "").strip(),
             handoff_status=str(payload.get("handoff_status") or "").strip(),
+            execution_mode=str(payload.get("execution_mode") or "").strip(),
             required_capabilities=tuple(
                 str(value).strip()
                 for value in (payload.get("required_capabilities") or [])
@@ -108,11 +114,14 @@ class SubagentRuntimeService:
         return {
             "type": "status",
             "status_kind": "subagent_spawned",
+            "run_id": context.run_id,
+            "parent_run_id": context.parent_run_id,
             "agent_role": context.agent_role,
             "agent_id": context.agent_id,
             "plan_id": context.plan_id,
             "plan_item_id": context.plan_item_id,
             "plan_item_title": context.plan_item_title,
+            "execution_mode": context.execution_mode,
             "required_capabilities": list(context.required_capabilities),
             "content": f"已创建 {context.agent_role} 子智能体执行单元",
         }
@@ -124,11 +133,14 @@ class SubagentRuntimeService:
         return {
             "type": "status",
             "status_kind": "subagent_collected",
+            "run_id": context.run_id,
+            "parent_run_id": context.parent_run_id,
             "agent_role": context.agent_role,
             "agent_id": context.agent_id,
             "plan_id": context.plan_id,
             "plan_item_id": context.plan_item_id,
             "plan_item_title": context.plan_item_title,
+            "execution_mode": context.execution_mode,
             "required_capabilities": list(context.required_capabilities),
             "content": f"已收集 {context.agent_role} 子智能体结果",
             "subagent_output_excerpt": excerpt,
@@ -138,11 +150,14 @@ class SubagentRuntimeService:
         return {
             "type": "status",
             "status_kind": "subagent_merged",
+            "run_id": context.run_id,
+            "parent_run_id": context.parent_run_id,
             "agent_role": context.agent_role,
             "agent_id": context.agent_id,
             "plan_id": context.plan_id,
             "plan_item_id": context.plan_item_id,
             "plan_item_title": context.plan_item_title,
+            "execution_mode": context.execution_mode,
             "required_capabilities": list(context.required_capabilities),
             "content": f"已合并 {context.agent_role} 子智能体结果到主响应",
         }

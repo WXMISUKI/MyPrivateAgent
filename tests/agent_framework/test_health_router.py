@@ -1,6 +1,22 @@
 import unittest
+import sys
+import types
 from fastapi.testclient import TestClient
 from unittest.mock import patch
+
+if "slowapi" not in sys.modules:
+    slowapi_module = types.ModuleType("slowapi")
+    slowapi_module.Limiter = lambda *args, **kwargs: object()
+    slowapi_module._rate_limit_exceeded_handler = lambda *args, **kwargs: None
+    sys.modules["slowapi"] = slowapi_module
+
+    slowapi_util_module = types.ModuleType("slowapi.util")
+    slowapi_util_module.get_remote_address = lambda request: "127.0.0.1"
+    sys.modules["slowapi.util"] = slowapi_util_module
+
+    slowapi_errors_module = types.ModuleType("slowapi.errors")
+    slowapi_errors_module.RateLimitExceeded = type("RateLimitExceeded", (Exception,), {})
+    sys.modules["slowapi.errors"] = slowapi_errors_module
 
 from backend.agent_server.app import create_app
 from backend.agent_server.config import AgentServerBootstrapConfig, AgentServerConfig, AgentServerUIConfig
@@ -26,15 +42,44 @@ class _StubRunTraceService:
         }
 
 
+class _StubSchedulerRuntimeDiagnosticsService:
+    def collect_status(self, *, limit=50):
+        return {
+            "status": "ok",
+            "requested_backend": "auto",
+            "effective_backend": "metadata",
+            "backend": "metadata_adapter",
+            "backend_source": "metadata",
+            "table_ready": False,
+            "fallback_reason": "scheduler_runtime_tables_missing",
+            "record_counts": {"scheduler_runs": 0, "child_runs": 0},
+            "metadata_runtime_summary": {"scan_limit": limit, "runtime_item_count": 1, "items": []},
+        }
+
+    def reconcile_to_relational(self, *, plan_id=None, item_id=None, limit=100):
+        return {
+            "status": "ok",
+            "table_ready": True,
+            "requested_backend": "auto",
+            "reconciled_items": 2,
+            "skipped_items": 1,
+            "items": [
+                {"plan_id": plan_id or 1, "item_id": item_id or 11, "status": "reconciled", "child_count": 2}
+            ],
+            "limit": limit,
+        }
+
+
 class HealthRouterTests(unittest.TestCase):
     def setUp(self):
         _StubRunTraceService.trace_calls = []
         _StubRunTraceService.audit_calls = []
 
+    @patch("backend.routers.health.get_scheduler_runtime_diagnostics_service", return_value=_StubSchedulerRuntimeDiagnosticsService())
     @patch("backend.routers.health.get_runtime_surface_service")
     @patch("backend.routers.health.get_provider_failover_analytics_service")
     @patch("backend.routers.health.get_startup_diagnostics_service")
-    def test_health_endpoint_returns_diagnostics_report(self, mock_factory, mock_failover_factory, mock_runtime_factory):
+    def test_health_endpoint_returns_diagnostics_report(self, mock_factory, mock_failover_factory, mock_runtime_factory, _mock_runtime_backend_factory):
         mock_factory.return_value.collect_report.return_value = {
             "status": "ok",
             "summary": {"ok": 1, "warn": 0, "fail": 0},
@@ -63,6 +108,7 @@ class HealthRouterTests(unittest.TestCase):
         self.assertEqual(response.json()["status"], "ok")
         self.assertEqual(response.json()["failover"]["alert_level"], "medium")
         self.assertEqual(response.json()["failover"]["alert_thresholds"]["medium"], 0.2)
+        self.assertEqual(response.json()["runtime_backend"]["effective_backend"], "metadata")
 
     @patch("backend.routers.health.get_runtime_surface_service")
     def test_runtime_profile_endpoint_returns_runtime_surface(self, mock_factory):
@@ -95,6 +141,37 @@ class HealthRouterTests(unittest.TestCase):
         self.assertEqual(response.json()["auth_mode"], "demo_guest")
         self.assertEqual(response.json()["capability_contract"]["identity_summary"], "主协调智能体")
         self.assertEqual(response.json()["config_layers"]["defaults"]["auth_mode"], "demo_guest")
+
+    @patch("backend.routers.health.get_scheduler_runtime_diagnostics_service", return_value=_StubSchedulerRuntimeDiagnosticsService())
+    def test_runtime_backend_status_endpoint_returns_backend_diagnostics(self, _mock_factory):
+        app = create_app(
+            config=AgentServerConfig(
+                bootstrap=AgentServerBootstrapConfig(load_environment=False, init_database=False),
+                ui=AgentServerUIConfig(enabled=False, mode="disabled"),
+            )
+        )
+        client = TestClient(app)
+
+        response = client.get("/api/runtime-backend?limit=25")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["backend"], "metadata_adapter")
+        self.assertEqual(response.json()["metadata_runtime_summary"]["scan_limit"], 25)
+
+    @patch("backend.routers.health.get_scheduler_runtime_diagnostics_service", return_value=_StubSchedulerRuntimeDiagnosticsService())
+    def test_runtime_backend_reconcile_endpoint_runs_reconciliation(self, _mock_factory):
+        app = create_app(
+            config=AgentServerConfig(
+                bootstrap=AgentServerBootstrapConfig(load_environment=False, init_database=False),
+                ui=AgentServerUIConfig(enabled=False, mode="disabled"),
+            )
+        )
+        client = TestClient(app)
+
+        response = client.post("/api/runtime-backend/reconcile?plan_id=9&item_id=21&limit=10")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["status"], "ok")
+        self.assertEqual(response.json()["reconciled_items"], 2)
+        self.assertEqual(response.json()["items"][0]["plan_id"], 9)
 
     @patch("backend.routers.health.get_runtime_surface_service")
     def test_runtime_profile_patch_updates_surface(self, mock_factory):

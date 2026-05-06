@@ -352,7 +352,8 @@ class SimplifiedOrchestrator:
             model_name=selected_model,
             conversation_id=self.conversation_id,
             use_tool_choice=use_tool_choice,
-            parallel_tool_calls=not is_doubao
+            parallel_tool_calls=not is_doubao,
+            runtime_scope=execution_context,
         )
 
         # 6. 构建消息列表
@@ -452,7 +453,8 @@ class SimplifiedOrchestrator:
                             model_name=selected_model,
                             use_bind_tools=False,
                             use_tool_choice=False,
-                            parallel_tool_calls=False
+                            parallel_tool_calls=False,
+                            runtime_scope=execution_context,
                         )
                         stream_state = OrchestratorStreamState()
                         async for retry_chunk in harness.run(messages):
