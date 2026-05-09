@@ -1,46 +1,47 @@
-# Agent Framework Demo Guide
+# Agent Framework Demo 指南
 
-## Goal
-This repository now contains two layers:
+## 目标
 
-- `backend/agent_framework`: reusable runtime primitives
-- `backend/agent_server`: reusable FastAPI server assembly
+当前仓库已经包含两层可复用能力：
 
-The current app is still `MyPrivateAgent`, but the codebase can already be reused as a demo framework for new domain agents.
+- `backend/agent_framework`：可复用的运行时基础原语
+- `backend/agent_server`：可复用的 FastAPI Server 组装层
 
-## Recommended Reuse Boundary
+当前应用仍然是 `MyPrivateAgent`，但代码库已经可以作为新垂域 Agent 的演示框架复用。
 
-Reuse these parts directly:
+## 推荐复用边界
 
-- Runtime state, events, tool metadata, artifacts, cache
-- Server app factory, auth provider, router registry, HTTP/SSE helpers
-- Structured card protocol and frontend card registry
+以下部分建议直接复用：
 
-Keep domain-specific code isolated:
+- 运行时状态、事件、工具元数据、artifacts、缓存
+- Server app factory、auth provider、router registry、HTTP/SSE 辅助层
+- 结构化卡片协议与前端卡片注册表
 
-- Weather service
-- Domain prompts
-- Domain tools
-- Domain card schemas
+需要保持隔离的垂域代码包括：
 
-## Frontend Boundary
+- 天气服务
+- 垂域 Prompt
+- 垂域工具
+- 垂域卡片 schema
 
-`frontend-vue` is now the primary client surface for the reusable demo framework.
+## 前端边界
 
-- Default `full_stack` mode serves the built Vue SPA from `frontend-vue/dist`
-- The legacy template frontend has been removed from the default demo
-- New domain demos should target `frontend-vue` only
+`frontend-vue` 现在是该可复用 Demo 框架的主客户端界面。
 
-## Current Server Presets
+- 默认 `full_stack` 模式会直接托管 `frontend-vue/dist` 构建后的 Vue SPA
+- 旧的模板式前端已不再作为默认 Demo 的一部分
+- 新的垂域 Demo 应只面向 `frontend-vue` 开发
 
-- `full_stack`: current product shape with primary Vue SPA
-- `api_only`: API-focused deployment without legacy UI
-- `embedded`: lightweight embedding mode
-- `learning_demo`: chat + learnings + permissions demo, suited for runtime knowledge experiments
-- `weather_demo`: weather/realtime lookup oriented starter preset
-- `knowledge_demo`: knowledge and learnings oriented starter preset
+## 当前 Server 预设
 
-Example:
+- `full_stack`：当前产品形态，主界面为 Vue SPA
+- `api_only`：无旧 UI、偏 API 集成的部署模式
+- `embedded`：轻量嵌入模式
+- `learning_demo`：聊天 + learnings + permissions 的演示预设，适合运行时知识实验
+- `weather_demo`：偏天气 / 实时查询的起步预设
+- `knowledge_demo`：偏知识与 learnings 的起步预设
+
+示例：
 
 ```python
 from backend.agent_server import create_app
@@ -48,43 +49,43 @@ from backend.agent_server import create_app
 app = create_app(preset="learning_demo")
 ```
 
-For starter-oriented examples, see:
+起步型示例可参考：
 
 - [agent_framework_starter_guide.md](D:/AI/AIcode/MyPrivateAgent/docs/agent_framework_starter_guide.md)
 - [weather_demo_app.py](D:/AI/AIcode/MyPrivateAgent/examples/weather_demo_app.py)
 - [knowledge_demo_app.py](D:/AI/AIcode/MyPrivateAgent/examples/knowledge_demo_app.py)
 
-## Runtime Knowledge Governance
+## 运行时知识治理
 
-Runtime knowledge is now injected through `RuntimeLearningService`.
+当前运行时知识通过 `RuntimeLearningService` 注入。
 
-Supported governance levels:
+支持的治理等级：
 
-- `enforced`: injected as strict runtime rules
-- `advisory`: injected as suggestions
-- `diagnostic`: recorded in metadata only, not injected into the model
+- `enforced`：作为强约束运行时规则注入
+- `advisory`：作为建议性信息注入
+- `diagnostic`：仅记录在元数据中，不注入模型
 
-Current classification rules are intentionally simple:
+当前分类规则刻意保持简单：
 
-- `SystemPrompt.tags` containing `enforced` => enforced
-- `SystemPrompt.tags` containing `diagnostic` => diagnostic
-- `prompt_type in {"tool_usage", "workflow"}` or `priority >= 5` => enforced
-- High-priority `BestPractice` => enforced
-- `diagnostic` tagged practices => diagnostic
+- `SystemPrompt.tags` 包含 `enforced` => `enforced`
+- `SystemPrompt.tags` 包含 `diagnostic` => `diagnostic`
+- `prompt_type in {"tool_usage", "workflow"}` 或 `priority >= 5` => `enforced`
+- 高优先级 `BestPractice` => `enforced`
+- 带 `diagnostic` 标签的 practices => `diagnostic`
 
-## How To Build a New Domain Agent
+## 如何构建新的垂域 Agent
 
-1. Add domain tools and `ToolSpec`
-2. Add domain card schema if deterministic output needs structured rendering
-3. Add domain prompts / best practices through learnings APIs or seed data
-4. Choose a preset:
-   - `api_only` for backend integration
-   - `learning_demo` for iterative runtime tuning
-5. Add a small domain-specific service layer instead of editing runtime core
+1. 添加垂域工具和对应 `ToolSpec`
+2. 如果确定性输出需要结构化渲染，再补充垂域卡片 schema
+3. 通过 learnings API 或 seed data 注入垂域 Prompt / 最佳实践
+4. 选择一个预设：
+   - `api_only` 适合后端集成
+   - `learning_demo` 适合迭代式运行时调优
+5. 通过增加小型垂域 service layer 扩展能力，而不是直接修改运行时核心
 
-## Recommended Next Steps
+## 推荐下一步
 
-- Keep `frontend-vue` as the single primary client
-- Add starter templates for new domain agents
-- Add end-to-end tests for `tool_result -> done -> structured_card`
-- Add runtime knowledge rollback and scope controls
+- 继续把 `frontend-vue` 保持为唯一主客户端
+- 为新的垂域 Agent 增加 starter templates
+- 补充 `tool_result -> done -> structured_card` 的端到端测试
+- 增加运行时知识的回滚与作用域控制

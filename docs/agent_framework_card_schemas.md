@@ -1,36 +1,36 @@
-# Agent Framework Card Schemas
+# Agent Framework 卡片 Schema 协议
 
-## Purpose
+## 目的
 
-This document defines the structured card contract shared by:
+本文定义了以下模块共享的结构化卡片协议：
 
-- backend tool/runtime events
-- frontend event normalization
-- frontend structured card registry
+- 后端工具 / 运行时事件
+- 前端事件归一化层
+- 前端结构化卡片注册表
 
-The goal is to avoid page-level special cases and make deterministic results render through a stable schema.
+目标是避免页面级特殊分支，让确定性结果能够通过稳定的 schema 进行渲染。
 
 ---
 
-## Core Rules
+## 核心规则
 
-1. Every structured card must include:
+1. 每个结构化卡片必须包含：
    - `kind`
    - `schema`
-2. `schema` is the primary dispatch key on the frontend.
-3. `kind` is descriptive, but renderer lookup should prefer `schema`.
-4. A tool may support multiple schemas; do not assume one tool maps to exactly one card schema.
-4. Backend events should include:
+2. `schema` 是前端分发渲染的主键。
+3. `kind` 用于描述语义，但渲染器查找应优先依赖 `schema`。
+4. 一个工具可以支持多个 schema；不要假设一个工具只对应一个卡片 schema。
+5. 后端事件应包含：
    - `render_mode = structured_card`
    - `card`
    - `card_schema`
-5. `card_schema` should match `card.schema`.
+6. `card_schema` 应与 `card.schema` 保持一致。
 
 ---
 
-## Event Shape
+## 事件结构
 
-Example event payload:
+事件载荷示例：
 
 ```json
 {
@@ -46,13 +46,13 @@ Example event payload:
 
 ---
 
-## Implemented Schemas
+## 已实现的 Schema
 
 ### `weather.v1`
 
-Used for weather query results.
+用于天气查询结果。
 
-Example shape:
+示例结构：
 
 ```json
 {
@@ -79,9 +79,9 @@ Example shape:
 
 ### `datetime.v1`
 
-Used for current date/time tool results.
+用于当前日期 / 时间工具结果。
 
-Example shape:
+示例结构：
 
 ```json
 {
@@ -95,9 +95,9 @@ Example shape:
 
 ### `search_summary.v1`
 
-Used for generic search / retrieval summaries.
+用于通用搜索 / 检索摘要结果。
 
-Example shape:
+示例结构：
 
 ```json
 {
@@ -112,19 +112,19 @@ Example shape:
 }
 ```
 
-Recommended semantics:
+推荐语义：
 
-- `source`: stable machine-readable source key
-- `source_label`: user-facing source label
-- `source_count`: how many concrete sources were used or matched
+- `source`：稳定的机器可读来源标识
+- `source_label`：面向用户的来源名称
+- `source_count`：实际使用或命中的具体来源数量
 
 ---
 
-## Artifact Alignment
+## Artifact 对齐
 
-Structured tool results should also be persisted as schema-aware artifacts.
+结构化工具结果也应作为具备 schema 感知能力的 artifact 持久化。
 
-Recommended artifact fields:
+推荐的 artifact 字段：
 
 - `kind`
 - `content`
@@ -133,28 +133,28 @@ Recommended artifact fields:
 - `card`
 - `metadata.tool_name`
 
-This lets replay, audit, and future artifact UIs reuse the same schema contract as SSE events.
+这样回放、审计以及未来的 artifact UI 都可以复用与 SSE 事件一致的 schema 协议。
 
 ---
 
-## Extension Workflow
+## 扩展流程
 
-When adding a new schema:
+新增一个 schema 时：
 
-1. Add backend schema builder / parser
-2. Add `card_schema` or `supported_card_schemas` to the relevant tool metadata if appropriate
-3. Emit `card` and `card_schema` from runtime events
-4. Register the schema in `frontend-vue/src/components/cards/registry.js`
-5. Add the renderer component
-6. Add at least one backend test
+1. 在后端添加 schema builder / parser
+2. 如有需要，在对应工具元数据中添加 `card_schema` 或 `supported_card_schemas`
+3. 在运行时事件中输出 `card` 和 `card_schema`
+4. 在 `frontend-vue/src/components/cards/registry.js` 中注册该 schema
+5. 添加对应渲染组件
+6. 至少补充一个后端测试
 
 ---
 
-## Versioning
+## 版本管理
 
-Use versioned schema names:
+使用带版本号的 schema 名称：
 
 - `weather.v1`
 - `datetime.v1`
 
-If the card shape changes incompatibly, create a new schema version rather than silently mutating the existing one.
+如果卡片结构发生不兼容变更，应创建新的 schema 版本，而不是静默修改已有版本。

@@ -1,70 +1,70 @@
-# 工程基础设施完善 Implementation Plan
+﻿# 工程基础设施完善实施计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **对执行型智能体工作者：** 必须使用 `superpowers:subagent-driven-development`（推荐）或 `superpowers:executing-plans`，按任务逐项落实本计划。步骤使用复选框语法（`- [ ]`）进行跟踪。
 
-**Goal:** Bring MyPrivateAgent's engineering infrastructure to MVP maturity — database migrations, request tracing, structured logging, security hardening, unified error handling, graceful shutdown, observability, rate limiting, context compaction, CI quality gates, code quality refactoring, and framework maturity improvements.
+**目标：** 将 MyPrivateAgent 的工程基础设施提升到 MVP 成熟度，包括数据库迁移、请求链路追踪、结构化日志、安全加固、统一异常处理、优雅停机、可观测性、速率限制、上下文压缩、CI 质量门禁、代码质量重构以及框架成熟度改进。
 
-**Architecture:** Layered additions to the existing FastAPI + Vue 3 stack. New middleware pipeline in `backend/agent_server/middleware.py` handles request ID injection, structured logging context, rate limiting, and unified error formatting. Alembic manages schema migrations alongside the existing SQLAlchemy models. All changes are backward-compatible with the existing demo flow.
+**架构：** 在现有 FastAPI + Vue 3 技术栈上按分层方式增量扩展。新的中间件管线位于 `backend/agent_server/middleware.py`，负责请求 ID 注入、结构化日志上下文、速率限制和统一错误格式化。Alembic 与现有 SQLAlchemy 模型并行管理 schema 迁移。所有改动都要求与当前 Demo 流程保持向后兼容。
 
-**Tech Stack:** Python 3.11, FastAPI, SQLAlchemy, Alembic, slowapi, python-json-logger, tiktoken, ruff, Vue 3, Pinia, Axios
-
----
-
-## File Structure
-
-### New Files
-- `backend/alembic.ini` — Alembic configuration
-- `backend/alembic/env.py` — Alembic environment with SQLAlchemy metadata
-- `backend/alembic/script.py.mako` — Migration template
-- `backend/alembic/versions/001_initial_schema.py` — Initial migration
-- `backend/agent_server/middleware.py` — Request ID + error handling middleware
-- `backend/logging_config.py` — Structured JSON logging setup
-- `backend/services/context_compaction_service.py` — Token-based context truncation
-- `backend/pyproject.toml` — ruff configuration
-- `tests/agent_framework/test_middleware.py` — Middleware tests
-- `tests/agent_framework/test_logging_config.py` — Logging config tests
-- `tests/agent_framework/test_context_compaction_service.py` — Context compaction tests
-- `tests/agent_framework/test_startup_validation.py` — Startup validation tests
-
-### Modified Files
-- `backend/requirements.txt` — Add alembic, slowapi, python-json-logger, tiktoken, ruff, pytest-cov
-- `backend/agent_server/app.py` — Register middleware, graceful shutdown
-- `backend/agent_server/bootstrap.py` — Replace create_all with alembic, add config validation
-- `backend/config.py` — Security defaults, CORS whitelist, rate limit config
-- `backend/main.py` — Use structured logging
-- `backend/routers/health.py` — Add liveness/readiness endpoints
-- `backend/orchestrator.py` — Remove hardcoded model, extract methods
-- `backend/routers/chat.py` — Extract shared stream pipeline
-- `backend/agent_server/config.py` — Add CORS env-based config, API version prefix
-- `frontend-vue/src/api/index.js` — Unified error handling, API version prefix
-- `frontend-vue/src/stores/conversation.js` — Extract _processSSEStream
-- `.github/workflows/ci.yml` — Add ruff, eslint, coverage gate
+**技术栈：** Python 3.11、FastAPI、SQLAlchemy、Alembic、slowapi、python-json-logger、tiktoken、ruff、Vue 3、Pinia、Axios
 
 ---
 
-## Batch 1: Engineering Infrastructure Core (Tasks 1-6)
+## 文件结构
 
-### Task 1: Alembic Database Migration
+### 新增文件
+- `backend/alembic.ini` — Alembic 配置文件
+- `backend/alembic/env.py` — 带 SQLAlchemy metadata 的 Alembic 环境文件
+- `backend/alembic/script.py.mako` — 迁移模板
+- `backend/alembic/versions/001_initial_schema.py` — 初始迁移基线
+- `backend/agent_server/middleware.py` — Request ID 与统一错误处理中间件
+- `backend/logging_config.py` — 结构化 JSON 日志配置
+- `backend/services/context_compaction_service.py` — 基于 token 的上下文截断服务
+- `backend/pyproject.toml` — ruff 配置
+- `tests/agent_framework/test_middleware.py` — 中间件测试
+- `tests/agent_framework/test_logging_config.py` — 日志配置测试
+- `tests/agent_framework/test_context_compaction_service.py` — 上下文压缩测试
+- `tests/agent_framework/test_startup_validation.py` — 启动配置校验测试
 
-**Files:**
-- Create: `backend/alembic.ini`
-- Create: `backend/alembic/env.py`
-- Create: `backend/alembic/script.py.mako`
-- Create: `backend/alembic/versions/001_initial_schema.py`
-- Modify: `backend/requirements.txt`
-- Modify: `backend/agent_server/bootstrap.py:30-55`
+### 修改文件
+- `backend/requirements.txt` — 增加 alembic、slowapi、python-json-logger、tiktoken、ruff、pytest-cov
+- `backend/agent_server/app.py` — 注册中间件并补齐优雅停机
+- `backend/agent_server/bootstrap.py` — 用 alembic 替换 `create_all` 主流程，并增加配置校验
+- `backend/config.py` — 增加安全默认值、CORS 白名单与限流配置
+- `backend/main.py` — 接入结构化日志
+- `backend/routers/health.py` — 增加 liveness/readiness 端点
+- `backend/orchestrator.py` — 移除硬编码模型并抽取方法
+- `backend/routers/chat.py` — 抽取共享流处理管线
+- `backend/agent_server/config.py` — 增加基于环境变量的 CORS 配置和 API 版本前缀
+- `frontend-vue/src/api/index.js` — 统一错误处理并增加 API 版本前缀支持
+- `frontend-vue/src/stores/conversation.js` — 抽取 `_processSSEStream`
+- `.github/workflows/ci.yml` — 增加 ruff、eslint 和覆盖率门禁
 
-- [ ] **Step 1: Add alembic to requirements.txt**
+---
 
-Add after the last line of `backend/requirements.txt`:
+## 第一批：工程基础设施核心（任务 1-6）
+
+### 任务 1：Alembic 数据库迁移
+
+**涉及文件：**
+- 新增：`backend/alembic.ini`
+- 新增：`backend/alembic/env.py`
+- 新增：`backend/alembic/script.py.mako`
+- 新增：`backend/alembic/versions/001_initial_schema.py`
+- 修改： `backend/requirements.txt`
+- 修改： `backend/agent_server/bootstrap.py:30-55`
+
+- [ ] **步骤 1：向 requirements.txt 增加 alembic**
+
+在 `backend/requirements.txt` 末尾追加：
 
 ```
 alembic==1.13.1
 ```
 
-- [ ] **Step 2: Create alembic.ini**
+- [ ] **步骤 2：创建 alembic.ini**
 
-Create `backend/alembic.ini`:
+创建 `backend/alembic.ini`：
 
 ```ini
 [alembic]
@@ -105,9 +105,9 @@ format = %(levelname)-5.5s [%(name)s] %(message)s
 datefmt = %H:%M:%S
 ```
 
-- [ ] **Step 3: Create alembic/env.py**
+- [ ] **步骤 3：创建 alembic/env.py**
 
-Create `backend/alembic/env.py`:
+创建 `backend/alembic/env.py`：
 
 ```python
 from logging.config import fileConfig
@@ -156,16 +156,16 @@ else:
     run_migrations_online()
 ```
 
-- [ ] **Step 4: Create alembic/script.py.mako**
+- [ ] **步骤 4：创建 alembic/script.py.mako**
 
-Create `backend/alembic/script.py.mako`:
+创建 `backend/alembic/script.py.mako`：
 
 ```mako
 """${message}
 
 Revision ID: ${up_revision}
 Revises: ${down_revision | comma,n}
-Create Date: ${create_date}
+创建 Date: ${create_date}
 """
 from typing import Sequence, Union
 from alembic import op
@@ -186,16 +186,16 @@ def downgrade() -> None:
     ${downgrades if downgrades else "pass"}
 ```
 
-- [ ] **Step 5: Create initial migration stamp**
+- [ ] **步骤 5：创建初始迁移基线**
 
-Create `backend/alembic/versions/001_initial_schema.py`:
+创建 `backend/alembic/versions/001_initial_schema.py`：
 
 ```python
 """initial schema baseline
 
 Revision ID: 001
 Revises:
-Create Date: 2026-04-29
+创建 Date: 2026-04-29
 """
 from typing import Sequence, Union
 from alembic import op
@@ -216,9 +216,9 @@ def downgrade() -> None:
     pass
 ```
 
-- [ ] **Step 6: Update bootstrap.py to use alembic**
+- [ ] **步骤 6: 更新 bootstrap.py 以接入 alembic**
 
-Replace the `init_database` function in `backend/agent_server/bootstrap.py`. Keep `create_all` as fallback for fresh installs, then stamp alembic head:
+替换 the `init_database` function in `backend/agent_server/bootstrap.py`. Keep `create_all` as fallback for fresh installs, then stamp alembic head:
 
 ```python
 def init_database() -> None:
@@ -257,15 +257,15 @@ def _stamp_alembic_head_if_needed() -> None:
         logger.warning("Alembic stamp skipped: %s", e)
 ```
 
-- [ ] **Step 7: Verify alembic setup**
+- [ ] **步骤 7: 验证 alembic 配置**
 
 Run from `backend/` directory:
 ```bash
 cd backend && python -c "from alembic.config import Config; from alembic import command; c = Config('alembic.ini'); print('Alembic config OK')"
 ```
-Expected: `Alembic config OK`
+预期： `Alembic config OK`
 
-- [ ] **Step 8: Commit**
+- [ ] **步骤 8: 提交**
 
 ```bash
 git add backend/alembic.ini backend/alembic/ backend/requirements.txt backend/agent_server/bootstrap.py
@@ -274,16 +274,16 @@ git commit -m "feat: add Alembic database migration infrastructure"
 
 ---
 
-### Task 2: Request ID Middleware
+### 任务 2：Request ID 中间件
 
-**Files:**
+**涉及文件：**
 - Create: `backend/agent_server/middleware.py`
 - Create: `tests/agent_framework/test_middleware.py`
-- Modify: `backend/agent_server/app.py:107-131`
+- 修改： `backend/agent_server/app.py:107-131`
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **步骤 1: 先编写失败测试**
 
-Create `tests/agent_framework/test_middleware.py`:
+创建 `tests/agent_framework/test_middleware.py`:
 
 ```python
 import unittest
@@ -336,14 +336,14 @@ if __name__ == "__main__":
     unittest.main()
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **步骤 2: 运行测试，确认其先失败**
 
-Run: `python -m unittest tests.agent_framework.test_middleware -v`
-Expected: FAIL with `ModuleNotFoundError: No module named 'backend.agent_server.middleware'`
+运行： `python -m unittest tests.agent_framework.test_middleware -v`
+预期： FAIL with `ModuleNotFoundError: No module named 'backend.agent_server.middleware'`
 
-- [ ] **Step 3: Write the middleware implementation**
+- [ ] **步骤 3: 编写中间件实现**
 
-Create `backend/agent_server/middleware.py`:
+创建 `backend/agent_server/middleware.py`:
 
 ```python
 """Request-scoped middleware: request ID injection and unified error handling."""
@@ -382,14 +382,14 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
             _request_id_var.reset(token)
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **步骤 4: 运行测试，确认其通过**
 
-Run: `python -m unittest tests.agent_framework.test_middleware -v`
-Expected: PASS (3 tests)
+运行： `python -m unittest tests.agent_framework.test_middleware -v`
+预期： PASS (3 tests)
 
-- [ ] **Step 5: Register middleware in app.py**
+- [ ] **步骤 5: Register middleware in app.py**
 
-In `backend/agent_server/app.py`, add import at top:
+在 `backend/agent_server/app.py`, add import at top:
 
 ```python
 from .middleware import RequestIDMiddleware
@@ -401,7 +401,7 @@ In the `create_app` function, after the CORS middleware line (`app.add_middlewar
     app.add_middleware(RequestIDMiddleware)
 ```
 
-- [ ] **Step 6: Commit**
+- [ ] **步骤 6: 提交**
 
 ```bash
 git add backend/agent_server/middleware.py tests/agent_framework/test_middleware.py backend/agent_server/app.py
@@ -410,25 +410,25 @@ git commit -m "feat: add X-Request-ID middleware for request tracing"
 
 ---
 
-### Task 3: Structured Logging
+### 任务 3：结构化日志
 
-**Files:**
+**涉及文件：**
 - Create: `backend/logging_config.py`
 - Create: `tests/agent_framework/test_logging_config.py`
-- Modify: `backend/main.py`
-- Modify: `backend/requirements.txt`
+- 修改： `backend/main.py`
+- 修改： `backend/requirements.txt`
 
-- [ ] **Step 1: Add python-json-logger to requirements.txt**
+- [ ] **步骤 1: Add python-json-logger to requirements.txt**
 
-Add to `backend/requirements.txt`:
+添加到 `backend/requirements.txt`:
 
 ```
 python-json-logger==2.0.7
 ```
 
-- [ ] **Step 2: Write the failing test**
+- [ ] **步骤 2: 先编写失败测试**
 
-Create `tests/agent_framework/test_logging_config.py`:
+创建 `tests/agent_framework/test_logging_config.py`:
 
 ```python
 import json
@@ -472,14 +472,14 @@ if __name__ == "__main__":
     unittest.main()
 ```
 
-- [ ] **Step 3: Run test to verify it fails**
+- [ ] **步骤 3: 运行测试，确认其先失败**
 
-Run: `python -m unittest tests.agent_framework.test_logging_config -v`
-Expected: FAIL with `ModuleNotFoundError`
+运行： `python -m unittest tests.agent_framework.test_logging_config -v`
+预期： FAIL with `ModuleNotFoundError`
 
-- [ ] **Step 4: Write the logging config**
+- [ ] **步骤 4: 编写日志配置**
 
-Create `backend/logging_config.py`:
+创建 `backend/logging_config.py`:
 
 ```python
 """Structured JSON logging with request ID correlation."""
@@ -526,14 +526,14 @@ def setup_logging() -> logging.Logger:
     return root_logger
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [ ] **步骤 5: 运行测试，确认其通过**
 
-Run: `python -m unittest tests.agent_framework.test_logging_config -v`
-Expected: PASS (3 tests)
+运行： `python -m unittest tests.agent_framework.test_logging_config -v`
+预期： PASS (3 tests)
 
-- [ ] **Step 6: Update main.py to use structured logging**
+- [ ] **步骤 6: Update main.py to use structured logging**
 
-Replace the logging setup in `backend/main.py`:
+替换 the logging setup in `backend/main.py`:
 
 ```python
 import os
@@ -558,7 +558,7 @@ if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
 ```
 
-- [ ] **Step 7: Commit**
+- [ ] **步骤 7: 提交**
 
 ```bash
 git add backend/logging_config.py tests/agent_framework/test_logging_config.py backend/main.py backend/requirements.txt
@@ -567,16 +567,16 @@ git commit -m "feat: add structured JSON logging with request ID correlation"
 
 ---
 
-### Task 4: Unified Exception Handling
+### 任务 4：统一异常处理
 
-**Files:**
-- Modify: `backend/agent_server/middleware.py`
-- Modify: `backend/agent_server/app.py`
-- Modify: `tests/agent_framework/test_middleware.py`
+**涉及文件：**
+- 修改： `backend/agent_server/middleware.py`
+- 修改： `backend/agent_server/app.py`
+- 修改： `tests/agent_framework/test_middleware.py`
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **步骤 1: 先编写失败测试**
 
-Add to `tests/agent_framework/test_middleware.py`:
+添加到 `tests/agent_framework/test_middleware.py`:
 
 ```python
 class TestUnifiedErrorHandler(unittest.IsolatedAsyncioTestCase):
@@ -628,12 +628,12 @@ class TestUnifiedErrorHandler(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(body["error"]["code"], "INTERNAL_ERROR")
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **步骤 2: 运行测试，确认其先失败**
 
-Run: `python -m unittest tests.agent_framework.test_middleware -v`
-Expected: FAIL with `ImportError: cannot import name 'install_error_handlers'`
+运行： `python -m unittest tests.agent_framework.test_middleware -v`
+预期： FAIL with `ImportError: cannot import name 'install_error_handlers'`
 
-- [ ] **Step 3: Add error handlers to middleware.py**
+- [ ] **步骤 3: 向 middleware.py 增加错误处理器**
 
 Append to `backend/agent_server/middleware.py`:
 
@@ -686,14 +686,14 @@ def install_error_handlers(app: FastAPI) -> None:
         )
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **步骤 4: 运行测试，确认其通过**
 
-Run: `python -m unittest tests.agent_framework.test_middleware -v`
-Expected: PASS (5 tests total)
+运行： `python -m unittest tests.agent_framework.test_middleware -v`
+预期： PASS (5 tests total)
 
-- [ ] **Step 5: Register error handlers in app.py**
+- [ ] **步骤 5: Register error handlers in app.py**
 
-In `backend/agent_server/app.py`, update the import:
+在 `backend/agent_server/app.py`, update the import:
 
 ```python
 from .middleware import RequestIDMiddleware, install_error_handlers
@@ -705,7 +705,7 @@ In `create_app`, after `app.add_middleware(RequestIDMiddleware)`, add:
     install_error_handlers(app)
 ```
 
-- [ ] **Step 6: Commit**
+- [ ] **步骤 6: 提交**
 
 ```bash
 git add backend/agent_server/middleware.py backend/agent_server/app.py tests/agent_framework/test_middleware.py
@@ -714,17 +714,17 @@ git commit -m "feat: add unified exception handling with structured error respon
 
 ---
 
-### Task 5: Security Hardening
+### 任务 5：安全加固
 
-**Files:**
-- Modify: `backend/config.py`
-- Modify: `backend/agent_server/config.py:100-116`
-- Modify: `backend/agent_server/bootstrap.py`
+**涉及文件：**
+- 修改： `backend/config.py`
+- 修改： `backend/agent_server/config.py:100-116`
+- 修改： `backend/agent_server/bootstrap.py`
 - Create: `tests/agent_framework/test_startup_validation.py`
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **步骤 1: 先编写失败测试**
 
-Create `tests/agent_framework/test_startup_validation.py`:
+创建 `tests/agent_framework/test_startup_validation.py`:
 
 ```python
 import os
@@ -749,14 +749,14 @@ if __name__ == "__main__":
     unittest.main()
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **步骤 2: 运行测试，确认其先失败**
 
-Run: `python -m unittest tests.agent_framework.test_startup_validation -v`
-Expected: FAIL with `ImportError: cannot import name '_is_default_secret_key'`
+运行： `python -m unittest tests.agent_framework.test_startup_validation -v`
+预期： FAIL with `ImportError: cannot import name '_is_default_secret_key'`
 
-- [ ] **Step 3: Update config.py with security helpers**
+- [ ] **步骤 3: Update config.py with security helpers**
 
-Add to the end of `backend/config.py`:
+添加到 the end of `backend/config.py`:
 
 ```python
 _DEFAULT_SECRET_KEYS = frozenset({
@@ -779,14 +779,14 @@ RATE_LIMIT_DEFAULT = os.getenv("RATE_LIMIT_DEFAULT", "60/minute")
 RATE_LIMIT_CHAT = os.getenv("RATE_LIMIT_CHAT", "20/minute")
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **步骤 4: 运行测试，确认其通过**
 
-Run: `python -m unittest tests.agent_framework.test_startup_validation -v`
-Expected: PASS (3 tests)
+运行： `python -m unittest tests.agent_framework.test_startup_validation -v`
+预期： PASS (3 tests)
 
-- [ ] **Step 5: Update agent_server/config.py to use CORS from env**
+- [ ] **步骤 5: Update agent_server/config.py to use CORS from env**
 
-In `backend/agent_server/config.py`, update the `AgentServerConfig` class. Change the `cors_allow_origins` default:
+在 `backend/agent_server/config.py`, update the `AgentServerConfig` class. Change the `cors_allow_origins` default:
 
 ```python
     cors_allow_origins: tuple[str, ...] = ("http://localhost:5173", "http://localhost:8000")
@@ -807,9 +807,9 @@ And update `get_server_config_for_preset` for `PRESET_FULL_STACK`:
         )
 ```
 
-- [ ] **Step 6: Add startup warning for default secret key**
+- [ ] **步骤 6: Add startup warning for default secret key**
 
-In `backend/agent_server/bootstrap.py`, add at the end of `init_database`:
+在 `backend/agent_server/bootstrap.py`, add at the end of `init_database`:
 
 ```python
     _warn_default_secret_key()
@@ -830,7 +830,7 @@ def _warn_default_secret_key() -> None:
             logger.error("SECRET_KEY 使用默认值且非 demo 模式，这是安全风险！请在 .env 中设置 SECRET_KEY")
 ```
 
-- [ ] **Step 7: Commit**
+- [ ] **步骤 7: 提交**
 
 ```bash
 git add backend/config.py backend/agent_server/config.py backend/agent_server/bootstrap.py tests/agent_framework/test_startup_validation.py
@@ -839,14 +839,14 @@ git commit -m "feat: add security hardening — default key detection, CORS whit
 
 ---
 
-### Task 6: Graceful Shutdown
+### 任务 6：优雅停机
 
-**Files:**
-- Modify: `backend/agent_server/app.py:45-53`
+**涉及文件：**
+- 修改： `backend/agent_server/app.py:45-53`
 
-- [ ] **Step 1: Update lifespan with shutdown cleanup**
+- [ ] **步骤 1: Update lifespan with shutdown cleanup**
 
-In `backend/agent_server/app.py`, replace the `_create_lifespan` function:
+在 `backend/agent_server/app.py`, replace the `_create_lifespan` function:
 
 ```python
 def _create_lifespan(config: AgentServerConfig):
@@ -868,12 +868,12 @@ def _create_lifespan(config: AgentServerConfig):
     return app_lifespan
 ```
 
-- [ ] **Step 2: Verify startup still works**
+- [ ] **步骤 2: 验证启动仍然正常**
 
-Run: `cd backend && python -c "from agent_server import create_app; app = create_app(); print('Startup OK')"`
-Expected: `Startup OK`
+运行： `cd backend && python -c "from agent_server import create_app; app = create_app(); print('Startup OK')"`
+预期： `Startup OK`
 
-- [ ] **Step 3: Commit**
+- [ ] **步骤 3: 提交**
 
 ```bash
 git add backend/agent_server/app.py
@@ -882,16 +882,16 @@ git commit -m "feat: add graceful shutdown with database connection cleanup"
 
 ---
 
-## Batch 1 Regression Check
+## 第一批回归检查
 
-- [ ] **Run all existing tests**
+- [ ] **运行现有全部测试**
 
 ```bash
 python -m unittest tests.agent_framework.test_middleware tests.agent_framework.test_logging_config tests.agent_framework.test_startup_validation
 python -m unittest tests.agent_framework.test_health_router tests.agent_framework.test_chat_service tests.agent_framework.test_capability_gap_service
 ```
 
-- [ ] **Run smoke scripts**
+- [ ] **运行 smoke 脚本**
 
 ```bash
 cd backend && python scripts/doctor.py
@@ -899,17 +899,17 @@ cd backend && python scripts/doctor.py
 
 ---
 
-## Batch 2: Observability & Reliability (Tasks 7-10)
+## 第二批：可观测性与可靠性（任务 7-10）
 
-### Task 7: Health Check Enhancement
+### 任务 7：健康检查增强
 
-**Files:**
-- Modify: `backend/routers/health.py`
-- Modify: `tests/agent_framework/test_health_router.py`
+**涉及文件：**
+- 修改： `backend/routers/health.py`
+- 修改： `tests/agent_framework/test_health_router.py`
 
-- [ ] **Step 1: Add liveness and readiness endpoints**
+- [ ] **步骤 1: 增加 liveness 和 readiness 端点**
 
-Add to `backend/routers/health.py`, before the existing `/health` endpoint:
+添加到 `backend/routers/health.py`, before the existing `/health` endpoint:
 
 ```python
 @router.get("/health/live")
@@ -931,9 +931,9 @@ def readiness(db: Session = Depends(get_db)):
     return {"status": "ready", "checks": checks}
 ```
 
-- [ ] **Step 2: Add tests for new endpoints**
+- [ ] **步骤 2: 为新端点补充测试**
 
-Add to `tests/agent_framework/test_health_router.py`:
+添加到 `tests/agent_framework/test_health_router.py`:
 
 ```python
     def test_liveness_returns_ok(self):
@@ -947,12 +947,12 @@ Add to `tests/agent_framework/test_health_router.py`:
         self.assertEqual(response.json()["status"], "ready")
 ```
 
-- [ ] **Step 3: Run tests**
+- [ ] **步骤 3: Run tests**
 
-Run: `python -m unittest tests.agent_framework.test_health_router -v`
-Expected: PASS
+运行： `python -m unittest tests.agent_framework.test_health_router -v`
+预期： PASS
 
-- [ ] **Step 4: Commit**
+- [ ] **步骤 4: 提交**
 
 ```bash
 git add backend/routers/health.py tests/agent_framework/test_health_router.py
@@ -961,24 +961,24 @@ git commit -m "feat: add liveness and readiness health check endpoints"
 
 ---
 
-### Task 8: API Rate Limiting
+### 任务 8：API 速率限制
 
-**Files:**
-- Modify: `backend/requirements.txt`
-- Modify: `backend/agent_server/app.py`
-- Modify: `backend/routers/chat.py:64-68`
+**涉及文件：**
+- 修改： `backend/requirements.txt`
+- 修改： `backend/agent_server/app.py`
+- 修改： `backend/routers/chat.py:64-68`
 
-- [ ] **Step 1: Add slowapi to requirements.txt**
+- [ ] **步骤 1: Add slowapi to requirements.txt**
 
-Add to `backend/requirements.txt`:
+添加到 `backend/requirements.txt`:
 
 ```
 slowapi==0.1.9
 ```
 
-- [ ] **Step 2: Add rate limiter setup to app.py**
+- [ ] **步骤 2: 向 app.py 增加限流器初始化**
 
-In `backend/agent_server/app.py`, add imports:
+在 `backend/agent_server/app.py`, add imports:
 
 ```python
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -998,9 +998,9 @@ In `create_app`, after `install_error_handlers(app)`, add:
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 ```
 
-- [ ] **Step 3: Add rate limit to chat endpoint**
+- [ ] **步骤 3: 为 chat 端点增加限流**
 
-In `backend/routers/chat.py`, add import:
+在 `backend/routers/chat.py`, add import:
 
 ```python
 from slowapi import Limiter
@@ -1021,9 +1021,9 @@ def chat(
 ):
 ```
 
-Note: The rate limit is applied globally via the limiter's `default_limits`. The chat endpoint inherits the default. For stricter chat-specific limits, add `@limiter.limit(RATE_LIMIT_CHAT)` decorator when needed.
+说明： 当前限流通过 limiter 的 `default_limits` 全局生效，chat 端点默认继承该限制。如果后续需要更严格的 chat 专属限流，再单独增加 `@limiter.limit(RATE_LIMIT_CHAT)` 装饰器。
 
-- [ ] **Step 4: Commit**
+- [ ] **步骤 4: 提交**
 
 ```bash
 git add backend/requirements.txt backend/agent_server/app.py backend/routers/chat.py
@@ -1032,24 +1032,24 @@ git commit -m "feat: add API rate limiting with slowapi"
 
 ---
 
-### Task 9: Context Window Management
+### 任务 9：上下文窗口管理
 
-**Files:**
+**涉及文件：**
 - Create: `backend/services/context_compaction_service.py`
 - Create: `tests/agent_framework/test_context_compaction_service.py`
-- Modify: `backend/requirements.txt`
+- 修改： `backend/requirements.txt`
 
-- [ ] **Step 1: Add tiktoken to requirements.txt**
+- [ ] **步骤 1: Add tiktoken to requirements.txt**
 
-Add to `backend/requirements.txt`:
+添加到 `backend/requirements.txt`:
 
 ```
 tiktoken==0.7.0
 ```
 
-- [ ] **Step 2: Write the failing test**
+- [ ] **步骤 2: 先编写失败测试**
 
-Create `tests/agent_framework/test_context_compaction_service.py`:
+创建 `tests/agent_framework/test_context_compaction_service.py`:
 
 ```python
 import unittest
@@ -1104,14 +1104,14 @@ if __name__ == "__main__":
     unittest.main()
 ```
 
-- [ ] **Step 3: Run test to verify it fails**
+- [ ] **步骤 3: 运行测试，确认其先失败**
 
-Run: `python -m unittest tests.agent_framework.test_context_compaction_service -v`
-Expected: FAIL with `ModuleNotFoundError`
+运行： `python -m unittest tests.agent_framework.test_context_compaction_service -v`
+预期： FAIL with `ModuleNotFoundError`
 
-- [ ] **Step 4: Write the context compaction service**
+- [ ] **步骤 4: 编写上下文压缩服务**
 
-Create `backend/services/context_compaction_service.py`:
+创建 `backend/services/context_compaction_service.py`:
 
 ```python
 """Token-aware context window compaction for long conversations."""
@@ -1190,12 +1190,12 @@ def get_context_compaction_service() -> ContextCompactionService:
     return _instance
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [ ] **步骤 5: 运行测试，确认其通过**
 
-Run: `python -m unittest tests.agent_framework.test_context_compaction_service -v`
-Expected: PASS (4 tests)
+运行： `python -m unittest tests.agent_framework.test_context_compaction_service -v`
+预期： PASS (4 tests)
 
-- [ ] **Step 6: Commit**
+- [ ] **步骤 6: 提交**
 
 ```bash
 git add backend/services/context_compaction_service.py tests/agent_framework/test_context_compaction_service.py backend/requirements.txt
@@ -1204,25 +1204,25 @@ git commit -m "feat: add token-aware context window compaction service"
 
 ---
 
-### Task 10: CI Pipeline Enhancement
+### 任务 10：CI 流水线增强
 
-**Files:**
+**涉及文件：**
 - Create: `backend/pyproject.toml`
-- Modify: `backend/requirements.txt`
-- Modify: `.github/workflows/ci.yml`
+- 修改： `backend/requirements.txt`
+- 修改： `.github/workflows/ci.yml`
 
-- [ ] **Step 1: Add ruff and pytest-cov to requirements.txt**
+- [ ] **步骤 1: Add ruff and pytest-cov to requirements.txt**
 
-Add to `backend/requirements.txt`:
+添加到 `backend/requirements.txt`:
 
 ```
 ruff==0.4.4
 pytest-cov==5.0.0
 ```
 
-- [ ] **Step 2: Create ruff configuration**
+- [ ] **步骤 2: 创建 ruff configuration**
 
-Create `backend/pyproject.toml`:
+创建 `backend/pyproject.toml`:
 
 ```toml
 [tool.ruff]
@@ -1237,9 +1237,9 @@ ignore = ["E501"]
 "alembic/*" = ["E", "F", "W", "I"]
 ```
 
-- [ ] **Step 3: Update CI workflow**
+- [ ] **步骤 3: 更新 CI 工作流**
 
-Replace `.github/workflows/ci.yml` with:
+替换 `.github/workflows/ci.yml` with:
 
 ```yaml
 name: CI
@@ -1339,12 +1339,12 @@ jobs:
         run: npm run build
 ```
 
-- [ ] **Step 4: Verify ruff passes locally**
+- [ ] **步骤 4: 在本地验证 ruff 通过**
 
-Run: `cd backend && ruff check . --config pyproject.toml`
-Expected: No critical errors (warnings are OK for now)
+运行： `cd backend && ruff check . --config pyproject.toml`
+预期： No critical errors (warnings are OK for now)
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5: 提交**
 
 ```bash
 git add backend/pyproject.toml backend/requirements.txt .github/workflows/ci.yml
@@ -1353,9 +1353,9 @@ git commit -m "feat: add ruff linting and enhanced CI pipeline"
 
 ---
 
-## Batch 2 Regression Check
+## 第二批回归检查
 
-- [ ] **Run all tests including new ones**
+- [ ] **运行全部测试（含新增测试）**
 
 ```bash
 python -m unittest tests.agent_framework.test_middleware tests.agent_framework.test_logging_config tests.agent_framework.test_startup_validation tests.agent_framework.test_context_compaction_service tests.agent_framework.test_health_router
@@ -1363,16 +1363,16 @@ python -m unittest tests.agent_framework.test_middleware tests.agent_framework.t
 
 ---
 
-## Batch 3: Code Quality (Tasks 11-14)
+## 第三批：代码质量（任务 11-14）
 
-### Task 11: Refactor Orchestrator Long Functions
+### 任务 11：重构 Orchestrator 超长函数
 
-**Files:**
-- Modify: `backend/orchestrator.py`
+**涉及文件：**
+- 修改： `backend/orchestrator.py`
 
-- [ ] **Step 1: Extract runtime context preparation**
+- [ ] **步骤 1: 抽取运行时上下文准备逻辑**
 
-In `backend/orchestrator.py`, extract the runtime context loading (lines ~128-175 of `process_message`) into a private method:
+在 `backend/orchestrator.py`, extract the runtime context loading (lines ~128-175 of `process_message`) into a private method:
 
 ```python
     async def _prepare_runtime_context(
@@ -1399,7 +1399,7 @@ In `backend/orchestrator.py`, extract the runtime context loading (lines ~128-17
         return runtime_knowledge, runtime_skills, subagent_context, capability_profile, agent_memory
 ```
 
-- [ ] **Step 2: Extract message building**
+- [ ] **步骤 2: 抽取消息构建逻辑**
 
 ```python
     def _build_messages(
@@ -1427,7 +1427,7 @@ In `backend/orchestrator.py`, extract the runtime context loading (lines ~128-17
         return messages
 ```
 
-- [ ] **Step 3: Extract stream event processing**
+- [ ] **步骤 3: 抽取流事件处理逻辑**
 
 ```python
     def _process_stream_chunk(
@@ -1466,7 +1466,7 @@ In `backend/orchestrator.py`, extract the runtime context loading (lines ~128-17
         return json.dumps(chunk_data, ensure_ascii=False) + "\n"
 ```
 
-- [ ] **Step 4: Refactor process_message to use extracted methods**
+- [ ] **步骤 4: 重构 process_message，改为使用抽取后的方法**
 
 Rewrite `process_message` to call the extracted methods, reducing it from ~300 lines to ~120 lines. The main loop becomes:
 
@@ -1528,12 +1528,12 @@ Rewrite `process_message` to call the extracted methods, reducing it from ~300 l
                 yield output
 ```
 
-- [ ] **Step 5: Run existing tests**
+- [ ] **步骤 5: Run existing tests**
 
-Run: `python -m unittest tests.agent_framework.test_orchestrator_service -v`
-Expected: PASS
+运行： `python -m unittest tests.agent_framework.test_orchestrator_service -v`
+预期： PASS
 
-- [ ] **Step 6: Commit**
+- [ ] **步骤 6: 提交**
 
 ```bash
 git add backend/orchestrator.py
@@ -1542,16 +1542,16 @@ git commit -m "refactor: extract orchestrator methods to reduce process_message 
 
 ---
 
-### Task 12: Frontend SSE Stream Deduplication
+### 任务 12：前端 SSE 流处理去重
 
-**Files:**
-- Modify: `frontend-vue/src/stores/conversation.js`
+**涉及文件：**
+- 修改： `frontend-vue/src/stores/conversation.js`
 
-- [ ] **Step 1: Identify the duplicated SSE processing logic**
+- [ ] **步骤 1: 识别重复的 SSE 处理逻辑**
 
 In `conversation.js`, both `sendMessage` and `regenerateMessage` contain nearly identical SSE event parsing logic. Extract this into a shared `_processSSEStream` function.
 
-- [ ] **Step 2: Create the shared _processSSEStream function**
+- [ ] **步骤 2: 创建 the shared _processSSEStream function**
 
 Add this function inside the store definition (before `sendMessage`):
 
@@ -1605,7 +1605,7 @@ Add this function inside the store definition (before `sendMessage`):
     }
 ```
 
-- [ ] **Step 3: Extract _handleStreamEvent**
+- [ ] **步骤 3: 抽取 _handleStreamEvent**
 
 ```javascript
     function _handleStreamEvent(event, conversation, onConversationId) {
@@ -1617,16 +1617,16 @@ Add this function inside the store definition (before `sendMessage`):
     }
 ```
 
-- [ ] **Step 4: Refactor sendMessage and regenerateMessage to use _processSSEStream**
+- [ ] **步骤 4: 重构 sendMessage 和 regenerateMessage，统一复用 _processSSEStream**
 
 Both functions become thin wrappers that call `_processSSEStream` with the appropriate URL and body.
 
-- [ ] **Step 5: Run frontend tests**
+- [ ] **步骤 5: Run frontend tests**
 
-Run: `cd frontend-vue && npm test`
-Expected: PASS
+运行： `cd frontend-vue && npm test`
+预期： PASS
 
-- [ ] **Step 6: Commit**
+- [ ] **步骤 6: 提交**
 
 ```bash
 git add frontend-vue/src/stores/conversation.js
@@ -1635,12 +1635,12 @@ git commit -m "refactor: extract shared SSE stream processing in conversation st
 
 ---
 
-### Task 13: Backend Chat Router Stream Deduplication
+### 任务 13：后端 Chat Router 流处理去重
 
-**Files:**
-- Modify: `backend/routers/chat.py`
+**涉及文件：**
+- 修改： `backend/routers/chat.py`
 
-- [ ] **Step 1: Extract shared stream pipeline**
+- [ ] **步骤 1: 抽取共享流处理管线**
 
 The `chat` and `chat_non_stream` endpoints share plan lifecycle logic. Extract into a helper:
 
@@ -1663,16 +1663,16 @@ def _prepare_chat_context(
     return started_plan_state, execution_context
 ```
 
-- [ ] **Step 2: Refactor both endpoints to use the helper**
+- [ ] **步骤 2: 重构两个端点，统一使用该辅助函数**
 
 Both `chat` and `chat_non_stream` call `_prepare_chat_context` instead of duplicating the plan lifecycle logic.
 
-- [ ] **Step 3: Run existing tests**
+- [ ] **步骤 3: Run existing tests**
 
-Run: `python -m unittest tests.agent_framework.test_chat_service -v`
-Expected: PASS
+运行： `python -m unittest tests.agent_framework.test_chat_service -v`
+预期： PASS
 
-- [ ] **Step 4: Commit**
+- [ ] **步骤 4: 提交**
 
 ```bash
 git add backend/routers/chat.py
@@ -1681,15 +1681,15 @@ git commit -m "refactor: extract shared chat context preparation in chat router"
 
 ---
 
-### Task 14: Remove Hardcoded Configuration
+### 任务 14：移除硬编码配置
 
-**Files:**
-- Modify: `backend/orchestrator.py:92`
-- Modify: `backend/config.py`
+**涉及文件：**
+- 修改： `backend/orchestrator.py:92`
+- 修改： `backend/config.py`
 
-- [ ] **Step 1: Replace hardcoded model in orchestrator**
+- [ ] **步骤 1: 替换 hardcoded model in orchestrator**
 
-In `backend/orchestrator.py`, line 92, replace:
+在 `backend/orchestrator.py`, line 92, replace:
 
 ```python
         self.context_window = self.context_store.get_context(conversation_id, "deepseek-r1:7b")
@@ -1705,17 +1705,17 @@ With:
         self.context_window = self.context_store.get_context(conversation_id, DEFAULT_MODEL)
 ```
 
-- [ ] **Step 2: Add DOUBAO_SUPPORTS_TOOL_CHOICE to config**
+- [ ] **步骤 2: 向 config 增加 DOUBAO_SUPPORTS_TOOL_CHOICE**
 
-Add to `backend/config.py`:
+添加到 `backend/config.py`:
 
 ```python
 DOUBAO_SUPPORTS_TOOL_CHOICE = os.getenv("DOUBAO_SUPPORTS_TOOL_CHOICE", "false").lower() == "true"
 ```
 
-- [ ] **Step 3: Use config in orchestrator**
+- [ ] **步骤 3: 在 orchestrator 中使用配置项**
 
-In `backend/orchestrator.py`, replace the hardcoded doubao check:
+在 `backend/orchestrator.py`, replace the hardcoded doubao check:
 
 ```python
         # Before:
@@ -1731,12 +1731,12 @@ In `backend/orchestrator.py`, replace the hardcoded doubao check:
         use_tool_choice = DOUBAO_SUPPORTS_TOOL_CHOICE if is_doubao else True
 ```
 
-- [ ] **Step 4: Run tests**
+- [ ] **步骤 4: Run tests**
 
-Run: `python -m unittest tests.agent_framework.test_orchestrator_service -v`
-Expected: PASS
+运行： `python -m unittest tests.agent_framework.test_orchestrator_service -v`
+预期： PASS
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5: 提交**
 
 ```bash
 git add backend/orchestrator.py backend/config.py
@@ -1745,9 +1745,9 @@ git commit -m "refactor: remove hardcoded model names and provider flags from or
 
 ---
 
-## Batch 3 Regression Check
+## 第三批回归检查
 
-- [ ] **Run full test suite**
+- [ ] **运行完整测试套件**
 
 ```bash
 python -m unittest tests.agent_framework.test_orchestrator_service tests.agent_framework.test_chat_service tests.agent_framework.test_health_router
@@ -1756,17 +1756,17 @@ cd frontend-vue && npm test && npm run build
 
 ---
 
-## Batch 4: Framework Maturity (Tasks 15-18)
+## 第四批：框架成熟度（任务 15-18）
 
-### Task 15: Startup Configuration Validation
+### 任务 15：启动配置校验
 
-**Files:**
-- Modify: `backend/agent_server/bootstrap.py`
-- Modify: `tests/agent_framework/test_startup_validation.py`
+**涉及文件：**
+- 修改： `backend/agent_server/bootstrap.py`
+- 修改： `tests/agent_framework/test_startup_validation.py`
 
-- [ ] **Step 1: Add validation test**
+- [ ] **步骤 1: 增加校验测试**
 
-Add to `tests/agent_framework/test_startup_validation.py`:
+添加到 `tests/agent_framework/test_startup_validation.py`:
 
 ```python
 class TestStartupValidation(unittest.TestCase):
@@ -1784,14 +1784,14 @@ class TestStartupValidation(unittest.TestCase):
             self.assertIsInstance(errors, list)
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **步骤 2: 运行测试，确认其先失败**
 
-Run: `python -m unittest tests.agent_framework.test_startup_validation -v`
-Expected: FAIL with `ImportError: cannot import name 'validate_startup_config'`
+运行： `python -m unittest tests.agent_framework.test_startup_validation -v`
+预期： FAIL with `ImportError: cannot import name 'validate_startup_config'`
 
-- [ ] **Step 3: Add validate_startup_config to bootstrap.py**
+- [ ] **步骤 3: Add validate_startup_config to bootstrap.py**
 
-Add to `backend/agent_server/bootstrap.py`:
+添加到 `backend/agent_server/bootstrap.py`:
 
 ```python
 def validate_startup_config() -> list[str]:
@@ -1816,7 +1816,7 @@ def validate_startup_config() -> list[str]:
     return warnings
 ```
 
-- [ ] **Step 4: Call validation in init_database**
+- [ ] **步骤 4: 在 init_database 中调用校验**
 
 At the end of `init_database` in `bootstrap.py`, add:
 
@@ -1824,12 +1824,12 @@ At the end of `init_database` in `bootstrap.py`, add:
     validate_startup_config()
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [ ] **步骤 5: 运行测试，确认其通过**
 
-Run: `python -m unittest tests.agent_framework.test_startup_validation -v`
-Expected: PASS
+运行： `python -m unittest tests.agent_framework.test_startup_validation -v`
+预期： PASS
 
-- [ ] **Step 6: Commit**
+- [ ] **步骤 6: 提交**
 
 ```bash
 git add backend/agent_server/bootstrap.py tests/agent_framework/test_startup_validation.py
@@ -1838,17 +1838,17 @@ git commit -m "feat: add startup configuration validation"
 
 ---
 
-### Task 16: API Version Prefix
+### 任务 16：API 版本前缀
 
-**Files:**
-- Modify: `backend/agent_server/router_registry.py`
-- Modify: `frontend-vue/src/api/index.js`
+**涉及文件：**
+- 修改： `backend/agent_server/router_registry.py`
+- 修改： `frontend-vue/src/api/index.js`
 
-- [ ] **Step 1: Read current router_registry.py**
+- [ ] **步骤 1: 先阅读当前 router_registry.py**
 
 Read `backend/agent_server/router_registry.py` to understand the current routing setup.
 
-- [ ] **Step 2: Add /api/v1 alias support**
+- [ ] **步骤 2: 增加 /api/v1 别名支持**
 
 The approach: keep `/api/` as the primary prefix (backward compatible), and add `/api/v1/` as an alias. In `router_registry.py`, after collecting routers, duplicate them with `/api/v1` prefix:
 
@@ -1866,11 +1866,11 @@ def get_api_routers(route_groups=None, route_names=None):
     return routers
 ```
 
-Note: This is a lightweight approach. The existing `/api/` routes continue to work. New clients can use `/api/v1/`.
+说明： 这是一个轻量方案。现有 `/api/` 路由继续保持可用，新客户端可以改用 `/api/v1/`。
 
-- [ ] **Step 3: Update frontend API base URL**
+- [ ] **步骤 3: 更新前端 API base URL**
 
-In `frontend-vue/src/api/index.js`, change:
+在 `frontend-vue/src/api/index.js`, change:
 
 ```javascript
 const API_BASE_URL = '/api'
@@ -1884,12 +1884,12 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
 
 This allows future migration to `/api/v1` via environment variable without code changes.
 
-- [ ] **Step 4: Run frontend build**
+- [ ] **步骤 4: 运行前端构建**
 
-Run: `cd frontend-vue && npm run build`
-Expected: PASS
+运行： `cd frontend-vue && npm run build`
+预期： PASS
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5: 提交**
 
 ```bash
 git add backend/agent_server/router_registry.py frontend-vue/src/api/index.js
@@ -1898,12 +1898,12 @@ git commit -m "feat: add /api/v1 route aliases and configurable API base URL"
 
 ---
 
-### Task 17: Frontend Unified Error Handling
+### 任务 17：前端统一错误处理
 
-**Files:**
-- Modify: `frontend-vue/src/api/index.js`
+**涉及文件：**
+- 修改： `frontend-vue/src/api/index.js`
 
-- [ ] **Step 1: Add unified error interceptor**
+- [ ] **步骤 1: 增加统一错误拦截器**
 
 Update the response interceptor in `frontend-vue/src/api/index.js`:
 
@@ -1931,12 +1931,12 @@ Update the response interceptor in `frontend-vue/src/api/index.js`:
   )
 ```
 
-- [ ] **Step 2: Run frontend tests**
+- [ ] **步骤 2: Run frontend tests**
 
-Run: `cd frontend-vue && npm test`
-Expected: PASS
+运行： `cd frontend-vue && npm test`
+预期： PASS
 
-- [ ] **Step 3: Commit**
+- [ ] **步骤 3: 提交**
 
 ```bash
 git add frontend-vue/src/api/index.js
@@ -1945,12 +1945,12 @@ git commit -m "feat: add unified API error handling with structured error parsin
 
 ---
 
-### Task 18: Test Coverage Gate
+### 任务 18：测试覆盖率门禁
 
-**Files:**
-- Modify: `.github/workflows/ci.yml`
+**涉及文件：**
+- 修改： `.github/workflows/ci.yml`
 
-- [ ] **Step 1: Add coverage reporting to CI**
+- [ ] **步骤 1: 向 CI 增加覆盖率报告**
 
 In `.github/workflows/ci.yml`, in the `backend-tests` job, after the test run step, add:
 
@@ -1965,9 +1965,9 @@ In `.github/workflows/ci.yml`, in the `backend-tests` job, after the test run st
         continue-on-error: true
 ```
 
-Note: Starting with `--cov-fail-under=30` as a baseline. This can be gradually increased as coverage improves. The `continue-on-error: true` means it reports but doesn't block CI initially.
+说明： 先以 `--cov-fail-under=30` 作为基线。后续可以随着覆盖率提升逐步提高门槛。`continue-on-error: true` 表示当前阶段先做报告，不立即阻断 CI。
 
-- [ ] **Step 2: Commit**
+- [ ] **步骤 2: 提交**
 
 ```bash
 git add .github/workflows/ci.yml
@@ -1976,9 +1976,9 @@ git commit -m "feat: add test coverage reporting to CI pipeline"
 
 ---
 
-## Batch 4 Regression Check
+## 第四批回归检查
 
-- [ ] **Run full regression**
+- [ ] **运行完整回归**
 
 ```bash
 python -m unittest tests.agent_framework.test_startup_validation tests.agent_framework.test_health_router tests.agent_framework.test_middleware tests.agent_framework.test_logging_config tests.agent_framework.test_context_compaction_service
@@ -1988,9 +1988,9 @@ cd frontend-vue && npm test && npm run build
 
 ---
 
-## Final Verification
+## 最终验证
 
-- [ ] **Run complete smoke check sequence**
+- [ ] **运行完整 smoke 检查链路**
 
 ```bash
 cd backend
@@ -2000,24 +2000,25 @@ python scripts/auth_session_smoke.py
 python scripts/chat_stream_smoke.py
 ```
 
-- [ ] **Verify new endpoints**
+- [ ] **验证新增端点**
 
 ```bash
 curl http://localhost:8000/api/health/live
 curl http://localhost:8000/api/health/ready
 ```
 
-- [ ] **Verify request ID in response headers**
+- [ ] **验证响应头中的 request ID**
 
 ```bash
 curl -v http://localhost:8000/api/health 2>&1 | grep X-Request-ID
 ```
 
-- [ ] **Final commit with all changes**
+- [ ] **汇总全部改动后提交**
 
 ```bash
 git add -A
 git status
-# Review all changes, then:
+# 检查所有改动后，再执行：
 git commit -m "chore: engineering infrastructure v0 complete — 18 improvements across 4 batches"
 ```
+
