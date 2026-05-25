@@ -118,6 +118,54 @@ class McpRuntimeServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("mcp_filesystem_read", tool_names)
         self.assertIn("mcp_search_query", tool_names)
 
+    def test_build_runtime_contract_exposes_split_component_health(self):
+        service = McpRuntimeService()
+        service.registry_service = _StubMcpRegistryService()
+
+        contract = service.build_runtime_contract()
+        component_ids = {item["component_id"] for item in contract["components"]}
+
+        self.assertEqual(contract["contract_version"], "phase-b-mcp-runtime-v1")
+        self.assertEqual(contract["capability_count"], 2)
+        self.assertEqual(contract["overall_status"], "healthy")
+        self.assertEqual(
+            component_ids,
+            {"mcp_registry", "mcp_session_manager", "mcp_capability_router", "mcp_audit"},
+        )
+
+    def test_validate_required_capabilities_returns_diagnostics_when_router_fails(self):
+        service = McpRuntimeService()
+
+        def _broken_validate(_capabilities):
+            raise RuntimeError("probe crashed")
+
+        service.adapter_service.validate_capabilities = _broken_validate
+
+        state = service.validate_required_capabilities(["filesystem.read"])
+
+        self.assertFalse(state["ready"])
+        self.assertEqual(state["unavailable_capabilities"], ["filesystem.read"])
+        self.assertEqual(state["diagnostics"]["component"], "mcp_capability_router")
+        self.assertIn("probe crashed", state["diagnostics"]["error"])
+        self.assertEqual(service.audit.list_records()[-1]["event_type"], "capability_validation_failed")
+
+    async def test_execute_capability_records_session_failure_and_adapter_fallback(self):
+        service = McpRuntimeService()
+        service.registry_service = _StubMcpRegistryService()
+        service.session_service.execute_capability = AsyncMock(side_effect=ValueError("session failed"))
+        service.adapter_service.execute = AsyncMock(return_value="adapter fallback ok")
+
+        result = await service.execute_capability(
+            "filesystem.read",
+            request="读取 README.md",
+            arguments={"path": "README.md"},
+        )
+
+        audit_types = [item["event_type"] for item in service.audit.list_records()]
+        self.assertEqual(result, "adapter fallback ok")
+        self.assertIn("session_execute_failed", audit_types)
+        self.assertIn("adapter_fallback_succeeded", audit_types)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,0 +1,4 @@
+- [x] Add failing runtime contract smoke tests for artifact schema evidence fields.
+- [x] Emit artifact schema evidence from `runtime_contract_smoke.py`.
+- [x] Update runtime contract docs and hardening roadmap notes.
+- [x] Validate OpenSpec and run focused backend tests.

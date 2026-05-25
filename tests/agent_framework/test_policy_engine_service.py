@@ -7,14 +7,16 @@ class PolicyEngineServiceTests(unittest.TestCase):
     def setUp(self):
         self.service = get_policy_engine_service()
 
-    def test_blocks_high_risk_tool(self):
+    def test_high_risk_tool_requires_approval(self):
         decision = self.service.evaluate_tool_use(
             tool_name="mcp_filesystem_write",
             tool_args={"path": "a.txt"},
-            context={"agent_role": "backend"},
+            context={},
         )
         self.assertFalse(decision.allowed)
-        self.assertEqual(decision.metadata["policy"], "high_risk_tool_block")
+        self.assertTrue(decision.requires_approval)
+        self.assertEqual(decision.reason_code, "high_risk_tool_requires_approval")
+        self.assertEqual(decision.metadata["policy"], "high_risk_tool_requires_approval")
 
     def test_blocks_tool_not_in_subagent_allowlist(self):
         decision = self.service.evaluate_tool_use(
@@ -23,6 +25,19 @@ class PolicyEngineServiceTests(unittest.TestCase):
             context={"agent_role": "frontend"},
         )
         self.assertFalse(decision.allowed)
+        self.assertFalse(decision.requires_approval)
+        self.assertEqual(decision.reason_code, "subagent_tool_allowlist_block")
+        self.assertEqual(decision.metadata["policy"], "subagent_tool_allowlist_block")
+
+    def test_allowlist_block_takes_priority_over_high_risk_approval(self):
+        decision = self.service.evaluate_tool_use(
+            tool_name="mcp_filesystem_write",
+            tool_args={"path": "a.txt"},
+            context={"agent_role": "frontend"},
+        )
+        self.assertFalse(decision.allowed)
+        self.assertFalse(decision.requires_approval)
+        self.assertEqual(decision.reason_code, "subagent_tool_allowlist_block")
         self.assertEqual(decision.metadata["policy"], "subagent_tool_allowlist_block")
 
     def test_select_provider_hint_with_override(self):

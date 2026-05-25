@@ -1,0 +1,6 @@
+- [x] Define dispatcher service and backend adapter contract.
+- [x] Wire opt-in dispatcher behind existing `child_executor_dispatch_contract`.
+- [x] Add fail-closed audit evidence for blocked or failed dispatch attempts.
+- [x] Add runtime contract smoke and quality gate coverage.
+- [x] Update docs/manual notes and canonical spec.
+- [x] Run focused backend tests and OpenSpec validation.

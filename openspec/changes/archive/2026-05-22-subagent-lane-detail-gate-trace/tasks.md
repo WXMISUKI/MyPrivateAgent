@@ -1,0 +1,5 @@
+- [x] Add failing health router tests for degraded trace payload normalization.
+- [x] Add failing health router test proving subagent detail coverage changes produce a new fingerprint.
+- [x] Implement fail-closed normalization in `health.py`.
+- [x] Update runtime contract docs/manual notes.
+- [x] Validate OpenSpec and run focused backend tests.

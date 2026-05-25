@@ -1,0 +1,6 @@
+- [x] Add OpenSpec delta requirements for vendor lock target decision evidence.
+- [x] Add worker ownership builder tests for blocked/default and ready target decisions.
+- [x] Implement vendor lock target decision contract and production gate evidence.
+- [x] Extend runtime smoke, Quality Gate, and Runtime Contract Gate summary coverage.
+- [x] Sync canonical specs/docs and verify focused tests plus smoke.
+- [x] Archive the completed OpenSpec change.

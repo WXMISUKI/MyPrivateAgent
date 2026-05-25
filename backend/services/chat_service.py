@@ -14,6 +14,25 @@ from sqlalchemy.orm import Session
 logger = logging.getLogger(__name__)
 
 
+class RuntimeApprovalRequired(Exception):
+    """Raised when an orchestrator run pauses for approval instead of completing."""
+
+    def __init__(self, message: str, event: Optional[Dict[str, Any]] = None):
+        super().__init__(message)
+        self.message = message
+        self.event = dict(event or {})
+
+
+def is_runtime_waiting_approval_event(event: Dict[str, Any]) -> bool:
+    if not isinstance(event, dict):
+        return False
+    if str(event.get("type") or "").strip() != "done":
+        return False
+    state = str(extract_event_field(event, "state", "") or "").strip().lower()
+    stop_reason = str(extract_event_field(event, "stop_reason", "") or "").strip().lower()
+    return state == "waiting_approval" or stop_reason == "approval_required"
+
+
 def _get_planner_service_cls():
     try:
         from services.planner_service import PlannerService
@@ -54,6 +73,30 @@ def _get_policy_engine_service():
     return get_policy_engine_service()
 
 
+def _get_subagent_runtime_service():
+    try:
+        from services.subagent_service import get_subagent_runtime_service
+    except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+        from backend.services.subagent_service import get_subagent_runtime_service
+    return get_subagent_runtime_service()
+
+
+def _get_query_control_event_mapper_service():
+    try:
+        from services.query_control_event_mapper_service import get_query_control_event_mapper_service
+    except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+        from backend.services.query_control_event_mapper_service import get_query_control_event_mapper_service
+    return get_query_control_event_mapper_service()
+
+
+def _get_main_chat_query_control_service():
+    try:
+        from services.main_chat_query_control_service import get_main_chat_query_control_service
+    except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+        from backend.services.main_chat_query_control_service import get_main_chat_query_control_service
+    return get_main_chat_query_control_service()
+
+
 def extract_event_field(event: Dict[str, Any], key: str, default: Any = "") -> Any:
     """Read a field from canonical events, supporting both top-level and payload locations."""
     payload = event.get("payload") or {}
@@ -88,6 +131,144 @@ def _infer_error_category_from_text(result_text: str) -> str:
     return ""
 
 
+def _normalize_approval_resolution_status(value: Any) -> str:
+    status = str(value or "").strip().lower()
+    if status in {"approved", "approve", "allow", "allowed"}:
+        return "approved"
+    if status in {"denied", "deny", "reject", "rejected"}:
+        return "denied"
+    return status
+
+
+def _build_main_chat_input_received_event(
+    *,
+    user_message: str,
+    model_name: str,
+    execution_context: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    event = {
+        "type": "status",
+        "status_kind": "main_chat_input_received",
+        "content": str(user_message or "").strip(),
+        "model_name": str(model_name or "").strip(),
+    }
+    event.update(_extract_execution_run_scope(execution_context))
+    return {
+        key: value
+        for key, value in event.items()
+        if value not in (None, "")
+    }
+
+
+def _attach_main_chat_query_control_mapping(event: Dict[str, Any]) -> Dict[str, Any]:
+    event_dict = dict(event or {})
+    mapping = _get_query_control_event_mapper_service().map_main_chat_event(event_dict)
+    if mapping is not None:
+        event_dict["_query_control"] = dict(mapping)
+    return event_dict
+
+
+def _record_main_chat_query_control_event(
+    *,
+    db: Any,
+    conversation_id: Optional[int],
+    execution_context: Optional[Dict[str, Any]],
+    event: Dict[str, Any],
+) -> None:
+    context = dict(execution_context or {})
+    if not context.get("enable_main_chat_query_control_timeline"):
+        return
+    query_id = str(
+        context.get("run_id")
+        or context.get("scheduler_run_id")
+        or context.get("child_run_id")
+        or ""
+    ).strip()
+    if not query_id:
+        return
+    recorder = getattr(_get_main_chat_query_control_service(), "record_query_control_events", None)
+    if not callable(recorder):
+        return
+    recorder(
+        db=db,
+        conversation_id=conversation_id,
+        query_id=query_id,
+        events=[dict(event or {})],
+    )
+
+
+def merge_chat_execution_context(
+    request_execution_context: Optional[Dict[str, Any]],
+    runtime_execution_context: Optional[Dict[str, Any]],
+) -> Optional[Dict[str, Any]]:
+    request_context = dict(request_execution_context or {})
+    runtime_context = dict(runtime_execution_context or {})
+    if not request_context and not runtime_context:
+        return None
+    return {
+        **request_context,
+        **runtime_context,
+    }
+
+
+def _record_subagent_query_control_event(
+    *,
+    subagent_runtime_service: Any,
+    db: Any,
+    conversation_id: int,
+    event: Dict[str, Any],
+) -> None:
+    recorder = getattr(subagent_runtime_service, "record_query_control_events", None)
+    if not callable(recorder):
+        return
+    recorder(
+        db=db,
+        conversation_id=conversation_id,
+        events=[dict(event or {})],
+    )
+
+
+def _build_tool_permission_required_trace(
+    event: Dict[str, Any],
+    *,
+    trace_model_name: str,
+    trace_provider: str,
+) -> Dict[str, Any]:
+    tool_name = str(extract_event_field(event, "tool_name", extract_event_field(event, "name", "")) or "").strip()
+    request_id = str(
+        extract_event_field(event, "approval_request_id", extract_event_field(event, "request_id", "")) or ""
+    ).strip()
+    permission_level = str(extract_event_field(event, "permission_level", "") or "").strip()
+    reason_code = str(extract_event_field(event, "reason_code", "") or "").strip()
+    reason = str(extract_event_field(event, "reason", "") or "").strip()
+    requested_by_role = str(extract_event_field(event, "requested_by_role", "") or "").strip()
+    requested_by_agent_id = str(extract_event_field(event, "requested_by_agent_id", "") or "").strip()
+    tool_args = extract_event_field(event, "tool_args", None)
+    if tool_args is None:
+        tool_args = extract_event_field(event, "args", {}) or {}
+    return {
+        "source": "governance",
+        "event_type": "tool_permission_required",
+        "summary": f"工具 `{tool_name or 'unknown'}` 等待审批",
+        "detail": f"request_id={request_id}" if request_id else reason,
+        "severity": "warning",
+        "payload": {
+            "tool_name": tool_name,
+            "request_id": request_id,
+            "approval_request_id": request_id,
+            "permission_level": permission_level,
+            "reason_code": reason_code,
+            "reason": reason,
+            "requires_approval": bool(extract_event_field(event, "requires_approval", True)),
+            "requested_by_role": requested_by_role,
+            "requested_by_agent_id": requested_by_agent_id,
+            "tool_args": tool_args,
+            "model_name": trace_model_name,
+            "provider": trace_provider,
+        },
+    }
+
+
 def _build_run_trace_from_runtime_event(event: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     event_type = str(event.get("type") or "").strip()
     if not event_type:
@@ -115,25 +296,82 @@ def _build_run_trace_from_runtime_event(event: Dict[str, Any]) -> Optional[Dict[
         }
 
     if event_type == "tool_permission_required":
-        tool_name = str(extract_event_field(event, "name", "") or "").strip()
-        request_id = str(extract_event_field(event, "request_id", "") or "").strip()
-        permission_level = str(extract_event_field(event, "permission_level", "") or "").strip()
-        return {
-            "source": "permission",
-            "event_type": "tool_permission_required",
-            "summary": f"工具 `{tool_name or 'unknown'}` 等待授权",
-            "detail": f"request_id={request_id}" if request_id else "",
-            "severity": "warning",
-            "payload": {
-                "tool_name": tool_name,
-                "request_id": request_id,
-                "permission_level": permission_level,
-                "tool_args": extract_event_field(event, "args", {}) or {},
-            },
-        }
+        return _build_tool_permission_required_trace(
+            event,
+            trace_model_name=trace_model_name,
+            trace_provider=trace_provider,
+        )
 
     if event_type == "status":
         status_kind = str(extract_event_field(event, "status_kind", "") or "").strip()
+        if str(extract_event_field(event, "source", "") or "").strip() == "framework_adapter":
+            adapter_id = str(extract_event_field(event, "adapter_id", "") or "").strip()
+            framework_name = str(extract_event_field(event, "framework_name", "") or "").strip()
+            status = str(extract_event_field(event, "status", status_kind) or "").strip()
+            return {
+                "source": "framework_adapter",
+                "event_type": "framework_adapter_status",
+                "summary": str(extract_event_field(event, "summary", "") or "").strip()
+                or f"Framework adapter `{framework_name or adapter_id or 'unknown'}` status updated",
+                "detail": str(extract_event_field(event, "detail", "") or "").strip(),
+                "severity": "info",
+                "payload": {
+                    "adapter_id": adapter_id,
+                    "framework_name": framework_name,
+                    "status": status,
+                    "model_name": trace_model_name,
+                    "provider": trace_provider,
+                },
+            }
+        if status_kind == "approval_created":
+            return _build_tool_permission_required_trace(
+                event,
+                trace_model_name=trace_model_name,
+                trace_provider=trace_provider,
+            )
+        if status_kind == "approval_resolved":
+            tool_name = str(
+                extract_event_field(event, "tool_name", extract_event_field(event, "name", "")) or ""
+            ).strip()
+            approval_request_id = str(
+                extract_event_field(event, "approval_request_id", extract_event_field(event, "request_id", "")) or ""
+            ).strip()
+            permission_level = str(extract_event_field(event, "permission_level", "") or "").strip()
+            status = _normalize_approval_resolution_status(
+                extract_event_field(event, "status", extract_event_field(event, "result", ""))
+            )
+            if status == "approved":
+                trace_event_type = "permission_approved"
+                severity = "success"
+                summary = f"审批请求 `{approval_request_id or tool_name or 'unknown'}` 已批准"
+            elif status == "denied":
+                trace_event_type = "permission_denied"
+                severity = "warning"
+                summary = f"审批请求 `{approval_request_id or tool_name or 'unknown'}` 已拒绝"
+            else:
+                trace_event_type = "permission_resolved"
+                severity = "info"
+                summary = f"审批请求 `{approval_request_id or tool_name or 'unknown'}` 已处理"
+            result = str(extract_event_field(event, "result", status) or "").strip()
+            completed_at = str(extract_event_field(event, "completed_at", "") or "").strip()
+            return {
+                "source": "governance",
+                "event_type": trace_event_type,
+                "summary": summary,
+                "detail": f"request_id={approval_request_id}" if approval_request_id else completed_at,
+                "severity": severity,
+                "payload": {
+                    "tool_name": tool_name,
+                    "request_id": approval_request_id,
+                    "approval_request_id": approval_request_id,
+                    "permission_level": permission_level,
+                    "status": status or result,
+                    "result": result or status,
+                    "completed_at": completed_at,
+                    "model_name": trace_model_name,
+                    "provider": trace_provider,
+                },
+            }
         if status_kind == "runtime_skills":
             selected_items = extract_event_field(event, "selected_items", []) or []
             selected_names = [
@@ -236,8 +474,67 @@ def _build_run_trace_from_runtime_event(event: Dict[str, Any]) -> Optional[Dict[
             },
         }
 
+    if event_type == "reasoning" and str(extract_event_field(event, "source", "") or "").strip() == "framework_adapter":
+        adapter_id = str(extract_event_field(event, "adapter_id", "") or "").strip()
+        framework_name = str(extract_event_field(event, "framework_name", "") or "").strip()
+        return {
+            "source": "framework_adapter",
+            "event_type": "framework_adapter_reasoning",
+            "summary": str(extract_event_field(event, "summary", "") or "").strip()
+            or f"Framework adapter `{framework_name or adapter_id or 'unknown'}` produced reasoning",
+            "detail": str(extract_event_field(event, "detail", "") or "").strip(),
+            "severity": "info",
+            "payload": {
+                "adapter_id": adapter_id,
+                "framework_name": framework_name,
+                "model_name": trace_model_name,
+                "provider": trace_provider,
+            },
+        }
+
+    if event_type == "error" and str(extract_event_field(event, "source", "") or "").strip() == "framework_adapter":
+        adapter_id = str(extract_event_field(event, "adapter_id", "") or "").strip()
+        framework_name = str(extract_event_field(event, "framework_name", "") or "").strip()
+        error_type = str(extract_event_field(event, "error_type", "") or "").strip()
+        error_detail = str(extract_event_field(event, "detail", "") or "").strip()
+        return {
+            "source": "framework_adapter",
+            "event_type": "framework_adapter_external_error",
+            "summary": str(extract_event_field(event, "summary", "") or "").strip()
+            or f"Framework adapter `{framework_name or adapter_id or 'unknown'}` external runtime error",
+            "detail": error_detail,
+            "severity": "error",
+            "payload": {
+                "adapter_id": adapter_id,
+                "framework_name": framework_name,
+                "error_type": error_type,
+                "error_detail": error_detail,
+                "model_name": trace_model_name,
+                "provider": trace_provider,
+            },
+        }
+
     if event_type != "tool_result":
         if event_type == "content":
+            if str(extract_event_field(event, "source", "") or "").strip() == "framework_adapter":
+                adapter_id = str(extract_event_field(event, "adapter_id", "") or "").strip()
+                framework_name = str(extract_event_field(event, "framework_name", "") or "").strip()
+                content = str(extract_event_field(event, "content", "") or "").strip()
+                return {
+                    "source": "framework_adapter",
+                    "event_type": "framework_adapter_output",
+                    "summary": str(extract_event_field(event, "summary", "") or "").strip()
+                    or f"Framework adapter `{framework_name or adapter_id or 'unknown'}` produced output",
+                    "detail": _excerpt_text(content),
+                    "severity": "success",
+                    "payload": {
+                        "adapter_id": adapter_id,
+                        "framework_name": framework_name,
+                        "content": content,
+                        "model_name": trace_model_name,
+                        "provider": trace_provider,
+                    },
+                }
             completion_check = extract_event_field(event, "completion_check", {}) or {}
             if completion_check:
                 return {
@@ -308,10 +605,12 @@ def _build_run_trace_from_runtime_event(event: Dict[str, Any]) -> Optional[Dict[
 
 def _extract_execution_run_scope(execution_context: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     context = dict(execution_context or {})
+    child_run_id = context.get("child_run_id") or context.get("child_execution_id")
     scope = {
         "run_id": context.get("run_id"),
         "parent_run_id": context.get("parent_run_id"),
-        "child_run_id": context.get("child_run_id") or context.get("child_execution_id"),
+        "child_run_id": child_run_id,
+        "child_display_id": context.get("child_display_id") or child_run_id,
         "run_kind": context.get("run_kind"),
         "scheduler_run_id": context.get("scheduler_run_id"),
         "plan_id": context.get("plan_id"),
@@ -323,6 +622,32 @@ def _extract_execution_run_scope(execution_context: Optional[Dict[str, Any]]) ->
         key: value
         for key, value in scope.items()
         if value not in (None, "")
+    }
+
+
+def _build_child_status_identity(
+    child_payload: Optional[Dict[str, Any]],
+    child_context: Any | None = None,
+) -> Dict[str, Any]:
+    payload = dict(child_payload or {})
+    child_run_id = str(payload.get("child_run_id") or payload.get("run_id") or payload.get("child_execution_id") or "").strip()
+    child_display_id = str(payload.get("child_display_id") or child_run_id or payload.get("child_execution_id") or "").strip()
+    parent_run_id = str(
+        payload.get("parent_run_id")
+        or payload.get("scheduler_run_id")
+        or getattr(child_context, "parent_run_id", "")
+        or ""
+    ).strip()
+    return {
+        key: value
+        for key, value in {
+            "run_id": str(payload.get("run_id") or child_run_id).strip(),
+            "parent_run_id": parent_run_id,
+            "child_run_id": child_run_id,
+            "child_display_id": child_display_id,
+            "scheduler_run_id": str(payload.get("scheduler_run_id") or parent_run_id).strip(),
+        }.items()
+        if value
     }
 
 
@@ -607,6 +932,7 @@ def maybe_start_plan_for_chat(
                     "run_id": f"handoff-p{handed_off_plan.id}-i{active_item.id}",
                     "parent_run_id": None,
                     "run_kind": "subagent",
+                    "enable_main_chat_query_control_timeline": True,
                     "plan_id": handed_off_plan.id,
                     "plan_item_id": active_item.id,
                     "plan_item_title": active_item.title,
@@ -670,6 +996,7 @@ def maybe_mark_plan_handoff_executing(
         )
         child_contexts = list((scheduler_execution_context or {}).get("child_contexts") or [])
         if len(child_contexts) > 1:
+            scheduler_execution_context["enable_main_chat_query_control_timeline"] = True
             return {
                 "events": [
                     {
@@ -715,6 +1042,7 @@ def maybe_mark_plan_handoff_executing(
                 "run_id": f"handoff-p{updated.id}-i{executing_item.id}",
                 "parent_run_id": None,
                 "run_kind": "subagent",
+                "enable_main_chat_query_control_timeline": True,
                 "plan_id": updated.id,
                 "plan_item_id": executing_item.id,
                 "plan_item_title": executing_item.title,
@@ -796,6 +1124,17 @@ async def collect_orchestrator_response(
 ) -> str:
     """Collect the final assistant response from the shared orchestrator path."""
     full_content = ""
+    input_received_event = _attach_main_chat_query_control_mapping(_build_main_chat_input_received_event(
+        user_message=user_message,
+        model_name=model_name,
+        execution_context=execution_context,
+    ))
+    _record_main_chat_query_control_event(
+        db=db,
+        conversation_id=conversation_id,
+        execution_context=execution_context,
+        event=input_received_event,
+    )
 
     async for chunk in orchestrator.process_message(
         user_message=user_message,
@@ -803,8 +1142,14 @@ async def collect_orchestrator_response(
         execution_context=execution_context,
     ):
         try:
-            parsed = json.loads(chunk)
+            parsed = _attach_main_chat_query_control_mapping(json.loads(chunk))
             if isinstance(parsed, dict):
+                _record_main_chat_query_control_event(
+                    db=db,
+                    conversation_id=conversation_id,
+                    execution_context=execution_context,
+                    event=parsed,
+                )
                 maybe_append_runtime_run_trace(
                     db=db,
                     user_id=user_id,
@@ -819,7 +1164,10 @@ async def collect_orchestrator_response(
         if event_type in ("content", "answer"):
             full_content += extract_event_field(parsed, "content", "") or extract_event_field(parsed, "answer", "")
         elif event_type == "done":
-            return extract_event_field(parsed, "content", "") or full_content
+            done_content = extract_event_field(parsed, "content", "") or full_content
+            if is_runtime_waiting_approval_event(parsed):
+                raise RuntimeApprovalRequired(done_content, parsed)
+            return done_content
 
     return full_content
 
@@ -836,6 +1184,17 @@ async def stream_orchestrator_events(
 ) -> AsyncGenerator[tuple[str, str], None]:
     """Yield orchestrator chunks together with the accumulated assistant content."""
     actual_content = ""
+    input_received_event = _attach_main_chat_query_control_mapping(_build_main_chat_input_received_event(
+        user_message=user_message,
+        model_name=model_name,
+        execution_context=execution_context,
+    ))
+    _record_main_chat_query_control_event(
+        db=db,
+        conversation_id=conversation_id,
+        execution_context=execution_context,
+        event=input_received_event,
+    )
 
     async for chunk in orchestrator.process_message(
         user_message=user_message,
@@ -843,8 +1202,14 @@ async def stream_orchestrator_events(
         execution_context=execution_context,
     ):
         try:
-            parsed = json.loads(chunk)
+            parsed = _attach_main_chat_query_control_mapping(json.loads(chunk))
             if isinstance(parsed, dict):
+                _record_main_chat_query_control_event(
+                    db=db,
+                    conversation_id=conversation_id,
+                    execution_context=execution_context,
+                    event=parsed,
+                )
                 maybe_append_runtime_run_trace(
                     db=db,
                     user_id=user_id,
@@ -878,7 +1243,7 @@ async def collect_scheduled_orchestrator_response(
 ) -> str:
     """Execute a fan-out schedule and return the merged result."""
     merged_output = ""
-    async for _chunk, actual_content in stream_scheduled_orchestrator_events(
+    async for chunk, actual_content in stream_scheduled_orchestrator_events(
         orchestrator=orchestrator,
         db=db,
         user_id=user_id,
@@ -887,6 +1252,12 @@ async def collect_scheduled_orchestrator_response(
         model_name=model_name,
         execution_context=execution_context,
     ):
+        try:
+            parsed = json.loads(chunk)
+            if is_runtime_waiting_approval_event(parsed):
+                raise RuntimeApprovalRequired(actual_content, parsed)
+        except (json.JSONDecodeError, TypeError):
+            pass
         merged_output = actual_content
     return merged_output
 
@@ -915,14 +1286,9 @@ async def stream_scheduled_orchestrator_events(
             yield chunk, actual_content
         return
 
-    try:
-        from services.subagent_service import get_subagent_runtime_service
-    except ModuleNotFoundError:  # pragma: no cover - package import compatibility
-        from backend.services.subagent_service import get_subagent_runtime_service
-
     planner_service = _get_planner_service_cls()(db)
     scheduler_service = _get_scheduler_service_cls()(db)
-    subagent_runtime_service = get_subagent_runtime_service()
+    subagent_runtime_service = _get_subagent_runtime_service()
     policy_engine = _get_policy_engine_service()
     orchestrator_factory = _get_orchestrator_factory()
     model_catalog = []
@@ -932,6 +1298,8 @@ async def stream_scheduled_orchestrator_events(
         model_catalog = []
     plan = planner_service.get_latest_plan_for_conversation(user_id=user_id, conversation_id=conversation_id)
     actual_content = ""
+    scheduler_paused_for_approval = False
+    scheduler_approval_event: Dict[str, Any] = {}
     show_reasoning = bool(getattr(orchestrator, "show_reasoning", False))
     active_item = planner_service.get_active_item(plan=plan)
     scheduler_policy = scheduler_service.get_execution_policy(active_item)
@@ -985,8 +1353,15 @@ async def stream_scheduled_orchestrator_events(
                 "conversation_id": conversation_id,
                 "plan": planner_service.serialize_plan(plan),
             }, ensure_ascii=False), actual_content
+        spawn_event = subagent_runtime_service.build_spawn_event(child_context)
+        _record_subagent_query_control_event(
+            subagent_runtime_service=subagent_runtime_service,
+            db=db,
+            conversation_id=conversation_id,
+            event=spawn_event,
+        )
         yield json.dumps(
-            subagent_runtime_service.build_spawn_event(child_context),
+            spawn_event,
             ensure_ascii=False,
         ), actual_content
         scheduler_service.append_run_trace_event(
@@ -1020,6 +1395,7 @@ async def stream_scheduled_orchestrator_events(
             "conversation_id": conversation_id,
             "agent_role": child_context.agent_role,
             "agent_id": child_context.agent_id,
+            **_build_child_status_identity(child_payload, child_context),
             "model_name": child_payload.get("model_name"),
             "provider_name": child_payload.get("provider_name"),
             "content": (
@@ -1079,6 +1455,7 @@ async def stream_scheduled_orchestrator_events(
                     "conversation_id": conversation_id,
                     "agent_role": child_context.agent_role,
                     "agent_id": child_context.agent_id,
+                    **_build_child_status_identity(child_payload, child_context),
                     "provider_name": child_payload.get("provider_name"),
                     "model_name": child_payload.get("model_name"),
                     "provider_switch_count": provider_switch_count,
@@ -1109,6 +1486,7 @@ async def stream_scheduled_orchestrator_events(
                     "content": f"{child_context.agent_role} 子智能体已重试 {retry_count} 次",
                     "agent_role": child_context.agent_role,
                     "agent_id": child_context.agent_id,
+                    **_build_child_status_identity(child_payload, child_context),
                     "plan_id": child_context.plan_id,
                     "plan_item_id": child_context.plan_item_id,
                     "plan_item_title": child_context.plan_item_title,
@@ -1136,12 +1514,47 @@ async def stream_scheduled_orchestrator_events(
                     "content": f"{child_context.agent_role} 子智能体已取消",
                     "agent_role": child_context.agent_role,
                     "agent_id": child_context.agent_id,
+                    **_build_child_status_identity(child_payload, child_context),
                     "plan_id": child_context.plan_id,
                     "plan_item_id": child_context.plan_item_id,
                     "plan_item_title": child_context.plan_item_title,
                     "error": outcome.get("error"),
                 }, ensure_ascii=False), actual_content
                 continue
+
+            if outcome["status"] == "waiting_approval":
+                scheduler_paused_for_approval = True
+                actual_content = child_output
+                scheduler_approval_event = dict(outcome.get("approval_event") or {})
+                scheduler_service.mark_child_waiting_approval(
+                    plan=plan,
+                    item_id=execution_context.get("plan_item_id"),
+                    child_execution_id=child_payload.get("child_execution_id"),
+                    reason=child_output or "子智能体等待人工审批",
+                    approval_event=outcome.get("approval_event"),
+                    retry_count=retry_count,
+                )
+                if plan is not None:
+                    yield json.dumps({
+                        "type": "plan_updated",
+                        "conversation_id": conversation_id,
+                        "plan": planner_service.serialize_plan(plan),
+                    }, ensure_ascii=False), actual_content
+                yield json.dumps({
+                    "type": "status",
+                    "status_kind": "subagent_waiting_approval",
+                    "conversation_id": conversation_id,
+                    "content": f"{child_context.agent_role} 子智能体等待人工审批",
+                    "agent_role": child_context.agent_role,
+                    "agent_id": child_context.agent_id,
+                    **_build_child_status_identity(child_payload, child_context),
+                    "plan_id": child_context.plan_id,
+                    "plan_item_id": child_context.plan_item_id,
+                    "plan_item_title": child_context.plan_item_title,
+                    "stop_reason": "approval_required",
+                    "approval_event": outcome.get("approval_event"),
+                }, ensure_ascii=False), actual_content
+                break
 
             if outcome["status"] == "failed":
                 scheduler_service.mark_child_failed(
@@ -1165,6 +1578,7 @@ async def stream_scheduled_orchestrator_events(
                     "content": f"{child_context.agent_role} 子智能体执行失败",
                     "agent_role": child_context.agent_role,
                     "agent_id": child_context.agent_id,
+                    **_build_child_status_identity(child_payload, child_context),
                     "plan_id": child_context.plan_id,
                     "plan_item_id": child_context.plan_item_id,
                     "plan_item_title": child_context.plan_item_title,
@@ -1223,11 +1637,18 @@ async def stream_scheduled_orchestrator_events(
                     "conversation_id": conversation_id,
                     "plan": planner_service.serialize_plan(plan),
                 }, ensure_ascii=False), actual_content
+            collect_event = subagent_runtime_service.build_collect_event(
+                child_context,
+                output_text=child_output,
+            )
+            _record_subagent_query_control_event(
+                subagent_runtime_service=subagent_runtime_service,
+                db=db,
+                conversation_id=conversation_id,
+                event=collect_event,
+            )
             yield json.dumps(
-                subagent_runtime_service.build_collect_event(
-                    child_context,
-                    output_text=child_output,
-                ),
+                collect_event,
                 ensure_ascii=False,
             ), actual_content
     finally:
@@ -1236,11 +1657,45 @@ async def stream_scheduled_orchestrator_events(
         if pending_tasks:
             await asyncio.gather(*pending_tasks, return_exceptions=True)
 
+    if scheduler_paused_for_approval:
+        approval_request = scheduler_approval_event.get("approval_request")
+        done_event = {
+            "type": "done",
+            "content": actual_content,
+            "state": "waiting_approval",
+            "stop_reason": "approval_required",
+            "approval_request_id": scheduler_approval_event.get("approval_request_id")
+            or scheduler_approval_event.get("request_id"),
+            "approval_request": approval_request if isinstance(approval_request, dict) else None,
+            "error_category": scheduler_approval_event.get("error_category"),
+            "approval_event": scheduler_approval_event or None,
+        }
+        yield json.dumps(
+            {key: value for key, value in done_event.items() if value is not None},
+            ensure_ascii=False,
+        ), actual_content
+        return
+
     merge_state = scheduler_service.merge_child_outputs(
         plan=plan,
         item_id=execution_context.get("plan_item_id"),
     )
     actual_content = merge_state.get("merged_output") or ""
+    _record_subagent_query_control_event(
+        subagent_runtime_service=subagent_runtime_service,
+        db=db,
+        conversation_id=conversation_id,
+        event={
+            "type": "status",
+            "status_kind": "subagent_merged",
+            "run_id": execution_context.get("scheduler_run_id"),
+            "parent_run_id": execution_context.get("scheduler_run_id"),
+            "plan_id": execution_context.get("plan_id"),
+            "plan_item_id": execution_context.get("plan_item_id"),
+            "content": "已完成多子智能体结果合并",
+            "subagent_output_excerpt": actual_content,
+        },
+    )
     if plan is not None:
         yield json.dumps({
             "type": "plan_updated",
@@ -1321,6 +1776,18 @@ async def _run_parallel_child_execution(
                 "error_kind": None,
                 "provider_switch_count": max(0, provider_pointer),
                 "provider_history": provider_history,
+            }
+        except RuntimeApprovalRequired as approval:
+            return child_payload, child_context, approval.message, {
+                "status": "waiting_approval",
+                "retry_count": max(0, attempt - 1),
+                "last_error": "",
+                "error": "",
+                "error_kind": "approval_required",
+                "stop_reason": "approval_required",
+                "provider_switch_count": max(0, provider_pointer),
+                "provider_history": provider_history,
+                "approval_event": approval.event,
             }
         except asyncio.CancelledError:
             return child_payload, child_context, "", {

@@ -45,6 +45,14 @@ class ServerServiceTests(unittest.TestCase):
             tool_args={"query": "舟山天气"},
             permission_level="ask",
             conversation_id=10,
+            plan_id=13,
+            plan_item_id=17,
+            run_id="child-run-001",
+            parent_run_id="sched-run-001",
+            child_run_id="child-run-001",
+            child_display_id="child-run-001",
+            scheduler_run_id="sched-run-001",
+            run_kind="child",
             status=SimpleNamespace(value="pending"),
             created_at=SimpleNamespace(isoformat=lambda: "2026-04-23T12:00:00"),
             result="approved",
@@ -53,6 +61,8 @@ class ServerServiceTests(unittest.TestCase):
         self.assertEqual(payload["id"], "req_1")
         self.assertEqual(payload["status"], "pending")
         self.assertEqual(payload["result"], "approved")
+        self.assertEqual(payload["child_display_id"], "child-run-001")
+        self.assertEqual(payload["runtime_scope"]["child_display_id"], "child-run-001")
 
 
 if __name__ == "__main__":

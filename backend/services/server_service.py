@@ -52,6 +52,7 @@ def permission_request_to_dict(request: Any, *, include_result: bool = False) ->
         "run_id": getattr(request, "run_id", None),
         "parent_run_id": getattr(request, "parent_run_id", None),
         "child_run_id": getattr(request, "child_run_id", None),
+        "child_display_id": getattr(request, "child_display_id", None) or getattr(request, "child_run_id", None),
         "scheduler_run_id": getattr(request, "scheduler_run_id", None),
         "run_kind": getattr(request, "run_kind", None),
         "runtime_scope": {
@@ -60,6 +61,7 @@ def permission_request_to_dict(request: Any, *, include_result: bool = False) ->
             "run_id": getattr(request, "run_id", None),
             "parent_run_id": getattr(request, "parent_run_id", None),
             "child_run_id": getattr(request, "child_run_id", None),
+            "child_display_id": getattr(request, "child_display_id", None) or getattr(request, "child_run_id", None),
             "scheduler_run_id": getattr(request, "scheduler_run_id", None),
             "run_kind": getattr(request, "run_kind", None),
         },

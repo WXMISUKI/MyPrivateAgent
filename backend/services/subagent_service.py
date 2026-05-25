@@ -6,8 +6,10 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 try:
+    from services.query_control_event_mapper_service import get_query_control_event_mapper_service
     from services.subagent_registry_service import SubagentProfile, get_subagent_registry_service
 except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+    from backend.services.query_control_event_mapper_service import get_query_control_event_mapper_service
     from backend.services.subagent_registry_service import SubagentProfile, get_subagent_registry_service
 
 ROLE_INSTRUCTIONS = {
@@ -33,6 +35,8 @@ class SubagentContext:
     required_capabilities: Tuple[str, ...] = ()
     run_id: str = ""
     parent_run_id: str = ""
+    child_run_id: str = ""
+    child_display_id: str = ""
 
     @classmethod
     def from_dict(cls, payload: Optional[Dict[str, Any]]) -> Optional["SubagentContext"]:
@@ -43,10 +47,14 @@ class SubagentContext:
         agent_id = str(payload.get("agent_id") or "").strip()
         if not role or role == "general" or not agent_id:
             return None
+        child_execution_id = str(payload.get("child_execution_id") or "").strip()
+        child_run_id = str(payload.get("child_run_id") or payload.get("run_id") or child_execution_id).strip()
+        child_display_id = str(payload.get("child_display_id") or child_run_id or child_execution_id).strip()
+        run_id = str(payload.get("run_id") or child_run_id or child_execution_id).strip()
 
         return cls(
-            run_id=str(payload.get("run_id") or "").strip(),
-            parent_run_id=str(payload.get("parent_run_id") or "").strip(),
+            run_id=run_id,
+            parent_run_id=str(payload.get("parent_run_id") or payload.get("scheduler_run_id") or "").strip(),
             agent_role=role,
             agent_id=agent_id,
             plan_id=payload.get("plan_id"),
@@ -54,6 +62,8 @@ class SubagentContext:
             plan_item_title=str(payload.get("plan_item_title") or "").strip(),
             handoff_status=str(payload.get("handoff_status") or "").strip(),
             execution_mode=str(payload.get("execution_mode") or "").strip(),
+            child_run_id=child_run_id,
+            child_display_id=child_display_id,
             required_capabilities=tuple(
                 str(value).strip()
                 for value in (payload.get("required_capabilities") or [])
@@ -65,8 +75,15 @@ class SubagentContext:
 class SubagentRuntimeService:
     """Build spawn/collect/merge runtime protocol for subagent execution."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        query_control_event_mapper: Any = None,
+        query_control_timeline_service: Any = None,
+    ) -> None:
         self.registry = get_subagent_registry_service()
+        self.query_control_event_mapper = query_control_event_mapper or get_query_control_event_mapper_service()
+        self.query_control_timeline_service = query_control_timeline_service
 
     def normalize_context(self, payload: Optional[Dict[str, Any]]) -> Optional[SubagentContext]:
         return SubagentContext.from_dict(payload)
@@ -116,6 +133,8 @@ class SubagentRuntimeService:
             "status_kind": "subagent_spawned",
             "run_id": context.run_id,
             "parent_run_id": context.parent_run_id,
+            "child_run_id": context.child_run_id,
+            "child_display_id": context.child_display_id,
             "agent_role": context.agent_role,
             "agent_id": context.agent_id,
             "plan_id": context.plan_id,
@@ -135,6 +154,8 @@ class SubagentRuntimeService:
             "status_kind": "subagent_collected",
             "run_id": context.run_id,
             "parent_run_id": context.parent_run_id,
+            "child_run_id": context.child_run_id,
+            "child_display_id": context.child_display_id,
             "agent_role": context.agent_role,
             "agent_id": context.agent_id,
             "plan_id": context.plan_id,
@@ -152,6 +173,8 @@ class SubagentRuntimeService:
             "status_kind": "subagent_merged",
             "run_id": context.run_id,
             "parent_run_id": context.parent_run_id,
+            "child_run_id": context.child_run_id,
+            "child_display_id": context.child_display_id,
             "agent_role": context.agent_role,
             "agent_id": context.agent_id,
             "plan_id": context.plan_id,
@@ -161,6 +184,42 @@ class SubagentRuntimeService:
             "required_capabilities": list(context.required_capabilities),
             "content": f"已合并 {context.agent_role} 子智能体结果到主响应",
         }
+
+    def record_query_control_events(
+        self,
+        *,
+        db: Any,
+        conversation_id: Optional[int],
+        events: List[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        recordings = []
+        failures = []
+        if db is None or self.query_control_timeline_service is None:
+            return {"recordings": recordings, "failures": failures}
+        for event in list(events or []):
+            event_dict = dict(event or {})
+            mapping = self.query_control_event_mapper.map_subagent_event(event_dict)
+            if mapping is None:
+                continue
+            try:
+                recordings.append(self.query_control_timeline_service.record_stage(
+                    db=db,
+                    conversation_id=conversation_id,
+                    channel=mapping["channel"],
+                    stage=mapping["stage"],
+                    query_id=str(event_dict.get("run_id") or event_dict.get("child_run_id") or event_dict.get("agent_id") or ""),
+                    summary=str(event_dict.get("content") or f"Subagent {mapping['stage']}"),
+                    detail=str(event_dict.get("subagent_output_excerpt") or ""),
+                    severity=str(event_dict.get("severity") or "info"),
+                    payload=self.query_control_event_mapper.build_record_payload(event_dict),
+                ))
+            except Exception as exc:  # pragma: no cover - exact recorder failure belongs to integration.
+                failures.append({
+                    "stage": mapping["stage"],
+                    "status_kind": event_dict.get("status_kind"),
+                    "error": str(exc),
+                })
+        return {"recordings": recordings, "failures": failures}
 
 
 _subagent_runtime_service: Optional[SubagentRuntimeService] = None

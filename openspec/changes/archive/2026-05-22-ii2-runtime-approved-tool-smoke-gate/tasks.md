@@ -1,0 +1,5 @@
+- [x] Add failing runtime contract smoke tests for approved tool execution bridge.
+- [x] Implement `runtime_approved_tool_execution_bridge` smoke check.
+- [x] Update docs/manual test notes for the new smoke check.
+- [x] Validate OpenSpec change.
+- [x] Run focused backend regression tests in `conda run -n myenv`.

@@ -1,0 +1,6 @@
+- [x] Add OpenSpec delta for renewal supervisor opt-in execution seam.
+- [x] Add focused tests for `renew_once` success and fail-closed cases.
+- [x] Implement `WorkerOwnershipRenewalSupervisor` and renewal contract evidence.
+- [x] Extend runtime smoke, Quality Gate, and Runtime Contract Gate summaries with renewal seam evidence.
+- [x] Sync canonical specs and docs.
+- [x] Run focused validation and remove generated quality-gate artifacts.

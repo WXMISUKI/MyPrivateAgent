@@ -17,12 +17,14 @@ try:
         Learning, LearningCategory, LearningStatus, LearningReviewRecord, LearningReviewStatus, LearningVersionRecord, Priority, Area,
         Error, FeatureRequest, SystemPrompt, BestPractice
     )
+    from services.self_improvement_timeline_service import get_self_improvement_timeline_service
 except ModuleNotFoundError:  # pragma: no cover - package import compatibility
     from backend.agent_server.dependencies import get_db
     from backend.models import (
         Learning, LearningCategory, LearningStatus, LearningReviewRecord, LearningReviewStatus, LearningVersionRecord, Priority, Area,
         Error, FeatureRequest, SystemPrompt, BestPractice
     )
+    from backend.services.self_improvement_timeline_service import get_self_improvement_timeline_service
 
 router = APIRouter(prefix="/api/learnings", tags=["learnings"])
 
@@ -177,6 +179,7 @@ class ErrorCreate(BaseModel):
     suggested_fix: Optional[str] = None
     reproducible: bool = False
     related_files: Optional[List[str]] = None
+    conversation_id: Optional[int] = None
 
 
 class ErrorUpdate(BaseModel):
@@ -184,6 +187,7 @@ class ErrorUpdate(BaseModel):
     summary: Optional[str] = None
     suggested_fix: Optional[str] = None
     resolution_notes: Optional[str] = None
+    conversation_id: Optional[int] = None
 
 
 class ErrorResponse(BaseModel):
@@ -202,6 +206,8 @@ class ErrorResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     resolved_at: Optional[datetime]
+    snapshot_ref: Optional[dict] = None
+    timeline_recording: Optional[dict] = None
 
 
 class FeatureRequestCreate(BaseModel):
@@ -213,12 +219,14 @@ class FeatureRequestCreate(BaseModel):
     suggested_implementation: Optional[str] = None
     frequency: str = "first_time"
     related_features: Optional[List[str]] = None
+    conversation_id: Optional[int] = None
 
 
 class FeatureRequestUpdate(BaseModel):
     status: Optional[str] = None
     suggested_implementation: Optional[str] = None
     resolution_notes: Optional[str] = None
+    conversation_id: Optional[int] = None
 
 
 class FeatureRequestResponse(BaseModel):
@@ -236,6 +244,8 @@ class FeatureRequestResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     resolved_at: Optional[datetime]
+    snapshot_ref: Optional[dict] = None
+    timeline_recording: Optional[dict] = None
 
 
 class SystemPromptCreate(BaseModel):
@@ -695,41 +705,62 @@ def _record_learning_timeline(
     severity: str = "info",
     payload: Optional[dict] = None,
 ) -> dict:
-    trace_service = _get_run_trace_service(db)
-    snapshot_ref = trace_service.build_snapshot_ref(
-        source="learning",
-        event_type=event_type,
+    return get_self_improvement_timeline_service().record_learning_event(
+        db=db,
         conversation_id=conversation_id,
-    )
-    final_payload = {
-        **(payload or {}),
-        "learning_id": learning_id,
-        "conversation_id": conversation_id,
-        "snapshot_ref": snapshot_ref,
-    }
-    trace_written = trace_service.append_latest_active_item_trace(
-        user_id=None,
-        conversation_id=conversation_id,
-        source="learning",
+        learning_id=learning_id,
         event_type=event_type,
         summary=summary,
         detail=detail,
         severity=severity,
-        payload=final_payload,
-    ) if conversation_id is not None else False
-    audit_written = trace_service.append_latest_active_item_audit(
-        user_id=None,
+        payload=payload,
+    )
+
+
+def _record_error_timeline(
+    *,
+    db: Session,
+    conversation_id: Optional[int],
+    error_id: str,
+    event_type: str,
+    summary: str,
+    detail: str = "",
+    severity: str = "error",
+    payload: Optional[dict] = None,
+) -> dict:
+    return get_self_improvement_timeline_service().record_error_event(
+        db=db,
         conversation_id=conversation_id,
+        error_id=error_id,
         event_type=event_type,
-        content=summary,
-        payload=final_payload,
-    ) if conversation_id is not None else False
-    return {
-        "trace_written": trace_written,
-        "audit_written": audit_written,
-        "conversation_id": conversation_id,
-        "snapshot_ref": snapshot_ref,
-    }
+        summary=summary,
+        detail=detail,
+        severity=severity,
+        payload=payload,
+    )
+
+
+def _record_feature_request_timeline(
+    *,
+    db: Session,
+    conversation_id: Optional[int],
+    feature_id: str,
+    event_type: str,
+    summary: str,
+    detail: str = "",
+    severity: str = "info",
+    payload: Optional[dict] = None,
+) -> dict:
+    return get_self_improvement_timeline_service().record_feature_request_event(
+        db=db,
+        conversation_id=conversation_id,
+        feature_id=feature_id,
+        event_type=event_type,
+        summary=summary,
+        detail=detail,
+        severity=severity,
+        payload=payload,
+    )
 
 
 def _build_learning_response(
@@ -1037,7 +1068,21 @@ async def create_error(error: ErrorCreate, db: Session = Depends(get_db)):
         db.add(db_error)
         db.commit()
         db.refresh(db_error)
-        return ErrorResponse(**model_to_dict(db_error))
+        timeline_recording = _record_error_timeline(
+            db=db,
+            conversation_id=error.conversation_id,
+            error_id=db_error.error_id,
+            event_type="error_recorded",
+            summary=f"Error `{db_error.error_id}` 已记录",
+            detail=f"status={db_error.status}",
+            severity="error",
+            payload={"status": db_error.status, "priority": db_error.priority.value if hasattr(db_error.priority, "value") else str(db_error.priority)},
+        )
+        return ErrorResponse(
+            **model_to_dict(db_error),
+            snapshot_ref=timeline_recording.get("snapshot_ref"),
+            timeline_recording=timeline_recording,
+        )
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e))
@@ -1082,7 +1127,21 @@ async def create_feature_request(
         db.add(db_feature)
         db.commit()
         db.refresh(db_feature)
-        return FeatureRequestResponse(**model_to_dict(db_feature))
+        timeline_recording = _record_feature_request_timeline(
+            db=db,
+            conversation_id=feature.conversation_id,
+            feature_id=db_feature.feature_id,
+            event_type="feature_request_recorded",
+            summary=f"Feature request `{db_feature.feature_id}` 已记录",
+            detail=f"status={db_feature.status}",
+            severity="info",
+            payload={"status": db_feature.status, "priority": db_feature.priority.value if hasattr(db_feature.priority, "value") else str(db_feature.priority)},
+        )
+        return FeatureRequestResponse(
+            **model_to_dict(db_feature),
+            snapshot_ref=timeline_recording.get("snapshot_ref"),
+            timeline_recording=timeline_recording,
+        )
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e))
@@ -1838,7 +1897,21 @@ async def update_error(
     error.updated_at = datetime.now()
     db.commit()
     db.refresh(error)
-    return ErrorResponse(**model_to_dict(error))
+    timeline_recording = _record_error_timeline(
+        db=db,
+        conversation_id=update.conversation_id,
+        error_id=error.error_id,
+        event_type="error_updated",
+        summary=f"Error `{error.error_id}` 已更新",
+        detail=f"status={error.status}",
+        severity="success" if error.status == "resolved" else "warning",
+        payload={"status": error.status},
+    )
+    return ErrorResponse(
+        **model_to_dict(error),
+        snapshot_ref=timeline_recording.get("snapshot_ref"),
+        timeline_recording=timeline_recording,
+    )
 
 
 @router.put("/{feature_id}", response_model=FeatureRequestResponse)
@@ -1861,7 +1934,21 @@ async def update_feature_request(
     feature.updated_at = datetime.now()
     db.commit()
     db.refresh(feature)
-    return FeatureRequestResponse(**model_to_dict(feature))
+    timeline_recording = _record_feature_request_timeline(
+        db=db,
+        conversation_id=update.conversation_id,
+        feature_id=feature.feature_id,
+        event_type="feature_request_updated",
+        summary=f"Feature request `{feature.feature_id}` 已更新",
+        detail=f"status={feature.status}",
+        severity="success" if feature.status == "resolved" else "info",
+        payload={"status": feature.status},
+    )
+    return FeatureRequestResponse(
+        **model_to_dict(feature),
+        snapshot_ref=timeline_recording.get("snapshot_ref"),
+        timeline_recording=timeline_recording,
+    )
 
 
 @router.put("/prompts/{prompt_key}", response_model=SystemPromptResponse)

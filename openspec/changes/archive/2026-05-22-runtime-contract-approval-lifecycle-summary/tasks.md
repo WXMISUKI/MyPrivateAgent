@@ -1,0 +1,5 @@
+- [x] Add failing tests for approval lifecycle recovery coverage in quality gate summary, runtime contract gate, and snapshot guard.
+- [x] Add `approval_lifecycle_recovery_coverage` derivation and normalization.
+- [x] Add artifact schema and snapshot required-field guards.
+- [x] Update runtime contract docs and hardening roadmap notes.
+- [x] Validate OpenSpec and run focused backend tests.

@@ -28,6 +28,7 @@ try {
     "test",
     "--",
     "--run",
+    "src/components/__tests__/RuntimeSurfacePanel.test.js",
     "src/components/__tests__/ChatView.test.js",
     "src/components/__tests__/SettingsView.test.js"
   )

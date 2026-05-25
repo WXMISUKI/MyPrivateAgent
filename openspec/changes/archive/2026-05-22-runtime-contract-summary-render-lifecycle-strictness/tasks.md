@@ -1,0 +1,4 @@
+- [x] Add failing tests for strict approval lifecycle recovery Markdown rendering.
+- [x] Recompute the rendered lifecycle label from all evidence fields.
+- [x] Update runtime contract docs and manual test notes.
+- [x] Validate OpenSpec and run focused backend tests.

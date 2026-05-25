@@ -305,6 +305,7 @@ class SchedulerRuntimeStore:
             completed_at=data.get("completed_at") or None,
             cancelled_at=data.get("cancelled_at") or None,
             last_retry_error=str(data.get("last_retry_error") or "").strip() or None,
+            approval_event=dict(data.get("approval_event") or {}),
         )
 
     def _serialize_child_group_entry(self, child_run: Optional[dict], scheduler_run_id: Optional[str]) -> dict:
@@ -312,6 +313,7 @@ class SchedulerRuntimeStore:
         return {
             "child_execution_id": child.get("child_execution_id"),
             "child_run_id": child.get("child_run_id"),
+            "child_display_id": child.get("child_display_id"),
             "parent_run_id": child.get("parent_run_id"),
             "run_id": child.get("run_id"),
             "run_kind": child.get("run_kind"),
@@ -335,6 +337,7 @@ class SchedulerRuntimeStore:
             "completed_at": child.get("completed_at") or "",
             "cancelled_at": child.get("cancelled_at") or "",
             "last_retry_error": child.get("last_retry_error") or "",
+            "approval_event": dict(child.get("approval_event") or {}),
         }
 
     def _count_child_statuses(self, child_runs: list[ChildRunState]) -> dict:

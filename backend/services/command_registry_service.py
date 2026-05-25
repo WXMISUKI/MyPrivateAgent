@@ -2,8 +2,17 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, List
+
+try:
+    from agent_framework.harness import build_agent_harness_facade_contract
+    from agent_framework.runtime_dependencies import get_default_embedded_runtime_factory
+    from agent_framework.sdk import build_embedded_sdk_contract
+except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+    from backend.agent_framework.harness import build_agent_harness_facade_contract
+    from backend.agent_framework.runtime_dependencies import get_default_embedded_runtime_factory
+    from backend.agent_framework.sdk import build_embedded_sdk_contract
 
 
 @dataclass(frozen=True)
@@ -17,6 +26,10 @@ class FrameworkCommand:
     has_param: bool = False
     param_hint: str = ""
     param_examples: List[str] | None = None
+    parameters_schema: Dict[str, Any] = field(default_factory=dict)
+    required_capabilities: List[str] = field(default_factory=list)
+    permission_level: str = "read"
+    execution_handler: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -29,6 +42,24 @@ class FrameworkCommand:
             "has_param": self.has_param,
             "param_hint": self.param_hint,
             "param_examples": list(self.param_examples or []),
+            "command_id": self.id,
+            "parameters_schema": dict(self.parameters_schema or {}),
+            "required_capabilities": list(self.required_capabilities or []),
+            "permission_level": self.permission_level,
+            "execution_handler": self.execution_handler or f"command_handlers.{self.action}",
+        }
+
+    def to_definition(self) -> Dict[str, Any]:
+        return {
+            "command_id": self.id,
+            "name": self.name,
+            "description": self.description,
+            "parameters_schema": dict(self.parameters_schema or {}),
+            "required_capabilities": list(self.required_capabilities or []),
+            "permission_level": self.permission_level,
+            "execution_handler": self.execution_handler or f"command_handlers.{self.action}",
+            "category": self.category,
+            "action": self.action,
         }
 
 
@@ -64,6 +95,18 @@ class CommandRegistryService:
                 True,
                 "/doctor <startup|governance> [warning]",
                 ["startup", "governance", "governance warning"],
+                {
+                    "type": "object",
+                    "properties": {
+                        "mode": {"type": "string", "enum": ["startup", "governance"]},
+                        "severity": {"type": "string", "enum": ["all", "warning"]},
+                    },
+                    "required": ["mode"],
+                    "additionalProperties": False,
+                },
+                ["governance.runtime_read"],
+                "read",
+                "command_handlers.run_doctor",
             ),
             FrameworkCommand(
                 "snapshot",
@@ -129,8 +172,14 @@ class CommandRegistryService:
 
     def build_runtime_contract(self) -> Dict[str, Any]:
         commands = self.list_commands()
+        command_definitions = [command.to_definition() for command in self._commands]
         return {
+            "contract_version": "phase-b-command-runtime-v1",
             "total_commands": len(commands),
+            "command_definitions": command_definitions,
+            "embedded_sdk": build_embedded_sdk_contract(),
+            "agent_harness_facade": build_agent_harness_facade_contract(),
+            "embedded_runtime_factory": get_default_embedded_runtime_factory().build_runtime_contract(),
             "framework_commands": [item for item in commands if item["category"] == "framework"],
             "conversation_commands": [item for item in commands if item["category"] == "conversation"],
             "governance_commands": [item for item in commands if item["category"] == "governance"],

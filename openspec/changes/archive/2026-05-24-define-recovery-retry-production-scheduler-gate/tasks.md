@@ -1,0 +1,6 @@
+- [x] Add production scheduler gate specification.
+- [x] Update recovery retry scheduler delta spec.
+- [x] Update recovery retry protocol delta spec.
+- [x] Sync canonical specs and architecture/roadmap notes.
+- [x] Validate OpenSpec change and canonical specs.
+- [x] Keep change active for implementation.

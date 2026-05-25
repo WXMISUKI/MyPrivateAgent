@@ -109,12 +109,52 @@ export const settingsApi = {
 }
 
 export const runtimeSurfaceApi = {
-  getProfile() {
-    return api.get('/runtime-profile')
+  getProfile(params = {}) {
+    return api.get('/runtime-profile', { params })
+  },
+
+  getMainChatQueryDetail(params = {}) {
+    return api.get('/runtime-profile/main-chat-query-detail', { params })
+  },
+
+  getMainChatQueryHistory(params = {}) {
+    return api.get('/runtime-profile/main-chat-query-history', { params })
+  },
+
+  getSubagentLaneRecentSummary(params = {}) {
+    return api.get('/runtime-profile/subagent-lane-recent-summary', { params })
+  },
+
+  getChildExecutorOutputReplay(params = {}) {
+    return api.get('/runtime-profile/child-executor-output-replay', { params })
+  },
+
+  getChildExecutorOutputSummary(params = {}) {
+    return api.get('/runtime-profile/child-executor-output-summary', { params })
+  },
+
+  getChildExecutorMergedSemantics(params = {}) {
+    return api.get('/runtime-profile/child-executor-merged-semantics', { params })
   },
 
   updateProfile(payload) {
     return api.patch('/runtime-profile', payload)
+  },
+
+  updateEmbeddedRuntimeBootstrap(payload) {
+    return api.patch('/runtime-profile/embedded-runtime-bootstrap', payload)
+  },
+
+  precheckFrameworkAdapter(payload) {
+    return api.post('/runtime-framework-adapters/precheck', payload)
+  },
+
+  runFrameworkAdapterPilot(payload) {
+    return api.post('/runtime-framework-adapters/pilot-run', payload)
+  },
+
+  runExternalFrameworkAdapterPilot(payload) {
+    return api.post('/runtime-framework-adapters/external-pilot', payload)
   }
 }
 

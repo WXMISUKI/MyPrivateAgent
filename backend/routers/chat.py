@@ -18,6 +18,9 @@ try:
         maybe_complete_plan_after_chat,
         maybe_mark_plan_handoff_executing,
         maybe_start_plan_for_chat,
+        merge_chat_execution_context,
+        is_runtime_waiting_approval_event,
+        RuntimeApprovalRequired,
         record_learning_if_possible,
         save_assistant_message,
         stream_scheduled_orchestrator_events,
@@ -37,6 +40,9 @@ except ModuleNotFoundError:  # pragma: no cover - package import compatibility
         maybe_complete_plan_after_chat,
         maybe_mark_plan_handoff_executing,
         maybe_start_plan_for_chat,
+        merge_chat_execution_context,
+        is_runtime_waiting_approval_event,
+        RuntimeApprovalRequired,
         record_learning_if_possible,
         save_assistant_message,
         stream_scheduled_orchestrator_events,
@@ -121,7 +127,11 @@ def chat(
             full_response = ""
             actual_content = ""
             pending_done_event = None
-            execution_context = None
+            execution_context = (
+                request.execution_context.model_dump(exclude_none=True)
+                if request.execution_context is not None
+                else None
+            )
 
             started_plan_state = maybe_start_plan_for_chat(
                 db=db,
@@ -134,7 +144,10 @@ def chat(
             if started_plan_state:
                 for event in started_plan_state.get("events", []):
                     yield build_sse_event(event)
-                execution_context = started_plan_state.get("execution_context")
+                execution_context = merge_chat_execution_context(
+                    execution_context,
+                    started_plan_state.get("execution_context"),
+                )
                 if started_plan_state.get("blocked"):
                     blocked_message = started_plan_state.get("blocked_message") or "当前步骤因能力依赖不满足而被阻塞。"
                     yield build_sse_event({"type": "content", "content": blocked_message})
@@ -154,7 +167,10 @@ def chat(
             if executing_plan_state:
                 for event in executing_plan_state.get("events", []):
                     yield build_sse_event(event)
-                execution_context = executing_plan_state.get("execution_context") or execution_context
+                execution_context = merge_chat_execution_context(
+                    execution_context,
+                    executing_plan_state.get("execution_context"),
+                )
 
             try:
                 stream_fn = stream_scheduled_orchestrator_events if execution_context and execution_context.get("scheduler_mode") == "fan_out" else stream_orchestrator_events
@@ -243,13 +259,16 @@ def chat(
             if actual_content:
                 saved_message = save_assistant_message(db, conversation.id, actual_content)
                 saved_message_id = getattr(saved_message, "id", None)
+                waiting_approval = bool(pending_done_event and is_runtime_waiting_approval_event(pending_done_event))
 
-                completed_plan_payload = maybe_complete_plan_after_chat(
-                    db=db,
-                    user_id=current_user.id,
-                    conversation_id=conversation.id,
-                    assistant_content=actual_content,
-                )
+                completed_plan_payload = None
+                if not waiting_approval:
+                    completed_plan_payload = maybe_complete_plan_after_chat(
+                        db=db,
+                        user_id=current_user.id,
+                        conversation_id=conversation.id,
+                        assistant_content=actual_content,
+                    )
 
                 if pending_done_event:
                     if saved_message_id is not None:
@@ -269,12 +288,13 @@ def chat(
 
                 logger.info(f"[Chat] AI 响应已保存到数据库")
 
-                record_learning_if_possible(
-                    db=db,
-                    user_message=request.message,
-                    assistant_content=actual_content,
-                    user_id=current_user_id,
-                )
+                if not waiting_approval:
+                    record_learning_if_possible(
+                        db=db,
+                        user_message=request.message,
+                        assistant_content=actual_content,
+                        user_id=current_user_id,
+                    )
             else:
                 logger.warning(f"[Chat] AI 响应为空")
                 if pending_done_event:
@@ -326,11 +346,16 @@ async def chat_non_stream(
     started_plan_state, execution_context = _prepare_chat_context(
         db=db, user_id=current_user.id, conversation_id=conversation.id,
     )
+    execution_context = merge_chat_execution_context(
+        request.execution_context.model_dump(exclude_none=True) if request.execution_context is not None else None,
+        execution_context,
+    )
     if started_plan_state and started_plan_state.get("blocked"):
         blocked_message = started_plan_state.get("blocked_message") or "当前步骤因能力依赖不满足而被阻塞。"
         save_assistant_message(db, conversation.id, blocked_message)
         return ChatResponse(message=blocked_message, conversation_id=conversation.id)
 
+    waiting_approval = False
     try:
         if execution_context and execution_context.get("scheduler_mode") == "fan_out":
             ai_response = await collect_scheduled_orchestrator_response(
@@ -352,6 +377,9 @@ async def chat_non_stream(
                 user_id=current_user.id,
                 conversation_id=conversation.id,
             )
+    except RuntimeApprovalRequired as approval:
+        ai_response = approval.message
+        waiting_approval = True
     except Exception as e:
         logger.error(f"[Non-Stream Chat] 模型调用失败: {e}", exc_info=True)
         raise HTTPException(
@@ -362,18 +390,19 @@ async def chat_non_stream(
     logger.info(f"[Non-Stream Chat] 模型返回: {ai_response[:100] if ai_response else '空'}...")
 
     save_assistant_message(db, conversation.id, ai_response)
-    maybe_complete_plan_after_chat(
-        db=db,
-        user_id=current_user.id,
-        conversation_id=conversation.id,
-        assistant_content=ai_response,
-    )
-    record_learning_if_possible(
-        db=db,
-        user_message=request.message,
-        assistant_content=ai_response,
-        user_id=current_user.id if hasattr(current_user, "id") else None,
-    )
+    if not waiting_approval:
+        maybe_complete_plan_after_chat(
+            db=db,
+            user_id=current_user.id,
+            conversation_id=conversation.id,
+            assistant_content=ai_response,
+        )
+        record_learning_if_possible(
+            db=db,
+            user_message=request.message,
+            assistant_content=ai_response,
+            user_id=current_user.id if hasattr(current_user, "id") else None,
+        )
     
     logger.info(f"[Non-Stream Chat] 完成")
 

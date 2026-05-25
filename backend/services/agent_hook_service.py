@@ -13,7 +13,9 @@ except ModuleNotFoundError:  # pragma: no cover - package import compatibility
 @dataclass
 class HookDecision:
     allowed: bool
+    requires_approval: bool = False
     reason: str = ""
+    reason_code: str = ""
     metadata: Optional[Dict[str, Any]] = None
 
 
@@ -32,7 +34,9 @@ class AgentHookService:
         )
         return HookDecision(
             allowed=decision.allowed,
+            requires_approval=decision.requires_approval,
             reason=decision.reason,
+            reason_code=decision.reason_code,
             metadata=decision.metadata or {"policy": "default_allow", "tool_name": tool_name},
         )
 

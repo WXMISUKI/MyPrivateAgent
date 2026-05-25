@@ -1,0 +1,5 @@
+- [x] Add OpenSpec delta requirements for auto-claim entrypoint allowlist evidence.
+- [x] Add focused backend tests for allowlist contract and production gate evidence.
+- [x] Implement allowlist contract builder and embed it in auto-claim policy/gate evidence.
+- [x] Extend runtime smoke, Quality Gate, and Runtime Contract Gate summaries.
+- [x] Sync canonical docs/specs and verify focused tests plus OpenSpec validation.

@@ -21,11 +21,13 @@ _bootstrap_path()
 try:
     from database import SessionLocal
     from services.capability_gap_service import get_capability_gap_service
+    from services.framework_adapter_diagnostics_service import FrameworkAdapterDiagnosticsService
     from services.remediation_status_service import get_remediation_status_service
     from services.startup_diagnostics_service import get_startup_diagnostics_service
 except ModuleNotFoundError:  # pragma: no cover - package import compatibility
     from backend.database import SessionLocal
     from backend.services.capability_gap_service import get_capability_gap_service
+    from backend.services.framework_adapter_diagnostics_service import FrameworkAdapterDiagnosticsService
     from backend.services.remediation_status_service import get_remediation_status_service
     from backend.services.startup_diagnostics_service import get_startup_diagnostics_service
 
@@ -112,6 +114,18 @@ ACTION_OWNERSHIP_MAP: Dict[str, Dict[str, Any]] = {
         ],
     },
 }
+
+
+def _collect_latest_framework_adapter_external_error_summary() -> Dict[str, Any] | None:
+    return FrameworkAdapterDiagnosticsService(
+        session_factory=SessionLocal,
+    ).collect_latest_external_error_summary()
+
+
+def _collect_framework_adapter_external_error_counts() -> Dict[str, Any] | None:
+    return FrameworkAdapterDiagnosticsService(
+        session_factory=SessionLocal,
+    ).collect_external_error_counts()
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -318,6 +332,14 @@ def main(argv: List[str] | None = None) -> int:
         return 0 if report.get("gate_passed") else 2
 
     report = get_startup_diagnostics_service().collect_report()
+    framework_adapter_check = (report.get("checks") or {}).get("framework_adapters")
+    if isinstance(framework_adapter_check, dict):
+        latest_external_error = _collect_latest_framework_adapter_external_error_summary()
+        if latest_external_error:
+            framework_adapter_check["latest_external_pilot_failure"] = latest_external_error
+        external_error_counts = _collect_framework_adapter_external_error_counts()
+        if external_error_counts:
+            framework_adapter_check["external_pilot_failure_counts"] = external_error_counts
     print(json.dumps(report, ensure_ascii=False, indent=2))
     return 0 if report.get("status") != "fail" else 1
 

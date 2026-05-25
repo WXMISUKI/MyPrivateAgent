@@ -1,0 +1,6 @@
+- [x] Add focused frontend service tests for retry scheduler and durable loader labels.
+- [x] Add focused Governance Timeline panel assertion for runtime contract warning text.
+- [x] Add focused backend health trace tests for durable loader payload/detail preservation.
+- [x] Implement frontend compact summary labels and Health Router durable loader normalization.
+- [x] Update docs/manual notes and canonical spec.
+- [x] Validate OpenSpec and run focused tests.

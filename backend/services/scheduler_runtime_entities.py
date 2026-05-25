@@ -91,11 +91,14 @@ class ChildRunState:
     completed_at: Optional[str] = None
     cancelled_at: Optional[str] = None
     last_retry_error: Optional[str] = None
+    approval_event: dict = field(default_factory=dict)
 
     def to_dict(self) -> dict:
+        child_display_id = self.child_run_id or self.child_execution_id
         return {
             "child_execution_id": self.child_execution_id,
             "child_run_id": self.child_run_id,
+            "child_display_id": child_display_id,
             "run_id": self.run_id,
             "parent_run_id": self.parent_run_id,
             "run_kind": self.run_kind,
@@ -119,12 +122,14 @@ class ChildRunState:
             "completed_at": self.completed_at,
             "cancelled_at": self.cancelled_at,
             "last_retry_error": self.last_retry_error,
+            "approval_event": dict(self.approval_event or {}),
         }
 
 
 @dataclass
 class ApprovalRequestState:
     request_id: Optional[str] = None
+    request_kind: str = "tool_permission"
     tool_name: Optional[str] = None
     permission_level: Optional[str] = None
     status: str = "pending"
@@ -138,15 +143,22 @@ class ApprovalRequestState:
     run_id: Optional[str] = None
     parent_run_id: Optional[str] = None
     child_run_id: Optional[str] = None
+    child_display_id: Optional[str] = None
     scheduler_run_id: Optional[str] = None
     run_kind: Optional[str] = None
     source_event_type: Optional[str] = None
+    requires_approval: bool = True
+    reason_code: Optional[str] = None
+    reason: Optional[str] = None
+    requested_by_role: Optional[str] = None
+    requested_by_agent_id: Optional[str] = None
     tool_args: dict = field(default_factory=dict)
     request_metadata: dict = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return {
             "request_id": self.request_id,
+            "request_kind": self.request_kind,
             "tool_name": self.tool_name,
             "permission_level": self.permission_level,
             "status": self.status,
@@ -160,12 +172,50 @@ class ApprovalRequestState:
             "run_id": self.run_id,
             "parent_run_id": self.parent_run_id,
             "child_run_id": self.child_run_id,
+            "child_display_id": self.child_display_id,
             "scheduler_run_id": self.scheduler_run_id,
             "run_kind": self.run_kind,
             "source_event_type": self.source_event_type,
+            "requires_approval": self.requires_approval,
+            "reason_code": self.reason_code,
+            "reason": self.reason,
+            "requested_by_role": self.requested_by_role,
+            "requested_by_agent_id": self.requested_by_agent_id,
             "tool_args": dict(self.tool_args or {}),
             "request_metadata": dict(self.request_metadata or {}),
         }
+
+    @classmethod
+    def from_dict(cls, payload: dict | None) -> "ApprovalRequestState":
+        data = dict(payload or {})
+        return cls(
+            request_id=data.get("request_id"),
+            request_kind=str(data.get("request_kind") or "tool_permission"),
+            tool_name=data.get("tool_name"),
+            permission_level=data.get("permission_level"),
+            status=str(data.get("status") or "pending"),
+            user_id=data.get("user_id"),
+            conversation_id=data.get("conversation_id"),
+            plan_id=data.get("plan_id"),
+            plan_item_id=data.get("plan_item_id"),
+            result=data.get("result"),
+            requested_at=data.get("requested_at"),
+            completed_at=data.get("completed_at"),
+            run_id=data.get("run_id"),
+            parent_run_id=data.get("parent_run_id"),
+            child_run_id=data.get("child_run_id"),
+            child_display_id=data.get("child_display_id"),
+            scheduler_run_id=data.get("scheduler_run_id"),
+            run_kind=data.get("run_kind"),
+            source_event_type=data.get("source_event_type"),
+            requires_approval=bool(data.get("requires_approval", True)),
+            reason_code=data.get("reason_code"),
+            reason=data.get("reason"),
+            requested_by_role=data.get("requested_by_role"),
+            requested_by_agent_id=data.get("requested_by_agent_id"),
+            tool_args=dict(data.get("tool_args") or {}),
+            request_metadata=dict(data.get("request_metadata") or {}),
+        )
 
 
 @dataclass

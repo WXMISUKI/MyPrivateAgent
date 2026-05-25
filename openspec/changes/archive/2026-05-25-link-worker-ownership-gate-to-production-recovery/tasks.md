@@ -1,0 +1,6 @@
+- [x] Add OpenSpec deltas for durable recovery gate, embedded persistence interface, and worker ownership contract.
+- [x] Add a focused failing test for linked worker ownership evidence in the durable recovery gate.
+- [x] Implement worker ownership gate threading through the persistence builders and runtime factory.
+- [x] Extend runtime smoke and quality-gate normalization with linked evidence assertions.
+- [x] Sync runtime docs and roadmap.
+- [x] Run focused validation and delete temporary test files.

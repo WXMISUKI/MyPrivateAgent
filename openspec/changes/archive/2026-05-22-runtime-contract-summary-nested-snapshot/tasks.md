@@ -1,0 +1,4 @@
+- [x] Add failing snapshot tests for nested `runtime_contract_summary` coverage fields.
+- [x] Add nested runtime contract summary paths to `RuntimeContractSnapshotService`.
+- [x] Update runtime contract docs and hardening roadmap notes.
+- [x] Validate OpenSpec and run focused backend tests.

@@ -15,6 +15,8 @@ except ModuleNotFoundError:  # pragma: no cover - package import compatibility
 class PolicyDecision:
     allowed: bool
     reason: str = ""
+    requires_approval: bool = False
+    reason_code: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
 
 
@@ -47,22 +49,12 @@ class PolicyEngineService:
         subagent_role = str((context or {}).get("agent_role") or "").strip().lower()
         profile = self.subagent_registry.get_profile(subagent_role) if subagent_role else None
 
-        if any(keyword in normalized_tool for keyword in self.high_risk_tool_keywords):
-            return PolicyDecision(
-                allowed=False,
-                reason="命中高风险工具治理策略，当前框架默认阻断自动执行。",
-                metadata={
-                    "policy": "high_risk_tool_block",
-                    "tool_name": tool_name,
-                    "agent_role": subagent_role or None,
-                },
-            )
-
         if profile is not None and profile.allowed_tools:
             if normalized_tool not in set(profile.allowed_tools):
                 return PolicyDecision(
                     allowed=False,
                     reason=f"子智能体 `{subagent_role}` 的工具白名单不允许调用 `{tool_name}`。",
+                    reason_code="subagent_tool_allowlist_block",
                     metadata={
                         "policy": "subagent_tool_allowlist_block",
                         "tool_name": tool_name,
@@ -71,9 +63,24 @@ class PolicyEngineService:
                     },
                 )
 
+        if any(keyword in normalized_tool for keyword in self.high_risk_tool_keywords):
+            return PolicyDecision(
+                allowed=False,
+                reason="命中高风险工具治理策略，当前框架要求先审批再执行。",
+                requires_approval=True,
+                reason_code="high_risk_tool_requires_approval",
+                metadata={
+                    "policy": "high_risk_tool_requires_approval",
+                    "tool_name": tool_name,
+                    "agent_role": subagent_role or None,
+                    "requires_approval": True,
+                },
+            )
+
         return PolicyDecision(
             allowed=True,
             reason="允许执行",
+            reason_code="default_allow",
             metadata={
                 "policy": "default_allow",
                 "tool_name": tool_name,

@@ -227,9 +227,11 @@ class SchedulerRuntimeSqlRepository:
 
     def _serialize_child_record(self, record: ChildRunRecord) -> dict:
         metadata = dict(record.child_metadata or {})
+        child_display_id = record.child_run_id or record.child_execution_id
         return {
             "child_execution_id": record.child_execution_id,
             "child_run_id": record.child_run_id,
+            "child_display_id": child_display_id,
             "parent_run_id": record.parent_run_id,
             "run_id": record.run_id,
             "run_kind": record.run_kind,

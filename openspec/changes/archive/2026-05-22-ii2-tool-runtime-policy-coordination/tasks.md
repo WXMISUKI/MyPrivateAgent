@@ -1,0 +1,5 @@
+- [x] Add focused ToolRuntimeService tests for permission-level policy decisions.
+- [x] Implement permission-level gate in ToolRuntimeService execution envelopes.
+- [x] Expose policy coordination in the runtime contract.
+- [x] Update runtime contract and next-phase hardening docs.
+- [x] Run focused backend regression tests in `conda run -n myenv`.

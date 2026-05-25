@@ -18,7 +18,7 @@ function normalizeDomain(domain) {
   return String(domain || '').trim().toLowerCase()
 }
 
-export function buildSnapshotCommandDescriptor(snapshotId, domain = '') {
+export function buildSnapshotCommandDescriptor(snapshotId, domain = '', metadata = {}) {
   const normalizedSnapshotId = String(snapshotId || '').trim()
   const normalizedDomain = normalizeDomain(domain)
   if (!normalizedSnapshotId) {
@@ -35,6 +35,9 @@ export function buildSnapshotCommandDescriptor(snapshotId, domain = '') {
     domain: normalizedDomain,
     snapshotId: normalizedSnapshotId,
     commandText: `/${commandName} ${params.join(' ')}`.trim(),
+    eventType: String(metadata?.eventType || '').trim(),
+    eventLabel: String(metadata?.eventLabel || '').trim(),
+    summary: String(metadata?.summary || '').trim(),
   }
 }
 
@@ -49,6 +52,9 @@ export function persistRecentSnapshotCommand(descriptor) {
     params: Array.isArray(descriptor.params) ? descriptor.params : [],
     domain: descriptor.domain || '',
     snapshotId: descriptor.snapshotId,
+    eventType: String(descriptor.eventType || '').trim(),
+    eventLabel: String(descriptor.eventLabel || '').trim(),
+    summary: String(descriptor.summary || '').trim(),
     copiedAt: new Date().toISOString(),
   }
   const currentEntries = loadRecentSnapshotCommands()
@@ -79,6 +85,9 @@ export function loadRecentSnapshotCommands() {
         params: Array.isArray(item?.params) ? item.params.map(value => String(value || '').trim()).filter(Boolean) : [],
         domain: String(item?.domain || '').trim(),
         snapshotId: String(item?.snapshotId || '').trim(),
+        eventType: String(item?.eventType || '').trim(),
+        eventLabel: String(item?.eventLabel || '').trim(),
+        summary: String(item?.summary || '').trim(),
         copiedAt: String(item?.copiedAt || '').trim(),
       }))
       .filter(item => item.commandText && item.commandName && item.snapshotId)
@@ -88,14 +97,64 @@ export function loadRecentSnapshotCommands() {
   }
 }
 
+export function buildRecentSnapshotCommandDisplay(item) {
+  const domain = String(item?.domain || '').trim()
+  const snapshotId = String(item?.snapshotId || '').trim()
+  const eventLabel = String(item?.eventLabel || '').trim()
+  const summary = String(item?.summary || '').trim()
+  const copiedAt = String(item?.copiedAt || '').trim()
+  const commandText = String(item?.commandText || '').trim()
+  const commandName = String(item?.commandName || '').trim()
+  const action = String(item?.action || '').trim()
+  const params = Array.isArray(item?.params) ? item.params.map(value => String(value || '').trim()).filter(Boolean) : []
+  const descriptionFragments = ['最近治理快照']
+  if (eventLabel) {
+    descriptionFragments.push(eventLabel)
+  }
+  if (snapshotId) {
+    descriptionFragments.push(snapshotId)
+  }
+  if (summary) {
+    descriptionFragments.push(summary)
+  }
+  const helpFragments = [`/${commandName || 'snapshot'} - ${commandText || '-'}`]
+  if (eventLabel) {
+    helpFragments.push(`事件 ${eventLabel}`)
+  }
+  if (snapshotId) {
+    helpFragments.push(`快照 ${snapshotId}`)
+  }
+  if (summary) {
+    helpFragments.push(`摘要 ${summary}`)
+  }
+  return {
+    domain,
+    snapshotId,
+    eventLabel,
+    summary,
+    copiedAt,
+    commandText,
+    commandName,
+    action,
+    params,
+    descriptionText: descriptionFragments.join(' · '),
+    helpLineText: helpFragments.join(' · '),
+    searchText: [
+      commandText,
+      commandName,
+      domain,
+      snapshotId,
+      eventLabel,
+      summary,
+    ].filter(Boolean).join(' '),
+  }
+}
+
 export function buildRecentSnapshotCommandsHelp(limit = 3) {
   const recentEntries = loadRecentSnapshotCommands().slice(0, Math.max(1, Number(limit) || 3))
   if (!recentEntries.length) {
     return ''
   }
-  const lines = recentEntries.map(item => {
-    const snapshotLabel = item.snapshotId || '-'
-    return `/${item.commandName} - ${item.commandText} · 快照 ${snapshotLabel}`
-  })
+  const lines = recentEntries.map(item => buildRecentSnapshotCommandDisplay(item).helpLineText)
   return ['最近治理快照命令:', ...lines].join('\n')
 }

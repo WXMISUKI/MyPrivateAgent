@@ -41,6 +41,8 @@ describe('PlannerPanel', () => {
             handoff_status: 'executing',
             child_executions: [
               {
+                child_display_id: 'backend-run-p1-i11-c1',
+                child_run_id: 'backend-run-p1-i11-c1',
                 child_execution_id: 'backend-child-p1-i11-c1',
                 agent_role: 'backend',
                 agent_id: 'backend-agent-p1-i11-c1',
@@ -55,6 +57,8 @@ describe('PlannerPanel', () => {
                 ]
               },
               {
+                child_display_id: 'frontend-run-p1-i11-c2',
+                child_run_id: 'frontend-run-p1-i11-c2',
                 child_execution_id: 'frontend-child-p1-i11-c2',
                 agent_role: 'frontend',
                 agent_id: 'frontend-agent-p1-i11-c2',
@@ -62,6 +66,42 @@ describe('PlannerPanel', () => {
                 error: '前端构建失败'
               }
             ],
+            scheduler_snapshot: {
+              child_count: 2,
+              active_children: 0,
+              merge_strategy: 'role_sections',
+              child_status_counts: {
+                completed: 1,
+                failed: 1
+              },
+              children: [
+                {
+                  child_display_id: 'backend-run-p1-i11-c1',
+                  child_run_id: 'backend-run-p1-i11-c1',
+                  child_execution_id: 'backend-child-p1-i11-c1',
+                  agent_role: 'backend',
+                  agent_id: 'backend-agent-p1-i11-c1',
+                  status: 'completed',
+                  summary: '后端接口已完成',
+                  provider_name: 'ollama',
+                  model_name: 'llama3.1',
+                  provider_switch_count: 1,
+                  provider_history: [
+                    { provider_name: 'volcengine-ark', model_name: 'doubao', reason: 'initial' },
+                    { provider_name: 'ollama', model_name: 'llama3.1', reason: 'provider_fallback_model_selected' }
+                  ]
+                },
+                {
+                  child_display_id: 'frontend-run-p1-i11-c2',
+                  child_run_id: 'frontend-run-p1-i11-c2',
+                  child_execution_id: 'frontend-child-p1-i11-c2',
+                  agent_role: 'frontend',
+                  agent_id: 'frontend-agent-p1-i11-c2',
+                  status: 'failed',
+                  error: '前端构建失败'
+                }
+              ]
+            },
             merge_summary: {
               merge_status: 'partial_failed',
               merge_strategy: 'role_sections',
@@ -101,6 +141,7 @@ describe('PlannerPanel', () => {
     expect(wrapper.text()).toContain('后端')
     expect(wrapper.text()).toContain('测试')
     expect(wrapper.text()).toContain('后端接口已完成')
+    expect(wrapper.text()).toContain('Child Run：backend-run-p1-i11-c1')
     expect(wrapper.text()).toContain('策略：ollama / llama3.1')
     expect(wrapper.text()).toContain('切换次数：1')
     expect(wrapper.text()).toContain('Provider 路由历史')

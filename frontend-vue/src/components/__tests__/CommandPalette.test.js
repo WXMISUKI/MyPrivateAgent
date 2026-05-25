@@ -60,6 +60,8 @@ describe('CommandPalette', () => {
         params: ['snapshot', 'MCP-REF-1'],
         domain: 'mcp',
         snapshotId: 'MCP-REF-1',
+        eventLabel: 'MCP Probe 完成',
+        summary: 'status=ok',
         copiedAt: '2026-05-03T01:00:00Z'
       }
     ]))
@@ -71,6 +73,8 @@ describe('CommandPalette', () => {
     expect(document.body.textContent).toContain('全部命令')
     expect(items[0].textContent).toContain('/mcp snapshot MCP-REF-1')
     expect(items[0].textContent).toContain('最近')
+    expect(items[0].textContent).toContain('MCP Probe 完成')
+    expect(items[0].textContent).toContain('status=ok')
 
     wrapper.unmount()
   })
@@ -122,6 +126,8 @@ describe('CommandPalette', () => {
         params: ['MCP-REF-1'],
         domain: '',
         snapshotId: 'MCP-REF-1',
+        eventLabel: 'Embedded Runtime Bootstrap 更新',
+        summary: 'workspace_mode=memory_only · runtime=memory_preview',
         copiedAt: '2026-05-03T01:00:00Z'
       }
     ]))
@@ -135,6 +141,43 @@ describe('CommandPalette', () => {
     expect(wrapper.emitted('execute')[0][0]).toMatchObject({
       params: ['MCP-REF-1']
     })
+
+    wrapper.unmount()
+  })
+
+  it('finds recent snapshot commands by event label and summary text', async () => {
+    localStorage.setItem('governance_recent_snapshot_commands', JSON.stringify([
+      {
+        commandText: '/snapshot RUNT-BOOT-321',
+        commandName: 'snapshot',
+        action: 'open_snapshot',
+        params: ['RUNT-BOOT-321'],
+        domain: 'runtime_control',
+        snapshotId: 'RUNT-BOOT-321',
+        eventLabel: 'Embedded Runtime Bootstrap 更新',
+        summary: 'workspace_mode=memory_only · runtime=memory_preview',
+        copiedAt: '2026-05-03T01:00:00Z'
+      }
+    ]))
+
+    const wrapper = await mountPalette()
+    const input = getInput()
+
+    input.value = 'memory_preview'
+    input.dispatchEvent(new Event('input'))
+    await nextTick()
+
+    let items = getCommandItems()
+    expect(items).toHaveLength(1)
+    expect(items[0].textContent).toContain('/snapshot RUNT-BOOT-321')
+
+    input.value = 'bootstrap'
+    input.dispatchEvent(new Event('input'))
+    await nextTick()
+
+    items = getCommandItems()
+    expect(items).toHaveLength(1)
+    expect(items[0].textContent).toContain('Embedded Runtime Bootstrap 更新')
 
     wrapper.unmount()
   })

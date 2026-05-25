@@ -7,9 +7,9 @@ from pathlib import Path
 from typing import Any, Dict
 
 try:
-    from config import AUTH_MODE, DEFAULT_MODEL, IS_VERCEL, LOCAL_DATA_DIR
+    from config import AUTH_MODE, DEFAULT_MODEL, EMBEDDED_WORKSPACE_STORE_MODE, IS_VERCEL, LOCAL_DATA_DIR
 except ModuleNotFoundError:  # pragma: no cover - package import compatibility
-    from backend.config import AUTH_MODE, DEFAULT_MODEL, IS_VERCEL, LOCAL_DATA_DIR
+    from backend.config import AUTH_MODE, DEFAULT_MODEL, EMBEDDED_WORKSPACE_STORE_MODE, IS_VERCEL, LOCAL_DATA_DIR
 
 
 RUNTIME_SURFACE_CONFIG_PATH = Path(LOCAL_DATA_DIR) / "runtime_surface.json"
@@ -28,6 +28,8 @@ class RuntimeSurfaceConfigService:
             "auth_mode": AUTH_MODE,
             "default_model": DEFAULT_MODEL,
             "enabled_providers": [],
+            "embedded_workspace_store_mode": EMBEDDED_WORKSPACE_STORE_MODE,
+            "worker_ownership_production_enablement_config": {},
             "failover_thresholds": {
                 "medium": 0.2,
                 "high": 0.4,
@@ -42,7 +44,14 @@ class RuntimeSurfaceConfigService:
             "overrides": overrides,
             "effective": self.get_effective_config(),
             "override_path": str(self.config_path),
-            "editable_keys": ["auth_mode", "default_model", "enabled_providers", "failover_thresholds"],
+            "editable_keys": [
+                "auth_mode",
+                "default_model",
+                "enabled_providers",
+                "embedded_workspace_store_mode",
+                "worker_ownership_production_enablement_config",
+                "failover_thresholds",
+            ],
         }
 
     def load_overrides(self) -> Dict[str, Any]:
@@ -89,6 +98,18 @@ class RuntimeSurfaceConfigService:
                 if provider_id and provider_id not in normalized:
                     normalized.append(provider_id)
             updated["enabled_providers"] = normalized
+
+        if "embedded_workspace_store_mode" in payload:
+            embedded_workspace_store_mode = str(payload.get("embedded_workspace_store_mode") or "").strip().lower()
+            if embedded_workspace_store_mode not in {"memory_only", "prefer_sql_with_fallback", "strict_sql"}:
+                raise ValueError("embedded_workspace_store_mode 仅支持 memory_only / prefer_sql_with_fallback / strict_sql")
+            updated["embedded_workspace_store_mode"] = embedded_workspace_store_mode
+
+        if "worker_ownership_production_enablement_config" in payload:
+            raw_enablement_config = payload.get("worker_ownership_production_enablement_config") or {}
+            if not isinstance(raw_enablement_config, dict):
+                raise ValueError("worker_ownership_production_enablement_config 必须是对象")
+            updated["worker_ownership_production_enablement_config"] = dict(raw_enablement_config)
 
         if "failover_thresholds" in payload:
             raw_thresholds = payload.get("failover_thresholds") or {}

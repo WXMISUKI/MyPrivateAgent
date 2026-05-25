@@ -1,0 +1,5 @@
+- [x] Add focused facade tests for runtime-service `ask` and `deny` policy bridge.
+- [x] Expose side-effect-free `ToolRuntimeService.evaluate_tool_policy(...)`.
+- [x] Wrap `AgentHarnessFacade.execute(...)` tool policies with runtime-service policy probe.
+- [x] Update runtime contract docs and manual test notes.
+- [x] Run focused backend regression tests in `conda run -n myenv`.

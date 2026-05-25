@@ -15,11 +15,36 @@ class AgentMemoryLayer:
     content: str = ""
 
 
+@dataclass(frozen=True)
+class MemoryEntry:
+    """Stable runtime contract for a recalled memory or instruction layer."""
+
+    memory_id: str
+    source: str
+    scope: str
+    content: str
+    confidence: float
+    retrieval_reason: str
+    expires_at: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, object]:
+        return {
+            "memory_id": self.memory_id,
+            "source": self.source,
+            "scope": self.scope,
+            "content": self.content,
+            "confidence": self.confidence,
+            "retrieval_reason": self.retrieval_reason,
+            "expires_at": self.expires_at,
+        }
+
+
 @dataclass
 class AgentMemoryContext:
     system_prompt: str
     loaded_layers: List[AgentMemoryLayer] = field(default_factory=list)
     missing_layers: List[AgentMemoryLayer] = field(default_factory=list)
+    memory_entries: List[MemoryEntry] = field(default_factory=list)
 
     @property
     def is_empty(self) -> bool:
@@ -67,15 +92,18 @@ class AgentMemoryService:
             )
 
         system_prompt = self._build_system_prompt(loaded_layers)
+        memory_entries = [self._build_memory_entry(layer) for layer in loaded_layers]
         return AgentMemoryContext(
             system_prompt=system_prompt,
             loaded_layers=loaded_layers,
             missing_layers=missing_layers,
+            memory_entries=memory_entries,
         )
 
     def build_runtime_contract(self) -> Dict[str, object]:
         context = self.build_context()
         return {
+            "contract_version": "phase-b-memory-entry-v1",
             "loaded_layers": [
                 {"name": item.name, "path": item.path}
                 for item in context.loaded_layers
@@ -84,9 +112,21 @@ class AgentMemoryService:
                 {"name": item.name, "path": item.path}
                 for item in context.missing_layers
             ],
+            "memory_entries": [item.to_dict() for item in context.memory_entries],
             "layer_order": [name for name, _ in self.LAYER_FILES],
             "active": not context.is_empty,
         }
+
+    def _build_memory_entry(self, layer: AgentMemoryLayer) -> MemoryEntry:
+        return MemoryEntry(
+            memory_id=f"memory:{layer.name}",
+            source="agent_memory_layer",
+            scope=layer.name,
+            content=layer.content,
+            confidence=1.0,
+            retrieval_reason=f"loaded_layer:{layer.name}",
+            expires_at=None,
+        )
 
     def _build_system_prompt(self, loaded_layers: List[AgentMemoryLayer]) -> str:
         if not loaded_layers:

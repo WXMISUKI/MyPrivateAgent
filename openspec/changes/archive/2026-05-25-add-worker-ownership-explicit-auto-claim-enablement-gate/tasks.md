@@ -1,0 +1,5 @@
+- [x] Add OpenSpec delta requirements for explicit auto-claim enablement gate evidence.
+- [x] Add focused backend tests for default blocked, non-allowlisted entrypoint, and production-gate blocker cases.
+- [x] Implement enablement gate builder and embed it in auto-claim policy/production gate evidence.
+- [x] Extend runtime smoke, Quality Gate, and Runtime Contract Gate summaries.
+- [x] Sync canonical docs/specs, verify focused tests and OpenSpec validation, then archive.

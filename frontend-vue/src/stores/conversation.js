@@ -3,11 +3,13 @@ import { ref, computed, watch } from 'vue'
 import storage from '../services/storage'
 import { createStreamingEventParser, normalizeAgentEvent } from '../services/agentEvents'
 import { usePlannerStore } from './planner'
+import { useSettingsStore } from './settings'
 import axios from 'axios'
 import { buildApiUrl } from '../config/apiBase'
 
 export const useConversationStore = defineStore('conversation', () => {
   const plannerStore = usePlannerStore()
+  const settingsStore = useSettingsStore()
   const conversations = ref([])
   const activeId = ref(null)
   const searchQuery = ref('')
@@ -35,6 +37,18 @@ export const useConversationStore = defineStore('conversation', () => {
     return {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json'
+    }
+  }
+
+  function buildMainChatExecutionContext(currentModel) {
+    if (!settingsStore.enableMainChatRuntimeTrace) {
+      return null
+    }
+    return {
+      run_id: `manual-chat-${Date.now()}`,
+      run_kind: 'chat',
+      enable_main_chat_query_control_timeline: true,
+      ...(currentModel ? { agent_id: `chat-ui-${currentModel}` } : {})
     }
   }
 
@@ -404,6 +418,10 @@ export const useConversationStore = defineStore('conversation', () => {
       const requestData = {
         message: content,
         model_name: currentModel
+      }
+      const executionContext = buildMainChatExecutionContext(currentModel)
+      if (executionContext) {
+        requestData.execution_context = executionContext
       }
 
       const xhr = new XMLHttpRequest()
@@ -860,7 +878,15 @@ export const useConversationStore = defineStore('conversation', () => {
         currentRequestHandle = null
       }
 
-      xhr.send(JSON.stringify({ message: userMessageContent, model_name: currentModel }))
+      const requestData = {
+        message: userMessageContent,
+        model_name: currentModel
+      }
+      const executionContext = buildMainChatExecutionContext(currentModel)
+      if (executionContext) {
+        requestData.execution_context = executionContext
+      }
+      xhr.send(JSON.stringify(requestData))
     })
   }
 

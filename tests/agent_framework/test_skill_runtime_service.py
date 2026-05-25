@@ -78,6 +78,12 @@ agent_roles:
             self.assertFalse(context.is_empty)
             self.assertEqual(context.metadata["selected_count"], 1)
             self.assertEqual(context.metadata["selected_skill_names"], ["Frontend UI Review"])
+            self.assertEqual(context.metadata["skill_definitions"][0]["skill_id"], 1)
+            self.assertEqual(context.metadata["skill_definitions"][0]["name"], "Frontend UI Review")
+            self.assertIn("message_overlap:vue", context.metadata["skill_definitions"][0]["selection_reason"])
+            self.assertIn("agent_role:frontend", context.metadata["skill_definitions"][0]["selection_reason"])
+            self.assertIn("trigger:页面", context.metadata["skill_definitions"][0]["selection_reason"])
+            self.assertEqual(context.metadata["skill_definitions"][0]["scope"], "chat")
             self.assertIn("Frontend UI Review", context.system_prompt)
             self.assertEqual(context.selected_skills[0].score >= 1, True)
         finally:
@@ -246,6 +252,73 @@ triggers:
             suppressed = [item for item in context.skipped_skills if item.get("reason") == "conflict_suppressed"]
             self.assertEqual(len(suppressed), 1)
             self.assertEqual(suppressed[0]["kept"], "Frontend High Priority")
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
+
+    def test_build_runtime_contract_exposes_skill_definitions(self):
+        root = self._make_temp_root()
+        try:
+            skill_dir = root / "review_skill"
+            skill_dir.mkdir()
+            (skill_dir / "SKILL.md").write_text(
+                """---
+name: Review Skill
+description: 适用于代码评审
+version: 1.2.0
+domain: code-review
+tags:
+- review
+triggers:
+- 评审
+required_capabilities:
+- filesystem.read
+allowed_tools:
+- search
+model_preferences:
+- doubao
+---
+## Overview
+用于代码评审。
+""",
+                encoding="utf-8",
+            )
+
+            class _Query:
+                def filter(self, *_args, **_kwargs):
+                    return self
+
+                def order_by(self, *_args, **_kwargs):
+                    return self
+
+                def all(self):
+                    return [
+                        SimpleNamespace(
+                            id=11,
+                            name="Review Skill",
+                            description="评审",
+                            storage_path=str(skill_dir),
+                        )
+                    ]
+
+            class _Session:
+                def query(self, _model):
+                    return _Query()
+
+                def close(self):
+                    return None
+
+            service = SkillRuntimeService(session_factory=lambda: _Session())
+            service._load_enabled_skills = lambda _db: _Query().all()
+
+            contract = service.build_runtime_contract()
+
+            self.assertEqual(contract["contract_version"], "phase-b-skill-definition-v1")
+            self.assertEqual(contract["total_definitions"], 1)
+            self.assertEqual(contract["definitions"][0]["skill_id"], 11)
+            self.assertEqual(contract["definitions"][0]["version"], "1.2.0")
+            self.assertEqual(contract["definitions"][0]["required_capabilities"], ["filesystem.read"])
+            self.assertEqual(contract["definitions"][0]["allowed_tools"], ["search"])
+            self.assertEqual(contract["definitions"][0]["model_preferences"], ["doubao"])
         finally:
             shutil.rmtree(root, ignore_errors=True)
 

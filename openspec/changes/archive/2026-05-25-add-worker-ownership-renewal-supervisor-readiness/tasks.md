@@ -1,0 +1,6 @@
+- [x] Add OpenSpec delta for worker ownership renewal supervisor readiness.
+- [x] Add focused failing tests for the renewal supervisor contract and production gate evidence.
+- [x] Implement the read-only renewal supervisor contract builder and production gate integration.
+- [x] Extend runtime smoke, Quality Gate, and Runtime Contract Gate summaries with renewal supervisor evidence.
+- [x] Sync runtime docs and roadmap.
+- [x] Run focused validation and delete temporary test files.

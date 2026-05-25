@@ -1,0 +1,5 @@
+- [x] Add focused tests for approved facade runtime-service continuation execution.
+- [x] Add ToolRuntimeService approved policy override support for `ask / high_risk`.
+- [x] Add SDK approved continuation marker and facade execution option bridge.
+- [x] Update runtime contract docs and manual test notes.
+- [x] Run focused backend regression tests in `conda run -n myenv`.

@@ -7,9 +7,15 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
+try:
+    from config import DB_MODE, EMBEDDED_WORKSPACE_STORE_MODE
+except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+    from backend.config import DB_MODE, EMBEDDED_WORKSPACE_STORE_MODE
+
 from .artifacts import Artifact, ArtifactStore
 from .context import ContextStore, ConversationContext
 from .memory import SessionRecord, SessionStore
+from .persistence import EmbeddedRunWorkspaceStore, InMemoryEmbeddedRunWorkspaceStore, build_embedded_workspace_state_contract
 from .providers import ModelProvider
 
 
@@ -208,6 +214,358 @@ class SQLAlchemyArtifactStore(ArtifactStore):
         finally:
             db.close()
 
+
+class SQLAlchemyEmbeddedRunWorkspaceStore(EmbeddedRunWorkspaceStore):
+    """Database-backed persistence seam for Embedded SDK snapshots and descriptors."""
+
+    def __init__(self, session_factory: Any, *, allow_operation_fallback: bool = True, backend_mode: str = "prefer_sql_with_fallback"):
+        self._session_factory = session_factory
+        self._fallback = InMemoryEmbeddedRunWorkspaceStore()
+        self._fallback_active = False
+        self._fallback_reason = ""
+        self._last_error = ""
+        self._allow_operation_fallback = bool(allow_operation_fallback)
+        self._backend_mode = str(backend_mode or "prefer_sql_with_fallback").strip() or "prefer_sql_with_fallback"
+
+    def describe_backend(self) -> Dict[str, Any]:
+        return {
+            "backend_kind": "sqlalchemy",
+            "durable": True,
+            "backend_mode": self._backend_mode,
+            "operation_fallback_allowed": bool(self._allow_operation_fallback),
+            "fallback_active": bool(self._fallback_active),
+            "fallback_reason": str(self._fallback_reason or "").strip(),
+            "last_error": str(self._last_error or "").strip(),
+            "state_contract": build_embedded_workspace_state_contract(),
+        }
+
+    def save_run_snapshot(self, run_snapshot: Dict[str, Any]) -> None:
+        try:
+            from models import EmbeddedRunWorkspaceRecord
+        except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+            from backend.models import EmbeddedRunWorkspaceRecord
+
+        normalized_run_id = str((run_snapshot or {}).get("run_id") or "").strip()
+        if not normalized_run_id:
+            return
+        try:
+            db = self._session_factory()
+            try:
+                record = db.query(EmbeddedRunWorkspaceRecord).filter(
+                    EmbeddedRunWorkspaceRecord.run_id == normalized_run_id
+                ).first()
+                if record is None:
+                    record = EmbeddedRunWorkspaceRecord(
+                        run_id=normalized_run_id,
+                        conversation_id=run_snapshot.get("conversation_id"),
+                        parent_run_id=run_snapshot.get("parent_run_id"),
+                        run_kind=run_snapshot.get("run_kind"),
+                        state=run_snapshot.get("state"),
+                        run_snapshot=dict(run_snapshot or {}),
+                        events=[],
+                        workspace_metadata=dict((run_snapshot or {}).get("metadata") or {}),
+                    )
+                    db.add(record)
+                else:
+                    record.conversation_id = run_snapshot.get("conversation_id")
+                    record.parent_run_id = run_snapshot.get("parent_run_id")
+                    record.run_kind = run_snapshot.get("run_kind")
+                    record.state = run_snapshot.get("state")
+                    record.run_snapshot = dict(run_snapshot or {})
+                    record.workspace_metadata = dict((run_snapshot or {}).get("metadata") or {})
+                db.commit()
+                self._mark_backend_success()
+            finally:
+                db.close()
+        except Exception as exc:
+            self._mark_backend_fallback("save_run_snapshot", exc)
+            if not self._allow_operation_fallback:
+                raise RuntimeError(self._build_backend_error("save_run_snapshot", exc)) from exc
+            self._fallback.save_run_snapshot(run_snapshot)
+
+    def get_run_snapshot(self, run_id: str) -> Optional[Dict[str, Any]]:
+        try:
+            from models import EmbeddedRunWorkspaceRecord
+        except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+            from backend.models import EmbeddedRunWorkspaceRecord
+
+        try:
+            db = self._session_factory()
+            try:
+                record = db.query(EmbeddedRunWorkspaceRecord).filter(
+                    EmbeddedRunWorkspaceRecord.run_id == str(run_id or "").strip()
+                ).first()
+                self._mark_backend_success()
+                return dict(record.run_snapshot or {}) if record is not None else None
+            finally:
+                db.close()
+        except Exception as exc:
+            self._mark_backend_fallback("get_run_snapshot", exc)
+            if not self._allow_operation_fallback:
+                raise RuntimeError(self._build_backend_error("get_run_snapshot", exc)) from exc
+            return self._fallback.get_run_snapshot(run_id)
+
+    def save_events(self, run_id: str, events: List[Dict[str, Any]]) -> None:
+        try:
+            from models import EmbeddedRunWorkspaceRecord
+        except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+            from backend.models import EmbeddedRunWorkspaceRecord
+
+        normalized_run_id = str(run_id or "").strip()
+        if not normalized_run_id:
+            return
+        try:
+            db = self._session_factory()
+            try:
+                record = db.query(EmbeddedRunWorkspaceRecord).filter(
+                    EmbeddedRunWorkspaceRecord.run_id == normalized_run_id
+                ).first()
+                if record is None:
+                    record = EmbeddedRunWorkspaceRecord(
+                        run_id=normalized_run_id,
+                        run_snapshot={"run_id": normalized_run_id},
+                        events=[dict(event or {}) for event in list(events or [])],
+                    )
+                    db.add(record)
+                else:
+                    record.events = [dict(event or {}) for event in list(events or [])]
+                db.commit()
+                self._mark_backend_success()
+            finally:
+                db.close()
+        except Exception as exc:
+            self._mark_backend_fallback("save_events", exc)
+            if not self._allow_operation_fallback:
+                raise RuntimeError(self._build_backend_error("save_events", exc)) from exc
+            self._fallback.save_events(run_id, events)
+
+    def get_events(self, run_id: str) -> List[Dict[str, Any]]:
+        try:
+            from models import EmbeddedRunWorkspaceRecord
+        except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+            from backend.models import EmbeddedRunWorkspaceRecord
+
+        try:
+            db = self._session_factory()
+            try:
+                record = db.query(EmbeddedRunWorkspaceRecord).filter(
+                    EmbeddedRunWorkspaceRecord.run_id == str(run_id or "").strip()
+                ).first()
+                self._mark_backend_success()
+                return [dict(event or {}) for event in list(record.events or [])] if record is not None else []
+            finally:
+                db.close()
+        except Exception as exc:
+            self._mark_backend_fallback("get_events", exc)
+            if not self._allow_operation_fallback:
+                raise RuntimeError(self._build_backend_error("get_events", exc)) from exc
+            return self._fallback.get_events(run_id)
+
+    def save_approval_snapshot(self, approval_snapshot: Dict[str, Any]) -> None:
+        try:
+            from models import EmbeddedApprovalWorkspaceRecord
+        except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+            from backend.models import EmbeddedApprovalWorkspaceRecord
+
+        request_id = str((approval_snapshot or {}).get("request_id") or "").strip()
+        if not request_id:
+            return
+        try:
+            db = self._session_factory()
+            try:
+                record = db.query(EmbeddedApprovalWorkspaceRecord).filter(
+                    EmbeddedApprovalWorkspaceRecord.request_id == request_id
+                ).first()
+                if record is None:
+                    record = EmbeddedApprovalWorkspaceRecord(
+                        request_id=request_id,
+                        run_id=approval_snapshot.get("run_id"),
+                        approval_snapshot=dict(approval_snapshot or {}),
+                    )
+                    db.add(record)
+                else:
+                    record.run_id = approval_snapshot.get("run_id")
+                    record.approval_snapshot = dict(approval_snapshot or {})
+                db.commit()
+                self._mark_backend_success()
+            finally:
+                db.close()
+        except Exception as exc:
+            self._mark_backend_fallback("save_approval_snapshot", exc)
+            if not self._allow_operation_fallback:
+                raise RuntimeError(self._build_backend_error("save_approval_snapshot", exc)) from exc
+            self._fallback.save_approval_snapshot(approval_snapshot)
+
+    def get_approval_snapshot(self, request_id: str) -> Optional[Dict[str, Any]]:
+        try:
+            from models import EmbeddedApprovalWorkspaceRecord
+        except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+            from backend.models import EmbeddedApprovalWorkspaceRecord
+
+        try:
+            db = self._session_factory()
+            try:
+                record = db.query(EmbeddedApprovalWorkspaceRecord).filter(
+                    EmbeddedApprovalWorkspaceRecord.request_id == str(request_id or "").strip()
+                ).first()
+                self._mark_backend_success()
+                return dict(record.approval_snapshot or {}) if record is not None else None
+            finally:
+                db.close()
+        except Exception as exc:
+            self._mark_backend_fallback("get_approval_snapshot", exc)
+            if not self._allow_operation_fallback:
+                raise RuntimeError(self._build_backend_error("get_approval_snapshot", exc)) from exc
+            return self._fallback.get_approval_snapshot(request_id)
+
+    def save_tool_continuation_descriptor(self, request_id: str, descriptor: Dict[str, Any]) -> None:
+        self._save_continuation(
+            continuation_key=str(request_id or "").strip(),
+            continuation_kind="tool",
+            run_id=None,
+            request_id=request_id,
+            descriptor=descriptor,
+        )
+
+    def get_tool_continuation_descriptor(self, request_id: str) -> Optional[Dict[str, Any]]:
+        return self._get_continuation(str(request_id or "").strip(), "tool")
+
+    def delete_tool_continuation_descriptor(self, request_id: str) -> None:
+        self._delete_continuation(str(request_id or "").strip(), "tool")
+
+    def save_loop_continuation_descriptor(self, run_id: str, descriptor: Dict[str, Any]) -> None:
+        self._save_continuation(
+            continuation_key=str(run_id or "").strip(),
+            continuation_kind="loop",
+            run_id=run_id,
+            request_id=(descriptor or {}).get("request_id"),
+            descriptor=descriptor,
+        )
+
+    def get_loop_continuation_descriptor(self, run_id: str) -> Optional[Dict[str, Any]]:
+        return self._get_continuation(str(run_id or "").strip(), "loop")
+
+    def delete_loop_continuation_descriptor(self, run_id: str) -> None:
+        self._delete_continuation(str(run_id or "").strip(), "loop")
+
+    def _save_continuation(
+        self,
+        *,
+        continuation_key: str,
+        continuation_kind: str,
+        run_id: Optional[str],
+        request_id: Optional[str],
+        descriptor: Dict[str, Any],
+    ) -> None:
+        try:
+            from models import EmbeddedContinuationWorkspaceRecord
+        except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+            from backend.models import EmbeddedContinuationWorkspaceRecord
+
+        if not continuation_key:
+            return
+        try:
+            db = self._session_factory()
+            try:
+                record = db.query(EmbeddedContinuationWorkspaceRecord).filter(
+                    EmbeddedContinuationWorkspaceRecord.continuation_key == continuation_key,
+                    EmbeddedContinuationWorkspaceRecord.continuation_kind == continuation_kind,
+                ).first()
+                if record is None:
+                    record = EmbeddedContinuationWorkspaceRecord(
+                        continuation_key=continuation_key,
+                        continuation_kind=continuation_kind,
+                        run_id=run_id,
+                        request_id=request_id,
+                        descriptor=dict(descriptor or {}),
+                    )
+                    db.add(record)
+                else:
+                    record.run_id = run_id
+                    record.request_id = request_id
+                    record.descriptor = dict(descriptor or {})
+                db.commit()
+                self._mark_backend_success()
+            finally:
+                db.close()
+        except Exception as exc:
+            self._mark_backend_fallback(f"save_{continuation_kind}_continuation", exc)
+            if not self._allow_operation_fallback:
+                raise RuntimeError(self._build_backend_error(f"save_{continuation_kind}_continuation", exc)) from exc
+            if continuation_kind == "tool":
+                self._fallback.save_tool_continuation_descriptor(continuation_key, descriptor)
+            else:
+                self._fallback.save_loop_continuation_descriptor(continuation_key, descriptor)
+
+    def _get_continuation(self, continuation_key: str, continuation_kind: str) -> Optional[Dict[str, Any]]:
+        try:
+            from models import EmbeddedContinuationWorkspaceRecord
+        except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+            from backend.models import EmbeddedContinuationWorkspaceRecord
+
+        try:
+            db = self._session_factory()
+            try:
+                record = db.query(EmbeddedContinuationWorkspaceRecord).filter(
+                    EmbeddedContinuationWorkspaceRecord.continuation_key == continuation_key,
+                    EmbeddedContinuationWorkspaceRecord.continuation_kind == continuation_kind,
+                ).first()
+                self._mark_backend_success()
+                return dict(record.descriptor or {}) if record is not None else None
+            finally:
+                db.close()
+        except Exception as exc:
+            self._mark_backend_fallback(f"get_{continuation_kind}_continuation", exc)
+            if not self._allow_operation_fallback:
+                raise RuntimeError(self._build_backend_error(f"get_{continuation_kind}_continuation", exc)) from exc
+            return (
+                self._fallback.get_tool_continuation_descriptor(continuation_key)
+                if continuation_kind == "tool"
+                else self._fallback.get_loop_continuation_descriptor(continuation_key)
+            )
+
+    def _delete_continuation(self, continuation_key: str, continuation_kind: str) -> None:
+        try:
+            from models import EmbeddedContinuationWorkspaceRecord
+        except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+            from backend.models import EmbeddedContinuationWorkspaceRecord
+
+        try:
+            db = self._session_factory()
+            try:
+                db.query(EmbeddedContinuationWorkspaceRecord).filter(
+                    EmbeddedContinuationWorkspaceRecord.continuation_key == continuation_key,
+                    EmbeddedContinuationWorkspaceRecord.continuation_kind == continuation_kind,
+                ).delete()
+                db.commit()
+                self._mark_backend_success()
+            finally:
+                db.close()
+        except Exception as exc:
+            self._mark_backend_fallback(f"delete_{continuation_kind}_continuation", exc)
+            if not self._allow_operation_fallback:
+                raise RuntimeError(self._build_backend_error(f"delete_{continuation_kind}_continuation", exc)) from exc
+            if continuation_kind == "tool":
+                self._fallback.delete_tool_continuation_descriptor(continuation_key)
+            else:
+                self._fallback.delete_loop_continuation_descriptor(continuation_key)
+
+    def _mark_backend_success(self) -> None:
+        self._fallback_active = False
+        self._fallback_reason = ""
+        self._last_error = ""
+
+    def _mark_backend_fallback(self, operation: str, exc: Exception) -> None:
+        self._fallback_active = True
+        self._fallback_reason = str(operation or "").strip()
+        self._last_error = str(exc or "").strip()
+
+    def _build_backend_error(self, operation: str, exc: Exception) -> str:
+        return (
+            f"Embedded workspace store strict_sql failure during {str(operation or '').strip()}: "
+            f"{str(exc or '').strip()}"
+        )
+
     def list_artifacts(self, conversation_id: Optional[int] = None, kind: Optional[str] = None) -> List[Artifact]:
         try:
             from models import ArtifactRecord
@@ -244,6 +602,8 @@ _provider_adapter: Optional[ModelRouterProviderAdapter] = None
 _context_store_adapter: Optional[ContextManagerAdapter] = None
 _memory_store_adapter: Optional[MemoryManagerAdapter] = None
 _artifact_store: Optional[InMemoryArtifactStore] = None
+_embedded_workspace_store: Optional[EmbeddedRunWorkspaceStore] = None
+ALLOWED_EMBEDDED_WORKSPACE_STORE_MODES = {"memory_only", "prefer_sql_with_fallback", "strict_sql"}
 
 
 def get_model_provider() -> ModelProvider:
@@ -299,3 +659,53 @@ def get_artifact_store() -> ArtifactStore:
         except Exception:  # pragma: no cover - keep runtime usable in non-db tests
             _artifact_store = InMemoryArtifactStore()
     return _artifact_store
+
+
+def get_embedded_workspace_store() -> EmbeddedRunWorkspaceStore:
+    """Return the persistence seam for Embedded SDK run snapshots and continuations."""
+    global _embedded_workspace_store
+    if _embedded_workspace_store is None:
+        if EMBEDDED_WORKSPACE_STORE_MODE == "memory_only":
+            _embedded_workspace_store = InMemoryEmbeddedRunWorkspaceStore()
+            return _embedded_workspace_store
+        try:
+            try:
+                from database import Base, SessionLocal, engine
+            except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+                from backend.database import Base, SessionLocal, engine
+            try:
+                import models  # noqa: F401
+            except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+                import backend.models  # noqa: F401
+
+            Base.metadata.create_all(bind=engine)
+
+            allow_operation_fallback = EMBEDDED_WORKSPACE_STORE_MODE == "prefer_sql_with_fallback"
+            _embedded_workspace_store = SQLAlchemyEmbeddedRunWorkspaceStore(
+                SessionLocal,
+                allow_operation_fallback=allow_operation_fallback,
+                backend_mode=EMBEDDED_WORKSPACE_STORE_MODE,
+            )
+        except Exception as exc:
+            if EMBEDDED_WORKSPACE_STORE_MODE == "strict_sql" and DB_MODE != "memory":
+                raise RuntimeError(
+                    "Embedded workspace store strict_sql mode requires a working SQL backend."
+                ) from exc
+            _embedded_workspace_store = InMemoryEmbeddedRunWorkspaceStore()
+    return _embedded_workspace_store
+
+
+def get_embedded_workspace_store_mode() -> str:
+    return str(EMBEDDED_WORKSPACE_STORE_MODE or "").strip().lower()
+
+
+def set_embedded_workspace_store_mode(mode: str) -> str:
+    normalized_mode = str(mode or "").strip().lower()
+    if normalized_mode not in ALLOWED_EMBEDDED_WORKSPACE_STORE_MODES:
+        raise ValueError(
+            "embedded_workspace_store_mode 仅支持 memory_only / prefer_sql_with_fallback / strict_sql"
+        )
+    global EMBEDDED_WORKSPACE_STORE_MODE, _embedded_workspace_store
+    EMBEDDED_WORKSPACE_STORE_MODE = normalized_mode
+    _embedded_workspace_store = None
+    return EMBEDDED_WORKSPACE_STORE_MODE

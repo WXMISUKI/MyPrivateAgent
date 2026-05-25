@@ -1,0 +1,5 @@
+- [x] Add failing frontend service tests for `subagent_detail` summary labels.
+- [x] Add failing Governance Timeline panel assertion for runtime contract warning text.
+- [x] Implement compact summary formatting.
+- [x] Update docs/manual notes.
+- [x] Validate OpenSpec and run focused frontend tests.

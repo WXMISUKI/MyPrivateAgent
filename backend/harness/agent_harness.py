@@ -751,6 +751,7 @@ class AgentHarness:
                 tool_results = []
                 abort_due_to_tool_schema_error = False
                 abort_due_to_tool_budget = False
+                abort_due_to_approval = False
                 for tool_call in tool_calls_from_response:
                     tool_name = tool_call.get('name') or tool_call.get('function', {}).get('name', '')
                     tool_args = tool_call.get('arguments') or tool_call.get('args') or tool_call.get('function', {}).get('arguments', {})
@@ -786,6 +787,68 @@ class AgentHarness:
                             "model_name": self.model_name,
                         },
                     )
+                    if pre_hook_decision.requires_approval:
+                        approval_request_id = f"apr_{uuid4().hex}"
+                        run_context.set_runtime_marker(
+                            error_category="tool_governance",
+                            approval_request_id=approval_request_id,
+                        )
+                        run_context.set_state(AgentState.WAITING_APPROVAL, stop_reason="approval_required")
+                        state_event = self._emit_state_transition_event(event_factory, run_context, iteration=iteration)
+                        if state_event:
+                            yield state_event
+
+                        try:
+                            from services.approval_engine_service import get_approval_engine_service
+                        except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+                            from backend.services.approval_engine_service import get_approval_engine_service
+
+                        approval_state = get_approval_engine_service().create_tool_approval_request(
+                            request_id=approval_request_id,
+                            tool_name=tool_name,
+                            tool_args=tool_args if isinstance(tool_args, dict) else {},
+                            context={
+                                **self._build_permission_runtime_scope(
+                                    run_context=run_context,
+                                    tool_call_id=tool_call_id,
+                                ),
+                                "user_id": self.user_id,
+                                "conversation_id": self.conversation_id,
+                                "model_name": self.model_name,
+                                "source_event_type": "approval_created",
+                            },
+                            permission_level="high_risk",
+                            reason=pre_hook_decision.reason,
+                            reason_code=pre_hook_decision.reason_code or "high_risk_tool_requires_approval",
+                            request_metadata={
+                                "hook_decision": pre_hook_decision.metadata or {},
+                                "tool_call_id": tool_call_id,
+                                "iteration": run_context.iteration,
+                            },
+                        )
+                        approval_payload = approval_state.to_dict()
+                        yield event_factory.build(
+                            AgentEventType.STATUS,
+                            {
+                                "status_kind": "approval_created",
+                                "approval_request_id": approval_payload.get("request_id"),
+                                "request_id": approval_payload.get("request_id"),
+                                "tool_name": tool_name,
+                                "target_type": "tool",
+                                "target_name": tool_name,
+                                "permission_level": approval_payload.get("permission_level") or "high_risk",
+                                "reason": pre_hook_decision.reason,
+                                "reason_code": approval_payload.get("reason_code"),
+                                "tool_args": tool_args if isinstance(tool_args, dict) else {},
+                                "approval_request": approval_payload,
+                            },
+                            iteration=iteration,
+                        ).to_json()
+                        waiting_message = "工具治理策略要求人工审批，已创建审批请求。"
+                        full_response = waiting_message
+                        abort_due_to_approval = True
+                        break
+
                     if not pre_hook_decision.allowed:
                         deny_message = f"工具治理策略阻断：{pre_hook_decision.reason or '不允许自动执行该工具'}"
                         yield event_factory.build(
@@ -966,6 +1029,9 @@ class AgentHarness:
                         break
 
                 if abort_due_to_tool_budget:
+                    break
+
+                if abort_due_to_approval:
                     break
 
                 if abort_due_to_tool_schema_error:
@@ -1197,7 +1263,7 @@ class AgentHarness:
                 ).to_json()
                 break
 
-        if run_context.state not in (AgentState.FAILED, AgentState.ABORTED):
+        if run_context.state not in (AgentState.FAILED, AgentState.ABORTED, AgentState.WAITING_APPROVAL):
             run_context.set_state(AgentState.DONE, stop_reason=run_context.stop_reason or "completed")
             state_event = self._emit_state_transition_event(event_factory, run_context, iteration=run_context.iteration)
             if state_event:
@@ -1210,6 +1276,8 @@ class AgentHarness:
                 "reasoning": full_reasoning if full_reasoning else None,
                 "state": run_context.state.value,
                 "stop_reason": run_context.stop_reason,
+                "approval_request_id": run_context.metadata.get("approval_request_id"),
+                "error_category": run_context.metadata.get("error_category"),
                 **final_response_metadata,
             },
             iteration=run_context.iteration,
@@ -1518,7 +1586,13 @@ class AgentHarness:
         execution_metadata: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Build a tool_result event payload with structured rendering metadata."""
+        try:
+            from agent_framework.tools import ToolExecutionEnvelope
+        except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+            from backend.agent_framework.tools import ToolExecutionEnvelope
+
         tool_spec = self._get_tool_event_metadata(tool_name)
+        execution = dict(execution_metadata or {})
         payload: Dict[str, Any] = {
             "name": tool_name,
             "result": tool_result,
@@ -1527,13 +1601,25 @@ class AgentHarness:
             "render_mode": tool_spec.get("render_mode"),
             "card_schema": tool_spec.get("card_schema"),
         }
-        if execution_metadata:
-            payload["tool_execution"] = dict(execution_metadata)
-            payload["cache_hit"] = execution_metadata.get("cache_hit")
-            payload["duration_ms"] = execution_metadata.get("duration_ms")
-            payload["result_source"] = execution_metadata.get("result_source")
-            payload["status"] = execution_metadata.get("status")
         payload.update(self._build_content_event_metadata(tool_name, tool_result, tool_args))
+        envelope = ToolExecutionEnvelope(
+            tool_name=tool_name,
+            tool_call_id=tool_call_id,
+            status=str(execution.get("status") or "ok"),
+            result_text=tool_result,
+            render_mode=payload.get("render_mode"),
+            card_schema=payload.get("card_schema"),
+            card=payload.get("card") if isinstance(payload.get("card"), dict) else None,
+            execution_metadata=execution,
+            tool_spec=tool_spec,
+        )
+        payload["tool_execution_envelope"] = envelope.to_dict()
+        if execution_metadata:
+            payload["tool_execution"] = execution
+            payload["cache_hit"] = execution.get("cache_hit")
+            payload["duration_ms"] = execution.get("duration_ms")
+            payload["result_source"] = execution.get("result_source")
+            payload["status"] = execution.get("status")
         return payload
 
     def _build_content_event_metadata(

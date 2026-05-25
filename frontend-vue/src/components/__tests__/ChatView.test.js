@@ -71,6 +71,28 @@ describe('ChatView', () => {
     expect(wrapper.text()).not.toContain('Provider Failover 高风险')
   })
 
+  it('toggles runtime trace expert switch through settings store', async () => {
+    const settingsStore = useSettingsStore()
+    const wrapper = mount(ChatView, {
+      global: {
+        stubs: {
+          CommandPalette: true,
+          MessageList: true,
+          PlannerPanel: true
+        }
+      }
+    })
+
+    await flushPromises()
+    const toggle = wrapper.find('.runtime-trace-toggle input')
+    expect(settingsStore.enableMainChatRuntimeTrace).toBe(false)
+
+    await toggle.setValue(true)
+
+    expect(settingsStore.enableMainChatRuntimeTrace).toBe(true)
+    expect(wrapper.text()).toContain('已附加 main_chat runtime trace 上下文')
+  })
+
   it('routes doctor governance slash command to governance doctor panel', async () => {
     const wrapper = mount(ChatView, {
       global: {
@@ -188,6 +210,8 @@ describe('ChatView', () => {
         params: ['snapshot', 'MCP-REF-1'],
         domain: 'mcp',
         snapshotId: 'MCP-REF-1',
+        eventLabel: 'MCP Probe 完成',
+        summary: 'status=ok',
         copiedAt: '2026-05-03T10:00:00Z'
       }
     ]))
@@ -208,6 +232,8 @@ describe('ChatView', () => {
 
     expect(wrapper.find('textarea').element.value).toContain('最近治理快照命令')
     expect(wrapper.find('textarea').element.value).toContain('/mcp snapshot MCP-REF-1')
+    expect(wrapper.find('textarea').element.value).toContain('事件 MCP Probe 完成')
+    expect(wrapper.find('textarea').element.value).toContain('摘要 status=ok')
 
     localStorage.removeItem('governance_recent_snapshot_commands')
   })

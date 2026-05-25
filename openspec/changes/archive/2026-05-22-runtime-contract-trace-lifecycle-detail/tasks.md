@@ -1,0 +1,4 @@
+- [x] Add failing health router test for lifecycle recovery detail.
+- [x] Add compact lifecycle recovery label to runtime contract gate degraded trace detail.
+- [x] Update runtime contract docs and manual test notes.
+- [x] Validate OpenSpec and run focused backend tests.

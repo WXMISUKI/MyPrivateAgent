@@ -1,0 +1,4 @@
+- [x] Add failing tests for inconsistent approval lifecycle recovery coverage normalization.
+- [x] Recompute coverage strictly in Runtime Contract Gate and health trace normalization.
+- [x] Update runtime contract docs and roadmap notes.
+- [x] Validate OpenSpec and run focused backend tests.

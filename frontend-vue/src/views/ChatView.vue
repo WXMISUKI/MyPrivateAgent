@@ -1,6 +1,7 @@
 <template>
   <div class="chat-container">
     <div class="chat-header">
+      <div class="chat-header-controls">
       <div class="model-selector" ref="modelSelectorRef">
         <button class="model-trigger" @click="modelDropdownOpen = !modelDropdownOpen">
           <span class="model-name">{{ currentModelDisplay }}</span>
@@ -22,6 +23,16 @@
             </div>
           </div>
         </div>
+      </div>
+        <label class="runtime-trace-toggle" :class="{ active: settingsStore.enableMainChatRuntimeTrace }">
+          <input
+            type="checkbox"
+            :checked="settingsStore.enableMainChatRuntimeTrace"
+            @change="settingsStore.setEnableMainChatRuntimeTrace($event.target.checked)"
+          >
+          <span class="toggle-label">Runtime Trace</span>
+          <span class="toggle-hint">专家模式</span>
+        </label>
       </div>
       <button v-if="showPlannerConsole" class="planner-toggle-btn" @click="plannerCollapsed = !plannerCollapsed">
         {{ plannerCollapsed ? '打开 Planner' : '隐藏 Planner' }}
@@ -92,6 +103,9 @@
             <span>Enter 发送</span>
             <span>Shift + Enter 换行</span>
             <span>/ 快捷命令</span>
+            <span v-if="settingsStore.enableMainChatRuntimeTrace">
+              已附加 main_chat runtime trace 上下文
+            </span>
             <span v-if="showPlannerConsole && latestPlannerPolicyHint">
               当前策略 Provider: {{ latestPlannerPolicyHint.selected_provider }} ({{ latestPlannerPolicyHint.reason }})
             </span>
@@ -950,6 +964,13 @@ onUnmounted(() => {
   background: var(--bg-secondary);
 }
 
+.chat-header-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
 .chat-body {
   flex: 1;
   display: flex;
@@ -993,6 +1014,39 @@ onUnmounted(() => {
 
 .model-selector {
   position: relative;
+}
+
+.runtime-trace-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.runtime-trace-toggle.active {
+  border-color: rgba(16, 185, 129, 0.45);
+  background: rgba(16, 185, 129, 0.08);
+  color: #047857;
+}
+
+.runtime-trace-toggle input {
+  margin: 0;
+}
+
+.toggle-label {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.toggle-hint {
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
 }
 
 .model-trigger {

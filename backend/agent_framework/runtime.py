@@ -122,6 +122,17 @@ class AgentRunContext:
     last_state_transition: Dict[str, Any] = field(default_factory=dict)
     metadata: Dict[str, Any] = field(default_factory=dict)
 
+    def set_runtime_marker(
+        self,
+        *,
+        error_category: Optional[str] = None,
+        approval_request_id: Optional[str] = None,
+    ) -> None:
+        if error_category:
+            self.metadata["error_category"] = error_category
+        if approval_request_id:
+            self.metadata["approval_request_id"] = approval_request_id
+
     def begin_iteration(self) -> int:
         self.iteration += 1
         self.transition_to(AgentState.GENERATING)
@@ -153,6 +164,7 @@ class AgentRunContext:
 
     def snapshot(self) -> Dict[str, Any]:
         return {
+            "runtime_core": True,
             "run_id": self.run_id,
             "parent_run_id": self.parent_run_id,
             "run_kind": self.run_kind.value,
@@ -166,6 +178,26 @@ class AgentRunContext:
             "state_history": list(self.state_history),
             "metadata": dict(self.metadata),
         }
+
+    @classmethod
+    def from_snapshot(cls, snapshot: Dict[str, Any]) -> "AgentRunContext":
+        payload = dict(snapshot or {})
+        context = cls(
+            conversation_id=payload.get("conversation_id"),
+            user_id=payload.get("user_id"),
+            model_name=str(payload.get("model_name") or "unknown").strip() or "unknown",
+            run_id=str(payload.get("run_id") or "").strip(),
+            parent_run_id=payload.get("parent_run_id"),
+            run_kind=AgentRunKind(str(payload.get("run_kind") or AgentRunKind.CHAT.value)),
+            state=AgentState(str(payload.get("state") or AgentState.INIT.value)),
+            iteration=int(payload.get("iteration") or 0),
+            stop_reason=payload.get("stop_reason"),
+            tool_history=list(payload.get("tool_history") or []),
+            state_history=list(payload.get("state_history") or []),
+            last_state_transition=dict(payload.get("last_state_transition") or {}),
+            metadata=dict(payload.get("metadata") or {}),
+        )
+        return context
 
     def record_tool_result(
         self,

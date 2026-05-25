@@ -101,16 +101,25 @@ class RunTraceService:
             item_id=item_id,
             run_id=run_id,
             child_run_id=child_run_id,
-            prefer_active_when_unspecified=True,
+            prefer_active_when_unspecified=not self._has_explicit_runtime_scope(
+                plan_id=plan_id,
+                item_id=item_id,
+                run_id=run_id,
+                child_run_id=child_run_id,
+            ),
         )
         if target is None:
             return False
         plan, item = target
-        payload_data = dict(payload or {})
-        if run_id and "run_id" not in payload_data:
-            payload_data["run_id"] = run_id
-        if child_run_id and "child_run_id" not in payload_data:
-            payload_data["child_run_id"] = child_run_id
+        payload_data = self._build_scoped_payload(
+            payload=payload,
+            plan=plan,
+            item=item,
+            plan_id=plan_id,
+            item_id=item_id,
+            run_id=run_id,
+            child_run_id=child_run_id,
+        )
         self._get_scheduler_service()(self.db).append_run_trace_event(
             plan=plan,
             item_id=item.id,
@@ -122,6 +131,128 @@ class RunTraceService:
             payload=payload_data,
         )
         return True
+
+    def has_runtime_trace_fingerprint(
+        self,
+        *,
+        user_id: Optional[int],
+        conversation_id: Optional[int] = None,
+        plan_id: Optional[int] = None,
+        item_id: Optional[int] = None,
+        run_id: Optional[str] = None,
+        child_run_id: Optional[str] = None,
+        source: str,
+        event_type: str,
+        fingerprint: str,
+        dedupe_key: Optional[str] = None,
+        limit: int = 50,
+    ) -> bool:
+        normalized_fingerprint = str(fingerprint or "").strip()
+        normalized_dedupe_key = str(dedupe_key or "").strip()
+        if not normalized_fingerprint and not normalized_dedupe_key:
+            return False
+        return self._has_runtime_trace_payload_match(
+            user_id=user_id,
+            conversation_id=conversation_id,
+            plan_id=plan_id,
+            item_id=item_id,
+            run_id=run_id,
+            child_run_id=child_run_id,
+            source=source,
+            event_type=event_type,
+            dedupe_key=normalized_dedupe_key or None,
+            fingerprint=normalized_fingerprint or None,
+            limit=limit,
+        )
+
+    def has_runtime_trace_dedupe_key(
+        self,
+        *,
+        user_id: Optional[int],
+        conversation_id: Optional[int] = None,
+        plan_id: Optional[int] = None,
+        item_id: Optional[int] = None,
+        run_id: Optional[str] = None,
+        child_run_id: Optional[str] = None,
+        source: str,
+        event_type: str,
+        dedupe_key: str,
+        limit: int = 50,
+    ) -> bool:
+        normalized_dedupe_key = str(dedupe_key or "").strip()
+        if not normalized_dedupe_key:
+            return False
+        return self._has_runtime_trace_payload_match(
+            user_id=user_id,
+            conversation_id=conversation_id,
+            plan_id=plan_id,
+            item_id=item_id,
+            run_id=run_id,
+            child_run_id=child_run_id,
+            source=source,
+            event_type=event_type,
+            dedupe_key=normalized_dedupe_key,
+            fingerprint=None,
+            limit=limit,
+        )
+
+    def _has_runtime_trace_payload_match(
+        self,
+        *,
+        user_id: Optional[int],
+        conversation_id: Optional[int],
+        plan_id: Optional[int],
+        item_id: Optional[int],
+        run_id: Optional[str],
+        child_run_id: Optional[str],
+        source: str,
+        event_type: str,
+        dedupe_key: Optional[str] = None,
+        fingerprint: Optional[str] = None,
+        limit: int = 50,
+    ) -> bool:
+        normalized_dedupe_key = str(dedupe_key or "").strip()
+        normalized_fingerprint = str(fingerprint or "").strip()
+        if not normalized_dedupe_key and not normalized_fingerprint:
+            return False
+        if self.db is None or user_id is None:
+            user_id = self._resolve_user_id(user_id=user_id, conversation_id=conversation_id)
+        if self.db is None or user_id is None:
+            return False
+        target = self._resolve_plan_item_target(
+            user_id=user_id,
+            conversation_id=conversation_id,
+            plan_id=plan_id,
+            item_id=item_id,
+            run_id=run_id,
+            child_run_id=child_run_id,
+            prefer_active_when_unspecified=not self._has_explicit_runtime_scope(
+                plan_id=plan_id,
+                item_id=item_id,
+                run_id=run_id,
+                child_run_id=child_run_id,
+            ),
+        )
+        if target is None:
+            return False
+        _, item = target
+        events = self._get_scheduler_service()(self.db).filter_run_trace(
+            item,
+            run_id=run_id,
+            child_run_id=child_run_id,
+            source=source,
+            event_type=event_type,
+            limit=limit,
+        )
+        for event in events:
+            payload = event.get("payload") if isinstance(event, dict) else {}
+            if not isinstance(payload, dict):
+                continue
+            if normalized_dedupe_key and str(payload.get("dedupe_key") or "").strip() == normalized_dedupe_key:
+                return True
+            if normalized_fingerprint and str(payload.get("fingerprint") or "").strip() == normalized_fingerprint:
+                return True
+        return False
 
     def append_runtime_audit(
         self,
@@ -147,16 +278,25 @@ class RunTraceService:
             item_id=item_id,
             run_id=run_id,
             child_run_id=child_run_id,
-            prefer_active_when_unspecified=True,
+            prefer_active_when_unspecified=not self._has_explicit_runtime_scope(
+                plan_id=plan_id,
+                item_id=item_id,
+                run_id=run_id,
+                child_run_id=child_run_id,
+            ),
         )
         if target is None:
             return False
         plan, item = target
-        payload_data = dict(payload or {})
-        if run_id and "run_id" not in payload_data:
-            payload_data["run_id"] = run_id
-        if child_run_id and "child_run_id" not in payload_data:
-            payload_data["child_run_id"] = child_run_id
+        payload_data = self._build_scoped_payload(
+            payload=payload,
+            plan=plan,
+            item=item,
+            plan_id=plan_id,
+            item_id=item_id,
+            run_id=run_id,
+            child_run_id=child_run_id,
+        )
         self._get_scheduler_service()(self.db).append_audit_event(
             plan=plan,
             item_id=item.id,
@@ -245,6 +385,45 @@ class RunTraceService:
         if item is None:
             return None
         return plan, item
+
+    def _has_explicit_runtime_scope(
+        self,
+        *,
+        plan_id: Optional[int],
+        item_id: Optional[int],
+        run_id: Optional[str],
+        child_run_id: Optional[str],
+    ) -> bool:
+        if plan_id is not None:
+            return True
+        if item_id is not None:
+            return True
+        if str(run_id or "").strip():
+            return True
+        if str(child_run_id or "").strip():
+            return True
+        return False
+
+    def _build_scoped_payload(
+        self,
+        *,
+        payload: Optional[dict[str, Any]],
+        plan: Any,
+        item: Any,
+        plan_id: Optional[int],
+        item_id: Optional[int],
+        run_id: Optional[str],
+        child_run_id: Optional[str],
+    ) -> dict[str, Any]:
+        payload_data = dict(payload or {})
+        if plan is not None and item is not None:
+            payload_data["plan_id"] = getattr(plan, "id", None)
+            payload_data["plan_item_id"] = getattr(item, "id", None)
+        if run_id:
+            payload_data["run_id"] = run_id
+        if child_run_id:
+            payload_data["child_run_id"] = child_run_id
+        return payload_data
 
     def _get_planner_service(self):
         try:

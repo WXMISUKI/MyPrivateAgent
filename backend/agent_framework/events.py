@@ -35,7 +35,21 @@ class AgentEvent:
     parent_run_id: Optional[str] = None
     conversation_id: Optional[int] = None
     iteration: Optional[int] = None
+    source: Optional[str] = None
+    severity: Optional[str] = None
+    summary: str = ""
+    detail: str = ""
     payload: Dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if self.source is None and "source" in self.payload:
+            object.__setattr__(self, "source", self.payload["source"])
+        if self.severity is None and "severity" in self.payload:
+            object.__setattr__(self, "severity", self.payload["severity"])
+        if not self.summary and "summary" in self.payload:
+            object.__setattr__(self, "summary", str(self.payload["summary"] or ""))
+        if not self.detail and "detail" in self.payload:
+            object.__setattr__(self, "detail", str(self.payload["detail"] or ""))
 
     def to_dict(self) -> Dict[str, Any]:
         data: Dict[str, Any] = {
@@ -45,6 +59,10 @@ class AgentEvent:
             "parent_run_id": self.parent_run_id,
             "conversation_id": self.conversation_id,
             "iteration": self.iteration,
+            "source": self.source,
+            "severity": self.severity,
+            "summary": self.summary,
+            "detail": self.detail,
             "payload": dict(self.payload),
         }
         for key, value in self.payload.items():

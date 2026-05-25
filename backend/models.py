@@ -322,6 +322,82 @@ class ArtifactRecord(Base):
         return f"<ArtifactRecord {self.artifact_id}: {self.kind}>"
 
 
+class EmbeddedRunWorkspaceRecord(Base):
+    """Embedded SDK run workspace persistence snapshot."""
+
+    __tablename__ = "embedded_run_workspaces"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    run_id = Column(String(120), unique=True, index=True, nullable=False)
+    conversation_id = Column(Integer, ForeignKey("conversations.id"), nullable=True)
+    parent_run_id = Column(String(120), nullable=True)
+    run_kind = Column(String(50), nullable=True)
+    state = Column(String(50), nullable=True)
+    run_snapshot = Column(JSON, nullable=False)
+    events = Column(JSON, nullable=False, default=list)
+    workspace_metadata = Column("metadata", JSON, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    def __repr__(self):
+        return f"<EmbeddedRunWorkspaceRecord {self.run_id}>"
+
+
+class EmbeddedApprovalWorkspaceRecord(Base):
+    """Embedded SDK approval persistence snapshot."""
+
+    __tablename__ = "embedded_approval_workspaces"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    request_id = Column(String(120), unique=True, index=True, nullable=False)
+    run_id = Column(String(120), nullable=True, index=True)
+    approval_snapshot = Column(JSON, nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    def __repr__(self):
+        return f"<EmbeddedApprovalWorkspaceRecord {self.request_id}>"
+
+
+class EmbeddedContinuationWorkspaceRecord(Base):
+    """Embedded SDK continuation descriptor persistence snapshot."""
+
+    __tablename__ = "embedded_continuation_workspaces"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    continuation_key = Column(String(120), unique=True, index=True, nullable=False)
+    continuation_kind = Column(String(20), nullable=False)
+    run_id = Column(String(120), nullable=True, index=True)
+    request_id = Column(String(120), nullable=True, index=True)
+    descriptor = Column(JSON, nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    def __repr__(self):
+        return f"<EmbeddedContinuationWorkspaceRecord {self.continuation_kind}:{self.continuation_key}>"
+
+
+class RuntimeWorkerOwnershipRecord(Base):
+    """Durable runtime worker ownership lease record."""
+
+    __tablename__ = "runtime_worker_ownership_leases"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    run_id = Column(String(120), unique=True, index=True, nullable=False)
+    worker_id = Column(String(120), nullable=False, index=True)
+    lease_id = Column(String(160), nullable=False, index=True)
+    fencing_token = Column(Integer, nullable=False, default=1)
+    lease_status = Column(String(50), nullable=False, default="claimed")
+    claimed_at = Column(DateTime, nullable=False)
+    lease_expires_at = Column(DateTime, nullable=False, index=True)
+    last_heartbeat_at = Column(DateTime, nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    def __repr__(self):
+        return f"<RuntimeWorkerOwnershipRecord {self.run_id}: {self.worker_id} ({self.lease_status})>"
+
+
 class MessageFeedbackRecord(Base):
     """用户对助手输出的反馈记录。"""
 

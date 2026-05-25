@@ -89,7 +89,7 @@
 import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import { localCommands, parseCommand } from '../services/commands'
 import { commandApi } from '../api'
-import { loadRecentSnapshotCommands } from '../services/governanceSnapshotCommands'
+import { buildRecentSnapshotCommandDisplay, loadRecentSnapshotCommands } from '../services/governanceSnapshotCommands'
 
 const props = defineProps({
   visible: {
@@ -110,6 +110,7 @@ const filteredRecentCommands = computed(() => {
   if (!query.value) return recentCommands.value
   const lower = query.value.toLowerCase()
   return recentCommands.value.filter(cmd =>
+    (cmd.search_text || '').toLowerCase().includes(lower) ||
     (cmd.name || '').toLowerCase().includes(lower) ||
     (cmd.description || '').toLowerCase().includes(lower) ||
     (cmd.display_name || '').toLowerCase().includes(lower) ||
@@ -211,19 +212,23 @@ function executeCommandItem(cmd) {
 }
 
 function hydrateRecentCommands() {
-  recentCommands.value = loadRecentSnapshotCommands().map(item => ({
-    id: `recent-${item.snapshotId}`,
-    name: item.commandName,
-    display_name: item.commandText,
-    command_text: item.commandText,
-    description: `最近治理快照 · ${item.snapshotId}`,
-    icon: '🧷',
-    action: item.action,
-    category: 'recent',
-    hasParam: true,
-    paramHint: item.commandText,
-    presetParams: item.params,
-  }))
+  recentCommands.value = loadRecentSnapshotCommands().map(item => {
+    const display = buildRecentSnapshotCommandDisplay(item)
+    return {
+      id: `recent-${display.snapshotId}`,
+      name: display.commandName,
+      display_name: display.commandText,
+      command_text: display.commandText,
+      description: display.descriptionText,
+      icon: '🧷',
+      action: display.action,
+      category: 'recent',
+      hasParam: true,
+      paramHint: display.commandText,
+      presetParams: display.params,
+      search_text: display.searchText,
+    }
+  })
 }
 
 function close() {

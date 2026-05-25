@@ -1,0 +1,6 @@
+- [x] Add OpenSpec delta for worker ownership audit evidence readiness.
+- [x] Add focused failing tests for the audit evidence contract and production gate evidence.
+- [x] Implement the read-only audit evidence builder and production gate integration.
+- [x] Extend runtime smoke, Quality Gate, and Runtime Contract Gate summaries with audit evidence.
+- [x] Sync runtime docs and roadmap.
+- [x] Run focused validation and delete temporary test files.

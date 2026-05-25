@@ -26,27 +26,181 @@
       <div class="summary-grid">
         <div class="summary-card">
           <span class="summary-label">当前计划</span>
-          <strong>{{ currentPlan.objective || '-' }}</strong>
+          <strong
+            class="plan-objective-label"
+            :title="currentPlanObjectiveLabel"
+            :aria-label="`当前计划 ${currentPlanObjectiveLabel}`"
+          >
+            {{ currentPlanObjectiveLabel }}
+          </strong>
         </div>
         <div class="summary-card">
           <span class="summary-label">聚焦步骤</span>
-          <strong>{{ focusItem.title || '-' }}</strong>
+          <strong
+            class="focus-step-label"
+            :title="focusItemTitleLabel"
+            :aria-label="`聚焦步骤 ${focusItemTitleLabel}`"
+          >
+            {{ focusItemTitleLabel }}
+          </strong>
         </div>
         <div class="summary-card">
           <span class="summary-label">审计事件</span>
-          <strong>{{ auditCount }}</strong>
+          <strong
+            class="audit-count-label"
+            :title="String(auditCount)"
+            :aria-label="`审计事件 ${auditCount}`"
+          >
+            {{ auditCount }}
+          </strong>
         </div>
         <div class="summary-card">
           <span class="summary-label">运行 Trace</span>
-          <strong>{{ traceCount }}</strong>
+          <strong
+            class="trace-count-label"
+            :title="String(traceCount)"
+            :aria-label="`运行 Trace ${traceCount}`"
+          >
+            {{ traceCount }}
+          </strong>
+        </div>
+        <div v-if="currentRunOverview" class="summary-card">
+          <span class="summary-label">当前执行实例</span>
+          <strong>{{ currentRunOverview.id }}</strong>
+          <span class="muted">{{ currentRunOverview.summary }}</span>
+          <span class="muted">{{ currentRunOverview.notice }}</span>
+        </div>
+        <div class="summary-card">
+          <span class="summary-label">待处理审批</span>
+          <strong>{{ approvalOverview.pendingLabel }}</strong>
+          <span class="muted">{{ approvalOverview.primaryDetail }}</span>
+          <span class="muted">{{ approvalOverview.secondaryDetail }}</span>
         </div>
         <div class="summary-card">
           <span class="summary-label">当前筛选</span>
-          <strong>{{ activeFilterLabel }}</strong>
+          <strong
+            class="filter-focus-label"
+            :title="activeFilter"
+            :aria-label="`当前筛选 ${activeFilterLabel}`"
+          >
+            {{ activeFilterLabel }}
+          </strong>
         </div>
         <div class="summary-card">
           <span class="summary-label">风险模式</span>
-          <strong>{{ activeSeverityLabel }}</strong>
+          <strong
+            class="severity-focus-label"
+            :title="activeSeverity"
+            :aria-label="`风险模式 ${activeSeverityLabel}`"
+          >
+            {{ activeSeverityLabel }}
+          </strong>
+        </div>
+        <div v-if="activeFrameworkAdapterErrorTypeLabel" class="summary-card summary-card-dismissible">
+          <span class="summary-label">错误类型</span>
+          <strong
+            class="framework-error-type-focus-label"
+            :title="activeFrameworkAdapterErrorType"
+            :aria-label="`错误类型 ${activeFrameworkAdapterErrorTypeLabel}`"
+          >
+            {{ activeFrameworkAdapterErrorTypeLabel }}
+          </strong>
+          <button
+            type="button"
+            class="payload-toggle-btn compact-dismiss-btn"
+            :title="activeFrameworkAdapterErrorType"
+            :aria-label="activeFrameworkAdapterErrorTypeClearLabel"
+            @click="clearFrameworkAdapterErrorTypeFilter"
+          >
+            清除错误类型
+          </button>
+        </div>
+        <div v-if="activeDedupeKey" class="summary-card summary-card-dismissible">
+          <span class="summary-label">幂等键聚焦</span>
+          <strong
+            class="dedupe-focus-preview"
+            :title="activeDedupeKey"
+            :aria-label="`幂等键聚焦 ${activeDedupeKey}`"
+          >
+            {{ activeDedupeKeyPreview }}
+          </strong>
+          <span
+            class="muted dedupe-focus-match-count"
+            :aria-label="activeDedupeKeyMatchAriaLabel"
+          >
+            {{ activeDedupeKeyMatchLabel }}
+          </span>
+          <button
+            type="button"
+            class="payload-toggle-btn compact-dismiss-btn"
+            :title="activeDedupeKey"
+            :aria-label="activeDedupeKeyCopyLabel"
+            @click="copyActiveDedupeKey"
+          >
+            {{ copiedActiveDedupeKey ? '已复制当前幂等键' : '复制当前幂等键' }}
+          </button>
+          <button
+            type="button"
+            class="payload-toggle-btn compact-dismiss-btn"
+            :title="activeDedupeKey"
+            :aria-label="activeDedupeKeyClearLabel"
+            @click="clearDedupeKeyFilter"
+          >
+            清除幂等键
+          </button>
+        </div>
+        <div v-if="activeQueryId" class="summary-card summary-card-dismissible">
+          <span class="summary-label">Query 聚焦</span>
+          <strong
+            class="dedupe-focus-preview"
+            :title="activeQueryId"
+            :aria-label="`Query 聚焦 ${activeQueryId}`"
+          >
+            {{ activeQueryId }}
+          </strong>
+          <button
+            type="button"
+            class="payload-toggle-btn compact-dismiss-btn"
+            :title="activeQueryId"
+            :aria-label="`清除 Query ${activeQueryId}`"
+            @click="clearQueryIdFilter"
+          >
+            清除 Query
+          </button>
+        </div>
+        <div v-if="activeQueryStage" class="summary-card summary-card-dismissible">
+          <span class="summary-label">阶段聚焦</span>
+          <strong
+            class="dedupe-focus-preview"
+            :title="activeQueryStage"
+            :aria-label="`阶段聚焦 ${activeQueryStage}`"
+          >
+            {{ activeQueryStage }}
+          </strong>
+          <button
+            type="button"
+            class="payload-toggle-btn compact-dismiss-btn"
+            :title="activeQueryStage"
+            :aria-label="`清除阶段 ${activeQueryStage}`"
+            @click="clearQueryStageFilter"
+          >
+            清除阶段
+          </button>
+        </div>
+        <div v-if="currentQueryOverview" class="summary-card">
+          <span class="summary-label">Query 摘要</span>
+          <strong>{{ currentQueryOverview.latestStage || '-' }}</strong>
+          <span class="muted">
+            {{ `阶段 ${currentQueryOverview.stageCount} · 告警 ${currentQueryOverview.warningCount}` }}
+          </span>
+          <span class="muted">{{ currentQueryOverview.latestSnapshotId || currentQueryOverview.latestSummary || '无最近摘要' }}</span>
+        </div>
+        <div v-if="activeFilter === 'main_chat'" class="summary-card main-chat-history-summary-card">
+          <span class="summary-label">Main Chat Query History</span>
+          <strong>{{ mainChatQueryHistory.totalItems || 0 }}</strong>
+          <span class="muted">
+            {{ mainChatQueryHistory.recordingState === 'recorded' ? `page ${mainChatQueryHistory.page} · size ${mainChatQueryHistory.pageSize}` : (mainChatQueryHistory.reason || '暂无 history') }}
+          </span>
         </div>
         <div class="summary-card">
           <span class="summary-label">治理快照</span>
@@ -60,252 +214,134 @@
         </div>
       </div>
 
-      <div v-if="governanceOverviewCards.length" class="summary-grid governance-overview-grid">
-        <div
-          v-for="card in governanceOverviewCards"
-          :key="card.key"
-          class="summary-card governance-overview-card"
-          :class="[{ active: activeFilter === card.key }, `severity-${card.severity || 'info'}`]"
-        >
-          <button type="button" class="overview-card-main" @click="applyFilter(card.key)">
-            <div class="overview-card-head">
-              <span class="summary-label">{{ card.label }}</span>
-              <span class="overview-severity-badge" :class="`severity-${card.severity || 'info'}`">
-                {{ formatSeverityBadge(card.severity) }}
-              </span>
-            </div>
-            <strong>{{ card.count }}</strong>
-            <span class="overview-card-metrics">总事件 {{ card.count }} · 告警 {{ card.warningCount }}</span>
-            <span class="overview-card-title">{{ card.latestTitle || '无最近事件' }}</span>
-            <span class="overview-card-time">{{ formatAuditTime(card.latestTimestamp) }}</span>
-          </button>
-          <div class="overview-card-actions">
-            <button
-              type="button"
-              class="overview-risk-btn"
-              :class="{ active: activeFilter === card.key && activeSeverity === 'warning' }"
-              :disabled="card.warningCount === 0"
-              @click="applyWarningFocus(card.key)"
-            >
-              {{ card.warningCount > 0 ? `仅告警 · ${card.warningCount}` : '无告警' }}
-            </button>
-          </div>
-        </div>
-      </div>
+      <GovernanceTimelineMainChatWorkspace
+        :active-filter="activeFilter"
+        :current-query-detail="currentQueryDetail"
+        :main-chat-query-history="mainChatQueryHistory"
+        :main-chat-query-history-loading="mainChatQueryHistoryLoading"
+        :main-chat-query-history-error="mainChatQueryHistoryError"
+        :main-chat-history-search="mainChatHistorySearch"
+        :main-chat-history-status-text="mainChatHistoryStatusText"
+        :main-chat-history-context-label="mainChatHistoryContextLabel"
+        :active-query-id="activeQueryId"
+        :active-query-stage="activeQueryStage"
+        :filtered-main-chat-query-history-items="filteredMainChatQueryHistoryItems"
+        :is-history-stage-focused="isHistoryStageFocused"
+        :format-history-stage-tags="formatHistoryStageTags"
+        :format-snapshot-time="formatSnapshotTime"
+        @update:search="mainChatHistorySearch = $event"
+        @clear-search="mainChatHistorySearch = ''"
+        @refresh="loadMainChatQueryHistory()"
+        @retry="loadMainChatQueryHistory()"
+        @select-query="activeQueryId = $event"
+        @select-stage="focusHistoryQueryStage($event.queryId, $event.stage)"
+        @clear-query="clearQueryIdFilter"
+        @clear-stage="clearQueryStageFilter"
+        @load-more="loadMoreMainChatQueryHistory"
+        @focus-stage="focusQueryStage"
+      />
+
+      <GovernanceTimelineOverviewCards
+        :cards="governanceOverviewCards"
+        :active-filter="activeFilter"
+        :active-severity="activeSeverity"
+        :format-severity-badge="formatSeverityBadge"
+        :format-audit-time="formatAuditTime"
+        @select-card="applyFilter"
+        @focus-warning="applyWarningFocus"
+      />
 
       <div v-if="autoFocusNotice" class="governance-focus-notice">
         <strong>自动聚焦</strong>
         <span>{{ autoFocusNotice }}</span>
       </div>
 
-      <div v-if="recentCopiedCommandText" class="governance-command-notice">
-        <strong>最近复制命令</strong>
-        <code>{{ recentCopiedCommandText }}</code>
-      </div>
+      <GovernanceRecentSnapshotCommandsCard
+        :items="recentSnapshotCommands"
+        :copied-command-text="recentCopiedCommandText"
+        :copied-command-display="recentCopiedCommandDisplay"
+        @copy-command="copyRecentSnapshotCommand"
+      />
 
-      <button
-        v-if="lastDoctorOutcome"
-        type="button"
-        class="panel-card summary-action-card doctor-state-card"
-        :class="[`doctor-${lastDoctorOutcome.severity}`, { active: activeFilter === 'doctor' }]"
-        @click="applyFilter('doctor')"
-      >
-        <div class="card-head">
-          <h3>最近一次 Doctor 结果</h3>
-          <span class="muted">{{ formatAuditTime(lastDoctorOutcome.timestamp) }}</span>
-        </div>
-        <div class="doctor-outcome-row">
-          <strong>{{ lastDoctorOutcome.title }}</strong>
-          <span>{{ lastDoctorOutcome.detail || '无附加信息' }}</span>
-        </div>
-      </button>
+      <GovernanceTimelineSummaryActionCards
+        :active-filter="activeFilter"
+        :last-doctor-outcome="lastDoctorOutcome"
+        :last-permission-outcome="lastPermissionOutcome"
+        :last-mcp-outcome="lastMcpOutcome"
+        :last-governance-outcome="lastGovernanceOutcome"
+        :last-scheduler-outcome="lastSchedulerOutcome"
+        :last-hook-outcome="lastHookOutcome"
+        :last-learning-outcome="lastLearningOutcome"
+        :last-runtime-outcome="lastRuntimeOutcome"
+        :format-audit-time="formatAuditTime"
+        @filter="applyFilter"
+      />
 
-      <button
-        v-if="lastPermissionOutcome"
-        type="button"
-        class="panel-card summary-action-card permission-state-card"
-        :class="[`permission-${lastPermissionOutcome.severity}`, { active: activeFilter === 'permission' }]"
-        @click="applyFilter('permission')"
-      >
-        <div class="card-head">
-          <h3>最近一次权限结果</h3>
-          <span class="muted">{{ formatAuditTime(lastPermissionOutcome.timestamp) }}</span>
-        </div>
-        <div class="doctor-outcome-row">
-          <strong>{{ lastPermissionOutcome.title }}</strong>
-          <span>{{ lastPermissionOutcome.content || '无附加信息' }}</span>
-        </div>
-      </button>
+      <GovernanceTimelineFrameworkAdapterCards
+        :copied-command-target="copiedCommandTarget"
+        :last-framework-adapter-pilot-outcome="lastFrameworkAdapterPilotOutcome"
+        :last-framework-adapter-precheck-outcome="lastFrameworkAdapterPrecheckOutcome"
+        :last-framework-adapter-external-pilot-outcome="lastFrameworkAdapterExternalPilotOutcome"
+        :last-framework-adapter-external-failure-diagnostic="lastFrameworkAdapterExternalFailureDiagnostic"
+        :format-audit-time="formatAuditTime"
+        :format-framework-adapter-summary-heading="formatFrameworkAdapterSummaryHeading"
+        :format-framework-adapter-identity-line="formatFrameworkAdapterIdentityLine"
+        :format-framework-adapter-failure-count="formatFrameworkAdapterFailureCount"
+        :format-framework-adapter-failure-distribution="formatFrameworkAdapterFailureDistribution"
+        :format-framework-adapter-failure-window="formatFrameworkAdapterFailureWindow"
+        :format-framework-adapter-failure-sample-size="formatFrameworkAdapterFailureSampleSize"
+        :is-summary-outcome-active="isSummaryOutcomeActive"
+        @focus-entry="focusTimelineEntry"
+        @open-runtime-surface="openRuntimeSurfacePanel"
+        @copy-snapshot-command="copySnapshotCommand"
+      />
 
-      <button
-        v-if="lastMcpOutcome"
-        type="button"
-        class="panel-card summary-action-card mcp-state-card"
-        :class="[`mcp-${lastMcpOutcome.severity}`, { active: activeFilter === 'mcp' }]"
-        @click="applyFilter('mcp')"
-      >
-        <div class="card-head">
-          <h3>最近一次 MCP 结果</h3>
-          <span class="muted">{{ formatAuditTime(lastMcpOutcome.timestamp) }}</span>
-        </div>
-        <div class="doctor-outcome-row">
-          <strong>{{ lastMcpOutcome.title }}</strong>
-          <span>{{ lastMcpOutcome.content || lastMcpOutcome.detail || '无附加信息' }}</span>
-        </div>
-      </button>
+      <GovernanceTimelineFrameworkAdapterRemediationCard
+        :remediation="lastFrameworkAdapterRemediation"
+        :active-filter="activeFilter"
+        :copied-command-target="copiedCommandTarget"
+        :format-audit-time="formatAuditTime"
+        :format-framework-adapter-remediation-heading="formatFrameworkAdapterRemediationHeading"
+        :format-framework-adapter-remediation-identity-line="formatFrameworkAdapterRemediationIdentityLine"
+        :format-framework-adapter-remediation-action="formatFrameworkAdapterRemediationAction"
+        @focus="applyFilter"
+        @open-runtime-surface="openRuntimeSurfacePanel"
+        @copy-command="copyFrameworkAdapterRemediationCommand"
+      />
 
-      <button
-        v-if="lastGovernanceOutcome"
-        type="button"
-        class="panel-card summary-action-card governance-state-card"
-        :class="[`governance-${lastGovernanceOutcome.severity}`, { active: activeFilter === 'governance' }]"
-        @click="applyFilter('governance')"
-      >
-        <div class="card-head">
-          <h3>最近一次整改结果</h3>
-          <span class="muted">{{ formatAuditTime(lastGovernanceOutcome.timestamp) }}</span>
-        </div>
-        <div class="doctor-outcome-row">
-          <strong>{{ lastGovernanceOutcome.title }}</strong>
-          <span>{{ lastGovernanceOutcome.content || lastGovernanceOutcome.detail || '无附加信息' }}</span>
-        </div>
-      </button>
-
-      <button
-        v-if="lastSchedulerOutcome"
-        type="button"
-        class="panel-card summary-action-card scheduler-state-card"
-        :class="[`scheduler-${lastSchedulerOutcome.severity}`, { active: activeFilter === 'scheduler' }]"
-        @click="applyFilter('scheduler')"
-      >
-        <div class="card-head">
-          <h3>最近一次调度结果</h3>
-          <span class="muted">{{ formatAuditTime(lastSchedulerOutcome.timestamp) }}</span>
-        </div>
-        <div class="doctor-outcome-row">
-          <strong>{{ lastSchedulerOutcome.title }}</strong>
-          <span>{{ lastSchedulerOutcome.content || lastSchedulerOutcome.detail || '无附加信息' }}</span>
-        </div>
-      </button>
-
-      <button
-        v-if="lastHookOutcome"
-        type="button"
-        class="panel-card summary-action-card hook-state-card"
-        :class="[`hook-${lastHookOutcome.severity}`, { active: activeFilter === 'hook' }]"
-        @click="applyFilter('hook')"
-      >
-        <div class="card-head">
-          <h3>最近一次 Hook 结果</h3>
-          <span class="muted">{{ formatAuditTime(lastHookOutcome.timestamp) }}</span>
-        </div>
-        <div class="doctor-outcome-row">
-          <strong>{{ lastHookOutcome.title }}</strong>
-          <span>{{ lastHookOutcome.content || lastHookOutcome.detail || '无附加信息' }}</span>
-        </div>
-      </button>
-
-        <button
-        v-if="lastLearningOutcome"
-        type="button"
-        class="panel-card summary-action-card learning-state-card"
-        :class="[`learning-${lastLearningOutcome.severity}`, { active: activeFilter === 'learning' }]"
-        @click="applyFilter('learning')"
-      >
-        <div class="card-head">
-          <h3>最近一次 Learning 结果</h3>
-          <span class="muted">{{ formatAuditTime(lastLearningOutcome.timestamp) }}</span>
-        </div>
-        <div class="doctor-outcome-row">
-          <strong>{{ lastLearningOutcome.title }}</strong>
-          <span>{{ lastLearningOutcome.content || lastLearningOutcome.detail || '无附加信息' }}</span>
-        </div>
-      </button>
-
-      <button
-        v-if="lastRuntimeOutcome"
-        type="button"
-        class="panel-card summary-action-card runtime-state-card"
-        :class="[`runtime-${lastRuntimeOutcome.severity}`, { active: activeFilter === 'runtime' }]"
-        @click="applyFilter('runtime')"
-      >
-        <div class="card-head">
-          <h3>最近一次 Runtime 结果</h3>
-          <span class="muted">{{ formatAuditTime(lastRuntimeOutcome.timestamp) }}</span>
-        </div>
-        <div class="doctor-outcome-row">
-          <strong>{{ lastRuntimeOutcome.title }}</strong>
-          <span>{{ lastRuntimeOutcome.content || lastRuntimeOutcome.detail || '无附加信息' }}</span>
-        </div>
-      </button>
-
-      <div class="panel-card">
-        <div class="card-head">
-          <h3>统一事件流</h3>
-          <span class="muted">最近 {{ filteredTimeline.length }} / {{ scopedTimeline.length }} 条</span>
-        </div>
-        <div class="filter-chip-row severity-chip-row">
-          <button
-            v-for="option in severityFilters"
-            :key="option.key"
-            class="filter-chip severity-chip"
-            :class="{ active: activeSeverity === option.key }"
-            @click="activeSeverity = option.key"
-          >
-            {{ option.label }} · {{ option.count }}
-          </button>
-        </div>
-        <div class="filter-chip-row">
-          <button
-            v-for="filter in timelineFilters"
-            :key="filter.key"
-            class="filter-chip"
-            :class="{ active: activeFilter === filter.key }"
-            @click="activeFilter = filter.key"
-          >
-            {{ filter.label }} · {{ filter.count }}
-          </button>
-        </div>
-        <div class="timeline-list">
-          <div
-            v-for="entry in filteredTimeline"
-            :key="entry.key"
-            class="timeline-item"
-            :class="[`severity-${entry.severity}`, { highlighted: isSnapshotHighlighted(entry) }]"
-          >
-            <div class="timeline-top">
-              <span class="timeline-badges">
-                <span class="timeline-kind">{{ entry.kindLabel }}</span>
-                <span v-if="entry.domainLabel" class="timeline-source">{{ entry.domainLabel }}</span>
-                <span v-if="entry.sourceLabel" class="timeline-source">{{ entry.sourceLabel }}</span>
-                <span class="timeline-event">{{ entry.title }}</span>
-              </span>
-              <span class="timeline-time">{{ formatAuditTime(entry.timestamp) }}</span>
-            </div>
-            <div class="timeline-content">{{ entry.content }}</div>
-            <div v-if="entry.detail" class="timeline-detail">{{ entry.detail }}</div>
-            <div v-if="entrySnapshotRef(entry)" class="timeline-snapshot-ref">
-              引用 {{ entrySnapshotRef(entry)?.snapshot_id }}
-            </div>
-            <div v-if="entry.payloadSummary" class="timeline-payload-summary">{{ entry.payloadSummary }}</div>
-            <div v-if="hasPayload(entry)" class="timeline-payload-actions">
-              <button class="payload-toggle-btn" @click="togglePayload(entry.key)">
-                {{ isPayloadExpanded(entry.key) ? '收起 Payload' : '展开 Payload' }}
-              </button>
-              <button v-if="entrySnapshotRef(entry)" class="payload-toggle-btn" @click="copySnapshotRef(entry)">
-                {{ copiedSnapshotKey === entry.key ? '已复制引用' : '复制引用' }}
-              </button>
-              <button v-if="entrySnapshotRef(entry)" class="payload-toggle-btn" @click="copySnapshotCommand(entry)">
-                {{ copiedCommandTarget === entry.key ? '已复制命令' : '复制命令' }}
-              </button>
-              <button class="payload-toggle-btn" @click="copyPayload(entry)">
-                {{ copiedPayloadKey === entry.key ? '已复制 Payload' : '复制 Payload' }}
-              </button>
-            </div>
-            <pre v-if="hasPayload(entry) && isPayloadExpanded(entry.key)" class="timeline-payload-json">{{ formatPayloadJson(entry.payload) }}</pre>
-          </div>
-        </div>
-      </div>
+      <GovernanceTimelineEventStream
+        :filtered-timeline="filteredTimeline"
+        :scoped-timeline="scopedTimeline"
+        :active-filter="activeFilter"
+        :active-severity="activeSeverity"
+        :active-dedupe-key="activeDedupeKey"
+        :active-dedupe-key-empty-clear-label="activeDedupeKeyEmptyClearLabel"
+        :copied-snapshot-key="copiedSnapshotKey"
+        :copied-command-target="copiedCommandTarget"
+        :copied-payload-key="copiedPayloadKey"
+        :copied-dedupe-key="copiedDedupeKey"
+        :active-query-id="activeQueryId"
+        :severity-filters="severityFilters"
+        :timeline-filters="timelineFilters"
+        :format-audit-time="formatAuditTime"
+        :format-payload-json="formatPayloadJson"
+        :entry-snapshot-ref="entrySnapshotRef"
+        :is-snapshot-highlighted="isSnapshotHighlighted"
+        :has-payload="hasPayload"
+        :is-payload-expanded="isPayloadExpanded"
+        :get-timeline-dedupe-key="getTimelineDedupeKey"
+        :get-timeline-query-id="getTimelineQueryId"
+        @update:active-filter="activeFilter = $event"
+        @update:active-severity="activeSeverity = $event"
+        @toggle-payload="togglePayload($event.key)"
+        @copy-snapshot-ref="copySnapshotRef"
+        @copy-snapshot-command="copySnapshotCommand"
+        @copy-payload="copyPayload"
+        @copy-dedupe-key="copyDedupeKey"
+        @focus-dedupe-key="focusDedupeKey"
+        @focus-query-id="focusQueryId"
+        @clear-dedupe-key="clearDedupeKeyFilter"
+      />
     </template>
   </section>
 </template>
@@ -315,28 +351,143 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useConversationStore } from '../stores/conversation'
 import { usePlannerStore } from '../stores/planner'
-import { buildSnapshotCommandDescriptor, persistRecentSnapshotCommand } from '../services/governanceSnapshotCommands'
+import { runtimeSurfaceApi } from '../api'
+import { buildSnapshotCommandDescriptor } from '../services/governanceSnapshotCommands'
+import {
+  entrySnapshotRef,
+  formatPayloadJson,
+  getTimelineDedupeKey,
+  getTimelineQueryId,
+  hasPayload,
+  normalizePayload,
+  normalizeSnapshotRef,
+  normalizeText,
+  toTimestamp,
+} from '../services/governanceValueUtils'
+import {
+  buildCurrentQueryDetail,
+  buildCurrentQueryOverview,
+  buildHistoryStageTags,
+  buildMainChatHistoryContextLabel,
+  buildMainChatHistoryStatus,
+  buildMainChatQueryDetailContract,
+  buildMainChatQueryHistoryContract,
+  filterMainChatHistoryItems,
+  isHistoryStageFocused as checkHistoryStageFocused,
+  inferSnapshotCommandDomain,
+} from '../services/governanceViewInterpretation'
+import {
+  getLatestGovernanceTimestamp,
+  pickGovernanceFocusItem,
+} from '../services/governanceTimelinePlanFocus'
+import {
+  buildApprovalOverview,
+  buildCurrentRunOverview,
+} from '../services/governanceTimelineSummary'
+import {
+  formatAuditTime,
+  formatSeverityBadge,
+  formatSnapshotTime,
+  getSeverityRank,
+  truncateMiddle,
+} from '../services/governanceTimelineDisplay'
+import {
+  buildActiveSnapshotNotice,
+  buildCombinedTimeline,
+  buildCurrentSnapshotRef,
+  buildDedupeCandidateTimeline,
+  buildGovernanceTimelineOutcomes,
+  buildGovernanceOverviewCards,
+  buildRecommendedFocusFilter,
+  buildRecommendedFocusSignature,
+  buildSeverityFilters,
+  buildTimelineFilters,
+  buildAutoFocusNotice,
+  filterTimelineEntries,
+  scopeTimelineBySeverity,
+} from '../services/governanceTimelineView'
+import {
+  buildCurrentGovernanceViewSnapshot,
+} from '../services/governanceTimelineSnapshotView'
+import { writeTextToClipboard } from '../services/governanceClipboard'
+import {
+  formatAuditEvent,
+  formatPayloadSummary,
+  formatTimelineDomain,
+  formatTraceSource,
+  inferTimelineDomain,
+  normalizeSeverity,
+  stringifyPayloadValue,
+} from '../services/governanceFormatting'
+import {
+  buildFrameworkAdapterRemediationCommand,
+  buildFrameworkAdapterRemediationStatusTags,
+  formatFrameworkAdapterDisplayName,
+  formatFrameworkAdapterExternalErrorDetail,
+  formatFrameworkAdapterExternalErrorLabel,
+  formatFrameworkAdapterExternalErrorTag,
+  formatFrameworkAdapterFailureCount,
+  formatFrameworkAdapterFailureDistribution,
+  formatFrameworkAdapterFailureSampleSize,
+  formatFrameworkAdapterFailureWindow,
+  formatFrameworkAdapterIdentityLine,
+  formatFrameworkAdapterRemediationAction,
+  formatFrameworkAdapterRemediationContent,
+  formatFrameworkAdapterRemediationHeading,
+  formatFrameworkAdapterRemediationIdentityLine,
+  formatFrameworkAdapterSummaryHeading,
+  getFrameworkAdapterExternalErrorType,
+} from '../services/frameworkAdapterGovernance'
+import GovernanceRecentSnapshotCommandsCard from './GovernanceRecentSnapshotCommandsCard.vue'
+import GovernanceTimelineEventCard from './GovernanceTimelineEventCard.vue'
+import GovernanceTimelineFilters from './GovernanceTimelineFilters.vue'
+import GovernanceTimelineMainChatWorkspace from './GovernanceTimelineMainChatWorkspace.vue'
+import GovernanceTimelineOverviewCards from './GovernanceTimelineOverviewCards.vue'
+import GovernanceTimelineFrameworkAdapterRemediationCard from './GovernanceTimelineFrameworkAdapterRemediationCard.vue'
+import GovernanceTimelineSummaryActionCards from './GovernanceTimelineSummaryActionCards.vue'
+import GovernanceTimelineFrameworkAdapterCards from './GovernanceTimelineFrameworkAdapterCards.vue'
+import GovernanceTimelineEventStream from './GovernanceTimelineEventStream.vue'
+import MainChatQueryHistoryPanel from './MainChatQueryHistoryPanel.vue'
+import MainChatQueryDetailPanel from './MainChatQueryDetailPanel.vue'
+import { useRecentSnapshotCommands } from '../composables/useRecentSnapshotCommands'
+import { useGovernanceTimelineState } from '../composables/useGovernanceTimelineState'
+import { useGovernanceTimelineClipboard } from '../composables/useGovernanceTimelineClipboard'
 
 const router = useRouter()
 const route = useRoute()
 const conversationStore = useConversationStore()
 const plannerStore = usePlannerStore()
+const {
+  recentSnapshotCommands,
+  copiedCommandText: recentCopiedCommandText,
+  copiedCommandDisplay: recentCopiedCommandDisplay,
+  refreshRecentSnapshotCommands,
+  recordRecentSnapshotCommand,
+  copyRecentSnapshotCommand,
+} = useRecentSnapshotCommands()
 const loading = ref(false)
 const error = ref('')
 const activeFilter = ref('all')
 const activeSeverity = ref('all')
 const activeSnapshotId = ref('')
+const activeFrameworkAdapterErrorType = ref('')
+const activeDedupeKey = ref('')
+const activeQueryId = ref('')
+const activeQueryStage = ref('')
 const expandedPayloadKeys = ref({})
 const copiedPayloadKey = ref('')
+const copiedDedupeKey = ref('')
+const copiedActiveDedupeKey = ref(false)
 const copiedSnapshotKey = ref('')
 const copiedCommandTarget = ref('')
 const copiedViewLink = ref(false)
-const recentCopiedCommandText = ref('')
 const lastAutoFocusSignature = ref('')
-let copiedPayloadResetTimer = null
-let copiedSnapshotResetTimer = null
-let copiedCommandResetTimer = null
-let copiedViewResetTimer = null
+const queryDetailContract = ref(null)
+const mainChatQueryHistory = ref(buildMainChatQueryHistoryContract())
+const mainChatQueryHistoryLoading = ref(false)
+const mainChatQueryHistoryError = ref('')
+const mainChatHistorySearch = ref('')
+const activeMainChatHistoryPage = ref(1)
 
 const currentConversationId = computed(() => {
   const id = Number(conversationStore.currentConversation?.id)
@@ -345,107 +496,86 @@ const currentConversationId = computed(() => {
 
 const currentPlan = computed(() => plannerStore.currentPlan)
 
-const focusItem = computed(() => {
-  const items = currentPlan.value?.items || []
-  if (!items.length) return null
+const currentPlanObjectiveLabel = computed(() => currentPlan.value?.objective || '-')
 
-  const withGovernanceTrace = [...items].sort((left, right) => {
-    return getLatestGovernanceTimestamp(right) - getLatestGovernanceTimestamp(left)
-  }).find(item => getLatestGovernanceTimestamp(item) > 0)
-  if (withGovernanceTrace) {
-    return withGovernanceTrace
-  }
+const focusItem = computed(() => pickGovernanceFocusItem(currentPlan.value, {
+  getLatestGovernanceTimestamp: item => getLatestGovernanceTimestamp(item, {
+    inferTimelineDomain,
+    normalizePayload,
+    toTimestamp,
+  }),
+}))
 
-  return (
-    items.find(item => item.id === currentPlan.value?.active_item_id) ||
-    items.find(item => item.status === 'in_progress') ||
-    items[0]
-  )
-})
+const focusItemTitleLabel = computed(() => focusItem.value?.title || '-')
 
 const auditCount = computed(() => (focusItem.value?.audit_trail || []).length)
 const traceCount = computed(() => (focusItem.value?.run_trace || []).length)
+const mainChatHistoryStatusText = computed(() => buildMainChatHistoryStatus(
+  mainChatQueryHistory.value,
+  mainChatQueryHistoryLoading.value,
+  mainChatQueryHistoryError.value
+))
+const filteredMainChatQueryHistoryItems = computed(() => filterMainChatHistoryItems(
+  mainChatQueryHistory.value.items,
+  mainChatHistorySearch.value
+))
+const mainChatHistoryContextLabel = computed(() => buildMainChatHistoryContextLabel(
+  activeQueryId.value,
+  activeQueryStage.value
+))
+const currentRunOverview = computed(() => buildCurrentRunOverview(focusItem.value?.scheduler_run, {
+  traceCount: traceCount.value,
+  normalizeText,
+}))
 
-const combinedTimeline = computed(() => {
-  if (!focusItem.value) return []
-  const auditEntries = (focusItem.value.audit_trail || []).map((entry, index) => ({
-    key: `audit-${entry.timestamp || 'na'}-${entry.event_type || 'unknown'}-${index}`,
-    timestamp: entry.timestamp,
-    kind: 'audit',
-    kindLabel: 'Audit',
-    domain: inferTimelineDomain(entry.event_type, ''),
-    domainLabel: formatTimelineDomain(inferTimelineDomain(entry.event_type, '')),
-    sourceLabel: '',
-    severity: normalizeSeverity(entry.event_type),
-    title: formatAuditEvent(entry.event_type),
-    content: entry.content || '无说明',
-    detail: '',
-    payload: normalizePayload(entry.payload),
-    payloadSummary: formatPayloadSummary(entry.payload),
-  }))
-  const traceEntries = (focusItem.value.run_trace || []).map((entry, index) => ({
-    key: `trace-${entry.timestamp || 'na'}-${entry.source || 'runtime'}-${entry.event_type || 'unknown'}-${index}`,
-    timestamp: entry.timestamp,
-    kind: 'trace',
-    kindLabel: 'Trace',
-    domain: inferTimelineDomain(entry.event_type, entry.source),
-    domainLabel: formatTimelineDomain(inferTimelineDomain(entry.event_type, entry.source)),
-    sourceLabel: formatTraceSource(entry.source),
-    severity: entry.severity || 'info',
-    title: formatAuditEvent(entry.event_type),
-    content: entry.summary || '无摘要',
-    detail: entry.detail || '',
-    payload: normalizePayload(entry.payload),
-    payloadSummary: formatPayloadSummary(entry.payload),
-  }))
-  return [...traceEntries, ...auditEntries]
-    .sort((left, right) => toTimestamp(right.timestamp) - toTimestamp(left.timestamp))
-    .slice(0, 20)
-})
+const approvalOverview = computed(() => buildApprovalOverview(focusItem.value?.approval_requests, {
+  currentRunOverview: currentRunOverview.value,
+  normalizeText,
+  toTimestamp,
+}))
 
-const severityFilters = computed(() => {
-  const warningCount = combinedTimeline.value.filter(entry => entry.severity === 'warning').length
-  return [
-    { key: 'all', label: '全部事件', count: combinedTimeline.value.length },
-    { key: 'warning', label: '仅告警', count: warningCount },
-  ]
-})
+const combinedTimeline = computed(() => buildCombinedTimeline(focusItem.value, {
+  normalizePayload,
+  inferTimelineDomain,
+  formatTimelineDomain,
+  normalizeSeverity,
+  formatAuditEvent,
+  formatPayloadSummary,
+  formatTraceSource,
+  formatFrameworkAdapterExternalErrorTag,
+  formatFrameworkAdapterExternalErrorDetail,
+  normalizeSnapshotRef,
+  toTimestamp,
+  normalizeText,
+}))
 
-const scopedTimeline = computed(() => {
-  if (activeSeverity.value === 'warning') {
-    return combinedTimeline.value.filter(entry => entry.severity === 'warning')
-  }
-  return combinedTimeline.value
-})
+const severityFilters = computed(() => buildSeverityFilters(combinedTimeline.value))
 
-const timelineFilters = computed(() => {
-  const counters = new Map()
-  for (const entry of scopedTimeline.value) {
-    const key = String(entry.domain || 'other').trim() || 'other'
-    counters.set(key, Number(counters.get(key) || 0) + 1)
-  }
-  const orderedKeys = ['all', 'doctor', 'permission', 'mcp', 'governance', 'scheduler', 'hook', 'runtime', 'learning', 'other']
-  return orderedKeys
-    .filter(key => key === 'all' || counters.has(key))
-    .map(key => ({
-      key,
-      label: key === 'all' ? '全部' : formatTimelineDomain(key),
-      count: key === 'all'
-        ? scopedTimeline.value.length
-        : Number(counters.get(key) || 0),
-    }))
-})
+const scopedTimeline = computed(() => scopeTimelineBySeverity(combinedTimeline.value, activeSeverity.value))
 
-const filteredTimeline = computed(() => {
-  const domainScoped = activeFilter.value === 'all'
-    ? scopedTimeline.value
-    : scopedTimeline.value.filter(entry => entry.domain === activeFilter.value)
-  if (!activeSnapshotId.value) {
-    return domainScoped
-  }
-  const snapshotMatched = domainScoped.filter(entry => entrySnapshotRef(entry)?.snapshot_id === activeSnapshotId.value)
-  return snapshotMatched.length ? snapshotMatched : domainScoped
-})
+const timelineFilters = computed(() => buildTimelineFilters(scopedTimeline.value, formatTimelineDomain))
+
+const dedupeCandidateTimeline = computed(() => buildDedupeCandidateTimeline(scopedTimeline.value, {
+  activeFilter: activeFilter.value,
+  activeQueryId: activeQueryId.value,
+  activeQueryStage: activeQueryStage.value,
+  activeFrameworkAdapterErrorType: activeFrameworkAdapterErrorType.value,
+  getTimelineQueryId,
+  getFrameworkAdapterExternalErrorType,
+}))
+
+const filteredTimeline = computed(() => filterTimelineEntries(scopedTimeline.value, {
+  activeFilter: activeFilter.value,
+  activeQueryId: activeQueryId.value,
+  activeQueryStage: activeQueryStage.value,
+  activeFrameworkAdapterErrorType: activeFrameworkAdapterErrorType.value,
+  activeDedupeKey: activeDedupeKey.value,
+  activeSnapshotId: activeSnapshotId.value,
+  getTimelineQueryId,
+  getTimelineDedupeKey,
+  entrySnapshotRef,
+  getFrameworkAdapterExternalErrorType,
+}))
 
 const activeFilterLabel = computed(() => {
   const matched = timelineFilters.value.find(item => item.key === activeFilter.value)
@@ -457,190 +587,237 @@ const activeSeverityLabel = computed(() => {
   return matched?.label || '全部事件'
 })
 
-const currentSnapshotRef = computed(() => {
-  const candidates = [
-    ...filteredTimeline.value,
-    ...scopedTimeline.value,
-    ...combinedTimeline.value,
-  ]
-  for (const entry of candidates) {
-    const snapshotRef = normalizeSnapshotRef(entry?.payload?.snapshot_ref)
-    if (snapshotRef) {
-      return snapshotRef
-    }
+const activeFrameworkAdapterErrorTypeLabel = computed(() => {
+  if (!activeFrameworkAdapterErrorType.value) {
+    return ''
   }
-  return null
+  const label = formatFrameworkAdapterExternalErrorLabel(activeFrameworkAdapterErrorType.value)
+  if (!label) {
+    return ''
+  }
+  return label === activeFrameworkAdapterErrorType.value
+    ? label
+    : `${label} (${activeFrameworkAdapterErrorType.value})`
 })
+
+const activeFrameworkAdapterErrorTypeClearLabel = computed(() => {
+  if (!activeFrameworkAdapterErrorTypeLabel.value) {
+    return ''
+  }
+  return `清除错误类型 ${activeFrameworkAdapterErrorTypeLabel.value}`
+})
+
+const activeDedupeKeyPreview = computed(() => truncateMiddle(activeDedupeKey.value, 88))
+
+const activeDedupeKeyCopyLabel = computed(() => {
+  const prefix = copiedActiveDedupeKey.value ? '已复制当前幂等键' : '复制当前幂等键'
+  return `${prefix} ${activeDedupeKey.value}`
+})
+
+const activeDedupeKeyClearLabel = computed(() => `清除幂等键 ${activeDedupeKey.value}`)
+
+const activeDedupeKeyEmptyClearLabel = computed(() => `清除幂等键聚焦 ${activeDedupeKey.value}`)
+
+const activeDedupeKeyMatchLabel = computed(() => {
+  if (!activeDedupeKey.value) {
+    return ''
+  }
+  return `匹配事件 ${filteredTimeline.value.length} / ${dedupeCandidateTimeline.value.length}`
+})
+
+const activeDedupeKeyMatchAriaLabel = computed(() => activeDedupeKeyMatchLabel.value
+  ? `幂等键${activeDedupeKeyMatchLabel.value}`
+  : ''
+)
+
+const activeQueryEntries = computed(() => {
+  if (!activeQueryId.value) {
+    return []
+  }
+  return dedupeCandidateTimeline.value.filter(entry => getTimelineQueryId(entry) === activeQueryId.value)
+})
+
+const currentQueryOverview = computed(() => {
+  return buildCurrentQueryOverview(
+    queryDetailContract.value,
+    activeQueryId.value,
+    activeQueryEntries.value,
+    entrySnapshotRef
+  )
+})
+
+const currentQueryDetail = computed(() => {
+  return buildCurrentQueryDetail(
+    queryDetailContract.value,
+    activeQueryId.value,
+    activeQueryEntries.value,
+    {
+      entrySnapshotRef,
+      getTimelineDedupeKey,
+      toTimestamp,
+    }
+  )
+})
+
+const currentSnapshotRef = computed(() => buildCurrentSnapshotRef(
+  filteredTimeline.value,
+  scopedTimeline.value,
+  combinedTimeline.value,
+  entrySnapshotRef
+))
 
 const currentSnapshotId = computed(() => currentSnapshotRef.value?.snapshot_id || '本地待生成')
 const currentSnapshotGeneratedAt = computed(() => currentSnapshotRef.value?.generated_at || '')
 const activeSnapshotLabel = computed(() => activeSnapshotId.value || '未指定')
-const activeSnapshotNotice = computed(() => {
-  if (!activeSnapshotId.value) {
-    return '当前展示的是常规治理视图'
+const activeSnapshotNotice = computed(() => buildActiveSnapshotNotice(
+  activeSnapshotId.value,
+  combinedTimeline.value,
+  entrySnapshotRef
+))
+
+const governanceOverviewCards = computed(() => buildGovernanceOverviewCards(
+  combinedTimeline.value,
+  timelineFilters.value,
+  {
+    formatTimelineDomain,
+    toTimestamp,
+    getSeverityRank,
   }
-  const matched = combinedTimeline.value.find(entry => entrySnapshotRef(entry)?.snapshot_id === activeSnapshotId.value)
-  if (!matched) {
-    return '当前会话未找到对应快照，已回退到常规治理视图'
-  }
-  return `已聚焦到 ${matched.title}`
+))
+
+const recommendedFocusFilter = computed(() => buildRecommendedFocusFilter(
+  lastDoctorOutcome.value,
+  formatAuditEvent('doctor_gate_failed'),
+  governanceOverviewCards.value
+))
+
+const recommendedFocusSignature = computed(() => buildRecommendedFocusSignature(
+  focusItem.value,
+  recommendedFocusFilter.value,
+  lastDoctorOutcome.value
+))
+
+const autoFocusNotice = computed(() => buildAutoFocusNotice({
+  recommendedFocusSignature: recommendedFocusSignature.value,
+  routeGovernanceFilter: route.query.governance_filter,
+  lastAutoFocusSignature: lastAutoFocusSignature.value,
+  activeFilter: activeFilter.value,
+  recommendedFocusFilter: recommendedFocusFilter.value,
+  governanceOverviewCards: governanceOverviewCards.value,
+}))
+
+const governanceTimelineOutcomes = computed(() => buildGovernanceTimelineOutcomes(combinedTimeline.value, {
+  formatAuditEvent,
+  normalizeText,
+  formatFrameworkAdapterDisplayName,
+  buildFrameworkAdapterRemediationStatusTags,
+  formatFrameworkAdapterRemediationContent,
+  buildFrameworkAdapterRemediationCommand,
+}))
+
+const lastDoctorOutcome = computed(() => governanceTimelineOutcomes.value.lastDoctorOutcome)
+const lastPermissionOutcome = computed(() => governanceTimelineOutcomes.value.lastPermissionOutcome)
+const lastMcpOutcome = computed(() => governanceTimelineOutcomes.value.lastMcpOutcome)
+const lastGovernanceOutcome = computed(() => governanceTimelineOutcomes.value.lastGovernanceOutcome)
+const lastSchedulerOutcome = computed(() => governanceTimelineOutcomes.value.lastSchedulerOutcome)
+const lastHookOutcome = computed(() => governanceTimelineOutcomes.value.lastHookOutcome)
+const lastLearningOutcome = computed(() => governanceTimelineOutcomes.value.lastLearningOutcome)
+const lastRuntimeOutcome = computed(() => governanceTimelineOutcomes.value.lastRuntimeOutcome)
+const lastFrameworkAdapterPilotOutcome = computed(() => governanceTimelineOutcomes.value.lastFrameworkAdapterPilotOutcome)
+const lastFrameworkAdapterPrecheckOutcome = computed(() => governanceTimelineOutcomes.value.lastFrameworkAdapterPrecheckOutcome)
+const lastFrameworkAdapterExternalPilotOutcome = computed(() => governanceTimelineOutcomes.value.lastFrameworkAdapterExternalPilotOutcome)
+const lastFrameworkAdapterExternalFailureDiagnostic = computed(() => governanceTimelineOutcomes.value.lastFrameworkAdapterExternalFailureDiagnostic)
+const lastFrameworkAdapterRemediation = computed(() => governanceTimelineOutcomes.value.lastFrameworkAdapterRemediation)
+
+const {
+  copyFrameworkAdapterRemediationCommand,
+  copyPayload,
+  copyDedupeKey,
+  copyActiveDedupeKey,
+  copySnapshotRef,
+  copySnapshotCommand,
+  copyCurrentSnapshotCommand,
+  copyCurrentView,
+  openRuntimeSurfacePanel,
+  resetCopiedActiveDedupeKey,
+} = useGovernanceTimelineClipboard({
+  error,
+  copiedPayloadKey,
+  copiedDedupeKey,
+  copiedActiveDedupeKey,
+  copiedSnapshotKey,
+  copiedCommandTarget,
+  copiedViewLink,
+  recentCopiedCommandText,
+  hasPayload,
+  formatPayloadJson,
+  entrySnapshotRef,
+  buildSnapshotCommandDescriptor,
+  persistRecentSnapshotCommand: recordRecentSnapshotCommand,
+  inferSnapshotCommandDomain: (snapshotRef, fallbackDomain) => inferSnapshotCommandDomain(snapshotRef, fallbackDomain, inferTimelineDomain),
+  buildCurrentViewSnapshot: () => buildCurrentGovernanceViewSnapshot({
+    locationHref: globalThis.location?.href || 'http://localhost/',
+    routeQuery: route.query || {},
+    currentSnapshotRef: currentSnapshotRef.value,
+    activeFilter: activeFilter.value,
+    activeSeverity: activeSeverity.value,
+    activeFilterLabel: activeFilterLabel.value,
+    activeSeverityLabel: activeSeverityLabel.value,
+    filteredTimeline: filteredTimeline.value,
+    scopedTimeline: scopedTimeline.value,
+    activeFrameworkAdapterErrorType: activeFrameworkAdapterErrorType.value,
+    activeFrameworkAdapterErrorTypeLabel: activeFrameworkAdapterErrorTypeLabel.value,
+    activeDedupeKey: activeDedupeKey.value,
+    activeDedupeKeyMatchLabel: activeDedupeKeyMatchLabel.value,
+    activeQueryId: activeQueryId.value,
+    currentQueryOverview: currentQueryOverview.value,
+    activeQueryStage: activeQueryStage.value,
+    activeQuerySearch: mainChatHistorySearch.value,
+    activeQueryHistoryPage: activeMainChatHistoryPage.value,
+    autoFocusNotice: autoFocusNotice.value,
+    activeSnapshotId: activeSnapshotId.value,
+  }),
+  openRuntimeSurface: () => router.push('/settings?tab=advanced'),
+  getActiveDedupeKey: () => activeDedupeKey.value,
+  getCurrentSnapshotRef: () => currentSnapshotRef.value,
+  getActiveFilter: () => activeFilter.value,
+  writeTextToClipboard,
 })
 
-const governanceOverviewCards = computed(() => {
-  const order = ['doctor', 'permission', 'mcp', 'governance', 'scheduler', 'hook', 'runtime', 'learning']
-  const countMap = new Map(timelineFilters.value.map(item => [item.key, item.count]))
-  const latestByDomain = new Map()
-  const warningCountByDomain = new Map()
-  for (const entry of combinedTimeline.value) {
-    if (!latestByDomain.has(entry.domain)) {
-      latestByDomain.set(entry.domain, entry)
-    }
-    if (entry.severity === 'warning') {
-      warningCountByDomain.set(entry.domain, Number(warningCountByDomain.get(entry.domain) || 0) + 1)
-    }
-  }
-  return order
-    .filter(key => Number(countMap.get(key) || 0) > 0)
-    .map(key => ({
-      key,
-      label: formatTimelineDomain(key),
-      count: Number(countMap.get(key) || 0),
-      warningCount: Number(warningCountByDomain.get(key) || 0),
-      severity: latestByDomain.get(key)?.severity || 'info',
-      latestTitle: latestByDomain.get(key)?.title || '',
-      latestTimestamp: latestByDomain.get(key)?.timestamp || '',
-      sortIndex: order.indexOf(key),
-    }))
-    .sort((left, right) => {
-      const timestampDelta = toTimestamp(right.latestTimestamp) - toTimestamp(left.latestTimestamp)
-      if (timestampDelta !== 0) {
-        return timestampDelta
-      }
-      const severityDelta = getSeverityRank(right.severity) - getSeverityRank(left.severity)
-      if (severityDelta !== 0) {
-        return severityDelta
-      }
-      return left.sortIndex - right.sortIndex
-    })
-})
-
-const recommendedFocusFilter = computed(() => {
-  if (!lastDoctorOutcome.value || lastDoctorOutcome.value.title !== formatAuditEvent('doctor_gate_failed')) {
-    return 'all'
-  }
-  const highestRiskDomain = governanceOverviewCards.value.find(card => card.key !== 'doctor' && card.severity === 'warning')
-  if (highestRiskDomain) {
-    return highestRiskDomain.key
-  }
-  return 'doctor'
-})
-
-const recommendedFocusSignature = computed(() => {
-  if (!focusItem.value || recommendedFocusFilter.value === 'all') {
-    return ''
-  }
-  return [
-    focusItem.value.id || 'na',
-    lastDoctorOutcome.value?.timestamp || 'na',
-    recommendedFocusFilter.value,
-  ].join(':')
-})
-
-const autoFocusNotice = computed(() => {
-  if (!recommendedFocusSignature.value || route.query.governance_filter) {
-    return ''
-  }
-  if (lastAutoFocusSignature.value !== recommendedFocusSignature.value) {
-    return ''
-  }
-  if (activeFilter.value !== recommendedFocusFilter.value) {
-    return ''
-  }
-  const matchedCard = governanceOverviewCards.value.find(card => card.key === recommendedFocusFilter.value)
-  if (!matchedCard) {
-    return ''
-  }
-  if (recommendedFocusFilter.value === 'doctor') {
-    return '因 Doctor 门禁失败，当前默认聚焦到 Doctor 域。'
-  }
-  return `因 Doctor 门禁失败，当前默认聚焦到 ${matchedCard.label} 风险域，共 ${matchedCard.warningCount} 条告警。`
-})
-
-const lastDoctorOutcome = computed(() => {
-  const entry = combinedTimeline.value.find(item =>
-    item.domain === 'doctor' && item.kind === 'trace' && (
-      item.title === formatAuditEvent('doctor_gate_failed') ||
-      item.title === formatAuditEvent('doctor_run_completed')
-    )
-  )
-  if (!entry) return null
-  return entry
-})
-
-const lastPermissionOutcome = computed(() => {
-  return combinedTimeline.value.find(item =>
-    item.domain === 'permission' && (
-      item.title === formatAuditEvent('permission_approved') ||
-      item.title === formatAuditEvent('permission_denied') ||
-      item.title === formatAuditEvent('tool_permission_required')
-    )
-  ) || null
-})
-
-const lastMcpOutcome = computed(() => {
-  return combinedTimeline.value.find(item =>
-    item.domain === 'mcp' && (
-      item.title === formatAuditEvent('mcp_tool_call_completed') ||
-      item.title === formatAuditEvent('mcp_server_handshake_completed') ||
-      item.title === formatAuditEvent('mcp_server_probed') ||
-      item.title === formatAuditEvent('mcp_server_created') ||
-      item.title === formatAuditEvent('mcp_server_updated')
-    )
-  ) || null
-})
-
-const lastGovernanceOutcome = computed(() => {
-  return combinedTimeline.value.find(item =>
-    item.domain === 'governance' && item.title === formatAuditEvent('remediation_status_updated')
-  ) || null
-})
-
-const lastSchedulerOutcome = computed(() => {
-  return combinedTimeline.value.find(item =>
-    item.domain === 'scheduler' && (
-      item.title === formatAuditEvent('scheduler_merged') ||
-      item.title === formatAuditEvent('scheduler_execution_started') ||
-      item.title === formatAuditEvent('child_completed') ||
-      item.title === formatAuditEvent('child_failed')
-    )
-  ) || null
-})
-
-const lastHookOutcome = computed(() => {
-  return combinedTimeline.value.find(item =>
-    item.domain === 'hook' && (
-      item.title === formatAuditEvent('pre_tool_use_blocked') ||
-      item.title.includes('Hook')
-    )
-  ) || null
-})
-
-const lastLearningOutcome = computed(() => {
-  return combinedTimeline.value.find(item =>
-    item.domain === 'learning' && (
-      item.title === formatAuditEvent('learning_version_applied') ||
-      item.title.includes('Learning')
-    )
-  ) || null
-})
-
-const lastRuntimeOutcome = computed(() => {
-  return combinedTimeline.value.find(item =>
-    item.domain === 'runtime' && (
-      item.title === formatAuditEvent('agent_state_changed') ||
-      item.title.includes('运行时')
-    )
-  ) || null
+const {
+  applyFilter,
+  focusTimelineEntry,
+  applyWarningFocus,
+  clearFrameworkAdapterErrorTypeFilter,
+  clearDedupeKeyFilter,
+  clearQueryIdFilter,
+  clearQueryStageFilter,
+  focusDedupeKey,
+  focusQueryId,
+  focusQueryStage,
+  focusHistoryQueryStage,
+} = useGovernanceTimelineState({
+  activeFilter,
+  activeSeverity,
+  activeSnapshotId,
+  activeFrameworkAdapterErrorType,
+  activeDedupeKey,
+  activeQueryId,
+  activeQueryStage,
+  lastAutoFocusSignature,
+  route,
+  router,
+  timelineFilters,
+  severityFilters,
+  combinedTimeline,
+  governanceOverviewCards,
+  recommendedFocusFilter,
+  recommendedFocusSignature,
+  entrySnapshotRef,
+  getTimelineDedupeKey,
+  getTimelineQueryId,
+  normalizeText,
+  onActiveDedupeKeyChanged: resetCopiedActiveDedupeKey,
 })
 
 async function loadTimeline() {
@@ -649,6 +826,8 @@ async function loadTimeline() {
   error.value = ''
   try {
     await plannerStore.loadPlans({ conversationId: currentConversationId.value })
+    await loadMainChatQueryDetail()
+    await loadMainChatQueryHistory()
   } catch (err) {
     error.value = err?.response?.data?.detail || err?.message || '加载治理时间线失败'
   } finally {
@@ -656,207 +835,79 @@ async function loadTimeline() {
   }
 }
 
-function normalizePayload(payload) {
-  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
-    return null
+async function loadMainChatQueryHistory(targetPage = activeMainChatHistoryPage.value, append = false) {
+  if (!currentConversationId.value || activeFilter.value !== 'main_chat') {
+    mainChatQueryHistory.value = buildMainChatQueryHistoryContract()
+    mainChatQueryHistoryError.value = ''
+    return
   }
-  return payload
-}
-
-function normalizeSnapshotRef(snapshotRef) {
-  if (!snapshotRef || typeof snapshotRef !== 'object' || Array.isArray(snapshotRef)) {
-    return null
-  }
-  const snapshotId = String(snapshotRef.snapshot_id || '').trim()
-  if (!snapshotId) {
-    return null
-  }
-  return {
-    snapshot_id: snapshotId,
-    generated_at: String(snapshotRef.generated_at || '').trim(),
-    conversation_id: snapshotRef.conversation_id ?? null,
-    source: String(snapshotRef.source || '').trim(),
-    event_type: String(snapshotRef.event_type || '').trim(),
-  }
-}
-
-function toTimestamp(value) {
-  const date = new Date(value || '')
-  return Number.isNaN(date.getTime()) ? 0 : date.getTime()
-}
-
-function getLatestGovernanceTimestamp(item) {
-  const traces = item?.run_trace || []
-  const audits = item?.audit_trail || []
-  const traceMax = traces.reduce((currentMax, entry) => {
-    const domain = inferTimelineDomain(entry?.event_type, entry?.source)
-    if (!isGovernanceDomain(domain)) {
-      return currentMax
+  const normalizedTargetPage = Math.max(1, Number(targetPage || 1))
+  mainChatQueryHistoryError.value = ''
+  mainChatQueryHistoryLoading.value = true
+  try {
+    if (append) {
+      const response = await runtimeSurfaceApi.getMainChatQueryHistory({
+        conversation_id: currentConversationId.value,
+        page: normalizedTargetPage,
+        page_size: 5,
+      })
+      const normalized = buildMainChatQueryHistoryContract(response?.data)
+      mainChatQueryHistory.value = {
+        ...normalized,
+        items: [...mainChatQueryHistory.value.items, ...normalized.items],
+      }
+      return
     }
-    return Math.max(currentMax, toTimestamp(entry?.timestamp))
-  }, 0)
-  const auditMax = audits.reduce((currentMax, entry) => {
-    const domain = inferTimelineDomain(entry?.event_type, '')
-    if (!isGovernanceDomain(domain)) {
-      return currentMax
+    let accumulatedHistory = buildMainChatQueryHistoryContract()
+    for (let page = 1; page <= normalizedTargetPage; page += 1) {
+      const response = await runtimeSurfaceApi.getMainChatQueryHistory({
+        conversation_id: currentConversationId.value,
+        page,
+        page_size: 5,
+      })
+      const normalized = buildMainChatQueryHistoryContract(response?.data)
+      accumulatedHistory = page === 1
+        ? normalized
+        : {
+          ...normalized,
+          items: [...accumulatedHistory.items, ...normalized.items],
+        }
+      if (!normalized.hasMore) {
+        break
+      }
     }
-    return Math.max(currentMax, toTimestamp(entry?.timestamp))
-  }, 0)
-  return Math.max(traceMax, auditMax)
-}
-
-function isGovernanceDomain(domain) {
-  return ['doctor', 'permission', 'mcp', 'governance', 'scheduler', 'hook', 'runtime', 'learning'].includes(String(domain || '').trim())
-}
-
-function normalizeSeverity(eventType) {
-  if (eventType === 'doctor_gate_failed') return 'warning'
-  if (String(eventType || '').includes('failed') || String(eventType || '').includes('blocked')) return 'warning'
-  if (String(eventType || '').includes('denied')) return 'warning'
-  if (
-    String(eventType || '').includes('approved') ||
-    String(eventType || '').includes('completed') ||
-    String(eventType || '').includes('updated') ||
-    String(eventType || '').includes('enabled')
-  ) return 'success'
-  return 'info'
-}
-
-function getSeverityRank(severity) {
-  const ranks = {
-    warning: 3,
-    success: 2,
-    info: 1,
+    mainChatQueryHistory.value = accumulatedHistory
+  } catch (requestError) {
+    mainChatQueryHistory.value = buildMainChatQueryHistoryContract()
+    mainChatQueryHistoryError.value = requestError?.response?.data?.detail || requestError?.message || '加载 query history 失败'
+  } finally {
+    mainChatQueryHistoryLoading.value = false
   }
-  return Number(ranks[String(severity || 'info').trim()] || 0)
 }
 
-function formatAuditEvent(eventType) {
-  const labelMap = {
-    doctor_run_started: 'Doctor 启动',
-    doctor_run_completed: 'Doctor 完成',
-    doctor_gate_failed: 'Doctor 门禁失败',
-    scheduler_fanout_prepared: '调度拆分',
-    scheduler_execution_started: '调度启动',
-    scheduler_merged: '结果合并',
-    scheduler_cancelled: '调度取消',
-    child_running: '子执行启动',
-    child_completed: '子执行完成',
-    child_failed: '子执行失败',
-    child_retrying: '子执行重试',
-    child_cancelled: '子执行取消',
-    permission_approved: '权限批准',
-    permission_denied: '权限拒绝',
-    tool_permission_required: '等待工具授权',
-    remediation_status_updated: '整改状态更新',
-    mcp_server_created: 'MCP 服务创建',
-    mcp_server_updated: 'MCP 服务更新',
-    mcp_server_deleted: 'MCP 服务删除',
-    mcp_server_enabled: 'MCP 服务启用',
-    mcp_server_disabled: 'MCP 服务停用',
-    mcp_server_probed: 'MCP Probe 完成',
-    mcp_server_handshake_completed: 'MCP Handshake 完成',
-    mcp_tool_call_completed: 'MCP 工具调用完成',
-    pre_tool_use_blocked: 'Hook 阻断',
-    agent_state_changed: '运行时状态迁移',
-    learning_version_applied: 'Learning 版本应用',
+async function loadMoreMainChatQueryHistory() {
+  if (!mainChatQueryHistory.value.hasMore || mainChatQueryHistoryLoading.value) {
+    return
   }
-  return labelMap[eventType] || eventType || '未知事件'
+  const nextPage = Number(activeMainChatHistoryPage.value || 1) + 1
+  activeMainChatHistoryPage.value = nextPage
+  await loadMainChatQueryHistory(nextPage, true)
 }
 
-function inferTimelineDomain(eventType, source) {
-  const sourceText = String(source || '').trim()
-  if (sourceText) {
-    if (['doctor', 'permission', 'mcp', 'governance', 'scheduler', 'hook', 'runtime'].includes(sourceText)) {
-      return sourceText
-    }
-  }
-  const eventText = String(eventType || '').trim()
-  if (eventText.startsWith('doctor_')) return 'doctor'
-  if (eventText.startsWith('permission_') || eventText === 'tool_permission_required') return 'permission'
-  if (eventText.startsWith('mcp_')) return 'mcp'
-  if (eventText.startsWith('learning_')) return 'learning'
-  if (eventText.startsWith('scheduler_') || eventText.startsWith('child_')) return 'scheduler'
-  if (eventText.startsWith('remediation_')) return 'governance'
-  if (eventText.includes('hook') || eventText === 'pre_tool_use_blocked') return 'hook'
-  if (eventText.startsWith('agent_state_') || eventText.startsWith('runtime_')) return 'runtime'
-  return 'other'
-}
-
-function formatTimelineDomain(domain) {
-  const labelMap = {
-    doctor: 'Doctor',
-    permission: 'Permission',
-    mcp: 'MCP',
-    governance: 'Governance',
-    scheduler: 'Scheduler',
-    hook: 'Hook',
-    runtime: 'Runtime',
-    learning: 'Learning',
-    other: 'Other',
-  }
-  return labelMap[domain] || domain || 'Other'
-}
-
-function formatSeverityBadge(severity) {
-  const value = String(severity || 'info').trim()
-  if (value === 'warning') return 'Warn'
-  if (value === 'success') return 'OK'
-  return 'Info'
-}
-
-function formatPayloadSummary(payload) {
-  const data = normalizePayload(payload)
-  if (!data) return ''
-  const priorityKeys = [
-    'action_id',
-    'status',
-    'server_name',
-    'tool_name',
-    'request_id',
-    'scope',
-    'exit_code',
-    'gate_passed',
-  ]
-  const fragments = []
-  for (const key of priorityKeys) {
-    if (data[key] === undefined || data[key] === null || data[key] === '') {
-      continue
-    }
-    fragments.push(`${key}=${stringifyPayloadValue(data[key])}`)
-  }
-  return fragments.slice(0, 4).join(' | ')
-}
-
-function stringifyPayloadValue(value) {
-  if (value === null || value === undefined) return '-'
-  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-    return String(value)
-  }
-  if (Array.isArray(value)) {
-    return value.join(', ')
+async function loadMainChatQueryDetail() {
+  if (!currentConversationId.value || !activeQueryId.value) {
+    queryDetailContract.value = null
+    return
   }
   try {
-    return JSON.stringify(value)
-  } catch (_err) {
-    return String(value)
+    const response = await runtimeSurfaceApi.getMainChatQueryDetail({
+      conversation_id: currentConversationId.value,
+      query_id: activeQueryId.value,
+    })
+    queryDetailContract.value = buildMainChatQueryDetailContract(response?.data)
+  } catch (_error) {
+    queryDetailContract.value = null
   }
-}
-
-function formatPayloadJson(payload) {
-  try {
-    return JSON.stringify(payload || {}, null, 2)
-  } catch (_err) {
-    return '{}'
-  }
-}
-
-function hasPayload(entry) {
-  return Boolean(entry?.payload && Object.keys(entry.payload).length)
-}
-
-function entrySnapshotRef(entry) {
-  return normalizeSnapshotRef(entry?.payload?.snapshot_ref)
 }
 
 function isSnapshotHighlighted(entry) {
@@ -877,406 +928,97 @@ function togglePayload(entryKey) {
   }
 }
 
-function applyFilter(filterKey) {
-  const nextFilter = String(filterKey || 'all').trim() || 'all'
-  activeFilter.value = timelineFilters.value.some(item => item.key === nextFilter) ? nextFilter : 'all'
-}
-
-function applyWarningFocus(filterKey) {
-  const nextFilter = String(filterKey || 'all').trim() || 'all'
-  const matchedCard = governanceOverviewCards.value.find(card => card.key === nextFilter)
-  if (!matchedCard || matchedCard.warningCount <= 0) {
-    return
+function isSummaryOutcomeActive(entry, filterKey) {
+  if (activeFilter.value !== filterKey) {
+    return false
   }
-  activeSeverity.value = 'warning'
-  applyFilter(nextFilter)
-}
-
-async function copyPayload(entry) {
-  if (!hasPayload(entry)) {
-    return
-  }
-  const text = formatPayloadJson(entry.payload)
-  try {
-    await writeTextToClipboard(text)
-    copiedPayloadKey.value = entry.key
-    error.value = ''
-    scheduleCopiedPayloadReset()
-  } catch (_err) {
-    copiedPayloadKey.value = ''
-    error.value = '当前环境不支持复制 Payload'
-  }
-}
-
-async function copySnapshotRef(entry) {
-  const snapshotRef = entrySnapshotRef(entry)
-  if (!snapshotRef) {
-    return
-  }
-  try {
-    await writeTextToClipboard([
-      `快照ID: ${snapshotRef.snapshot_id}`,
-      `生成时间: ${snapshotRef.generated_at || '-'}`,
-      `来源: ${snapshotRef.source || '-'} / ${snapshotRef.event_type || '-'}`,
-      `会话: ${snapshotRef.conversation_id ?? '-'}`,
-    ].join('\n'))
-    copiedSnapshotKey.value = entry.key
-    error.value = ''
-    scheduleCopiedSnapshotReset()
-  } catch (_err) {
-    copiedSnapshotKey.value = ''
-    error.value = '当前环境不支持复制治理引用'
-  }
-}
-
-async function copySnapshotCommand(entry) {
-  const snapshotRef = entrySnapshotRef(entry)
-  if (!snapshotRef) {
-    return
-  }
-  try {
-    const descriptor = buildSnapshotCommandDescriptor(snapshotRef.snapshot_id, entry?.domain)
-    if (!descriptor) {
-      return
-    }
-    await writeTextToClipboard(descriptor.commandText)
-    persistRecentSnapshotCommand(descriptor)
-    recentCopiedCommandText.value = descriptor.commandText
-    copiedCommandTarget.value = entry.key
-    error.value = ''
-    scheduleCopiedCommandReset()
-  } catch (_err) {
-    copiedCommandTarget.value = ''
-    error.value = '当前环境不支持复制快照命令'
-  }
-}
-
-async function copyCurrentSnapshotCommand() {
-  if (!currentSnapshotRef.value) {
-    return
-  }
-  try {
-    const currentDomain = inferSnapshotCommandDomain(currentSnapshotRef.value, activeFilter.value)
-    const descriptor = buildSnapshotCommandDescriptor(currentSnapshotRef.value.snapshot_id, currentDomain)
-    if (!descriptor) {
-      return
-    }
-    await writeTextToClipboard(descriptor.commandText)
-    persistRecentSnapshotCommand(descriptor)
-    recentCopiedCommandText.value = descriptor.commandText
-    copiedCommandTarget.value = 'view'
-    error.value = ''
-    scheduleCopiedCommandReset()
-  } catch (_err) {
-    copiedCommandTarget.value = ''
-    error.value = '当前环境不支持复制快照命令'
-  }
-}
-
-async function copyCurrentView() {
-  if (!currentConversationId.value) {
-    return
-  }
-  try {
-    await writeTextToClipboard(buildCurrentViewSnapshot())
-    copiedViewLink.value = true
-    error.value = ''
-    scheduleCopiedViewReset()
-  } catch (_err) {
-    copiedViewLink.value = false
-    error.value = '当前环境不支持复制治理视图'
-  }
-}
-
-function scheduleCopiedPayloadReset() {
-  if (copiedPayloadResetTimer) {
-    clearTimeout(copiedPayloadResetTimer)
-    copiedPayloadResetTimer = null
-  }
-  copiedPayloadResetTimer = setTimeout(() => {
-    copiedPayloadKey.value = ''
-    copiedPayloadResetTimer = null
-  }, 1500)
-}
-
-function scheduleCopiedSnapshotReset() {
-  if (copiedSnapshotResetTimer) {
-    clearTimeout(copiedSnapshotResetTimer)
-    copiedSnapshotResetTimer = null
-  }
-  copiedSnapshotResetTimer = setTimeout(() => {
-    copiedSnapshotKey.value = ''
-    copiedSnapshotResetTimer = null
-  }, 1500)
-}
-
-function scheduleCopiedCommandReset() {
-  if (copiedCommandResetTimer) {
-    clearTimeout(copiedCommandResetTimer)
-    copiedCommandResetTimer = null
-  }
-  copiedCommandResetTimer = setTimeout(() => {
-    copiedCommandTarget.value = ''
-    copiedCommandResetTimer = null
-  }, 1500)
-}
-
-async function writeTextToClipboard(text) {
-  if (globalThis.navigator?.clipboard?.writeText) {
-    await globalThis.navigator.clipboard.writeText(text)
-    return
-  }
-  if (typeof document === 'undefined' || typeof document.createElement !== 'function') {
-    throw new Error('clipboard unavailable')
-  }
-  const textarea = document.createElement('textarea')
-  textarea.value = text
-  textarea.setAttribute('readonly', 'readonly')
-  textarea.style.position = 'fixed'
-  textarea.style.opacity = '0'
-  textarea.style.pointerEvents = 'none'
-  document.body.appendChild(textarea)
-  textarea.focus()
-  textarea.select()
-  try {
-    if (typeof document.execCommand !== 'function' || !document.execCommand('copy')) {
-      throw new Error('execCommand copy failed')
-    }
-  } finally {
-    document.body.removeChild(textarea)
-  }
-}
-
-function buildCurrentViewUrl() {
-  const baseUrl = new URL(globalThis.location?.href || 'http://localhost/')
-  baseUrl.search = ''
-  for (const [key, rawValue] of Object.entries(route.query || {})) {
-    if (key === 'governance_filter' || key === 'governance_severity') {
-      continue
-    }
-    const value = Array.isArray(rawValue) ? rawValue[0] : rawValue
-    if (value === undefined || value === null || value === '') {
-      continue
-    }
-    baseUrl.searchParams.set(key, String(value))
-  }
-  if (activeFilter.value && activeFilter.value !== 'all') {
-    baseUrl.searchParams.set('governance_filter', activeFilter.value)
-  }
-  if (activeSeverity.value && activeSeverity.value !== 'all') {
-    baseUrl.searchParams.set('governance_severity', activeSeverity.value)
-  }
-  if (activeSnapshotId.value) {
-    baseUrl.searchParams.set('governance_snapshot', activeSnapshotId.value)
-  }
-  return baseUrl.toString()
-}
-
-function buildCurrentViewSnapshot() {
-  const snapshotTimestamp = currentSnapshotRef.value?.generated_at || new Date().toISOString()
-  const snapshotId = currentSnapshotRef.value?.snapshot_id || buildViewSnapshotId(snapshotTimestamp)
-  const lines = [
-    `快照ID: ${snapshotId}`,
-    `生成时间: ${snapshotTimestamp}`,
-    `治理视图: ${activeFilterLabel.value} / ${activeSeverityLabel.value}`,
-    `事件范围: ${filteredTimeline.value.length} / ${scopedTimeline.value.length}`,
-  ]
-  if (autoFocusNotice.value) {
-    lines.push(`聚焦原因: ${autoFocusNotice.value}`)
-  }
-  if (currentSnapshotRef.value?.source || currentSnapshotRef.value?.event_type) {
-    lines.push(`后端引用: ${currentSnapshotRef.value.source || '-'} / ${currentSnapshotRef.value.event_type || '-'}`)
-  }
-  lines.push(`链接: ${buildCurrentViewUrl()}`)
-  return lines.join('\n')
-}
-
-function inferSnapshotCommandDomain(snapshotRef, fallbackDomain = '') {
-  const sourceDomain = inferTimelineDomain(snapshotRef?.event_type, snapshotRef?.source)
-  if (['mcp', 'permission', 'governance', 'learning'].includes(sourceDomain)) {
-    return sourceDomain
-  }
-  if (['mcp', 'permission', 'governance', 'learning'].includes(String(fallbackDomain || '').trim().toLowerCase())) {
-    return String(fallbackDomain || '').trim().toLowerCase()
-  }
-  return ''
-}
-
-function buildViewSnapshotId(timestamp) {
-  const latestEntry = filteredTimeline.value[0]
-  const domainKey = String(activeFilter.value || 'all').slice(0, 4).toUpperCase()
-  const severityKey = String(activeSeverity.value || 'all').slice(0, 4).toUpperCase()
-  const eventKey = String(latestEntry?.title || 'timeline')
-    .replace(/\s+/g, '')
-    .slice(0, 8)
-    .toUpperCase()
-  const timeKey = String(timestamp || '')
-    .replace(/[-:TZ.]/g, '')
-    .slice(0, 12)
-  return `${domainKey}-${severityKey}-${eventKey || 'TIMELINE'}-${timeKey || 'NA'}`
-}
-
-function scheduleCopiedViewReset() {
-  if (copiedViewResetTimer) {
-    clearTimeout(copiedViewResetTimer)
-    copiedViewResetTimer = null
-  }
-  copiedViewResetTimer = setTimeout(() => {
-    copiedViewLink.value = false
-    copiedViewResetTimer = null
-  }, 1500)
-}
-
-function syncFilterToRoute(nextFilter) {
-  const currentFilter = String(route.query.governance_filter || 'all').trim() || 'all'
-  if (currentFilter === nextFilter) {
-    return
-  }
-  const nextQuery = {
-    ...route.query,
-  }
-  if (!nextFilter || nextFilter === 'all') {
-    delete nextQuery.governance_filter
-  } else {
-    nextQuery.governance_filter = nextFilter
-  }
-  router.replace({ query: nextQuery }).catch(() => {})
-}
-
-function syncSeverityToRoute(nextSeverity) {
-  const currentSeverity = String(route.query.governance_severity || 'all').trim() || 'all'
-  if (currentSeverity === nextSeverity) {
-    return
-  }
-  const nextQuery = {
-    ...route.query,
-  }
-  if (!nextSeverity || nextSeverity === 'all') {
-    delete nextQuery.governance_severity
-  } else {
-    nextQuery.governance_severity = nextSeverity
-  }
-  router.replace({ query: nextQuery }).catch(() => {})
-}
-
-function syncSnapshotToRoute(nextSnapshotId) {
-  const currentSnapshot = String(route.query.governance_snapshot || '').trim()
-  if (currentSnapshot === String(nextSnapshotId || '').trim()) {
-    return
-  }
-  const nextQuery = {
-    ...route.query,
-  }
-  if (!nextSnapshotId) {
-    delete nextQuery.governance_snapshot
-  } else {
-    nextQuery.governance_snapshot = nextSnapshotId
-  }
-  router.replace({ query: nextQuery }).catch(() => {})
-}
-
-function formatTraceSource(source) {
-  const labelMap = {
-    doctor: 'Doctor',
-    scheduler: 'Scheduler',
-    subagent: 'Subagent',
-    permission: 'Permission',
-    hook: 'Hook',
-    tool: 'Tool',
-    mcp: 'MCP',
-    runtime: 'Runtime',
-    policy: 'Policy',
-    skill: 'Skill',
-    agent: 'Agent',
-  }
-  return labelMap[source] || source || ''
-}
-
-function formatAuditTime(value) {
-  if (!value) return '--'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return value
-  }
-  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}`
-}
-
-function formatSnapshotTime(value) {
-  if (!value) return '--'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return value
-  }
-  return `${date.toLocaleDateString()} ${formatAuditTime(value)}`
-}
-
-watch(
-  () => route.query.governance_filter,
-  (value) => {
-    const nextValue = String(value || 'all').trim() || 'all'
-    activeFilter.value = timelineFilters.value.some(item => item.key === nextValue) ? nextValue : 'all'
-  },
-  { immediate: true }
-)
-
-watch(
-  () => route.query.governance_severity,
-  (value) => {
-    const nextValue = String(value || 'all').trim() || 'all'
-    activeSeverity.value = severityFilters.value.some(item => item.key === nextValue) ? nextValue : 'all'
-  },
-  { immediate: true }
-)
-
-watch(
-  () => route.query.governance_snapshot,
-  (value) => {
-    activeSnapshotId.value = String(value || '').trim()
-  },
-  { immediate: true }
-)
-
-watch(activeFilter, (value) => {
-  syncFilterToRoute(value)
-})
-
-watch(activeSeverity, (value) => {
-  syncSeverityToRoute(value)
-})
-
-watch(activeSnapshotId, (value) => {
-  syncSnapshotToRoute(value)
-})
-
-watch([timelineFilters, activeFilter], ([filters, currentFilter]) => {
-  if (!filters.some(item => item.key === currentFilter)) {
-    activeFilter.value = 'all'
-  }
-})
-
-watch([combinedTimeline, activeSnapshotId], ([timeline, snapshotId]) => {
+  const snapshotId = entrySnapshotRef(entry)?.snapshot_id
   if (!snapshotId) {
+    return !activeSnapshotId.value
+  }
+  return activeSnapshotId.value === snapshotId
+}
+
+function isHistoryStageFocused(query) {
+  return checkHistoryStageFocused(query, activeQueryId.value, activeQueryStage.value)
+}
+
+function formatHistoryStageTags(query) {
+  return buildHistoryStageTags(query, activeQueryId.value, activeQueryStage.value)
+}
+
+watch([activeQueryId, currentConversationId], async () => {
+  await loadMainChatQueryDetail()
+})
+
+watch([activeFilter, currentConversationId], async ([filterValue]) => {
+  if (filterValue !== 'main_chat') {
+    mainChatQueryHistory.value = buildMainChatQueryHistoryContract()
+    mainChatQueryHistoryError.value = ''
+    mainChatHistorySearch.value = ''
+    activeMainChatHistoryPage.value = 1
     return
   }
-  if (!timeline.some(entry => entrySnapshotRef(entry)?.snapshot_id === snapshotId)) {
-    activeSnapshotId.value = ''
-  }
+  await loadMainChatQueryHistory(activeMainChatHistoryPage.value)
 })
 
 watch(
-  [recommendedFocusSignature, () => route.query.governance_filter, () => route.query.governance_snapshot, activeFilter],
-  ([signature, routeFilter, routeSnapshot, currentFilter]) => {
-    if (!signature || routeFilter || routeSnapshot) {
-      return
-    }
-    if (currentFilter !== 'all' || lastAutoFocusSignature.value === signature) {
-      return
-    }
-    lastAutoFocusSignature.value = signature
-    applyFilter(recommendedFocusFilter.value)
+  () => route.query.governance_query_search,
+  (value) => {
+    mainChatHistorySearch.value = normalizeText(value)
   },
   { immediate: true }
 )
+
+watch(mainChatHistorySearch, (value) => {
+  const currentSearch = String(route.query.governance_query_search || '').trim()
+  const normalizedNextSearch = normalizeText(value)
+  if (currentSearch === normalizedNextSearch) {
+    return
+  }
+  const nextQuery = {
+    ...route.query,
+  }
+  if (!normalizedNextSearch) {
+    delete nextQuery.governance_query_search
+  } else {
+    nextQuery.governance_query_search = normalizedNextSearch
+  }
+  router.replace({ query: nextQuery }).catch(() => {})
+})
+
+watch(
+  () => route.query.governance_query_page,
+  async (value) => {
+    const parsed = Number(value)
+    const nextPage = Number.isFinite(parsed) && parsed > 0 ? parsed : 1
+    if (activeMainChatHistoryPage.value === nextPage) {
+      return
+    }
+    activeMainChatHistoryPage.value = nextPage
+    if (activeFilter.value === 'main_chat' && currentConversationId.value) {
+      await loadMainChatQueryHistory(nextPage)
+    }
+  },
+  { immediate: true }
+)
+
+watch(activeMainChatHistoryPage, (value) => {
+  const currentPage = Number(route.query.governance_query_page || 1)
+  const normalizedNextPage = Math.max(1, Number(value || 1))
+  if (currentPage === normalizedNextPage) {
+    return
+  }
+  const nextQuery = {
+    ...route.query,
+  }
+  if (normalizedNextPage <= 1) {
+    delete nextQuery.governance_query_page
+  } else {
+    nextQuery.governance_query_page = String(normalizedNextPage)
+  }
+  router.replace({ query: nextQuery }).catch(() => {})
+})
 
 watch(currentConversationId, async (value, previous) => {
   if (value && value !== previous) {
@@ -1285,25 +1027,12 @@ watch(currentConversationId, async (value, previous) => {
   }
 }, { immediate: false })
 
-onMounted(loadTimeline)
+onMounted(async () => {
+  refreshRecentSnapshotCommands()
+  await loadTimeline()
+})
 onUnmounted(() => {
-  if (copiedPayloadResetTimer) {
-    clearTimeout(copiedPayloadResetTimer)
-    copiedPayloadResetTimer = null
-  }
-  if (copiedSnapshotResetTimer) {
-    clearTimeout(copiedSnapshotResetTimer)
-    copiedSnapshotResetTimer = null
-  }
-  if (copiedCommandResetTimer) {
-    clearTimeout(copiedCommandResetTimer)
-    copiedCommandResetTimer = null
-  }
-  if (copiedViewResetTimer) {
-    clearTimeout(copiedViewResetTimer)
-    copiedViewResetTimer = null
-  }
-  recentCopiedCommandText.value = ''
+  resetCopiedActiveDedupeKey()
 })
 </script>
 
@@ -1314,7 +1043,6 @@ onUnmounted(() => {
 
 .section-head,
 .card-head,
-.timeline-top,
 .doctor-outcome-row {
   display: flex;
   align-items: center;
@@ -1348,8 +1076,7 @@ onUnmounted(() => {
 }
 
 .summary-card,
-.panel-card,
-.timeline-item {
+.panel-card {
   border: 1px solid var(--border-color);
   background: var(--bg-surface);
   border-radius: var(--radius-lg);
@@ -1362,8 +1089,41 @@ onUnmounted(() => {
   gap: var(--space-xs);
 }
 
+.summary-card-dismissible {
+  align-items: flex-start;
+}
+
+.compact-dismiss-btn {
+  margin-top: 0.2rem;
+}
+
 .governance-overview-grid {
   margin-bottom: var(--space-lg);
+}
+
+.main-chat-history-summary-card {
+  justify-content: center;
+}
+
+.main-chat-query-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.main-chat-query-workspace-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.main-chat-query-workspace-grid {
+  display: grid;
+  gap: var(--space-md);
+  grid-template-columns: minmax(320px, 1.2fr) minmax(260px, 0.8fr);
+  align-items: start;
 }
 
 .governance-overview-card {
@@ -1474,6 +1234,12 @@ onUnmounted(() => {
   font-size: 0.74rem;
 }
 
+@media (max-width: 980px) {
+  .main-chat-query-workspace-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .governance-focus-notice {
   display: flex;
   align-items: center;
@@ -1487,25 +1253,6 @@ onUnmounted(() => {
   font-size: 0.84rem;
 }
 
-.governance-command-notice {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  margin-bottom: var(--space-lg);
-  padding: var(--space-sm) var(--space-md);
-  border: 1px solid rgba(59, 130, 246, 0.24);
-  border-radius: var(--radius-md);
-  background: rgba(59, 130, 246, 0.08);
-  color: var(--text-secondary);
-  font-size: 0.84rem;
-}
-
-.governance-command-notice code {
-  color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.08);
-  padding: 2px 8px;
-  border-radius: var(--radius-sm);
-}
 
 .summary-label {
   font-size: 0.8rem;
@@ -1531,6 +1278,16 @@ onUnmounted(() => {
 
 .summary-action-card {
   width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.summary-action-main {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
   text-align: left;
   cursor: pointer;
 }
@@ -1590,13 +1347,6 @@ onUnmounted(() => {
   align-items: flex-start;
 }
 
-.filter-chip-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-sm);
-  margin-top: var(--space-md);
-}
-
 .timeline-list {
   display: flex;
   flex-direction: column;
@@ -1604,87 +1354,25 @@ onUnmounted(() => {
   margin-top: var(--space-md);
 }
 
-.timeline-item {
+.timeline-empty-state {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
   padding: var(--space-md);
-  border-left: 3px solid rgba(148, 163, 184, 0.25);
-}
-
-.timeline-item.severity-warning {
-  border-left-color: rgba(249, 115, 22, 0.45);
-}
-
-.timeline-item.severity-success {
-  border-left-color: rgba(34, 197, 94, 0.45);
-}
-
-.timeline-badges {
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.filter-chip,
-.timeline-kind,
-.timeline-source,
-.timeline-event {
-  font-size: 0.74rem;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
   color: var(--text-secondary);
+  word-break: break-all;
 }
 
-.timeline-event {
+.timeline-empty-state strong {
   color: var(--text-primary);
 }
 
-.filter-chip {
-  border: 1px solid var(--border-color);
-  cursor: pointer;
-}
-
-.filter-chip.active {
-  color: var(--text-primary);
-  border-color: var(--border-primary);
-  background: rgba(15, 118, 110, 0.12);
-}
-
-.timeline-time {
-  font-size: 0.72rem;
-  color: var(--text-tertiary);
-}
-
-.timeline-content {
-  margin-top: 6px;
-  color: var(--text-secondary);
-  line-height: 1.5;
-}
-
-.timeline-detail {
-  margin-top: 4px;
-  color: var(--text-tertiary);
-  font-size: 0.82rem;
-  line-height: 1.5;
-  white-space: pre-wrap;
-}
-
-.timeline-payload-summary {
-  margin-top: 6px;
-  color: var(--text-secondary);
-  font-size: 0.78rem;
-  line-height: 1.5;
-}
-
-.timeline-snapshot-ref {
-  margin-top: 6px;
-  color: var(--text-tertiary);
-  font-size: 0.76rem;
-  line-height: 1.5;
-}
-
-.timeline-payload-actions {
-  margin-top: 8px;
+.timeline-empty-state .payload-toggle-btn {
+  align-self: flex-start;
+  margin-top: var(--space-xs);
 }
 
 .payload-toggle-btn {
@@ -1695,18 +1383,6 @@ onUnmounted(() => {
   border-radius: var(--radius-md);
   cursor: pointer;
   font-size: 0.76rem;
-}
-
-.timeline-payload-json {
-  margin-top: 8px;
-  padding: var(--space-sm);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  background: var(--bg-primary);
-  color: var(--text-secondary);
-  overflow-x: auto;
-  font-size: 0.78rem;
-  line-height: 1.5;
 }
 
 .secondary-btn {

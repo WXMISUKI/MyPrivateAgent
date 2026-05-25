@@ -117,12 +117,23 @@ class ConversationFeedbackAnalyticsResponse(BaseModel):
 
 
 # ============ 聊天相关 ============
+class ChatExecutionContextRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    run_id: Optional[str] = None
+    run_kind: Optional[str] = None
+    agent_role: Optional[str] = None
+    agent_id: Optional[str] = None
+    enable_main_chat_query_control_timeline: Optional[bool] = None
+
+
 class ChatRequest(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
 
     conversation_id: Optional[int] = None
     message: str
     model_name: Optional[str] = None
+    execution_context: Optional[ChatExecutionContextRequest] = None
 
 
 class ChatResponse(BaseModel):

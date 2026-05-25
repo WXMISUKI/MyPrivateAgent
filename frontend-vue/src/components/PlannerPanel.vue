@@ -108,7 +108,7 @@
                 <div v-if="item.scheduler_snapshot?.children && item.scheduler_snapshot.children.length" class="child-execution-list">
                   <div
                     v-for="child in item.scheduler_snapshot.children"
-                    :key="child.child_execution_id || child.agent_id"
+                    :key="child.child_display_id || child.child_run_id || child.child_execution_id || child.agent_id"
                     class="child-execution-item"
                     :class="`child-${child.status}`"
                   >
@@ -117,6 +117,9 @@
                       <span class="child-status">{{ formatChildStatus(child.status) }}</span>
                     </div>
                     <div class="child-meta">Agent：{{ child.agent_id || '待分配' }}</div>
+                    <div v-if="child.child_display_id || child.child_run_id || child.child_execution_id" class="child-meta">
+                      Child Run：{{ child.child_display_id || child.child_run_id || child.child_execution_id }}
+                    </div>
                     <div v-if="child.provider_name || child.model_name" class="child-meta">
                       策略：{{ child.provider_name || 'unknown' }} / {{ child.model_name || 'unknown' }}
                     </div>
@@ -127,7 +130,7 @@
                       <div class="child-history-title">Provider 路由历史</div>
                       <div
                         v-for="(route, routeIndex) in child.provider_history"
-                        :key="`${child.child_execution_id || child.agent_id}-route-${routeIndex}`"
+                        :key="`${child.child_display_id || child.child_run_id || child.child_execution_id || child.agent_id}-route-${routeIndex}`"
                         class="child-history-item"
                       >
                         <span>{{ route.provider_name || 'unknown' }} / {{ route.model_name || 'unknown' }}</span>

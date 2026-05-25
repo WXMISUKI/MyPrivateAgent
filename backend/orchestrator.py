@@ -381,8 +381,12 @@ class SimplifiedOrchestrator:
                     # 完成信号
                     reasoning_content = chunk_data.get('reasoning') or stream_state.last_reasoning
                     full_answer = stream_state.full_content or chunk_data.get('content', '')
+                    runtime_waiting_approval = (
+                        chunk_data.get("state") == "waiting_approval"
+                        or chunk_data.get("stop_reason") == "approval_required"
+                    )
 
-                    if subagent_context is not None and full_answer:
+                    if subagent_context is not None and full_answer and not runtime_waiting_approval:
                         yield json.dumps(
                             self.subagent_runtime_service.build_collect_event(
                                 subagent_context,
@@ -429,7 +433,7 @@ class SimplifiedOrchestrator:
                     if stats['compression_count'] > 0:
                         logger.info(f"[Orchestrator] 上下文已压缩 {stats['compression_count']} 次")
 
-                    if subagent_context is not None and full_answer:
+                    if subagent_context is not None and full_answer and not runtime_waiting_approval:
                         yield json.dumps(
                             self.subagent_runtime_service.build_merge_event(subagent_context),
                             ensure_ascii=False,
@@ -461,6 +465,13 @@ class SimplifiedOrchestrator:
                             yield retry_chunk
                         break
                     yield chunk_str
+
+                else:
+                    output = self._process_stream_chunk(
+                        chunk_data, stream_state, selected_model, supports_reasoning,
+                    )
+                    if output:
+                        yield output
 
             except json.JSONDecodeError:
                 # 非 JSON 格式，直接作为内容

@@ -1,0 +1,5 @@
+- [x] Add failing RuntimeSurfaceService tests for recorded and missing `subagent_lane` query detail.
+- [x] Add failing health router endpoint test for `/runtime-profile/subagent-lane-query-detail`.
+- [x] Implement backend detail builder/service method and dedicated endpoint.
+- [x] Update docs/manual notes and roadmap.
+- [x] Validate OpenSpec and run focused backend tests.

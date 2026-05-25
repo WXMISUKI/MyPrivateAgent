@@ -1,0 +1,5 @@
+- [x] Add failing quality gate report tests for runtime artifact schema guard.
+- [x] Implement runtime contract artifact schema guard in `quality_gate_report.py`.
+- [x] Render schema guard in Markdown summary.
+- [x] Update runtime contract docs and hardening roadmap notes.
+- [x] Validate OpenSpec and run focused backend tests.

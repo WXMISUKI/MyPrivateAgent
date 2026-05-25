@@ -12,11 +12,13 @@ try:
     from config import ARK_API_KEY, AUTH_MODE, DATABASE_URL, DB_MODE, DEFAULT_MODEL, IS_VERCEL, SQLITE_PATH
     from database import engine
     from services.runtime_surface_service import get_runtime_surface_service
+    from services.tool_runtime_service import get_tool_runtime_service
 except ModuleNotFoundError:  # pragma: no cover - package import compatibility
     from backend.agent_server.config import PROJECT_ROOT, get_available_server_presets
     from backend.config import ARK_API_KEY, AUTH_MODE, DATABASE_URL, DB_MODE, DEFAULT_MODEL, IS_VERCEL, SQLITE_PATH
     from backend.database import engine
     from backend.services.runtime_surface_service import get_runtime_surface_service
+    from backend.services.tool_runtime_service import get_tool_runtime_service
 
 
 class StartupDiagnosticsService:
@@ -29,6 +31,7 @@ class StartupDiagnosticsService:
             "filesystem": self._check_filesystem(),
             "ui": self._check_ui_assets(),
             "models": self._check_models(),
+            "framework_adapters": self._check_framework_adapters(),
             "presets": self._check_presets(),
         }
         statuses = [entry["status"] for entry in checks.values()]
@@ -146,6 +149,95 @@ class StartupDiagnosticsService:
         return {
             "status": "ok",
             "details": [f"可用 preset: {', '.join(presets)}"],
+        }
+
+    def _check_framework_adapters(self) -> Dict[str, Any]:
+        details: List[str] = []
+        remediation_actions: List[Dict[str, Any]] = []
+        health = get_tool_runtime_service().build_adapter_health_contract()
+        adapters = list(health.get("adapters") or [])
+        overall_status = str(health.get("overall_status") or "").strip() or "unknown"
+
+        status = "ok"
+        if overall_status == "degraded":
+            status = "fail"
+        elif overall_status == "not_configured":
+            status = "warn"
+
+        details.append(
+            f"adapter_health={overall_status} adapter_count={int(health.get('adapter_count') or 0)} "
+            f"not_configured_count={int(health.get('not_configured_count') or 0)} "
+            f"unavailable_count={int(health.get('unavailable_count') or 0)}"
+        )
+        for adapter in adapters:
+            adapter_id = str(adapter.get("adapter_id") or "unknown").strip()
+            framework_name = str(
+                adapter.get("framework_name")
+                or adapter.get("display_name")
+                or adapter_id
+                or "Framework Adapter"
+            ).strip()
+            adapter_status = str(adapter.get("status") or "unknown").strip()
+            configuration_status = str(adapter.get("configuration_status") or "").strip() or "-"
+            execution_mode = str(adapter.get("execution_mode") or "").strip() or "-"
+            missing_env = list(adapter.get("missing_env") or [])
+            missing_packages = list(adapter.get("missing_packages") or [])
+            block_reason = str(adapter.get("execution_block_reason") or "").strip()
+            parts = [
+                f"{adapter_id}: status={adapter_status}",
+                f"config={configuration_status}",
+                f"mode={execution_mode}",
+            ]
+            if missing_packages:
+                parts.append(f"missing_packages={','.join(str(item) for item in missing_packages)}")
+                remediation_actions.append({
+                    "adapter_id": adapter_id,
+                    "framework_name": framework_name,
+                    "type": "install_package",
+                    "severity": "high",
+                    "message": f"为 `{adapter_id}` 安装缺失依赖包",
+                    "packages": [str(item) for item in missing_packages],
+                    "next_steps": [
+                        f"安装依赖包: {', '.join(str(item) for item in missing_packages)}",
+                        "安装完成后重新执行 /api/doctor 或 startup diagnostics 验证状态。",
+                    ],
+                })
+            if missing_env:
+                parts.append(f"missing_env={','.join(str(item) for item in missing_env)}")
+                remediation_actions.append({
+                    "adapter_id": adapter_id,
+                    "framework_name": framework_name,
+                    "type": "configure_env",
+                    "severity": "medium",
+                    "message": f"为 `{adapter_id}` 补齐运行时环境变量",
+                    "env": [str(item) for item in missing_env],
+                    "next_steps": [
+                        f"补齐环境变量: {', '.join(str(item) for item in missing_env)}",
+                        "更新 .env 后重新加载服务并再次执行诊断。",
+                    ],
+                })
+            if block_reason:
+                parts.append(f"block_reason={block_reason}")
+            if configuration_status == "runtime_disabled":
+                remediation_actions.append({
+                    "adapter_id": adapter_id,
+                    "framework_name": framework_name,
+                    "type": "enable_runtime_execution",
+                    "severity": "medium",
+                    "message": f"为 `{adapter_id}` 打开受控 runtime 执行开关",
+                    "flag": "ENABLE_LANGGRAPH_RUNTIME_EXECUTION",
+                    "next_steps": [
+                        "确认包和环境变量已经齐备。",
+                        "将 ENABLE_LANGGRAPH_RUNTIME_EXECUTION=true 后重新执行诊断。",
+                    ],
+                })
+            details.append(" | ".join(parts))
+
+        return {
+            "status": status,
+            "details": details,
+            "adapter_health": health,
+            "remediation_actions": remediation_actions,
         }
 
     @staticmethod

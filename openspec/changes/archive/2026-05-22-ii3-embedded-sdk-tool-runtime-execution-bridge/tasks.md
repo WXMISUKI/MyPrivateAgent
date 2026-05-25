@@ -1,0 +1,10 @@
+- [x] 1.1 Create proposal, design, tasks and spec delta for SDK ToolRuntimeService execution bridge
+- [x] 1.2 Validate the new OpenSpec change in strict mode
+- [x] 2.1 Add focused SDK test for default ToolRuntimeService execution
+- [x] 2.2 Add focused SDK test for ask policy pause and approved resume
+- [x] 2.3 Add focused SDK test for deny policy fail-closed behavior
+- [x] 2.4 Implement SDK policy coordination wrapper for ToolRuntimeService
+- [x] 2.5 Implement SDK default ToolRuntimeService executor
+- [x] 3.1 Update runtime contract docs and roadmap
+- [x] 3.2 Run focused backend tests in `myenv`
+- [x] 3.3 Mark tasks complete after verification

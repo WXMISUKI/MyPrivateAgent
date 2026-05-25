@@ -1,0 +1,6 @@
+- [x] Add failing RuntimeSurfaceService tests for ready and blocked subagent_lane detail readiness.
+- [x] Add failing health router endpoint test for the dedicated readiness contract.
+- [x] Implement backend readiness builder/service method and dedicated endpoint.
+- [x] Close old OpenSpec follow-up tasks that are now decided.
+- [x] Update runtime contract / roadmap docs.
+- [x] Validate OpenSpec and run focused backend tests.

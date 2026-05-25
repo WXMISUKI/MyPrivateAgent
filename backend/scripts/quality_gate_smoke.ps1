@@ -49,6 +49,10 @@ Run-Step "Backend multi_agent_provider_failover_smoke.py" {
   Invoke-ExternalCommand "conda" @("run", "-n", $CondaEnv, "python", "backend/scripts/multi_agent_provider_failover_smoke.py")
 }
 
+Run-Step "Backend runtime_contract_smoke.py" {
+  Invoke-ExternalCommand "conda" @("run", "-n", $CondaEnv, "python", "backend/scripts/runtime_contract_smoke.py")
+}
+
 Run-Step "Backend governance regression tests" {
   Invoke-ExternalCommand "conda" @(
     "run",
@@ -59,6 +63,7 @@ Run-Step "Backend governance regression tests" {
     "unittest",
     "tests.agent_framework.test_doctor_script",
     "tests.agent_framework.test_health_router",
+    "tests.agent_framework.test_runtime_contract_smoke",
     "tests.agent_framework.test_runtime_surface_config_service"
   )
 }

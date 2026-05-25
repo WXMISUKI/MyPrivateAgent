@@ -1,0 +1,9 @@
+- [x] 1.1 Create proposal, design, tasks and spec delta for SDK tool registration bridge
+- [x] 1.2 Validate the new OpenSpec change in strict mode
+- [x] 2.1 Add focused SDK tests for metadata-only tool registration
+- [x] 2.2 Add focused SDK tests for executable handler registration
+- [x] 2.3 Add focused SDK tests for invalid registration fail-closed behavior
+- [x] 2.4 Implement `EmbeddedAgentRuntimeSDK.register_tool(...)`
+- [x] 2.5 Promote SDK contract `register_tool` stability to preview
+- [x] 3.1 Run focused backend tests in `myenv`
+- [x] 3.2 Mark tasks complete after verification

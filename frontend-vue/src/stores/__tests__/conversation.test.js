@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useConversationStore } from '../conversation'
+import { useSettingsStore } from '../settings'
 import storage from '../../services/storage'
 import axios from 'axios'
 
@@ -121,6 +122,34 @@ describe('conversation store', () => {
       content: '正在识别你的复合需求'
     })
     expect(store.isLoading).toBe(false)
+  })
+
+  it('includes typed execution_context when main chat runtime trace is enabled', async () => {
+    FakeXMLHttpRequest.responseText = [
+      'data: {"type":"done","content":"你好"}',
+      ''
+    ].join('\n')
+
+    const store = useConversationStore()
+    const settingsStore = useSettingsStore()
+    settingsStore.setEnableMainChatRuntimeTrace(true)
+
+    await store.addMessage({
+      id: 1,
+      role: 'user',
+      content: '测试 runtime trace',
+      timestamp: Date.now()
+    })
+
+    await store.sendMessage('测试 runtime trace', 'doubao')
+
+    const body = JSON.parse(FakeXMLHttpRequest.lastInstance.body)
+    expect(body.execution_context).toMatchObject({
+      run_kind: 'chat',
+      enable_main_chat_query_control_timeline: true,
+      agent_id: 'chat-ui-doubao'
+    })
+    expect(body.execution_context.run_id).toMatch(/^manual-chat-/)
   })
 
   it('stores completion check metadata on assistant message when framework fallback content is emitted', async () => {

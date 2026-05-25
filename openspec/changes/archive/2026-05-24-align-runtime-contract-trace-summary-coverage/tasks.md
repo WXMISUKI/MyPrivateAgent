@@ -1,0 +1,5 @@
+- [x] Add focused backend tests for trace payload coverage preservation.
+- [x] Add focused backend tests for compact degraded trace detail labels.
+- [x] Implement Health Router normalization for remaining coverage sections.
+- [x] Update docs/manual notes and canonical spec.
+- [x] Validate OpenSpec and run focused backend tests.

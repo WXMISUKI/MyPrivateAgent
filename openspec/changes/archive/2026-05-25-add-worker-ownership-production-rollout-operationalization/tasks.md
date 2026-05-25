@@ -1,0 +1,6 @@
+- [x] Add OpenSpec delta for rollout operationalization.
+- [x] Add focused tests for default blocked rollout operationalization and production gate evidence.
+- [x] Implement rollout operationalization builder and embed it in rollout readiness.
+- [x] Extend runtime smoke, Quality Gate, and Runtime Contract Gate rollout coverage.
+- [x] Sync canonical specs and docs.
+- [x] Run focused validation, clean generated artifacts, and archive the change.

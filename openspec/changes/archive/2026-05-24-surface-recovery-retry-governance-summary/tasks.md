@@ -1,0 +1,5 @@
+- [x] Add focused frontend service tests for `recovery_retry` summary labels.
+- [x] Add focused Governance Timeline panel assertion for runtime contract warning text.
+- [x] Implement compact summary formatting.
+- [x] Update docs/manual notes and canonical spec.
+- [x] Validate OpenSpec and run focused frontend tests.

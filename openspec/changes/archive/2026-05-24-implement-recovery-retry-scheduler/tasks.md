@@ -1,0 +1,6 @@
+- [x] Define retry scheduler service and opt-in entrypoint.
+- [x] Reuse retry policy/classifier and operation idempotency evidence.
+- [x] Record compact retry attempt history and audit trace.
+- [x] Add runtime contract smoke and quality gate coverage.
+- [x] Update docs/manual notes and canonical spec.
+- [x] Run focused backend tests and OpenSpec validation.

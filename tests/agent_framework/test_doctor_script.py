@@ -8,11 +8,89 @@ from backend.scripts import doctor
 
 
 class DoctorScriptTests(unittest.TestCase):
+    @patch("backend.services.scheduler_service.SchedulerService")
+    @patch("backend.scripts.doctor.SessionLocal")
+    def test_collect_framework_adapter_external_error_counts_declares_window_scope(
+        self,
+        mock_session_local,
+        mock_scheduler_cls,
+    ):
+        class _Query:
+            def order_by(self, *_args):
+                return self
+
+            def limit(self, value):
+                self.limit_value = value
+                return self
+
+            def all(self):
+                return ["item-1", "item-2"]
+
+        class _Db:
+            def query(self, *_args):
+                return _Query()
+
+            def close(self):
+                return None
+
+        mock_session_local.return_value = _Db()
+        scheduler = mock_scheduler_cls.return_value
+        scheduler.filter_run_trace.side_effect = [
+            [{"payload": {"error_type": "configuration_error"}}],
+            [{"payload": {"error_type": "configuration_error"}}, {"payload": {"error_type": "protocol_error"}}],
+        ]
+
+        counts = doctor._collect_framework_adapter_external_error_counts()
+
+        self.assertEqual(counts["total"], 3)
+        self.assertEqual(counts["window_scope"], "recent_plan_items")
+        self.assertEqual(counts["sample_size"], 50)
+        self.assertEqual(counts["by_error_type"]["configuration_error"], 2)
+
+    @patch("backend.scripts.doctor._collect_framework_adapter_external_error_counts")
+    @patch("backend.scripts.doctor._collect_latest_framework_adapter_external_error_summary")
     @patch("backend.scripts.doctor.get_startup_diagnostics_service")
-    def test_default_mode_uses_startup_diagnostics(self, mock_factory):
+    def test_default_mode_uses_startup_diagnostics(
+        self,
+        mock_factory,
+        mock_external_error_summary,
+        mock_external_error_counts,
+    ):
         mock_factory.return_value.collect_report.return_value = {
             "status": "ok",
             "summary": {"ok": 1, "warn": 0, "fail": 0},
+            "checks": {
+                "framework_adapters": {
+                    "status": "warn",
+                    "details": ["langgraph_draft: status=not_configured | config=missing_package"],
+                    "remediation_actions": [
+                        {
+                            "adapter_id": "langgraph_draft",
+                            "framework_name": "LangGraph",
+                            "type": "install_package",
+                            "packages": ["langgraph"],
+                        }
+                    ],
+                }
+            },
+        }
+        mock_external_error_summary.return_value = {
+            "event_type": "framework_adapter_external_error",
+            "error_type": "protocol_error",
+            "framework_name": "LangGraph",
+            "adapter_id": "langgraph_draft",
+            "detail": "transport probe did not provide assistant identity evidence",
+            "snapshot_ref": {"snapshot_id": "FRAM-EXT-ERR-321-20260513030000"},
+        }
+        mock_external_error_counts.return_value = {
+            "total": 5,
+            "window_scope": "recent_plan_items",
+            "sample_size": 50,
+            "by_error_type": {
+                "protocol_error": 2,
+                "configuration_error": 2,
+                "connectivity_error": 1,
+            },
         }
 
         output = io.StringIO()
@@ -22,6 +100,33 @@ class DoctorScriptTests(unittest.TestCase):
         payload = json.loads(output.getvalue())
         self.assertEqual(code, 0)
         self.assertEqual(payload["status"], "ok")
+        self.assertEqual(payload["checks"]["framework_adapters"]["status"], "warn")
+        self.assertEqual(payload["checks"]["framework_adapters"]["remediation_actions"][0]["type"], "install_package")
+        self.assertEqual(payload["checks"]["framework_adapters"]["remediation_actions"][0]["framework_name"], "LangGraph")
+        self.assertEqual(
+            payload["checks"]["framework_adapters"]["latest_external_pilot_failure"]["error_type"],
+            "protocol_error",
+        )
+        self.assertEqual(
+            payload["checks"]["framework_adapters"]["latest_external_pilot_failure"]["framework_name"],
+            "LangGraph",
+        )
+        self.assertEqual(
+            payload["checks"]["framework_adapters"]["external_pilot_failure_counts"]["total"],
+            5,
+        )
+        self.assertEqual(
+            payload["checks"]["framework_adapters"]["external_pilot_failure_counts"]["by_error_type"]["configuration_error"],
+            2,
+        )
+        self.assertEqual(
+            payload["checks"]["framework_adapters"]["external_pilot_failure_counts"]["window_scope"],
+            "recent_plan_items",
+        )
+        self.assertEqual(
+            payload["checks"]["framework_adapters"]["external_pilot_failure_counts"]["sample_size"],
+            50,
+        )
 
     @patch("backend.scripts.doctor.SessionLocal")
     @patch("backend.scripts.doctor.get_capability_gap_service")

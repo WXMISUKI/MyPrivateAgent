@@ -1,0 +1,6 @@
+- [x] Add OpenSpec delta requirements for vendor lock target decision input source evidence.
+- [x] Add worker ownership builder tests for blocked/default and ready input source contracts.
+- [x] Implement input source contract and embed it under target decision evidence.
+- [x] Extend runtime smoke, Quality Gate, and Runtime Contract Gate summary coverage.
+- [x] Sync canonical docs/specs and run focused verification.
+- [x] Archive the completed OpenSpec change.

@@ -1,0 +1,6 @@
+- [x] Add OpenSpec deltas for retry evidence smoke semantics.
+- [x] Confirm the current runtime smoke failure is `recovery_retry_evidence_incomplete`.
+- [x] Align runtime smoke with retry classifier semantics.
+- [x] Align Quality Gate and Runtime Contract Gate normalization.
+- [x] Sync docs and canonical specs.
+- [x] Run focused verification and archive the change.

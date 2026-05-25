@@ -1,0 +1,6 @@
+- [x] Add OpenSpec delta for controlled renewal lifecycle.
+- [x] Add focused tests for default inactive, explicit start, stop, and fail-closed lifecycle behavior.
+- [x] Implement `start(...)`, `stop(...)`, and `status()` on `WorkerOwnershipRenewalSupervisor`.
+- [x] Extend renewal supervisor contract, production gate evidence, runtime smoke, Quality Gate, and Runtime Contract Gate summaries.
+- [x] Sync canonical specs and docs.
+- [x] Run focused validation and remove generated quality-gate artifacts.

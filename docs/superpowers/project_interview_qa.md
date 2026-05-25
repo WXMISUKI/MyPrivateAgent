@@ -232,11 +232,11 @@
 > 四个 job（`.github/workflows/ci.yml`）：
 >
 > 1. `backend-lint` — `ruff check backend/`
-> 2. `backend-tests` — 显式列出 28 个核心测试模块跑 unittest，额外跑 pytest + coverage（阈值 30%，当前 continue-on-error，逐步往严收紧）
-> 3. `quality-gate` — 跑 `quality_gate_report.py`，把 summary append 到 `$GITHUB_STEP_SUMMARY`，upload 两份 artifact
+> 2. `backend-tests` — 显式列出核心 unittest 模块，已包含 `runtime_contract_smoke / runtime_contract_snapshot / runtime_surface / framework_adapter` 相关回归，额外跑 pytest + coverage（阈值 30%，当前 continue-on-error，逐步往严收紧）
+> 3. `quality-gate` — 跑 `quality_gate_report.py`，其中已串联 `runtime_contract_smoke.py`、`RuntimeSurfacePanel` 前端 smoke，并把 summary append 到 `$GITHUB_STEP_SUMMARY`，upload 两份 artifact
 > 4. `frontend-build` — `npm ci && npm run build` 验证生产包
 >
-> 承认不足：没做 coverage 强门禁、没做前端 lint 门禁、没做 API 契约兼容性校验（OpenAPI diff）。
+> 承认不足：还没做 coverage 强门禁、没做前端 lint 门禁、没做 API 契约兼容性校验（OpenAPI diff），也还没把 runtime contract smoke 单独拆成 required status check。
 
 ### G2. Vercel 一体化部署怎么配的？
 

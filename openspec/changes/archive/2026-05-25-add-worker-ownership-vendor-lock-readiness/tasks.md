@@ -1,0 +1,6 @@
+- [x] Add OpenSpec delta for worker ownership vendor lock semantics readiness.
+- [x] Add focused tests for the vendor lock semantics contract and production gate evidence.
+- [x] Implement the read-only vendor lock semantics builder and production gate integration.
+- [x] Extend runtime smoke, Quality Gate, and Runtime Contract Gate summaries with vendor lock evidence.
+- [x] Sync runtime docs and roadmap.
+- [x] Run focused validation and delete temporary test files.

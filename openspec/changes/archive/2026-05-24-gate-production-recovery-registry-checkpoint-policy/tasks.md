@@ -1,0 +1,7 @@
+- [x] Add production registry/checkpoint policy specification.
+- [x] Implement compact production registry/checkpoint policy readiness contract.
+- [x] Mark production recovery gate registry/checkpoint sections ready through persistence interface evidence.
+- [x] Expose policy coverage in runtime smoke, Quality Gate, Runtime Contract Gate, and snapshot guard.
+- [x] Update focused tests and docs.
+- [x] Validate focused tests and OpenSpec.
+- [x] Archive the completed change.

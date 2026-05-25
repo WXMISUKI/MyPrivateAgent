@@ -1,0 +1,7 @@
+- [x] Add continuation descriptor lifecycle governance specification.
+- [x] Sync durable loader, production recovery gate, and recovery protocol delta specs.
+- [x] Implement descriptor lifecycle classifier and loader evidence.
+- [x] Expose lifecycle coverage in runtime smoke, quality gate, Runtime Contract Gate, and snapshot guard.
+- [x] Update docs and focused tests.
+- [x] Validate focused tests and OpenSpec.
+- [x] Archive the completed change.

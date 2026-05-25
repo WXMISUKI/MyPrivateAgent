@@ -1,0 +1,4 @@
+- [x] Add failing Runtime Contract Gate tests for artifact schema guard exposure.
+- [x] Implement artifact schema extraction / fallback normalization in `RuntimeContractGateService`.
+- [x] Update runtime contract docs and hardening roadmap notes.
+- [x] Validate OpenSpec and run focused backend tests.

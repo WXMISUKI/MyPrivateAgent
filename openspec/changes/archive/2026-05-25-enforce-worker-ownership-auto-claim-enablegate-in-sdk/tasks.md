@@ -1,0 +1,5 @@
+- [x] Add OpenSpec delta requirements for SDK auto-claim enablement gate enforcement.
+- [x] Add focused SDK tests for legacy compatibility, blocked gate, non-allowlisted entrypoint, and ready gate claim.
+- [x] Implement SDK gate-enforced auto-claim seam.
+- [x] Sync docs/specs and verify focused tests plus smoke.
+- [x] Archive the completed OpenSpec change.

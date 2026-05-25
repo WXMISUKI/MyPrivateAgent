@@ -4,6 +4,10 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 
+def _env_flag(name: str, default: str = "false") -> bool:
+    return os.getenv(name, default).strip().lower() in {"1", "true", "yes", "on"}
+
+
 def _resolve_project_root() -> Path:
     """Resolve the project root directory.
 
@@ -114,3 +118,19 @@ RATE_LIMIT_DEFAULT = os.getenv("RATE_LIMIT_DEFAULT", "60/minute")
 RATE_LIMIT_CHAT = os.getenv("RATE_LIMIT_CHAT", "20/minute")
 DOUBAO_SUPPORTS_TOOL_CHOICE = os.getenv("DOUBAO_SUPPORTS_TOOL_CHOICE", "false").lower() == "true"
 SCHEDULER_RUNTIME_BACKEND = os.getenv("SCHEDULER_RUNTIME_BACKEND", "metadata").strip().lower() or "metadata"
+_default_embedded_workspace_store_mode = "memory_only" if DB_MODE == "memory" else "strict_sql"
+EMBEDDED_WORKSPACE_STORE_MODE = (
+    os.getenv("EMBEDDED_WORKSPACE_STORE_MODE", _default_embedded_workspace_store_mode).strip().lower()
+    or _default_embedded_workspace_store_mode
+)
+_default_worker_ownership_store_mode = "memory_only"
+WORKER_OWNERSHIP_STORE_MODE = (
+    os.getenv("WORKER_OWNERSHIP_STORE_MODE", _default_worker_ownership_store_mode).strip().lower()
+    or _default_worker_ownership_store_mode
+)
+ENABLE_LOCAL_FAKE_FRAMEWORK_ADAPTER = _env_flag("ENABLE_LOCAL_FAKE_FRAMEWORK_ADAPTER", "false")
+ENABLE_LANGGRAPH_DRAFT_ADAPTER = _env_flag("ENABLE_LANGGRAPH_DRAFT_ADAPTER", "false")
+ENABLE_LANGGRAPH_RUNTIME_EXECUTION = _env_flag("ENABLE_LANGGRAPH_RUNTIME_EXECUTION", "false")
+ENABLE_LANGGRAPH_EXTERNAL_PILOT = _env_flag("ENABLE_LANGGRAPH_EXTERNAL_PILOT", "false")
+LANGGRAPH_RUNTIME_ENDPOINT = os.getenv("LANGGRAPH_RUNTIME_ENDPOINT", "").strip()
+LANGGRAPH_ASSISTANT_ID = os.getenv("LANGGRAPH_ASSISTANT_ID", "").strip()

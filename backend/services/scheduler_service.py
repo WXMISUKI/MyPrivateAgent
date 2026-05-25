@@ -22,7 +22,7 @@ except ModuleNotFoundError:  # pragma: no cover - package import compatibility
     from backend.services.scheduler_runtime_store import get_scheduler_runtime_store
 
 
-CHILD_STATUSES = {"queued", "running", "completed", "failed", "cancelled"}
+CHILD_STATUSES = {"queued", "running", "completed", "failed", "cancelled", "waiting_approval"}
 ROLE_ORDER = ("planner", "backend", "frontend", "qa", "docs")
 DEFAULT_TIMEOUT_SECONDS = 45
 DEFAULT_MAX_RETRIES = 1
@@ -107,6 +107,7 @@ class SchedulerService:
                 "provider_order": list(existing.get("provider_order") or []) if existing else [],
                 "provider_switch_count": int(existing.get("provider_switch_count") or 0) if existing else 0,
                 "provider_history": list(existing.get("provider_history") or []) if existing else [],
+                "approval_event": dict(existing.get("approval_event") or {}) if existing else {},
                 "created_at": str(existing.get("created_at") if existing else now_text),
                 "updated_at": now_text,
                 "started_at": str(existing.get("started_at") or "").strip() if existing else "",
@@ -449,6 +450,63 @@ class SchedulerService:
         self._commit_refresh(plan)
         return plan
 
+    def mark_child_waiting_approval(
+        self,
+        *,
+        plan: Optional[PlanRunRecord],
+        item_id: int,
+        child_execution_id: str,
+        reason: str,
+        approval_event: Optional[Dict[str, Any]] = None,
+        retry_count: Optional[int] = None,
+    ) -> Optional[PlanRunRecord]:
+        active_item = self._get_active_item(plan, item_id=item_id)
+        child = self.runtime_store.get_child_run(active_item, child_execution_id)
+        if child is None:
+            return plan
+        child["status"] = "waiting_approval"
+        child["error"] = str(reason or "").strip()
+        child["error_kind"] = "approval_required"
+        if retry_count is not None:
+            child["retry_count"] = max(0, int(retry_count))
+        if approval_event:
+            child["approval_event"] = dict(approval_event)
+        child["updated_at"] = self._now_text()
+        self.runtime_store.replace_child_run(active_item, child_execution_id, child)
+        self.append_audit_event(
+            plan=plan,
+            item_id=item_id,
+            event_type="child_waiting_approval",
+            content=f"{child.get('agent_role', 'general')} 子执行等待人工审批",
+            payload={
+                "child_execution_id": child_execution_id,
+                "agent_role": child.get("agent_role"),
+                "agent_id": child.get("agent_id"),
+                "error_kind": child.get("error_kind"),
+                "retry_count": child.get("retry_count", 0),
+            },
+            commit=False,
+        )
+        self.append_run_trace_event(
+            plan=plan,
+            item_id=item_id,
+            source="subagent",
+            event_type="child_waiting_approval",
+            summary=f"{child.get('agent_role', 'general')} 子执行等待人工审批",
+            detail=child.get("error") or "",
+            severity="warning",
+            payload={
+                "child_execution_id": child_execution_id,
+                "agent_role": child.get("agent_role"),
+                "agent_id": child.get("agent_id"),
+                "error_kind": child.get("error_kind"),
+                "retry_count": child.get("retry_count", 0),
+            },
+            commit=False,
+        )
+        self._commit_refresh(plan)
+        return plan
+
     def mark_child_cancelled(
         self,
         *,
@@ -582,8 +640,15 @@ class SchedulerService:
         }
 
     def serialize_child_executions(self, item: Optional[PlanItemRecord]) -> list[dict]:
-        runtime_state = self.runtime_store.load_runtime(item)
-        return [dict(child) for child in (runtime_state.get("child_runs") or [])]
+        group = self.runtime_store.get_child_group(item) or {}
+        children = group.get("children")
+        if not isinstance(children, list) or not children:
+            runtime_state = self.runtime_store.load_runtime(item)
+            children = runtime_state.get("child_runs") or []
+        return [
+            self._serialize_child_execution(child, group=group, item=item)
+            for child in children
+        ]
 
     def get_audit_trail(self, item: Optional[PlanItemRecord]) -> list[dict]:
         return self.runtime_store.get_audit_trail(item)
@@ -603,7 +668,10 @@ class SchedulerService:
     def get_scheduler_snapshot(self, item: Optional[PlanItemRecord]) -> dict:
         runtime_state = self.runtime_store.load_runtime(item)
         scheduler_run = dict(runtime_state.get("scheduler_run") or {})
-        children = [dict(child) for child in (runtime_state.get("child_runs") or [])]
+        children = [
+            self._serialize_child_execution(child, group=scheduler_run, item=item)
+            for child in (runtime_state.get("child_runs") or [])
+        ]
         counts = self._count_child_statuses(children)
         return {
             "scheduler_run_id": str(scheduler_run.get("run_id") or "").strip() or None,
@@ -619,6 +687,7 @@ class SchedulerService:
 
     def serialize_scheduler_run(self, item: Optional[PlanItemRecord]) -> dict:
         snapshot = self.get_scheduler_snapshot(item)
+        approval_requests = self.get_approval_requests(item)
         merge_status = str(snapshot.get("merge_status") or "").strip().lower()
         active_children = int(snapshot.get("active_children") or 0)
         if active_children > 0:
@@ -633,8 +702,15 @@ class SchedulerService:
             run_state = "pending"
         return {
             "run_id": snapshot.get("scheduler_run_id"),
+            "child_run_id": None,
+            "scheduler_run_id": snapshot.get("scheduler_run_id"),
             "parent_run_id": None,
             "run_kind": "scheduler",
+            "plan_id": getattr(item, "plan_id", None) if item is not None else None,
+            "plan_item_id": getattr(item, "id", None) if item is not None else None,
+            "plan_item_title": getattr(item, "title", None) if item is not None else None,
+            "agent_role": getattr(item, "agent_role", None) if item is not None else None,
+            "agent_id": getattr(item, "agent_id", None) if item is not None else None,
             "state": run_state,
             "merge_strategy": snapshot.get("merge_strategy"),
             "merge_status": snapshot.get("merge_status"),
@@ -642,6 +718,7 @@ class SchedulerService:
             "active_children": active_children,
             "child_status_counts": dict(snapshot.get("child_status_counts") or {}),
             "policy": dict(snapshot.get("policy") or {}),
+            "approval_request_count": len(approval_requests),
         }
 
     def get_runtime_persistence_descriptor(self) -> dict:
@@ -659,6 +736,7 @@ class SchedulerService:
         scheduler_run = self.serialize_scheduler_run(item)
         if not scheduler_run.get("run_id"):
             return None
+        approval_requests = self.get_approval_requests(item)
         capabilities = list(required_capabilities or self.runtime_store.get_required_capabilities(item))
         child_contexts = []
         for child in self.serialize_child_executions(item):
@@ -666,6 +744,8 @@ class SchedulerService:
                 "run_id": child.get("run_id"),
                 "parent_run_id": child.get("parent_run_id") or scheduler_run.get("run_id"),
                 "child_run_id": child.get("child_run_id") or child.get("child_execution_id"),
+                "child_label": child.get("child_display_id") or child.get("child_run_id") or child.get("child_execution_id"),
+                "child_display_id": child.get("child_display_id") or child.get("child_run_id") or child.get("child_execution_id"),
                 "run_kind": child.get("run_kind") or "child",
                 "execution_mode": "parallel",
                 "plan_id": plan.id,
@@ -694,6 +774,7 @@ class SchedulerService:
             "required_capabilities": list(capabilities),
             "handoff_status": self._serialize_handoff_status(item.handoff_status),
             "child_contexts": child_contexts,
+            "approval_requests": [dict(request) for request in approval_requests],
         }
 
     def get_merge_summary(self, item: Optional[PlanItemRecord]) -> dict:
@@ -932,35 +1013,55 @@ class SchedulerService:
             counter[status] += 1
         return dict(counter)
 
-    def _serialize_child_execution(self, child: Optional[dict], group: Optional[dict] = None) -> dict:
+    def _serialize_child_execution(
+        self,
+        child: Optional[dict],
+        group: Optional[dict] = None,
+        item: Optional[PlanItemRecord] = None,
+    ) -> dict:
         data = dict(child or {})
         scheduler_run_id = str((group or {}).get("run_id") or "").strip() or None
-        return {
-            "child_execution_id": str(data.get("child_execution_id") or "").strip() or None,
-            "child_run_id": str(data.get("child_run_id") or data.get("child_execution_id") or "").strip() or None,
-            "run_id": str(data.get("run_id") or data.get("child_run_id") or data.get("child_execution_id") or "").strip() or None,
-            "parent_run_id": str(data.get("parent_run_id") or scheduler_run_id or "").strip() or None,
-            "run_kind": str(data.get("run_kind") or "child").strip() or "child",
-            "scheduler_run_id": str(data.get("scheduler_run_id") or scheduler_run_id or "").strip() or None,
-            "agent_role": str(data.get("agent_role") or "").strip() or None,
-            "agent_id": str(data.get("agent_id") or "").strip() or None,
-            "status": str(data.get("status") or "").strip() or "queued",
-            "title": str(data.get("title") or "").strip() or None,
-            "summary": str(data.get("summary") or "").strip() or None,
-            "error": str(data.get("error") or "").strip() or None,
-            "error_kind": str(data.get("error_kind") or "").strip() or None,
+        child_execution_id = str(data.get("child_execution_id") or "").strip() or None
+        child_run_id = str(data.get("child_run_id") or data.get("child_execution_id") or "").strip() or None
+        run_id = str(data.get("run_id") or data.get("child_run_id") or data.get("child_execution_id") or "").strip() or None
+        parent_run_id = str(data.get("parent_run_id") or scheduler_run_id or "").strip() or None
+        run_kind = str(data.get("run_kind") or "child").strip() or "child"
+        effective_scheduler_run_id = str(data.get("scheduler_run_id") or scheduler_run_id or "").strip() or None
+        status = str(data.get("status") or "").strip() or "queued"
+        serialized = dict(data)
+        serialized.update({
+            "child_execution_id": child_execution_id,
+            "child_run_id": child_run_id,
+            "child_display_id": child_run_id or child_execution_id,
+            "run_id": run_id,
+            "parent_run_id": parent_run_id,
+            "run_kind": run_kind,
+            "scheduler_run_id": effective_scheduler_run_id,
+            "plan_id": getattr(item, "plan_id", None) if item is not None else None,
+            "plan_item_id": getattr(item, "id", None) if item is not None else None,
+            "plan_item_title": getattr(item, "title", None) if item is not None else None,
+            "status": status,
+            "state": str(data.get("state") or "").strip() or status,
             "retry_count": max(0, int(data.get("retry_count") or 0)),
-            "model_name": str(data.get("model_name") or "").strip() or None,
-            "provider_name": str(data.get("provider_name") or "").strip() or None,
             "provider_order": list(data.get("provider_order") or []),
             "provider_switch_count": max(0, int(data.get("provider_switch_count") or 0)),
             "provider_history": [dict(entry) for entry in (data.get("provider_history") or []) if isinstance(entry, dict)],
-            "created_at": data.get("created_at"),
-            "updated_at": data.get("updated_at"),
-            "started_at": data.get("started_at") or None,
-            "completed_at": data.get("completed_at") or None,
-            "cancelled_at": data.get("cancelled_at") or None,
-        }
+        })
+        serialized.setdefault("agent_role", None)
+        serialized.setdefault("agent_id", None)
+        serialized.setdefault("title", None)
+        serialized.setdefault("summary", None)
+        serialized.setdefault("error", None)
+        serialized.setdefault("error_kind", None)
+        serialized.setdefault("model_name", None)
+        serialized.setdefault("provider_name", None)
+        serialized.setdefault("created_at", None)
+        serialized.setdefault("updated_at", None)
+        serialized.setdefault("started_at", None)
+        serialized.setdefault("completed_at", None)
+        serialized.setdefault("cancelled_at", None)
+        serialized.setdefault("last_retry_error", None)
+        return serialized
 
     def _get_child_group(self, item: Optional[PlanItemRecord]) -> Optional[dict]:
         return self.runtime_store.get_child_group(item)

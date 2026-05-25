@@ -1,0 +1,5 @@
+- [x] Add failing health router tests for approved tool coverage in degraded trace payloads.
+- [x] Add failing health router test proving approved tool coverage changes the degraded fingerprint/dedupe key.
+- [x] Implement Runtime Contract Gate summary normalization in `health.py`.
+- [x] Update runtime contract docs/manual notes.
+- [x] Validate OpenSpec and run focused backend tests.

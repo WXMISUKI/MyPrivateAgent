@@ -12,6 +12,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const failoverMediumThreshold = ref(parseFloat(localStorage.getItem('failoverMediumThreshold')) || 0.2)
   const failoverHighThreshold = ref(parseFloat(localStorage.getItem('failoverHighThreshold')) || 0.4)
   const muteHealthAlerts = ref(localStorage.getItem('muteHealthAlerts') === 'true')
+  const enableMainChatRuntimeTrace = ref(localStorage.getItem('enableMainChatRuntimeTrace') === 'true')
 
   function setTheme(value) {
     theme.value = value
@@ -69,6 +70,11 @@ export const useSettingsStore = defineStore('settings', () => {
     localStorage.setItem('muteHealthAlerts', value.toString())
   }
 
+  function setEnableMainChatRuntimeTrace(value) {
+    enableMainChatRuntimeTrace.value = value
+    localStorage.setItem('enableMainChatRuntimeTrace', value.toString())
+  }
+
   function getSettings() {
     return {
       theme: theme.value,
@@ -80,7 +86,8 @@ export const useSettingsStore = defineStore('settings', () => {
       showTokenCount: showTokenCount.value,
       failoverMediumThreshold: failoverMediumThreshold.value,
       failoverHighThreshold: failoverHighThreshold.value,
-      muteHealthAlerts: muteHealthAlerts.value
+      muteHealthAlerts: muteHealthAlerts.value,
+      enableMainChatRuntimeTrace: enableMainChatRuntimeTrace.value
     }
   }
 
@@ -95,6 +102,7 @@ export const useSettingsStore = defineStore('settings', () => {
     failoverMediumThreshold,
     failoverHighThreshold,
     muteHealthAlerts,
+    enableMainChatRuntimeTrace,
     setTheme,
     toggleTheme,
     setDefaultModel,
@@ -106,6 +114,7 @@ export const useSettingsStore = defineStore('settings', () => {
     setFailoverMediumThreshold,
     setFailoverHighThreshold,
     setMuteHealthAlerts,
+    setEnableMainChatRuntimeTrace,
     getSettings
   }
 })

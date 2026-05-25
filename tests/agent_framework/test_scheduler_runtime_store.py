@@ -111,11 +111,16 @@ class SchedulerRuntimeStoreTests(unittest.TestCase):
         self.assertEqual(len(runtime["child_runs"]), 2)
         self.assertEqual(runtime["child_runs"][0]["parent_run_id"], "sched-p8-i3")
         self.assertEqual(runtime["child_runs"][1]["status"], "running")
+        self.assertEqual(runtime["child_runs"][0]["child_display_id"], runtime["child_runs"][0]["child_run_id"])
         self.assertEqual(runtime["persistence"]["backend"], "metadata_adapter")
 
         runtime_state = self.store.load_runtime_state(self.item)
         self.assertEqual(runtime_state.scheduler_run.child_count, 2)
         self.assertEqual(runtime_state.scheduler_run.active_children, 2)
+        self.assertEqual(
+            runtime_state.child_runs[0].to_dict()["child_display_id"],
+            runtime_state.child_runs[0].child_run_id,
+        )
 
     def test_update_child_run_persists_changes(self):
         self.store.save_runtime(

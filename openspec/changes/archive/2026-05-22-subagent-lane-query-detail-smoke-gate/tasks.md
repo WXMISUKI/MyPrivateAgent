@@ -1,0 +1,5 @@
+- [x] Add failing runtime contract smoke tests for `subagent_lane_query_detail`.
+- [x] Add failing quality gate / runtime contract gate tests for `subagent_lane_query_detail_coverage`.
+- [x] Implement smoke check and gate summary normalization.
+- [x] Update runtime contract docs/manual notes.
+- [x] Validate OpenSpec and run focused backend tests.

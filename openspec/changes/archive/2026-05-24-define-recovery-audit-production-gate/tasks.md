@@ -1,0 +1,7 @@
+- [x] Add recovery audit production gate specification.
+- [x] Sync recovery audit, operation contract, persistence, and durable production gate delta specs.
+- [x] Implement recovery audit production readiness contract and gate exposure.
+- [x] Expose audit coverage in runtime smoke, quality gate, Runtime Contract Gate, and snapshot guard.
+- [x] Update docs and focused tests.
+- [x] Validate focused tests and OpenSpec.
+- [x] Archive the completed change.

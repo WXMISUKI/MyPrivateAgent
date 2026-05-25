@@ -1,0 +1,7 @@
+- [x] Add durable loader execution handoff policy specification.
+- [x] Sync durable loader, production recovery gate, persistence, and recovery protocol delta specs.
+- [x] Implement handoff policy contract and decision envelope.
+- [x] Expose handoff coverage in runtime smoke, quality gate, Runtime Contract Gate, and snapshot guard.
+- [x] Update docs and focused tests.
+- [x] Validate focused tests and OpenSpec.
+- [x] Archive the completed change.

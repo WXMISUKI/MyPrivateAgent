@@ -1,0 +1,7 @@
+- [x] Define durable recovery loader service and contract.
+- [x] Add loader tests for ready, missing, stale, unresolved binding, and unsafe payload cases.
+- [x] Integrate loader with SDK recovery probe and approved/continue recovery entrypoints.
+- [x] Preserve compact recovery operation and audit evidence.
+- [x] Add runtime contract smoke and quality gate coverage.
+- [x] Update docs/manual notes and canonical spec.
+- [x] Run focused backend tests and OpenSpec validation.

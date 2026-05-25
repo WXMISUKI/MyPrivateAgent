@@ -1,0 +1,7 @@
+- [x] Add durable workspace production recovery gate delta specification.
+- [x] Update persistence, loader, and recovery protocol delta specs.
+- [x] Sync canonical specs and docs.
+- [x] Implement production recovery gate contract builder and runtime exposure.
+- [x] Add runtime smoke / quality gate / contract gate coverage for blocked production recovery posture.
+- [x] Validate focused tests and OpenSpec.
+- [x] Archive the completed change.

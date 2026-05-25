@@ -1,0 +1,4 @@
+- [x] Add canonical spec purpose hygiene requirement.
+- [x] Replace archive-generated Purpose placeholders in canonical specs.
+- [x] Validate OpenSpec change and canonical specs.
+- [x] Archive the change.

@@ -1,0 +1,5 @@
+- [x] Update trace summary coverage delta spec.
+- [x] Update nested snapshot delta spec.
+- [x] Sync canonical specs and architecture note if needed.
+- [x] Validate OpenSpec and run focused trace/snapshot tests.
+- [x] Archive the change.

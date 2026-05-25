@@ -25,6 +25,8 @@ class AgentMemoryServiceTests(unittest.TestCase):
 
             self.assertFalse(context.is_empty)
             self.assertEqual([item.name for item in context.loaded_layers], ["global", "project"])
+            self.assertEqual([item.memory_id for item in context.memory_entries], ["memory:global", "memory:project"])
+            self.assertEqual(context.memory_entries[0].retrieval_reason, "loaded_layer:global")
             self.assertIn("global rule", context.system_prompt)
             self.assertIn("project rule", context.system_prompt)
             self.assertIn("local", [item.name for item in context.missing_layers])
@@ -40,7 +42,12 @@ class AgentMemoryServiceTests(unittest.TestCase):
             contract = service.build_runtime_contract()
 
             self.assertTrue(contract["active"])
+            self.assertEqual(contract["contract_version"], "phase-b-memory-entry-v1")
             self.assertEqual(contract["loaded_layers"][0]["name"], "global")
+            self.assertEqual(contract["memory_entries"][0]["memory_id"], "memory:global")
+            self.assertEqual(contract["memory_entries"][0]["source"], "agent_memory_layer")
+            self.assertEqual(contract["memory_entries"][0]["confidence"], 1.0)
+            self.assertEqual(contract["memory_entries"][0]["retrieval_reason"], "loaded_layer:global")
             self.assertIn("project", [item["name"] for item in contract["missing_layers"]])
         finally:
             shutil.rmtree(base, ignore_errors=True)

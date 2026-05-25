@@ -109,6 +109,23 @@ class SchedulerServiceTests(unittest.TestCase):
         self.assertEqual(child["status"], "cancelled")
         self.assertEqual(child["error_kind"], "cancelled")
 
+    def test_mark_child_waiting_approval_updates_child_status(self):
+        state = self.service.prepare_execution(plan=self.plan, item=self.item)
+        child_id = state["execution_context"]["child_contexts"][0]["child_execution_id"]
+
+        self.service.mark_child_waiting_approval(
+            plan=self.plan,
+            item_id=11,
+            child_execution_id=child_id,
+            reason="等待审批",
+            approval_event={"type": "done", "state": "waiting_approval"},
+        )
+
+        child = self.item.item_metadata["child_execution_group"]["children"][0]
+        self.assertEqual(child["status"], "waiting_approval")
+        self.assertEqual(child["error_kind"], "approval_required")
+        self.assertEqual(child["approval_event"]["state"], "waiting_approval")
+
     def test_mark_child_policy_selected_updates_child_route_fields(self):
         state = self.service.prepare_execution(plan=self.plan, item=self.item)
         child_id = state["execution_context"]["child_contexts"][0]["child_execution_id"]
@@ -128,6 +145,25 @@ class SchedulerServiceTests(unittest.TestCase):
         self.assertEqual(child["provider_order"], ["ollama", "volcengine-ark"])
         self.assertEqual(child["provider_switch_count"], 1)
 
+    def test_mark_child_retrying_preserves_last_retry_error_in_serialized_children(self):
+        state = self.service.prepare_execution(plan=self.plan, item=self.item)
+        child_id = state["execution_context"]["child_contexts"][0]["child_execution_id"]
+
+        self.service.mark_child_retrying(
+            plan=self.plan,
+            item_id=11,
+            child_execution_id=child_id,
+            retry_count=2,
+            error_text="第一次调用超时",
+        )
+
+        child = self.service.serialize_child_executions(self.item)[0]
+
+        self.assertEqual(child["last_retry_error"], "第一次调用超时")
+        self.assertEqual(child["status"], "running")
+        self.assertEqual(child["summary"], "")
+        self.assertEqual(child["error"], "")
+
     def test_build_execution_context_rehydrates_from_runtime_metadata(self):
         self.service.prepare_execution(plan=self.plan, item=self.item)
 
@@ -138,8 +174,55 @@ class SchedulerServiceTests(unittest.TestCase):
 
         self.assertIsNotNone(execution_context)
         self.assertEqual(execution_context["scheduler_run_id"], "sched-p1-i11")
+        self.assertTrue(execution_context["child_contexts"][0]["child_run_id"])
+        self.assertEqual(
+            execution_context["child_contexts"][0]["child_display_id"],
+            execution_context["child_contexts"][0]["child_run_id"],
+        )
+        self.assertEqual(
+            execution_context["child_contexts"][0]["child_label"],
+            execution_context["child_contexts"][0]["child_run_id"],
+        )
         self.assertEqual(execution_context["child_contexts"][0]["scheduler_policy"]["timeout_seconds"], 45)
         self.assertEqual(execution_context["child_contexts"][0]["required_capabilities"], ["filesystem.read"])
+        self.assertEqual(execution_context["approval_requests"], [])
+
+    def test_runtime_views_include_approval_requests_and_run_scoped_fields(self):
+        self.service.prepare_execution(plan=self.plan, item=self.item)
+        self.service.append_run_trace_event(
+            plan=self.plan,
+            item_id=11,
+            source="permission",
+            event_type="permission_requested",
+            summary="等待用户批准",
+            payload={
+                "request_id": "perm-p1-i11-c1",
+                "tool_name": "shell_command",
+                "permission_level": "workspace-write",
+                "child_run_id": "backend-child-p1-i11-c1",
+                "run_id": "backend-child-p1-i11-c1",
+                "agent_role": "backend",
+                "agent_id": "backend-agent-p1-i11-c1",
+            },
+        )
+
+        execution_context = self.service.build_execution_context(plan=self.plan, item=self.item)
+        scheduler_run = self.service.serialize_scheduler_run(self.item)
+        child_run = self.service.serialize_child_executions(self.item)[0]
+
+        self.assertEqual(execution_context["approval_requests"][0]["request_id"], "perm-p1-i11-c1")
+        self.assertEqual(scheduler_run["scheduler_run_id"], "sched-p1-i11")
+        self.assertEqual(scheduler_run["plan_id"], 1)
+        self.assertEqual(scheduler_run["plan_item_id"], 11)
+        self.assertEqual(scheduler_run["agent_role"], "planner")
+        self.assertEqual(scheduler_run["agent_id"], "scheduler-p1-i11")
+        self.assertEqual(child_run["child_display_id"], "backend-child-p1-i11-c1")
+        self.assertEqual(child_run["child_run_id"], "backend-child-p1-i11-c1")
+        self.assertEqual(child_run["child_execution_id"], "backend-child-p1-i11-c1")
+        self.assertEqual(child_run["plan_id"], 1)
+        self.assertEqual(child_run["plan_item_id"], 11)
+        self.assertEqual(child_run["plan_item_title"], "完成前后端联调并补测试文档")
+        self.assertEqual(child_run["state"], "queued")
 
     def test_append_audit_event_records_timeline_entry(self):
         self.service.prepare_execution(plan=self.plan, item=self.item)

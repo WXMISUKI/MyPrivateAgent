@@ -1,0 +1,6 @@
+- [x] Add OpenSpec delta for worker ownership auto-claim policy readiness.
+- [x] Add focused failing tests for the auto-claim policy contract and production gate evidence.
+- [x] Implement the read-only auto-claim policy builder and production gate integration.
+- [x] Extend runtime smoke, Quality Gate, and Runtime Contract Gate summaries with auto-claim policy evidence.
+- [x] Sync runtime docs and roadmap.
+- [x] Run focused validation and delete temporary test files.

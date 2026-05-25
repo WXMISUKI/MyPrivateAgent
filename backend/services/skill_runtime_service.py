@@ -32,6 +32,44 @@ class RuntimeSkillMatch:
     storage_path: str = ""
 
 
+@dataclass(frozen=True)
+class SkillDefinition:
+    """Stable runtime contract for a skill that can be audited and explained."""
+
+    skill_id: int
+    name: str
+    version: str = "1.0.0"
+    scope: str = "chat"
+    trigger_rules: List[str] = field(default_factory=list)
+    required_capabilities: List[str] = field(default_factory=list)
+    allowed_tools: List[str] = field(default_factory=list)
+    model_preferences: List[str] = field(default_factory=list)
+    selection_reason: str = ""
+    description: str = ""
+    domain: str = ""
+    agent_roles: List[str] = field(default_factory=list)
+    activation_mode: str = "auto"
+    priority: int = 0
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "skill_id": self.skill_id,
+            "name": self.name,
+            "version": self.version,
+            "scope": self.scope,
+            "trigger_rules": list(self.trigger_rules),
+            "required_capabilities": list(self.required_capabilities),
+            "allowed_tools": list(self.allowed_tools),
+            "model_preferences": list(self.model_preferences),
+            "selection_reason": self.selection_reason,
+            "description": self.description,
+            "domain": self.domain,
+            "agent_roles": list(self.agent_roles),
+            "activation_mode": self.activation_mode,
+            "priority": self.priority,
+        }
+
+
 @dataclass
 class RuntimeSkillContext:
     """Structured runtime skill payload injected into the agent loop."""
@@ -185,6 +223,9 @@ class SkillRuntimeService:
             "triggers": cls._coerce_list(frontmatter.get("triggers")),
             "agent_roles": [value.lower() for value in cls._coerce_list(frontmatter.get("agent_roles") or frontmatter.get("roles"))],
             "required_capabilities": cls._coerce_list(frontmatter.get("required_capabilities") or frontmatter.get("capabilities")),
+            "allowed_tools": cls._coerce_list(frontmatter.get("allowed_tools") or frontmatter.get("tools")),
+            "model_preferences": cls._coerce_list(frontmatter.get("model_preferences") or frontmatter.get("models")),
+            "version": cls._safe_text(frontmatter.get("version")) or "1.0.0",
             "priority": cls._coerce_priority(frontmatter.get("priority")),
             "activation_mode": cls._coerce_activation_mode(frontmatter.get("activation") or frontmatter.get("activation_mode")),
             "domain": cls._safe_text(frontmatter.get("domain")),
@@ -415,6 +456,10 @@ class SkillRuntimeService:
                     }
                     for item in selected
                 ],
+                "skill_definitions": [
+                    self._build_skill_definition_from_match(item).to_dict()
+                    for item in selected
+                ],
                 "skipped_items": skipped,
                 "selected_skill_ids": [item.skill_id for item in selected],
                 "selected_skill_names": [item.name for item in selected],
@@ -422,6 +467,59 @@ class SkillRuntimeService:
                 "user_message": self._safe_text(user_message)[:200],
                 "agent_role": self._safe_text(execution_context.get("agent_role")),
             },
+        )
+
+    def build_runtime_contract(self) -> Dict[str, Any]:
+        db = self._create_session()
+        skills: List[Any] = []
+        if db is not None:
+            try:
+                skills = self._load_enabled_skills(db)
+            finally:
+                db.close()
+
+        definitions = [
+            self._build_skill_definition_from_skill(skill).to_dict()
+            for skill in skills
+        ]
+        return {
+            "contract_version": "phase-b-skill-definition-v1",
+            "total_definitions": len(definitions),
+            "definitions": definitions,
+        }
+
+    def _build_skill_definition_from_skill(self, skill: Any) -> SkillDefinition:
+        payload = self._load_skill_payload(skill)
+        return SkillDefinition(
+            skill_id=int(getattr(skill, "id")),
+            name=self._safe_text(getattr(skill, "name", "")),
+            version=payload.get("version") or "1.0.0",
+            scope="chat",
+            trigger_rules=list(payload.get("triggers", [])),
+            required_capabilities=list(payload.get("required_capabilities", [])),
+            allowed_tools=list(payload.get("allowed_tools", [])),
+            model_preferences=list(payload.get("model_preferences", [])),
+            selection_reason="registered_enabled_skill",
+            description=payload.get("description", ""),
+            domain=self._safe_text(payload.get("domain")),
+            agent_roles=list(payload.get("agent_roles", [])),
+            activation_mode=self._safe_text(payload.get("activation_mode") or "auto") or "auto",
+            priority=int(payload.get("priority") or 0),
+        )
+
+    def _build_skill_definition_from_match(self, item: RuntimeSkillMatch) -> SkillDefinition:
+        return SkillDefinition(
+            skill_id=item.skill_id,
+            name=item.name,
+            scope="chat",
+            trigger_rules=list(item.triggers),
+            required_capabilities=list(item.required_capabilities),
+            selection_reason="; ".join(item.match_reasons),
+            description=item.description,
+            domain=item.domain,
+            agent_roles=list(item.agent_roles),
+            activation_mode=item.activation_mode,
+            priority=item.priority,
         )
 
 

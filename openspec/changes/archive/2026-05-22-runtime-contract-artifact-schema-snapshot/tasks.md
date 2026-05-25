@@ -1,0 +1,4 @@
+- [x] Add failing snapshot tests for `runtime_contract_artifact_schema` stable fields.
+- [x] Add artifact schema required paths to `RuntimeContractSnapshotService`.
+- [x] Update runtime contract docs and hardening roadmap notes.
+- [x] Validate OpenSpec and run focused backend tests.

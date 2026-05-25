@@ -24,6 +24,9 @@ build/
 *.log
 err_log.txt
 
+# Local agent runtime state
+.myagent/app.db
+
 # Node
 node_modules/
 npm-debug.log*

@@ -226,8 +226,8 @@ INIT → PLANNING → GENERATING → TOOL_CALLING
 四个 job：
 
 1. `backend-lint`：ruff check
-2. `backend-tests`：显式列出 28 个核心测试模块跑 unittest，额外跑一轮 pytest + coverage（阈值 30%）
-3. `quality-gate`：生成 quality gate 报告并 upload artifact，有阈值检查（`max-open-actions=10`、`max-long-blocked-actions=0`）
+2. `backend-tests`：显式列出核心 unittest 模块跑回归，已覆盖 runtime contract snapshot、runtime surface、framework adapter pilot 等 Phase C 稳定边界；额外跑一轮 pytest + coverage（阈值 30%）
+3. `quality-gate`：生成 quality gate 报告并 upload artifact，有阈值检查（`max-open-actions=10`、`max-long-blocked-actions=0`），并串联 `runtime_contract_smoke.py` 与前端 `RuntimeSurfacePanel` smoke
 4. `frontend-build`：npm run build 验证生产包可构建
 
 ### 7.2 Smoke 脚本（`backend/scripts/`）
@@ -240,6 +240,7 @@ INIT → PLANNING → GENERATING → TOOL_CALLING
 - `chat_stop_generation_smoke.py` — 停止生成合约
 - `multi_agent_policy_smoke.py` — 多智能体策略
 - `multi_agent_provider_failover_smoke.py` — provider 降级
+- `runtime_contract_smoke.py` — runtime profile / contract snapshot / adapter pilot 门禁
 - `capability_gap_governance_smoke.py` — 能力缺口治理
 - `quality_gate_smoke.ps1` — 质量门禁冒烟（Windows）
 - `dedupe_message_feedback.py` — 反馈数据治理（含 dry-run）

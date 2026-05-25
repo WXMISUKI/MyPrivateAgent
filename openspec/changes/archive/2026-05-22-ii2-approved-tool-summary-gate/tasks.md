@@ -1,0 +1,5 @@
+- [x] Add failing quality gate report tests for approved tool bridge coverage.
+- [x] Add failing runtime contract gate tests for normalized approved tool bridge coverage.
+- [x] Implement summary extraction and Markdown rendering.
+- [x] Update runtime contract docs/manual notes.
+- [x] Validate OpenSpec and run focused backend tests.

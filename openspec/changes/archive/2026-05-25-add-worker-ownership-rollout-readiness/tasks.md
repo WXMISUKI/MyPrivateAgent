@@ -1,0 +1,6 @@
+- [x] Add OpenSpec delta for worker ownership rollout readiness.
+- [x] Add focused failing tests for the rollout readiness contract and production gate evidence.
+- [x] Implement the read-only rollout readiness builder and production gate integration.
+- [x] Extend runtime smoke, Quality Gate, and Runtime Contract Gate summaries with rollout evidence.
+- [x] Sync runtime docs and roadmap.
+- [x] Run focused validation and delete temporary test files.

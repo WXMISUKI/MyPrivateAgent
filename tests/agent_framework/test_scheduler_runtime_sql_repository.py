@@ -79,6 +79,7 @@ class SchedulerRuntimeSqlRepositoryTests(unittest.TestCase):
 
         self.assertEqual(saved["run_id"], "sched-p1-i1")
         self.assertEqual(saved["children"][0]["agent_role"], "backend")
+        self.assertEqual(saved["children"][0]["child_display_id"], "backend-run-1")
         self.assertEqual(self.db.query(SchedulerRunRecord).count(), 1)
         self.assertEqual(self.db.query(ChildRunRecord).count(), 1)
 
@@ -112,6 +113,7 @@ class SchedulerRuntimeSqlRepositoryTests(unittest.TestCase):
         self.assertEqual(runtime["persistence"]["backend"], "relational_tables")
         self.assertEqual(runtime["scheduler_run"]["merge_status"], "completed")
         self.assertEqual(runtime["child_runs"][0]["summary"], "前端已完成")
+        self.assertEqual(runtime["child_runs"][0]["child_display_id"], "frontend-run-2")
 
     def test_repository_backfills_relational_rows_from_metadata_group(self):
         self.item.item_metadata = {

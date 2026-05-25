@@ -46,6 +46,11 @@ jobs:
             tests.agent_framework.test_doctor_script \
             tests.agent_framework.test_capability_gap_service \
             tests.agent_framework.test_health_router \
+            tests.agent_framework.test_runtime_contract_smoke \
+            tests.agent_framework.test_runtime_contract_snapshot_service \
+            tests.agent_framework.test_runtime_surface_service \
+            tests.agent_framework.test_framework_adapter_spi \
+            tests.agent_framework.test_framework_adapter_runtime_service \
             tests.agent_framework.test_provider_registry \
             tests.agent_framework.test_adapters \
             tests.agent_framework.test_events \

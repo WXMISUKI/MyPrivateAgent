@@ -1,0 +1,5 @@
+- [x] Add failing health router tests for artifact schema trace payload and fingerprint.
+- [x] Normalize artifact schema in runtime contract degraded trace payloads.
+- [x] Include artifact schema in degraded trace fingerprint.
+- [x] Update runtime contract docs and hardening roadmap notes.
+- [x] Validate OpenSpec and run focused backend tests.

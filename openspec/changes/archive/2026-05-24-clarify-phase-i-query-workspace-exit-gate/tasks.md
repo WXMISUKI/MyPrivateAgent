@@ -1,0 +1,5 @@
+- [x] Update query workspace exit gate delta spec.
+- [x] Update channel promotion implementation readiness delta spec.
+- [x] Sync canonical specs and roadmap/architecture notes.
+- [x] Validate OpenSpec change and canonical specs.
+- [x] Archive the change.

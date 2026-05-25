@@ -1,0 +1,6 @@
+- [x] Define worker ownership operational readiness contract.
+- [x] Add heartbeat/renewal and stale lease tests for SQL adapter behavior.
+- [x] Add opt-in recovery-entry claim semantics.
+- [x] Add rollout/migration checklist evidence to docs/specs.
+- [x] Add runtime contract smoke or quality gate coverage for operational readiness.
+- [x] Run focused backend tests and OpenSpec validation.

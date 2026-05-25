@@ -1,0 +1,6 @@
+- [x] Implement sandbox worker backend adapter contract builder and compact attempt envelope helpers.
+- [x] Extend child executor backend registry to model sandbox-ready backend evidence without changing the default relationship-only backend.
+- [x] Extend child executor dispatch contract evaluation so sandbox adapter readiness is required before `dispatch_ready = true`.
+- [x] Extend `ChildExecutorDispatcher` adapter invocation to validate sandbox attempt output and fail closed on malformed output or adapter exceptions.
+- [x] Add focused backend tests for adapter contract readiness, missing guard blockers, dispatch contract fail-closed behavior, and dispatcher malformed-output handling.
+- [x] Update architecture/manual notes and validate OpenSpec plus focused tests.
