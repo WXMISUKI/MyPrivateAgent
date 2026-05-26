@@ -4,6 +4,12 @@
 - `VITE_API_BASE_URL`: `https://<your-railway-domain>/api`
 - 请在 `Production`、`Preview`、`Development` 三个环境分别配置。
 
+## 1.1 Vercel 构建模式
+- 当前推荐模式是 Frontend(Vercel) + Backend(Railway)，Vercel 只构建 `frontend-vue/dist`。
+- Vercel 项目 Root Directory 使用仓库根目录，保留根目录 `vercel.json`。
+- 根目录 `.vercelignore` 会排除 `api/`、`backend/`、`requirements.txt`、`pyproject.toml`、`uv.lock`、`.python-version`，避免 Vercel 触发 Python Serverless 依赖安装。
+- 如果 Vercel 日志出现 `uv pip install`、`PyO3`、`Python interpreter version` 等 Python 构建错误，说明 Vercel 又进入了一体化后端构建路径，需要先检查 `.vercelignore` 与 `vercel.json` 是否仍是前端-only 配置。
+
 ## 2. 运行时配置（推荐）
 - 文件：`frontend-vue/public/app-config.js`
 - 可在部署阶段注入：

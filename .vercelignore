@@ -11,8 +11,14 @@ examples
 skill_store
 tests
 问题记录
+api
+backend
 scripts/docker
 node_modules
+requirements.txt
+pyproject.toml
+uv.lock
+.python-version
 backend/__pycache__
 backend/pytest-cache-files-1x_nnsdg
 err_log.txt
