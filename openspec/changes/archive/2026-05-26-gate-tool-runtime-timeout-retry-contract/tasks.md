@@ -1,0 +1,5 @@
+- [x] Add OpenSpec deltas for ToolRuntime timeout/retry gate coverage.
+- [x] Add runtime contract smoke coverage for ToolRuntime recovered retry, exhausted retry, and elapsed timeout metadata.
+- [x] Normalize `tool_runtime_timeout_retry_coverage` in Quality Gate and Runtime Contract Gate.
+- [x] Add Snapshot guard and focused tests.
+- [x] Update roadmap/architecture docs and archive the change after validation.

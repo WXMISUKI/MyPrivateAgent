@@ -1950,6 +1950,53 @@ class RuntimeContractGateServiceTests(unittest.TestCase):
         )
         self.assertFalse(coverage["production_automatic_will_execute"])
 
+    def test_build_runtime_contract_derives_tool_runtime_timeout_retry_coverage(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            report_path = Path(tmp_dir) / "quality-gate-report.json"
+            report_path.write_text(
+                json.dumps(
+                    {
+                        "generated_at": "2026-05-26T00:00:00Z",
+                        "steps": [
+                            {
+                                "name": "Quality gate smoke",
+                                "contract_checks": [
+                                    {
+                                        "name": "tool_runtime_timeout_retry",
+                                        "ok": True,
+                                        "retry_policy": "sync_exception_retry",
+                                        "timeout_enforcement": "post_call_elapsed_check",
+                                        "recovered_status": "ok",
+                                        "recovered_retry_status": "recovered",
+                                        "recovered_attempt_count": 2,
+                                        "exhausted_status": "error",
+                                        "exhausted_retry_status": "exhausted",
+                                        "exhausted_attempt_count": 2,
+                                        "timeout_status": "timeout",
+                                        "timeout_metadata_status": "exceeded",
+                                        "timeout_metadata_enforcement": "post_call_elapsed_check",
+                                        "hard_cancellation_claimed": False,
+                                        "sandbox_execution_claimed": False,
+                                        "worker_timeout_claimed": False,
+                                    },
+                                ],
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            contract = RuntimeContractGateService(report_path=report_path).build_runtime_contract()
+
+        coverage = contract["runtime_contract_summary"]["tool_runtime_timeout_retry_coverage"]
+        self.assertTrue(coverage["timeout_retry_smoke"])
+        self.assertEqual(coverage["retry_policy"], "sync_exception_retry")
+        self.assertEqual(coverage["timeout_enforcement"], "post_call_elapsed_check")
+        self.assertEqual(coverage["recovered_retry_status"], "recovered")
+        self.assertEqual(coverage["exhausted_retry_status"], "exhausted")
+        self.assertEqual(coverage["timeout_metadata_status"], "exceeded")
+
     def test_build_runtime_contract_derives_child_executor_dispatch_coverage_from_checks(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
             report_path = Path(tmp_dir) / "quality-gate-report.json"

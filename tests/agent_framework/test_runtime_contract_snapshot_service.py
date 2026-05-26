@@ -218,6 +218,20 @@ def _build_complete_profile():
                     "deny_override_status": "policy_denied",
                     "deny_tool_call_count": 0,
                 },
+                "tool_runtime_timeout_retry_coverage": {
+                    "timeout_retry_smoke": True,
+                    "retry_policy": "sync_exception_retry",
+                    "timeout_enforcement": "post_call_elapsed_check",
+                    "recovered_retry_status": "recovered",
+                    "recovered_attempt_count": 2,
+                    "exhausted_retry_status": "exhausted",
+                    "exhausted_attempt_count": 2,
+                    "timeout_metadata_status": "exceeded",
+                    "timeout_metadata_enforcement": "post_call_elapsed_check",
+                    "hard_cancellation_claimed": False,
+                    "sandbox_execution_claimed": False,
+                    "worker_timeout_claimed": False,
+                },
                 "checkpoint_resume_cursor_coverage": {
                     "cursor_smoke": True,
                     "checkpoint_status": "ready",
@@ -390,6 +404,8 @@ def _build_complete_profile():
                     "approved_tool_execution_coverage",
                     "sdk_tool_runtime_execution_coverage",
                     "sdk_tool_runtime_execution_coverage.bridge_smoke",
+                    "tool_runtime_timeout_retry_coverage",
+                    "tool_runtime_timeout_retry_coverage.timeout_retry_smoke",
                     "checkpoint_resume_cursor_coverage",
                     "checkpoint_resume_cursor_coverage.cursor_smoke",
                     "embedded_sdk_persistence_coverage",
@@ -816,7 +832,7 @@ class RuntimeContractSnapshotServiceTests(unittest.TestCase):
         by_name = {item["contract_name"]: item for item in snapshot["contracts"]}
         self.assertEqual(snapshot["overall_status"], "degraded")
         self.assertEqual(snapshot["missing_contract_count"], 1)
-        self.assertEqual(snapshot["missing_field_count"], 62)
+        self.assertEqual(snapshot["missing_field_count"], 64)
         self.assertEqual(by_name["skill_contract"]["status"], "missing")
         self.assertEqual(
             by_name["command_contract"]["missing_fields"],
@@ -844,6 +860,8 @@ class RuntimeContractSnapshotServiceTests(unittest.TestCase):
                 "runtime_contract_summary.approved_tool_execution_coverage",
                 "runtime_contract_summary.sdk_tool_runtime_execution_coverage",
                 "runtime_contract_summary.sdk_tool_runtime_execution_coverage.bridge_smoke",
+                "runtime_contract_summary.tool_runtime_timeout_retry_coverage",
+                "runtime_contract_summary.tool_runtime_timeout_retry_coverage.timeout_retry_smoke",
                 "runtime_contract_summary.checkpoint_resume_cursor_coverage",
                 "runtime_contract_summary.checkpoint_resume_cursor_coverage.cursor_smoke",
                 "runtime_contract_summary.embedded_sdk_persistence_coverage",

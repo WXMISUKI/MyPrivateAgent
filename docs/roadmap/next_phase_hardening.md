@@ -604,12 +604,12 @@ Governance Timeline 前端继续瘦身仍有价值，但不应继续作为最高
 
 - `main_chat` 是 canonical baseline，不再默认继续深挖局部体验。
 - `subagent_lane` 已具备 recent summary 和 dedicated query detail，但不得直接推进到 history/workspace。
-- `external_adapter` 仍停留在 recent summary candidate，暂不默认开启对称试点。
+- `external_adapter` 已具备 recent summary 轻量试点，但不得直接推进到 detail/history/workspace。
 
 ### Phase I 暂缓事项
 
 - 默认不继续深挖 `main_chat` 局部体验。
-- 默认不立即开启 `external_adapter recent summary` 对称试点。
+- 默认不立即开启 `external_adapter query_detail` 或更深层对称试点。
 - 默认不推进任何 channel 的 `query history / query workspace` 新实现。
 
 ### Phase I 收束标准
@@ -617,6 +617,7 @@ Governance Timeline 前端继续瘦身仍有价值，但不应继续作为最高
 - 团队对 query 能力的四层模型、推广顺序和 gate 已形成统一判断。
 - 至少能明确最近 summary 是否值得做通用抽象。
 - 可以清楚回答：下一步该恢复实现，还是继续停留在高层边界收口。
+- 当前结论：Phase I 可以按 promotion boundary 收束，不要求 `subagent_lane / external_adapter` 达到 workspace parity。
 
 ### Phase I 恢复实现条件
 
@@ -626,6 +627,7 @@ Governance Timeline 前端继续瘦身仍有价值，但不应继续作为最高
 - `channel-promotion-gate` 已可作为统一模板复用
 - `recent summary` 是否抽象已有明确当前结论
 - 团队对下一个试点 channel 的层级目标无分歧
+- 若目标是推进 `subagent_lane history/workspace` 或 `external_adapter detail/history/workspace`，必须另开 promotion decision change，并且目标层只能从当前已批准层向下一层推进。
 
 ### Phase I 继续停留在规格层的条件
 
@@ -637,6 +639,12 @@ Governance Timeline 前端继续瘦身仍有价值，但不应继续作为最高
 - 当前只是因为“局部 momentum”想继续扩实现，而不是因为高层判断已完成
 
 ## 1.4 Phase II：Runtime Core 恢复实现与交付面瘦身
+
+当前默认入口：
+
+- Phase I 已按 query workspace promotion boundary 收束。
+- 下一刀默认从 Phase II 中选择，不再默认扩展 channel query 能力。
+- 若后续重新打开 channel promotion，必须先回到 `channel-promotion-gate` 写明 reopen decision。
 
 ### 阶段目标
 
@@ -1068,6 +1076,7 @@ Governance Timeline 前端继续瘦身仍有价值，但不应继续作为最高
 - Embedded SDK `register_tool(...)` 已从 draft boundary 推进为 ToolRuntimeService bridge：SDK 调用方可以注册 ToolSpec 元数据和可选 executable handler，并复用同一份 tool runtime registry。
 - Embedded SDK `execute_run(...)` 已在未传入显式 `tool_executor` 时复用 ToolRuntimeService 默认执行桥接；SDK-only 集成现在可以完成 register -> policy -> approval/fail-closed -> execute 的最小闭环。
 - SDK 直连 ToolRuntimeService 执行桥已进入 `runtime_contract_smoke.py` 与质量门禁摘要；`sdk_tool_runtime_execution_bridge` 会覆盖 auto、ask-approved 与 deny fail-closed 三条路径，并汇总为 `runtime_contract_summary.sdk_tool_runtime_execution_coverage`。
+- ToolRuntime timeout/retry contract 已进入 runtime contract smoke、Quality Gate、Runtime Contract Gate 与 Snapshot 守护；`tool_runtime_timeout_retry` 会覆盖 recovered retry、exhausted retry 与 post-call elapsed timeout metadata，并汇总为 `runtime_contract_summary.tool_runtime_timeout_retry_coverage`。该覆盖只证明同步 retry / elapsed timeout 元数据，不表示 hard cancellation、sandbox execution 或 worker-level timeout 已实现。
 - Runtime Contract Gate 读取质量门禁 artifact 时已对 `runtime_contract_summary` 与 `contract_checks` 计数字段做 fail-closed 归一化；不可解析或负数会回退到推导值或 `None`，避免脏 artifact 拖垮 Runtime Profile
 - Runtime Surface 前端治理台已新增 `Contract Gate` 卡片，展示质量门禁契约检查的整体状态、失败数和 checks 明细
 - Runtime Surface 前端 `Contract Gate` 卡片已展示 `runtime_contract_summary`，可直接看到 payload 缺口与 approval replay/ignored 样本覆盖情况

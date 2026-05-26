@@ -727,6 +727,25 @@ class RuntimeContractSmokeTests(unittest.TestCase):
         self.assertEqual(result["deny_override_status"], "policy_denied")
         self.assertEqual(result["deny_tool_call_count"], 0)
 
+    def test_tool_runtime_timeout_retry_check_covers_retry_and_elapsed_timeout_metadata(self):
+        result = runtime_contract_smoke._run_tool_runtime_timeout_retry_contract_check()
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["retry_policy"], "sync_exception_retry")
+        self.assertEqual(result["timeout_enforcement"], "post_call_elapsed_check")
+        self.assertEqual(result["recovered_status"], "ok")
+        self.assertEqual(result["recovered_retry_status"], "recovered")
+        self.assertEqual(result["recovered_attempt_count"], 2)
+        self.assertEqual(result["exhausted_status"], "error")
+        self.assertEqual(result["exhausted_retry_status"], "exhausted")
+        self.assertEqual(result["exhausted_attempt_count"], 2)
+        self.assertEqual(result["timeout_status"], "timeout")
+        self.assertEqual(result["timeout_metadata_status"], "exceeded")
+        self.assertEqual(result["timeout_metadata_enforcement"], "post_call_elapsed_check")
+        self.assertFalse(result["hard_cancellation_claimed"])
+        self.assertFalse(result["sandbox_execution_claimed"])
+        self.assertFalse(result["worker_timeout_claimed"])
+
     @patch("backend.scripts.runtime_contract_smoke.create_app")
     @patch("backend.scripts.runtime_contract_smoke._run_embedded_sdk_durable_recovery_check")
     @patch("backend.scripts.runtime_contract_smoke._run_recovery_retry_evidence_contract_check")
@@ -783,6 +802,7 @@ class RuntimeContractSmokeTests(unittest.TestCase):
         self.assertIn("approval_lifecycle_recovery_alignment", checks_by_name)
         self.assertIn("runtime_approved_tool_execution_bridge", checks_by_name)
         self.assertIn("sdk_tool_runtime_execution_bridge", checks_by_name)
+        self.assertIn("tool_runtime_timeout_retry", checks_by_name)
         self.assertIn("worker_ownership_store_mode", checks_by_name)
         self.assertIn("recovery_retry_evidence", checks_by_name)
         self.assertIn("recovery_retry_scheduler", checks_by_name)
@@ -807,6 +827,7 @@ class RuntimeContractSmokeTests(unittest.TestCase):
             "approval_lifecycle_recovery_alignment",
             "runtime_approved_tool_execution_bridge",
             "sdk_tool_runtime_execution_bridge",
+            "tool_runtime_timeout_retry",
             "subagent_lane_query_detail",
         ):
             self.assertTrue(checks_by_name[check_name]["ok"])
@@ -827,6 +848,9 @@ class RuntimeContractSmokeTests(unittest.TestCase):
         )
         self.assertEqual(checks_by_name["runtime_approved_tool_execution_bridge"]["approved_policy_override_status"], "approved")
         self.assertEqual(checks_by_name["sdk_tool_runtime_execution_bridge"]["approved_policy_override_status"], "approved")
+        self.assertEqual(checks_by_name["tool_runtime_timeout_retry"]["recovered_retry_status"], "recovered")
+        self.assertEqual(checks_by_name["tool_runtime_timeout_retry"]["exhausted_retry_status"], "exhausted")
+        self.assertEqual(checks_by_name["tool_runtime_timeout_retry"]["timeout_metadata_status"], "exceeded")
         self.assertEqual(checks_by_name["worker_ownership_store_mode"]["default_mode"], "memory_only")
         self.assertEqual(checks_by_name["worker_ownership_store_mode"]["strict_mode_status"], "sqlalchemy_durable")
         self.assertEqual(

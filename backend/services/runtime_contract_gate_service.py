@@ -20,6 +20,8 @@ RUNTIME_CONTRACT_SUMMARY_REQUIRED_FIELDS = (
     "approved_tool_execution_coverage",
     "sdk_tool_runtime_execution_coverage",
     "sdk_tool_runtime_execution_coverage.bridge_smoke",
+    "tool_runtime_timeout_retry_coverage",
+    "tool_runtime_timeout_retry_coverage.timeout_retry_smoke",
     "checkpoint_resume_cursor_coverage",
     "checkpoint_resume_cursor_coverage.cursor_smoke",
     "embedded_sdk_persistence_coverage",
@@ -231,6 +233,9 @@ class RuntimeContractGateService:
         sdk_tool_coverage = summary.get("sdk_tool_runtime_execution_coverage")
         if not isinstance(sdk_tool_coverage, Mapping):
             sdk_tool_coverage = fallback["sdk_tool_runtime_execution_coverage"]
+        tool_timeout_retry_coverage = summary.get("tool_runtime_timeout_retry_coverage")
+        if not isinstance(tool_timeout_retry_coverage, Mapping):
+            tool_timeout_retry_coverage = fallback["tool_runtime_timeout_retry_coverage"]
         checkpoint_cursor_coverage = summary.get("checkpoint_resume_cursor_coverage")
         if not isinstance(checkpoint_cursor_coverage, Mapping):
             checkpoint_cursor_coverage = fallback["checkpoint_resume_cursor_coverage"]
@@ -313,6 +318,9 @@ class RuntimeContractGateService:
             ),
             "approved_tool_execution_coverage": self._normalize_approved_tool_execution_coverage(approved_tool_coverage),
             "sdk_tool_runtime_execution_coverage": self._normalize_sdk_tool_runtime_execution_coverage(sdk_tool_coverage),
+            "tool_runtime_timeout_retry_coverage": self._normalize_tool_runtime_timeout_retry_coverage(
+                tool_timeout_retry_coverage
+            ),
             "checkpoint_resume_cursor_coverage": self._normalize_checkpoint_resume_cursor_coverage(
                 checkpoint_cursor_coverage
             ),
@@ -389,6 +397,10 @@ class RuntimeContractGateService:
             (check for check in checks if str(check.get("name") or "").strip() == "sdk_tool_runtime_execution_bridge"),
             {},
         )
+        tool_runtime_timeout_retry_check = next(
+            (check for check in checks if str(check.get("name") or "").strip() == "tool_runtime_timeout_retry"),
+            {},
+        )
         approval_lifecycle_check = next(
             (check for check in checks if str(check.get("name") or "").strip() == "approval_lifecycle_recovery_alignment"),
             {},
@@ -449,6 +461,9 @@ class RuntimeContractGateService:
             ),
             "approved_tool_execution_coverage": self._build_approved_tool_execution_coverage(approved_tool_bridge_check),
             "sdk_tool_runtime_execution_coverage": self._build_sdk_tool_runtime_execution_coverage(sdk_tool_bridge_check),
+            "tool_runtime_timeout_retry_coverage": self._build_tool_runtime_timeout_retry_coverage(
+                tool_runtime_timeout_retry_check
+            ),
             "checkpoint_resume_cursor_coverage": self._build_checkpoint_resume_cursor_coverage(
                 checkpoint_cursor_check
             ),
@@ -507,6 +522,7 @@ class RuntimeContractGateService:
             "approval_lifecycle_recovery_coverage": self._build_approval_lifecycle_recovery_coverage({}),
             "approved_tool_execution_coverage": self._build_approved_tool_execution_coverage({}),
             "sdk_tool_runtime_execution_coverage": self._build_sdk_tool_runtime_execution_coverage({}),
+            "tool_runtime_timeout_retry_coverage": self._build_tool_runtime_timeout_retry_coverage({}),
             "checkpoint_resume_cursor_coverage": self._build_checkpoint_resume_cursor_coverage({}),
             "embedded_sdk_persistence_coverage": self._build_embedded_sdk_persistence_coverage({}),
             "worker_ownership_store_mode_coverage": self._build_worker_ownership_store_mode_coverage({}),
@@ -558,6 +574,21 @@ class RuntimeContractGateService:
             "approved_policy_override_status": str(raw_check.get("approved_policy_override_status") or ""),
             "deny_override_status": str(raw_check.get("deny_override_status") or ""),
             "deny_tool_call_count": self._coerce_optional_non_negative_int(raw_check.get("deny_tool_call_count")),
+            "retry_policy": str(raw_check.get("retry_policy") or ""),
+            "timeout_enforcement": str(raw_check.get("timeout_enforcement") or ""),
+            "schema_validation": str(raw_check.get("schema_validation") or ""),
+            "recovered_status": str(raw_check.get("recovered_status") or ""),
+            "recovered_retry_status": str(raw_check.get("recovered_retry_status") or ""),
+            "recovered_attempt_count": self._coerce_optional_non_negative_int(raw_check.get("recovered_attempt_count")),
+            "exhausted_status": str(raw_check.get("exhausted_status") or ""),
+            "exhausted_retry_status": str(raw_check.get("exhausted_retry_status") or ""),
+            "exhausted_attempt_count": self._coerce_optional_non_negative_int(raw_check.get("exhausted_attempt_count")),
+            "timeout_status": str(raw_check.get("timeout_status") or ""),
+            "timeout_metadata_status": str(raw_check.get("timeout_metadata_status") or ""),
+            "timeout_metadata_enforcement": str(raw_check.get("timeout_metadata_enforcement") or ""),
+            "hard_cancellation_claimed": raw_check.get("hard_cancellation_claimed"),
+            "sandbox_execution_claimed": raw_check.get("sandbox_execution_claimed"),
+            "worker_timeout_claimed": raw_check.get("worker_timeout_claimed"),
             "checkpoint_status": str(raw_check.get("checkpoint_status") or ""),
             "checkpoint_kind": str(raw_check.get("checkpoint_kind") or ""),
             "cursor_status": str(raw_check.get("cursor_status") or ""),
@@ -1597,6 +1628,75 @@ class RuntimeContractGateService:
             "approved_policy_override_status": approved_policy_override_status,
             "deny_override_status": deny_override_status,
             "deny_tool_call_count": deny_tool_call_count,
+        }
+
+    def _build_tool_runtime_timeout_retry_coverage(self, check: Mapping[str, Any]) -> Dict[str, Any]:
+        return self._normalize_tool_runtime_timeout_retry_coverage({
+            "timeout_retry_smoke": bool(check.get("ok")) if check else False,
+            "retry_policy": str(check.get("retry_policy") or ""),
+            "timeout_enforcement": str(check.get("timeout_enforcement") or ""),
+            "recovered_status": str(check.get("recovered_status") or ""),
+            "recovered_retry_status": str(check.get("recovered_retry_status") or ""),
+            "recovered_attempt_count": self._coerce_optional_non_negative_int(check.get("recovered_attempt_count")) or 0,
+            "exhausted_status": str(check.get("exhausted_status") or ""),
+            "exhausted_retry_status": str(check.get("exhausted_retry_status") or ""),
+            "exhausted_attempt_count": self._coerce_optional_non_negative_int(check.get("exhausted_attempt_count")) or 0,
+            "timeout_status": str(check.get("timeout_status") or ""),
+            "timeout_metadata_status": str(check.get("timeout_metadata_status") or ""),
+            "timeout_metadata_enforcement": str(check.get("timeout_metadata_enforcement") or ""),
+            "hard_cancellation_claimed": check.get("hard_cancellation_claimed"),
+            "sandbox_execution_claimed": check.get("sandbox_execution_claimed"),
+            "worker_timeout_claimed": check.get("worker_timeout_claimed"),
+        })
+
+    def _normalize_tool_runtime_timeout_retry_coverage(self, coverage: Mapping[str, Any]) -> Dict[str, Any]:
+        retry_policy = str(coverage.get("retry_policy") or "")
+        timeout_enforcement = str(coverage.get("timeout_enforcement") or "")
+        recovered_status = str(coverage.get("recovered_status") or "")
+        recovered_retry_status = str(coverage.get("recovered_retry_status") or "")
+        recovered_attempt_count = self._coerce_optional_non_negative_int(coverage.get("recovered_attempt_count")) or 0
+        exhausted_status = str(coverage.get("exhausted_status") or "")
+        exhausted_retry_status = str(coverage.get("exhausted_retry_status") or "")
+        exhausted_attempt_count = self._coerce_optional_non_negative_int(coverage.get("exhausted_attempt_count")) or 0
+        timeout_status = str(coverage.get("timeout_status") or "")
+        timeout_metadata_status = str(coverage.get("timeout_metadata_status") or "")
+        timeout_metadata_enforcement = str(coverage.get("timeout_metadata_enforcement") or "")
+        hard_cancellation_claimed = self._coerce_truthy_flag(coverage.get("hard_cancellation_claimed"))
+        sandbox_execution_claimed = self._coerce_truthy_flag(coverage.get("sandbox_execution_claimed"))
+        worker_timeout_claimed = self._coerce_truthy_flag(coverage.get("worker_timeout_claimed"))
+        timeout_retry_smoke = (
+            self._coerce_truthy_flag(coverage.get("timeout_retry_smoke"))
+            and retry_policy == "sync_exception_retry"
+            and timeout_enforcement == "post_call_elapsed_check"
+            and recovered_status == "ok"
+            and recovered_retry_status == "recovered"
+            and recovered_attempt_count == 2
+            and exhausted_status == "error"
+            and exhausted_retry_status == "exhausted"
+            and exhausted_attempt_count == 2
+            and timeout_status == "timeout"
+            and timeout_metadata_status == "exceeded"
+            and timeout_metadata_enforcement == "post_call_elapsed_check"
+            and not hard_cancellation_claimed
+            and not sandbox_execution_claimed
+            and not worker_timeout_claimed
+        )
+        return {
+            "timeout_retry_smoke": timeout_retry_smoke,
+            "retry_policy": retry_policy,
+            "timeout_enforcement": timeout_enforcement,
+            "recovered_status": recovered_status,
+            "recovered_retry_status": recovered_retry_status,
+            "recovered_attempt_count": recovered_attempt_count,
+            "exhausted_status": exhausted_status,
+            "exhausted_retry_status": exhausted_retry_status,
+            "exhausted_attempt_count": exhausted_attempt_count,
+            "timeout_status": timeout_status,
+            "timeout_metadata_status": timeout_metadata_status,
+            "timeout_metadata_enforcement": timeout_metadata_enforcement,
+            "hard_cancellation_claimed": hard_cancellation_claimed,
+            "sandbox_execution_claimed": sandbox_execution_claimed,
+            "worker_timeout_claimed": worker_timeout_claimed,
         }
 
     def _build_checkpoint_resume_cursor_coverage(self, check: Mapping[str, Any]) -> Dict[str, Any]:

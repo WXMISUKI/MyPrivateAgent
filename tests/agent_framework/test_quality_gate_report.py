@@ -267,6 +267,21 @@ class QualityGateReportTests(unittest.TestCase):
                 '"approved_policy_override_status":"approved",'
                 '"deny_override_status":"policy_denied",'
                 '"deny_tool_call_count":0},\n'
+                '    {"name":"tool_runtime_timeout_retry","ok":true,'
+                '"retry_policy":"sync_exception_retry",'
+                '"timeout_enforcement":"post_call_elapsed_check",'
+                '"recovered_status":"ok",'
+                '"recovered_retry_status":"recovered",'
+                '"recovered_attempt_count":2,'
+                '"exhausted_status":"error",'
+                '"exhausted_retry_status":"exhausted",'
+                '"exhausted_attempt_count":2,'
+                '"timeout_status":"timeout",'
+                '"timeout_metadata_status":"exceeded",'
+                '"timeout_metadata_enforcement":"post_call_elapsed_check",'
+                '"hard_cancellation_claimed":false,'
+                '"sandbox_execution_claimed":false,'
+                '"worker_timeout_claimed":false},\n'
                 '    {"name":"approval_lifecycle_recovery_alignment","ok":true,'
                 '"replayed_submission_status":"replayed",'
                 '"ignored_submission_status":"ignored",'
@@ -309,7 +324,7 @@ class QualityGateReportTests(unittest.TestCase):
                 '"strict_mode_status":"sqlalchemy_durable",'
                 '"production_gate_contract_version":"phase-ii-worker-ownership-production-gate-v1",'
                 '"production_gate_status":"blocked",'
-                '"production_gate_missing_sections":["vendor_lock_semantics","heartbeat_renewal_supervisor","ownership_audit_evidence","fail_closed_default_decision"],'
+                '"production_gate_missing_sections":["vendor_lock_semantics","heartbeat_renewal_supervisor","ownership_audit_evidence","fail_closed_default_decision","production_default_enablement_input_source"],'
                 '"production_default_enabled":false,'
                 '"vendor_lock_contract_version":"phase-ii-worker-ownership-vendor-lock-semantics-v1",'
                 '"vendor_lock_status":"blocked",'
@@ -451,6 +466,13 @@ class QualityGateReportTests(unittest.TestCase):
                 '"enablement_config_consumer_ready_executes_lock":false,'
                 '"enablement_config_consumer_ready_starts_worker":false,'
                 '"enablement_config_consumer_ready_runs_auto_claim":false,'
+                '"enablement_config_factory_binding_default_status":"blocked",'
+                '"enablement_config_factory_binding_ready_status":"ready",'
+                '"enablement_config_factory_binding_ready_config_id":"factory-binding-smoke",'
+                '"enablement_config_factory_binding_will_enable":false,'
+                '"enablement_config_factory_binding_executes_lock":false,'
+                '"enablement_config_factory_binding_starts_worker":false,'
+                '"enablement_config_factory_binding_runs_auto_claim":false,'
                 '"vendor_lock_scope_defined":false,'
                 '"vendor_lock_fencing_guarantee_defined":false,'
                 '"vendor_lock_failover_semantics_defined":false,'
@@ -573,7 +595,7 @@ class QualityGateReportTests(unittest.TestCase):
                 '"ownership_audit_authorization_source":false,'
                 '"enablement_strategy_contract_version":"phase-ii-worker-ownership-production-enablement-strategy-v1",'
                 '"enablement_strategy_status":"blocked",'
-                '"enablement_strategy_blocking_sections":["vendor_lock_semantics","production_default_enablement_input_source"],'
+                '"enablement_strategy_blocking_sections":["vendor_lock_semantics","rollout_checklist","production_default_enablement_input_source"],'
                 '"production_default_enabled_requested":false,'
                 '"production_default_allowed":false,'
                 '"enablement_input_source_contract_version":"phase-ii-worker-ownership-production-default-enablement-input-source-v1",'
@@ -628,6 +650,7 @@ class QualityGateReportTests(unittest.TestCase):
                 "runtime_surface_run_recovery",
                 "runtime_approved_tool_execution_bridge",
                 "sdk_tool_runtime_execution_bridge",
+                "tool_runtime_timeout_retry",
                 "approval_lifecycle_recovery_alignment",
                 "embedded_sdk_persistence_posture",
                 "worker_ownership_store_mode",
@@ -636,7 +659,7 @@ class QualityGateReportTests(unittest.TestCase):
             ],
         )
         self.assertEqual(result["runtime_contract_summary"]["overall_status"], "healthy")
-        self.assertEqual(result["runtime_contract_summary"]["check_count"], 11)
+        self.assertEqual(result["runtime_contract_summary"]["check_count"], 12)
         self.assertEqual(result["runtime_contract_summary"]["missing_payload_count"], 0)
         self.assertTrue(result["runtime_contract_summary"]["approval_replay_coverage"]["event_payload_sample"])
         approved_coverage = result["runtime_contract_summary"]["approved_tool_execution_coverage"]
@@ -655,6 +678,11 @@ class QualityGateReportTests(unittest.TestCase):
         self.assertEqual(sdk_coverage["approved_policy_override_status"], "approved")
         self.assertEqual(sdk_coverage["deny_override_status"], "policy_denied")
         self.assertEqual(sdk_coverage["deny_tool_call_count"], 0)
+        tool_timeout_retry_coverage = result["runtime_contract_summary"]["tool_runtime_timeout_retry_coverage"]
+        self.assertTrue(tool_timeout_retry_coverage["timeout_retry_smoke"])
+        self.assertEqual(tool_timeout_retry_coverage["recovered_retry_status"], "recovered")
+        self.assertEqual(tool_timeout_retry_coverage["exhausted_retry_status"], "exhausted")
+        self.assertEqual(tool_timeout_retry_coverage["timeout_metadata_status"], "exceeded")
         lifecycle_coverage = result["runtime_contract_summary"]["approval_lifecycle_recovery_coverage"]
         self.assertTrue(lifecycle_coverage["alignment_smoke"])
         self.assertEqual(lifecycle_coverage["replayed_submission_status"], "replayed")
@@ -967,6 +995,10 @@ class QualityGateReportTests(unittest.TestCase):
             schema_guard["summary_required_fields"],
         )
         self.assertIn(
+            "tool_runtime_timeout_retry_coverage.timeout_retry_smoke",
+            schema_guard["summary_required_fields"],
+        )
+        self.assertIn(
             "embedded_sdk_persistence_coverage.persistence_smoke",
             schema_guard["summary_required_fields"],
         )
@@ -1054,6 +1086,58 @@ class QualityGateReportTests(unittest.TestCase):
         ])
 
         self.assertFalse(dirty_summary["recovery_retry_scheduler_coverage"]["scheduler_smoke"])
+
+    def test_runtime_contract_summary_derives_tool_runtime_timeout_retry_coverage(self):
+        from backend.scripts.quality_gate_report import _build_runtime_contract_summary
+
+        summary = _build_runtime_contract_summary([
+            {
+                "name": "tool_runtime_timeout_retry",
+                "ok": True,
+                "retry_policy": "sync_exception_retry",
+                "timeout_enforcement": "post_call_elapsed_check",
+                "recovered_status": "ok",
+                "recovered_retry_status": "recovered",
+                "recovered_attempt_count": 2,
+                "exhausted_status": "error",
+                "exhausted_retry_status": "exhausted",
+                "exhausted_attempt_count": 2,
+                "timeout_status": "timeout",
+                "timeout_metadata_status": "exceeded",
+                "timeout_metadata_enforcement": "post_call_elapsed_check",
+                "hard_cancellation_claimed": False,
+                "sandbox_execution_claimed": False,
+                "worker_timeout_claimed": False,
+            }
+        ])
+
+        coverage = summary["tool_runtime_timeout_retry_coverage"]
+        self.assertTrue(coverage["timeout_retry_smoke"])
+        self.assertEqual(coverage["retry_policy"], "sync_exception_retry")
+        self.assertEqual(coverage["timeout_enforcement"], "post_call_elapsed_check")
+        self.assertEqual(coverage["recovered_retry_status"], "recovered")
+        self.assertEqual(coverage["exhausted_retry_status"], "exhausted")
+        self.assertEqual(coverage["timeout_metadata_status"], "exceeded")
+
+        dirty_summary = _build_runtime_contract_summary([
+            {
+                "name": "tool_runtime_timeout_retry",
+                "ok": True,
+                "retry_policy": "sync_exception_retry",
+                "timeout_enforcement": "hard_cancellation",
+                "recovered_status": "ok",
+                "recovered_retry_status": "recovered",
+                "recovered_attempt_count": 2,
+                "exhausted_status": "error",
+                "exhausted_retry_status": "exhausted",
+                "exhausted_attempt_count": 2,
+                "timeout_status": "timeout",
+                "timeout_metadata_status": "exceeded",
+                "timeout_metadata_enforcement": "hard_cancellation",
+            }
+        ])
+
+        self.assertFalse(dirty_summary["tool_runtime_timeout_retry_coverage"]["timeout_retry_smoke"])
 
     def test_runtime_contract_artifact_schema_degrades_when_summary_nested_field_is_missing(self):
         from backend.scripts.quality_gate_report import _build_runtime_contract_artifact_schema

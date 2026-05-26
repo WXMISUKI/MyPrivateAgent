@@ -6,6 +6,7 @@ import json
 import os
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -271,6 +272,13 @@ def main() -> int:
             {
                 "name": "sdk_tool_runtime_execution_bridge",
                 **sdk_tool_bridge_result,
+            }
+        )
+        tool_timeout_retry_result = _run_tool_runtime_timeout_retry_contract_check()
+        checks.append(
+            {
+                "name": "tool_runtime_timeout_retry",
+                **tool_timeout_retry_result,
             }
         )
         subagent_lane_detail_result = _run_subagent_lane_query_detail_contract_check(client)
@@ -2962,6 +2970,131 @@ def _run_sdk_tool_runtime_execution_bridge_check() -> dict:
         "deny_override_status": "policy_denied" if str(deny_policy_decision.get("reason_code") or "").strip() == "permission_level_denied" else deny_policy_decision.get("status"),
         "deny_tool_call_count": len(deny_calls),
         "failure_reason": "" if ok else "sdk_tool_runtime_execution_bridge_incomplete",
+    }
+
+
+def _run_tool_runtime_timeout_retry_contract_check() -> dict:
+    class _FlakyTool:
+        name = "smoke_flaky_lookup"
+        description = "Smoke flaky lookup"
+        parameters = {}
+
+        def __init__(self, fail_times: int):
+            self.fail_times = fail_times
+            self.calls = 0
+
+        def invoke(self, args):
+            self.calls += 1
+            if self.calls <= self.fail_times:
+                raise RuntimeError(f"temporary failure {self.calls}")
+            return f"recovered:{args.get('case_id', 'unknown')}"
+
+    class _SlowTool:
+        name = "smoke_slow_lookup"
+        description = "Smoke slow lookup"
+        parameters = {}
+
+        def __init__(self):
+            self.calls = 0
+
+        def invoke(self, _args):
+            self.calls += 1
+            time.sleep(0.02)
+            return "slow result"
+
+    class _SingleToolRegistry:
+        def __init__(self, tool):
+            self.tool = tool
+
+        def list_all(self):
+            return [self.tool]
+
+        def get(self, name):
+            return self.tool if name == self.tool.name else None
+
+        def get_langchain_tools(self):
+            return []
+
+        def list_tool_specs(self):
+            return []
+
+        def get_doubao_tool_definitions(self):
+            return []
+
+    recovered_tool = _FlakyTool(fail_times=1)
+    recovered_service = ToolRuntimeService(
+        tool_registry=_SingleToolRegistry(recovered_tool),
+        mcp_registry_service=_EmptyMcpRegistryService(),
+        framework_adapter_registry=_EmptyFrameworkAdapterRegistry(),
+    )
+    contract = recovered_service.build_runtime_contract()
+    execution_adapter = dict(contract.get("execution_adapter") or {})
+    recovered = recovered_service.execute_tool(
+        "smoke_flaky_lookup",
+        {"case_id": "case-1"},
+        execution_options={"max_attempts": 2},
+    )
+
+    exhausted_tool = _FlakyTool(fail_times=3)
+    exhausted_service = ToolRuntimeService(
+        tool_registry=_SingleToolRegistry(exhausted_tool),
+        mcp_registry_service=_EmptyMcpRegistryService(),
+        framework_adapter_registry=_EmptyFrameworkAdapterRegistry(),
+    )
+    exhausted = exhausted_service.execute_tool(
+        "smoke_flaky_lookup",
+        {"case_id": "case-1"},
+        execution_options={"max_attempts": 2},
+    )
+
+    slow_tool = _SlowTool()
+    timeout_service = ToolRuntimeService(
+        tool_registry=_SingleToolRegistry(slow_tool),
+        mcp_registry_service=_EmptyMcpRegistryService(),
+        framework_adapter_registry=_EmptyFrameworkAdapterRegistry(),
+    )
+    timed_out = timeout_service.execute_tool(
+        "smoke_slow_lookup",
+        {},
+        execution_options={"timeout_seconds": 0.001},
+    )
+    recovered_retry = dict((recovered.get("execution") or {}).get("retry") or {})
+    exhausted_retry = dict((exhausted.get("execution") or {}).get("retry") or {})
+    timeout_metadata = dict((timed_out.get("execution") or {}).get("timeout") or {})
+    ok = (
+        str(execution_adapter.get("retry_policy") or "").strip() == "sync_exception_retry"
+        and str(execution_adapter.get("timeout_enforcement") or "").strip() == "post_call_elapsed_check"
+        and str(recovered.get("status") or "").strip() == "ok"
+        and str(recovered_retry.get("status") or "").strip() == "recovered"
+        and int(recovered_retry.get("attempt_count") or 0) == 2
+        and recovered_tool.calls == 2
+        and str(exhausted.get("status") or "").strip() == "error"
+        and str(exhausted_retry.get("status") or "").strip() == "exhausted"
+        and int(exhausted_retry.get("attempt_count") or 0) == 2
+        and exhausted_tool.calls == 2
+        and str(timed_out.get("status") or "").strip() == "timeout"
+        and str(timeout_metadata.get("status") or "").strip() == "exceeded"
+        and str(timeout_metadata.get("enforcement") or "").strip() == "post_call_elapsed_check"
+        and slow_tool.calls == 1
+    )
+    return {
+        "ok": ok,
+        "retry_policy": execution_adapter.get("retry_policy"),
+        "timeout_enforcement": execution_adapter.get("timeout_enforcement"),
+        "schema_validation": execution_adapter.get("schema_validation"),
+        "recovered_status": recovered.get("status"),
+        "recovered_retry_status": recovered_retry.get("status"),
+        "recovered_attempt_count": recovered_retry.get("attempt_count"),
+        "exhausted_status": exhausted.get("status"),
+        "exhausted_retry_status": exhausted_retry.get("status"),
+        "exhausted_attempt_count": exhausted_retry.get("attempt_count"),
+        "timeout_status": timed_out.get("status"),
+        "timeout_metadata_status": timeout_metadata.get("status"),
+        "timeout_metadata_enforcement": timeout_metadata.get("enforcement"),
+        "hard_cancellation_claimed": False,
+        "sandbox_execution_claimed": False,
+        "worker_timeout_claimed": False,
+        "failure_reason": "" if ok else "tool_runtime_timeout_retry_contract_incomplete",
     }
 
 

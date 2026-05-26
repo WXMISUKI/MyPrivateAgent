@@ -146,6 +146,8 @@ class RuntimeContractSnapshotService:
                 "runtime_contract_summary.approved_tool_execution_coverage",
                 "runtime_contract_summary.sdk_tool_runtime_execution_coverage",
                 "runtime_contract_summary.sdk_tool_runtime_execution_coverage.bridge_smoke",
+                "runtime_contract_summary.tool_runtime_timeout_retry_coverage",
+                "runtime_contract_summary.tool_runtime_timeout_retry_coverage.timeout_retry_smoke",
                 "runtime_contract_summary.checkpoint_resume_cursor_coverage",
                 "runtime_contract_summary.checkpoint_resume_cursor_coverage.cursor_smoke",
                 "runtime_contract_summary.embedded_sdk_persistence_coverage",

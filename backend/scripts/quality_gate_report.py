@@ -27,6 +27,8 @@ RUNTIME_CONTRACT_SUMMARY_REQUIRED_FIELDS = (
     "approved_tool_execution_coverage",
     "sdk_tool_runtime_execution_coverage",
     "sdk_tool_runtime_execution_coverage.bridge_smoke",
+    "tool_runtime_timeout_retry_coverage",
+    "tool_runtime_timeout_retry_coverage.timeout_retry_smoke",
     "checkpoint_resume_cursor_coverage",
     "checkpoint_resume_cursor_coverage.cursor_smoke",
     "embedded_sdk_persistence_coverage",
@@ -173,6 +175,10 @@ def _build_runtime_contract_summary(checks: list[dict[str, Any]]) -> dict[str, A
         (check for check in checks if str(check.get("name") or "").strip() == "sdk_tool_runtime_execution_bridge"),
         {},
     )
+    tool_runtime_timeout_retry_check = next(
+        (check for check in checks if str(check.get("name") or "").strip() == "tool_runtime_timeout_retry"),
+        {},
+    )
     approval_lifecycle_check = next(
         (check for check in checks if str(check.get("name") or "").strip() == "approval_lifecycle_recovery_alignment"),
         {},
@@ -233,6 +239,9 @@ def _build_runtime_contract_summary(checks: list[dict[str, Any]]) -> dict[str, A
         ),
         "approved_tool_execution_coverage": _build_approved_tool_execution_coverage(approved_tool_bridge_check),
         "sdk_tool_runtime_execution_coverage": _build_sdk_tool_runtime_execution_coverage(sdk_tool_bridge_check),
+        "tool_runtime_timeout_retry_coverage": _build_tool_runtime_timeout_retry_coverage(
+            tool_runtime_timeout_retry_check
+        ),
         "checkpoint_resume_cursor_coverage": _build_checkpoint_resume_cursor_coverage(checkpoint_cursor_check),
         "embedded_sdk_persistence_coverage": _build_embedded_sdk_persistence_coverage(persistence_posture_check),
         "worker_ownership_store_mode_coverage": _build_worker_ownership_store_mode_coverage(
@@ -341,6 +350,47 @@ def _build_sdk_tool_runtime_execution_coverage(check: dict[str, Any]) -> dict[st
         "approved_policy_override_status": str(check.get("approved_policy_override_status") or "").strip(),
         "deny_override_status": str(check.get("deny_override_status") or "").strip(),
         "deny_tool_call_count": _coerce_non_negative_int(check.get("deny_tool_call_count"), 0),
+    }
+
+
+def _build_tool_runtime_timeout_retry_coverage(check: dict[str, Any]) -> dict[str, Any]:
+    retry_policy = str(check.get("retry_policy") or "").strip()
+    timeout_enforcement = str(check.get("timeout_enforcement") or "").strip()
+    recovered_retry_status = str(check.get("recovered_retry_status") or "").strip()
+    exhausted_retry_status = str(check.get("exhausted_retry_status") or "").strip()
+    timeout_metadata_status = str(check.get("timeout_metadata_status") or "").strip()
+    timeout_metadata_enforcement = str(check.get("timeout_metadata_enforcement") or "").strip()
+    timeout_retry_smoke = (
+        bool(check.get("ok"))
+        and retry_policy == "sync_exception_retry"
+        and timeout_enforcement == "post_call_elapsed_check"
+        and str(check.get("recovered_status") or "").strip() == "ok"
+        and recovered_retry_status == "recovered"
+        and _coerce_non_negative_int(check.get("recovered_attempt_count"), 0) == 2
+        and str(check.get("exhausted_status") or "").strip() == "error"
+        and exhausted_retry_status == "exhausted"
+        and _coerce_non_negative_int(check.get("exhausted_attempt_count"), 0) == 2
+        and str(check.get("timeout_status") or "").strip() == "timeout"
+        and timeout_metadata_status == "exceeded"
+        and timeout_metadata_enforcement == "post_call_elapsed_check"
+        and not bool(check.get("hard_cancellation_claimed"))
+        and not bool(check.get("sandbox_execution_claimed"))
+        and not bool(check.get("worker_timeout_claimed"))
+    )
+    return {
+        "timeout_retry_smoke": timeout_retry_smoke,
+        "retry_policy": retry_policy,
+        "timeout_enforcement": timeout_enforcement,
+        "recovered_retry_status": recovered_retry_status,
+        "recovered_attempt_count": _coerce_non_negative_int(check.get("recovered_attempt_count"), 0),
+        "exhausted_retry_status": exhausted_retry_status,
+        "exhausted_attempt_count": _coerce_non_negative_int(check.get("exhausted_attempt_count"), 0),
+        "timeout_status": str(check.get("timeout_status") or "").strip(),
+        "timeout_metadata_status": timeout_metadata_status,
+        "timeout_metadata_enforcement": timeout_metadata_enforcement,
+        "hard_cancellation_claimed": bool(check.get("hard_cancellation_claimed")),
+        "sandbox_execution_claimed": bool(check.get("sandbox_execution_claimed")),
+        "worker_timeout_claimed": bool(check.get("worker_timeout_claimed")),
     }
 
 
