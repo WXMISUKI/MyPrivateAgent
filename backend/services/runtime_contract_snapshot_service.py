@@ -179,6 +179,8 @@ class RuntimeContractSnapshotService:
                 "runtime_contract_summary.child_executor_dispatch_coverage.dispatch_smoke",
                 "runtime_contract_summary.child_executor_dispatcher_coverage",
                 "runtime_contract_summary.child_executor_dispatcher_coverage.dispatcher_smoke",
+                "runtime_contract_summary.child_executor_sandbox_backend_coverage",
+                "runtime_contract_summary.child_executor_sandbox_backend_coverage.sandbox_backend_smoke",
                 "runtime_contract_summary.subagent_lane_query_detail_coverage",
                 "runtime_contract_summary.subagent_lane_query_detail_coverage.detail_smoke",
                 "runtime_contract_artifact_schema",

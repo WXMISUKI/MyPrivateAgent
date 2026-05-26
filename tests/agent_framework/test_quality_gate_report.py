@@ -2097,6 +2097,70 @@ class QualityGateReportTests(unittest.TestCase):
         self.assertFalse(coverage["dispatcher_smoke"])
         self.assertEqual(coverage["backend_invocation_count"], 2)
 
+    def test_runtime_contract_summary_derives_child_executor_sandbox_backend_coverage(self):
+        from backend.scripts.quality_gate_report import _build_runtime_contract_summary
+
+        summary = _build_runtime_contract_summary([
+            {
+                "name": "child_executor_sandbox_backend",
+                "ok": True,
+                "contract_version": "phase-ii-child-executor-sandbox-worker-backend-v1",
+                "ready_adapter_contract": True,
+                "ready_sandbox_guard": True,
+                "ready_audit": True,
+                "ready_idempotency": True,
+                "missing_guard_fail_closed": True,
+                "missing_guard_count": 3,
+                "unsafe_payload_blocked": True,
+                "unsafe_blocked_reason": "sandbox_payload_unsafe",
+                "compact_attempt_valid": True,
+                "dispatch_status": "dispatched",
+                "backend_result_status": "completed",
+                "backend_invocation_count": 1,
+                "default_worker_enabled": False,
+            },
+        ])
+
+        coverage = summary["child_executor_sandbox_backend_coverage"]
+        self.assertTrue(coverage["sandbox_backend_smoke"])
+        self.assertEqual(
+            coverage["contract_version"],
+            "phase-ii-child-executor-sandbox-worker-backend-v1",
+        )
+        self.assertTrue(coverage["ready_adapter_contract"])
+        self.assertTrue(coverage["missing_guard_fail_closed"])
+        self.assertTrue(coverage["unsafe_payload_blocked"])
+        self.assertTrue(coverage["compact_attempt_valid"])
+        self.assertFalse(coverage["default_worker_enabled"])
+
+    def test_runtime_contract_summary_fails_closed_when_child_executor_sandbox_backend_evidence_disagrees(self):
+        from backend.scripts.quality_gate_report import _build_runtime_contract_summary
+
+        summary = _build_runtime_contract_summary([
+            {
+                "name": "child_executor_sandbox_backend",
+                "ok": True,
+                "contract_version": "phase-ii-child-executor-sandbox-worker-backend-v1",
+                "ready_adapter_contract": True,
+                "ready_sandbox_guard": True,
+                "ready_audit": True,
+                "ready_idempotency": True,
+                "missing_guard_fail_closed": True,
+                "missing_guard_count": 0,
+                "unsafe_payload_blocked": True,
+                "unsafe_blocked_reason": "sandbox_payload_unsafe",
+                "compact_attempt_valid": True,
+                "dispatch_status": "dispatched",
+                "backend_result_status": "completed",
+                "backend_invocation_count": 1,
+                "default_worker_enabled": False,
+            },
+        ])
+
+        coverage = summary["child_executor_sandbox_backend_coverage"]
+        self.assertFalse(coverage["sandbox_backend_smoke"])
+        self.assertEqual(coverage["missing_guard_count"], 0)
+
     def test_runtime_contract_summary_defaults_worker_ownership_store_mode_coverage_for_legacy_reports(self):
         from backend.scripts.quality_gate_report import _build_runtime_contract_summary
 

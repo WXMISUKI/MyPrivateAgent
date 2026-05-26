@@ -60,6 +60,8 @@ RUNTIME_CONTRACT_SUMMARY_REQUIRED_FIELDS = (
     "child_executor_dispatch_coverage.dispatch_smoke",
     "child_executor_dispatcher_coverage",
     "child_executor_dispatcher_coverage.dispatcher_smoke",
+    "child_executor_sandbox_backend_coverage",
+    "child_executor_sandbox_backend_coverage.sandbox_backend_smoke",
     "subagent_lane_query_detail_coverage",
     "subagent_lane_query_detail_coverage.detail_smoke",
 )
@@ -223,6 +225,10 @@ def _build_runtime_contract_summary(checks: list[dict[str, Any]]) -> dict[str, A
         (check for check in checks if str(check.get("name") or "").strip() == "child_executor_dispatcher"),
         {},
     )
+    child_executor_sandbox_backend_check = next(
+        (check for check in checks if str(check.get("name") or "").strip() == "child_executor_sandbox_backend"),
+        {},
+    )
     return {
         "overall_status": "healthy" if not failed_checks and checks else "degraded",
         "check_count": len(checks),
@@ -279,6 +285,9 @@ def _build_runtime_contract_summary(checks: list[dict[str, Any]]) -> dict[str, A
         ),
         "child_executor_dispatcher_coverage": _build_child_executor_dispatcher_coverage(
             child_executor_dispatcher_check
+        ),
+        "child_executor_sandbox_backend_coverage": _build_child_executor_sandbox_backend_coverage(
+            child_executor_sandbox_backend_check
         ),
         "subagent_lane_query_detail_coverage": _build_subagent_lane_query_detail_coverage(subagent_lane_detail_check),
     }
@@ -2640,6 +2649,57 @@ def _build_child_executor_dispatcher_coverage(check: dict[str, Any]) -> dict[str
         "enabled_will_dispatch": enabled_will_dispatch,
         "backend_result_status": backend_result_status,
         "backend_invocation_count": backend_invocation_count,
+    }
+
+
+def _build_child_executor_sandbox_backend_coverage(check: dict[str, Any]) -> dict[str, Any]:
+    contract_version = str(check.get("contract_version") or "").strip()
+    ready_adapter_contract = bool(check.get("ready_adapter_contract"))
+    ready_sandbox_guard = bool(check.get("ready_sandbox_guard"))
+    ready_audit = bool(check.get("ready_audit"))
+    ready_idempotency = bool(check.get("ready_idempotency"))
+    missing_guard_fail_closed = bool(check.get("missing_guard_fail_closed"))
+    missing_guard_count = _coerce_non_negative_int(check.get("missing_guard_count"), 0)
+    unsafe_payload_blocked = bool(check.get("unsafe_payload_blocked"))
+    unsafe_blocked_reason = str(check.get("unsafe_blocked_reason") or "").strip()
+    compact_attempt_valid = bool(check.get("compact_attempt_valid"))
+    dispatch_status = str(check.get("dispatch_status") or "").strip()
+    backend_result_status = str(check.get("backend_result_status") or "").strip()
+    backend_invocation_count = _coerce_non_negative_int(check.get("backend_invocation_count"), 0)
+    default_worker_enabled = bool(check.get("default_worker_enabled"))
+    sandbox_backend_smoke = (
+        bool(check.get("ok"))
+        and contract_version == "phase-ii-child-executor-sandbox-worker-backend-v1"
+        and ready_adapter_contract
+        and ready_sandbox_guard
+        and ready_audit
+        and ready_idempotency
+        and missing_guard_fail_closed
+        and missing_guard_count > 0
+        and unsafe_payload_blocked
+        and unsafe_blocked_reason == "sandbox_payload_unsafe"
+        and compact_attempt_valid
+        and dispatch_status == "dispatched"
+        and backend_result_status == "completed"
+        and backend_invocation_count == 1
+        and not default_worker_enabled
+    )
+    return {
+        "sandbox_backend_smoke": sandbox_backend_smoke,
+        "contract_version": contract_version,
+        "ready_adapter_contract": ready_adapter_contract,
+        "ready_sandbox_guard": ready_sandbox_guard,
+        "ready_audit": ready_audit,
+        "ready_idempotency": ready_idempotency,
+        "missing_guard_fail_closed": missing_guard_fail_closed,
+        "missing_guard_count": missing_guard_count,
+        "unsafe_payload_blocked": unsafe_payload_blocked,
+        "unsafe_blocked_reason": unsafe_blocked_reason,
+        "compact_attempt_valid": compact_attempt_valid,
+        "dispatch_status": dispatch_status,
+        "backend_result_status": backend_result_status,
+        "backend_invocation_count": backend_invocation_count,
+        "default_worker_enabled": default_worker_enabled,
     }
 
 

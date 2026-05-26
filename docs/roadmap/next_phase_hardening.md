@@ -753,6 +753,7 @@ Governance Timeline 前端继续瘦身仍有价值，但不应继续作为最高
   - Child executor dispatch contract 已进入 runtime contract smoke / Quality Gate / Runtime Contract Gate / Snapshot 守护：`child_executor_dispatch_contract` check 会固定默认 blocked / no-dispatch 证据，summary 归一化为 `runtime_contract_summary.child_executor_dispatch_coverage.dispatch_smoke`
   - Child executor backend registry 已落地：`embedded_sdk_worker` 现在是 known candidate 但 `dispatch_ready = false`，preflight 可区分 known/unknown backend，execution prerequisites 用 `worker_backend_dispatch_ready` 阻断真实 executor dispatch
   - Child executor sandbox worker backend adapter contract 已落地第一刀：真实 sandbox backend 必须先提供 adapter contract、sandbox/resource/audit/idempotency guard evidence 与 compact attempt envelope，registry / dispatch contract / dispatcher 都会对缺失 evidence fail-closed；默认 backend 仍保持 relationship-only，不启动 worker
+  - Child executor sandbox worker backend adapter gate 已进入 runtime contract smoke / Quality Gate / Runtime Contract Gate / Snapshot 守护：`child_executor_sandbox_backend` check 会固定 ready adapter、missing guard fail-closed、unsafe payload fail-closed 与 compact attempt evidence，summary 归一化为 `runtime_contract_summary.child_executor_sandbox_backend_coverage.sandbox_backend_smoke`；该 coverage 仍不表示默认启用 worker、queue 或 sandbox runtime
   - SDK / Facade 已新增独立 child executor preflight 评估入口，可返回 `executor_binding_status / executor_binding_blockers / recommended_next_step`，为后续正式执行前 gate 做准备
   - child executor output 的 replay / compact summary 已稳定带出 `entities / focus_points / action_items`，说明 child output 已进入正式语义面，而不再只是 execution payload
   - child output merge 已开始按 `intent_label` 走最小 merge behavior 分流，并把 `child_executor_merged_semantics` 写回 parent metadata，供 replay / summary / parent state 共用
@@ -778,6 +779,7 @@ Governance Timeline 前端继续瘦身仍有价值，但不应继续作为最高
 - 新增真实 child executor 执行消费方时，优先读取 `child_executor_promotion_gate.child_executor_execution_prerequisites`，确认 `ready / requirements / missing_requirements`，不要在 executor 或前端侧重算 execution readiness。
 - 新增 worker backend 时，先进入 `child_executor_backend_registry` 并明确 `dispatch_ready / dispatch_mode / blockers`，不要只靠 payload 中的 backend 字符串作为真实执行授权。
 - 新增真实 dispatcher 时，必须先读取 `child_executor_dispatch_contract`，确认 `dispatch_ready = true` 且后续实现显式接管 `will_dispatch` 语义；不要把 promotion gate passed 直接等同于可启动 worker。
+- 新增 sandbox worker backend 消费方时，优先读取 `runtime_contract_summary.child_executor_sandbox_backend_coverage` 与 backend registry evidence，确认 adapter contract、guard、audit、idempotency、unsafe payload fail-closed 与 compact attempt evidence 均已进入门禁；不要把 coverage 健康误解释为默认可启动 worker。
 - 新增恢复消费方时，优先读取 `run_recovery` dedicated contract，不直接从 SDK metadata 或 probe event 样本推断恢复状态。
 - 新增恢复审计消费方时，优先读取 `run_recovery.latest_recovery_operation / run_recovery.recovery_operation_history / recovery_failed_closed.recovery_operation`；默认 `worker_ownership.implemented = false` 只表示恢复操作审计，不表示 worker lease 或跨实例所有权已实现。只有显式传入 ownership evidence 的 operation record 才能解释为“该次恢复尝试带有 worker lease 证据”。
 - 下一刀 worker ownership 已完成 production gate contract、durable recovery gate evidence linkage、renewal supervisor readiness contract、renew-once opt-in execution seam、controlled renewal lifecycle、rollout readiness/operationalization/confirmation decision record/input source contract、auto-claim policy readiness contract、auto-claim entrypoint allowlist contract、explicit auto-claim enablement gate、SDK opt-in auto-claim gate enforcement、production enablement strategy contract、production default enablement input source、vendor lock adapter seam、PostgreSQL advisory lock probe contract、PostgreSQL advisory lock opt-in execution seam 与 runtime contract smoke / Quality Gate / Runtime Contract Gate 覆盖；后续若继续推进，应优先把 PostgreSQL seam 接入受控 rollout artifact 或实现 production enablement runtime config consumer，而不是把 strict SQL row lease/fencing、adapter seam readiness、PostgreSQL opt-in execution、rollout evidence、allowlist readiness、enablement gate readiness 或 opt-in lifecycle 直接视为默认生产授权。
@@ -787,7 +789,7 @@ Governance Timeline 前端继续瘦身仍有价值，但不应继续作为最高
 - 新增持久化姿态消费方时，优先读取 `persistence_interface`；`durable_ready` 只能表示 storage candidate，不能绕过 checkpoint / cursor / registry binding 的单 run 恢复 gate。
 - 优先继续收 child intent taxonomy 与 parent merge contract，不先扩更多展示面。
 - 下一刀 child executor 方向再评估是否需要把不同 intent 的 parent merge 结果进一步拆到更明确的 intent-specific sections；默认不扩一块新的通用展示面。
-- 再下一刀若继续推进 child executor，应优先实现真实 executor binding 的 sandbox backend adapter 或其 runtime smoke/quality gate 覆盖；当前 backend registry 已能回答“backend 是否已知、是否 dispatch-ready”，不建议继续追加 overview 字段。
+- 再下一刀若继续推进 child executor，sandbox backend adapter gate coverage 已收口；应优先评估真实 executor binding 的显式 opt-in adapter 装配、child run context budget 与结果 merge handoff，而不是继续追加 overview 字段或默认启用 worker。
 
 是否继续优化：
 

@@ -713,6 +713,28 @@ class RuntimeContractSmokeTests(unittest.TestCase):
         self.assertEqual(result["backend_result_status"], "completed")
         self.assertEqual(result["backend_invocation_count"], 1)
 
+    def test_child_executor_sandbox_backend_check_covers_adapter_gate_paths(self):
+        result = runtime_contract_smoke._run_child_executor_sandbox_backend_contract_check()
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(
+            result["contract_version"],
+            "phase-ii-child-executor-sandbox-worker-backend-v1",
+        )
+        self.assertTrue(result["ready_adapter_contract"])
+        self.assertTrue(result["ready_sandbox_guard"])
+        self.assertTrue(result["ready_audit"])
+        self.assertTrue(result["ready_idempotency"])
+        self.assertTrue(result["missing_guard_fail_closed"])
+        self.assertGreater(result["missing_guard_count"], 0)
+        self.assertTrue(result["unsafe_payload_blocked"])
+        self.assertEqual(result["unsafe_blocked_reason"], "sandbox_payload_unsafe")
+        self.assertTrue(result["compact_attempt_valid"])
+        self.assertEqual(result["dispatch_status"], "dispatched")
+        self.assertEqual(result["backend_result_status"], "completed")
+        self.assertEqual(result["backend_invocation_count"], 1)
+        self.assertFalse(result["default_worker_enabled"])
+
     def test_sdk_tool_runtime_execution_bridge_check_covers_auto_ask_and_deny_paths(self):
         result = runtime_contract_smoke._run_sdk_tool_runtime_execution_bridge_check()
 

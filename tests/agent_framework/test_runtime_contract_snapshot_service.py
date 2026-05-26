@@ -382,6 +382,23 @@ def _build_complete_profile():
                     "backend_result_status": "completed",
                     "backend_invocation_count": 1,
                 },
+                "child_executor_sandbox_backend_coverage": {
+                    "sandbox_backend_smoke": True,
+                    "contract_version": "phase-ii-child-executor-sandbox-worker-backend-v1",
+                    "ready_adapter_contract": True,
+                    "ready_sandbox_guard": True,
+                    "ready_audit": True,
+                    "ready_idempotency": True,
+                    "missing_guard_fail_closed": True,
+                    "missing_guard_count": 3,
+                    "unsafe_payload_blocked": True,
+                    "unsafe_blocked_reason": "sandbox_payload_unsafe",
+                    "compact_attempt_valid": True,
+                    "dispatch_status": "dispatched",
+                    "backend_result_status": "completed",
+                    "backend_invocation_count": 1,
+                    "default_worker_enabled": False,
+                },
                 "subagent_lane_query_detail_coverage": {
                     "detail_smoke": True,
                     "contract_version": "phase-ii-subagent-lane-query-detail-v1",
@@ -422,6 +439,8 @@ def _build_complete_profile():
                     "child_executor_dispatch_coverage.dispatch_smoke",
                     "child_executor_dispatcher_coverage",
                     "child_executor_dispatcher_coverage.dispatcher_smoke",
+                    "child_executor_sandbox_backend_coverage",
+                    "child_executor_sandbox_backend_coverage.sandbox_backend_smoke",
                     "subagent_lane_query_detail_coverage",
                     "subagent_lane_query_detail_coverage.detail_smoke",
                 ],
@@ -773,6 +792,14 @@ class RuntimeContractSnapshotServiceTests(unittest.TestCase):
             by_name["runtime_contract_gate"]["stable_fields"],
         )
         self.assertIn(
+            "runtime_contract_summary.child_executor_sandbox_backend_coverage",
+            by_name["runtime_contract_gate"]["stable_fields"],
+        )
+        self.assertIn(
+            "runtime_contract_summary.child_executor_sandbox_backend_coverage.sandbox_backend_smoke",
+            by_name["runtime_contract_gate"]["stable_fields"],
+        )
+        self.assertIn(
             "runtime_contract_summary.approval_lifecycle_recovery_coverage",
             by_name["runtime_contract_gate"]["stable_fields"],
         )
@@ -832,7 +859,7 @@ class RuntimeContractSnapshotServiceTests(unittest.TestCase):
         by_name = {item["contract_name"]: item for item in snapshot["contracts"]}
         self.assertEqual(snapshot["overall_status"], "degraded")
         self.assertEqual(snapshot["missing_contract_count"], 1)
-        self.assertEqual(snapshot["missing_field_count"], 64)
+        self.assertEqual(snapshot["missing_field_count"], 66)
         self.assertEqual(by_name["skill_contract"]["status"], "missing")
         self.assertEqual(
             by_name["command_contract"]["missing_fields"],
@@ -893,6 +920,8 @@ class RuntimeContractSnapshotServiceTests(unittest.TestCase):
                 "runtime_contract_summary.child_executor_dispatch_coverage.dispatch_smoke",
                 "runtime_contract_summary.child_executor_dispatcher_coverage",
                 "runtime_contract_summary.child_executor_dispatcher_coverage.dispatcher_smoke",
+                "runtime_contract_summary.child_executor_sandbox_backend_coverage",
+                "runtime_contract_summary.child_executor_sandbox_backend_coverage.sandbox_backend_smoke",
                 "runtime_contract_summary.subagent_lane_query_detail_coverage",
                 "runtime_contract_summary.subagent_lane_query_detail_coverage.detail_smoke",
                 "runtime_contract_artifact_schema",
@@ -1183,6 +1212,38 @@ class RuntimeContractSnapshotServiceTests(unittest.TestCase):
         self.assertEqual(runtime_contract_gate["status"], "degraded")
         self.assertIn(
             "runtime_contract_summary.child_executor_dispatcher_coverage.dispatcher_smoke",
+            runtime_contract_gate["missing_fields"],
+        )
+
+    def test_build_snapshot_degrades_when_child_executor_sandbox_backend_coverage_is_missing_from_summary(self):
+        profile = _build_complete_profile()
+        del profile["runtime_contract_gate"]["runtime_contract_summary"]["child_executor_sandbox_backend_coverage"]
+
+        snapshot = RuntimeContractSnapshotService().build_snapshot(profile)
+
+        by_name = {item["contract_name"]: item for item in snapshot["contracts"]}
+        runtime_contract_gate = by_name["runtime_contract_gate"]
+        self.assertEqual(snapshot["overall_status"], "degraded")
+        self.assertEqual(runtime_contract_gate["status"], "degraded")
+        self.assertIn(
+            "runtime_contract_summary.child_executor_sandbox_backend_coverage",
+            runtime_contract_gate["missing_fields"],
+        )
+
+    def test_build_snapshot_degrades_when_child_executor_sandbox_backend_smoke_flag_is_missing_from_summary(self):
+        profile = _build_complete_profile()
+        del profile["runtime_contract_gate"]["runtime_contract_summary"]["child_executor_sandbox_backend_coverage"][
+            "sandbox_backend_smoke"
+        ]
+
+        snapshot = RuntimeContractSnapshotService().build_snapshot(profile)
+
+        by_name = {item["contract_name"]: item for item in snapshot["contracts"]}
+        runtime_contract_gate = by_name["runtime_contract_gate"]
+        self.assertEqual(snapshot["overall_status"], "degraded")
+        self.assertEqual(runtime_contract_gate["status"], "degraded")
+        self.assertIn(
+            "runtime_contract_summary.child_executor_sandbox_backend_coverage.sandbox_backend_smoke",
             runtime_contract_gate["missing_fields"],
         )
 

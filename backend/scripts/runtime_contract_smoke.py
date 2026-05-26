@@ -30,6 +30,10 @@ try:
     from agent_framework.durable_recovery_loader import DurableRecoveryLoader
     from agent_framework.loader_handoff import build_durable_loader_execution_handoff_decision
     from agent_framework.child_executor_dispatcher import ChildExecutorDispatcher
+    from agent_framework.child_executor_sandbox_worker_backend import (
+        build_sandbox_dispatch_attempt_envelope,
+        build_sandbox_worker_backend_adapter_contract,
+    )
     from agent_framework.harness import create_agent
     from agent_framework.persistence import InMemoryEmbeddedRunWorkspaceStore
     from agent_framework.production_recovery_policy import (
@@ -59,6 +63,10 @@ except ModuleNotFoundError:  # pragma: no cover - package import compatibility
     from backend.agent_framework.durable_recovery_loader import DurableRecoveryLoader
     from backend.agent_framework.loader_handoff import build_durable_loader_execution_handoff_decision
     from backend.agent_framework.child_executor_dispatcher import ChildExecutorDispatcher
+    from backend.agent_framework.child_executor_sandbox_worker_backend import (
+        build_sandbox_dispatch_attempt_envelope,
+        build_sandbox_worker_backend_adapter_contract,
+    )
     from backend.agent_framework.harness import create_agent
     from backend.agent_framework.persistence import InMemoryEmbeddedRunWorkspaceStore
     from backend.agent_framework.production_recovery_policy import (
@@ -244,6 +252,13 @@ def main() -> int:
             {
                 "name": "child_executor_dispatcher",
                 **child_executor_dispatcher_result,
+            }
+        )
+        child_executor_sandbox_backend_result = _run_child_executor_sandbox_backend_contract_check()
+        checks.append(
+            {
+                "name": "child_executor_sandbox_backend",
+                **child_executor_sandbox_backend_result,
             }
         )
         run_recovery_result = _run_runtime_surface_run_recovery_contract_check()
@@ -2629,6 +2644,125 @@ def _run_child_executor_dispatcher_contract_check() -> dict:
         "backend_result_status": str((dispatched_attempt.get("backend_result") or {}).get("status") or ""),
         "backend_invocation_count": len(invoked),
         "failure_reason": "" if ok else "child_executor_dispatcher_incomplete",
+    }
+
+
+def _run_child_executor_sandbox_backend_contract_check() -> dict:
+    ready_adapter_contract = build_sandbox_worker_backend_adapter_contract(
+        backend_id="sandbox_worker",
+        input_contract={"required_fields": ["child_run_id"]},
+        output_contract={"required_fields": ["output_ref", "audit_ref"]},
+        resource_limits={"cpu_seconds": 30, "memory_mb": 512, "timeout_seconds": 60},
+        isolation_guards={
+            "process_or_worker_isolation": True,
+            "environment_allowlist": ["PYTHONPATH"],
+            "workspace_boundary": "run_workspace",
+            "network_policy": "disabled_by_default",
+        },
+        audit_hooks={"record_dispatch": True},
+        idempotency={"idempotency_key_required": True},
+    )
+    incomplete_adapter_contract = build_sandbox_worker_backend_adapter_contract(
+        backend_id="sandbox_worker",
+        input_contract={"required_fields": ["child_run_id"]},
+        output_contract={"required_fields": ["output_ref"]},
+    )
+    ready_contract = {
+        "contract_version": "phase-ii-child-executor-dispatch-v1",
+        "overall_status": "ready",
+        "dispatch_ready": True,
+        "will_dispatch": False,
+        "backend_id": "sandbox_worker",
+        "backend_adapter_kind": "sandbox_worker",
+        "backend_status": "ready",
+        "backend_dispatch_ready": True,
+        "gate_allowed": True,
+        "prerequisites_ready": True,
+        "blockers": [],
+    }
+    invoked: list[dict] = []
+
+    def _sandbox_adapter(payload):
+        invoked.append(dict(payload or {}))
+        return build_sandbox_dispatch_attempt_envelope(
+            attempt_id="sandbox-smoke-attempt",
+            backend_id="sandbox_worker",
+            child_run_id=str((payload or {}).get("child_run_id") or ""),
+            status="completed",
+            will_dispatch=True,
+            sandbox_ref="sandbox://sandbox-smoke-attempt",
+            output_ref="artifact://sandbox-smoke-child/output",
+            audit_ref="trace://sandbox-smoke-attempt",
+        )
+
+    dispatched_attempt = ChildExecutorDispatcher(
+        enabled=True,
+        backend_adapters={"sandbox_worker": _sandbox_adapter},
+    ).dispatch(
+        dispatch_contract=ready_contract,
+        payload={"parent_run_id": "parent-smoke", "child_run_id": "child-smoke"},
+    )
+    unsafe_attempt = ChildExecutorDispatcher(
+        enabled=True,
+        backend_adapters={"sandbox_worker": _sandbox_adapter},
+    ).dispatch(
+        dispatch_contract=ready_contract,
+        payload={"parent_run_id": "parent-smoke", "child_run_id": "unsafe-child", "handler": object()},
+    )
+    backend_result = dict(dispatched_attempt.get("backend_result") or {})
+    missing_guards = [
+        str(item)
+        for item in (incomplete_adapter_contract.get("missing_guards") or [])
+        if str(item or "").strip()
+    ]
+    ready_contract_status = bool(ready_adapter_contract.get("adapter_contract_ready"))
+    missing_guard_fail_closed = (
+        not bool(incomplete_adapter_contract.get("adapter_contract_ready"))
+        and not bool(incomplete_adapter_contract.get("sandbox_guard_ready"))
+        and "isolation" in missing_guards
+    )
+    unsafe_payload_blocked = (
+        str(unsafe_attempt.get("dispatch_status") or "").strip() == "blocked"
+        and str(unsafe_attempt.get("blocked_reason") or "").strip() == "sandbox_payload_unsafe"
+        and str(unsafe_attempt.get("error_code") or "").strip() == "unsafe_payload"
+    )
+    compact_attempt_valid = (
+        str(dispatched_attempt.get("dispatch_status") or "").strip() == "dispatched"
+        and bool(dispatched_attempt.get("will_dispatch"))
+        and str(backend_result.get("status") or "").strip() == "completed"
+        and str(backend_result.get("sandbox_ref") or "").startswith("sandbox://")
+        and str(backend_result.get("output_ref") or "").startswith("artifact://")
+        and str(backend_result.get("audit_ref") or "").startswith("trace://")
+    )
+    ok = (
+        str(ready_adapter_contract.get("contract_version") or "").strip()
+        == "phase-ii-child-executor-sandbox-worker-backend-v1"
+        and ready_contract_status
+        and bool(ready_adapter_contract.get("sandbox_guard_ready"))
+        and bool(ready_adapter_contract.get("audit_ready"))
+        and bool(ready_adapter_contract.get("idempotency_ready"))
+        and missing_guard_fail_closed
+        and unsafe_payload_blocked
+        and compact_attempt_valid
+        and len(invoked) == 1
+    )
+    return {
+        "ok": ok,
+        "contract_version": str(ready_adapter_contract.get("contract_version") or ""),
+        "ready_adapter_contract": ready_contract_status,
+        "ready_sandbox_guard": bool(ready_adapter_contract.get("sandbox_guard_ready")),
+        "ready_audit": bool(ready_adapter_contract.get("audit_ready")),
+        "ready_idempotency": bool(ready_adapter_contract.get("idempotency_ready")),
+        "missing_guard_fail_closed": missing_guard_fail_closed,
+        "missing_guard_count": len(missing_guards),
+        "unsafe_payload_blocked": unsafe_payload_blocked,
+        "unsafe_blocked_reason": str(unsafe_attempt.get("blocked_reason") or ""),
+        "compact_attempt_valid": compact_attempt_valid,
+        "dispatch_status": str(dispatched_attempt.get("dispatch_status") or ""),
+        "backend_result_status": str(backend_result.get("status") or ""),
+        "backend_invocation_count": len(invoked),
+        "default_worker_enabled": False,
+        "failure_reason": "" if ok else "child_executor_sandbox_backend_incomplete",
     }
 
 

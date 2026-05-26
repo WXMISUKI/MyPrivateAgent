@@ -53,6 +53,8 @@ RUNTIME_CONTRACT_SUMMARY_REQUIRED_FIELDS = (
     "child_executor_dispatch_coverage.dispatch_smoke",
     "child_executor_dispatcher_coverage",
     "child_executor_dispatcher_coverage.dispatcher_smoke",
+    "child_executor_sandbox_backend_coverage",
+    "child_executor_sandbox_backend_coverage.sandbox_backend_smoke",
     "subagent_lane_query_detail_coverage",
     "subagent_lane_query_detail_coverage.detail_smoke",
 )
@@ -282,6 +284,9 @@ class RuntimeContractGateService:
         child_executor_dispatcher_coverage = summary.get("child_executor_dispatcher_coverage")
         if not isinstance(child_executor_dispatcher_coverage, Mapping):
             child_executor_dispatcher_coverage = fallback["child_executor_dispatcher_coverage"]
+        child_executor_sandbox_backend_coverage = summary.get("child_executor_sandbox_backend_coverage")
+        if not isinstance(child_executor_sandbox_backend_coverage, Mapping):
+            child_executor_sandbox_backend_coverage = fallback["child_executor_sandbox_backend_coverage"]
         subagent_lane_detail_coverage = summary.get("subagent_lane_query_detail_coverage")
         if not isinstance(subagent_lane_detail_coverage, Mapping):
             subagent_lane_detail_coverage = fallback["subagent_lane_query_detail_coverage"]
@@ -365,6 +370,9 @@ class RuntimeContractGateService:
             "child_executor_dispatcher_coverage": self._normalize_child_executor_dispatcher_coverage(
                 child_executor_dispatcher_coverage
             ),
+            "child_executor_sandbox_backend_coverage": self._normalize_child_executor_sandbox_backend_coverage(
+                child_executor_sandbox_backend_coverage
+            ),
             "subagent_lane_query_detail_coverage": self._normalize_subagent_lane_query_detail_coverage(subagent_lane_detail_coverage),
         }
 
@@ -445,6 +453,10 @@ class RuntimeContractGateService:
             (check for check in checks if str(check.get("name") or "").strip() == "child_executor_dispatcher"),
             {},
         )
+        child_executor_sandbox_backend_check = next(
+            (check for check in checks if str(check.get("name") or "").strip() == "child_executor_sandbox_backend"),
+            {},
+        )
         return {
             "overall_status": "healthy" if checks and not failed_checks else "degraded",
             "check_count": len(checks),
@@ -506,6 +518,9 @@ class RuntimeContractGateService:
             "child_executor_dispatcher_coverage": self._build_child_executor_dispatcher_coverage(
                 child_executor_dispatcher_check
             ),
+            "child_executor_sandbox_backend_coverage": self._build_child_executor_sandbox_backend_coverage(
+                child_executor_sandbox_backend_check
+            ),
             "subagent_lane_query_detail_coverage": self._build_subagent_lane_query_detail_coverage(subagent_lane_detail_check),
         }
 
@@ -539,6 +554,7 @@ class RuntimeContractGateService:
             "child_executor_execution_prerequisites_coverage": self._build_child_executor_execution_prerequisites_coverage({}),
             "child_executor_dispatch_coverage": self._build_child_executor_dispatch_coverage({}),
             "child_executor_dispatcher_coverage": self._build_child_executor_dispatcher_coverage({}),
+            "child_executor_sandbox_backend_coverage": self._build_child_executor_sandbox_backend_coverage({}),
             "subagent_lane_query_detail_coverage": self._build_subagent_lane_query_detail_coverage({}),
         }
 
@@ -1511,12 +1527,24 @@ class RuntimeContractGateService:
             "enabled_status": str(raw_check.get("enabled_status") or ""),
             "enabled_will_execute": raw_check.get("enabled_will_execute"),
             "enabled_will_dispatch": raw_check.get("enabled_will_dispatch"),
+            "ready_adapter_contract": raw_check.get("ready_adapter_contract"),
+            "ready_sandbox_guard": raw_check.get("ready_sandbox_guard"),
+            "ready_audit": raw_check.get("ready_audit"),
+            "ready_idempotency": raw_check.get("ready_idempotency"),
+            "missing_guard_fail_closed": raw_check.get("missing_guard_fail_closed"),
+            "missing_guard_count": self._coerce_optional_non_negative_int(
+                raw_check.get("missing_guard_count")
+            ),
+            "unsafe_payload_blocked": raw_check.get("unsafe_payload_blocked"),
+            "unsafe_blocked_reason": str(raw_check.get("unsafe_blocked_reason") or ""),
+            "compact_attempt_valid": raw_check.get("compact_attempt_valid"),
             "latest_operation_status": str(raw_check.get("latest_operation_status") or ""),
             "previous_operation_id_present": raw_check.get("previous_operation_id_present"),
             "backend_result_status": str(raw_check.get("backend_result_status") or ""),
             "backend_invocation_count": self._coerce_optional_non_negative_int(
                 raw_check.get("backend_invocation_count")
             ),
+            "default_worker_enabled": raw_check.get("default_worker_enabled"),
             "recording_state": str(raw_check.get("recording_state") or ""),
             "stage_count": self._coerce_optional_non_negative_int(raw_check.get("stage_count")),
             "recent_event_count": self._coerce_optional_non_negative_int(raw_check.get("recent_event_count")),
@@ -5132,6 +5160,86 @@ class RuntimeContractGateService:
             "enabled_will_dispatch": enabled_will_dispatch,
             "backend_result_status": backend_result_status,
             "backend_invocation_count": backend_invocation_count,
+        }
+
+    def _build_child_executor_sandbox_backend_coverage(self, check: Mapping[str, Any]) -> Dict[str, Any]:
+        return self._normalize_child_executor_sandbox_backend_coverage({
+            "sandbox_backend_smoke": bool(check.get("ok")) if check else False,
+            "contract_version": str(check.get("contract_version") or ""),
+            "ready_adapter_contract": check.get("ready_adapter_contract"),
+            "ready_sandbox_guard": check.get("ready_sandbox_guard"),
+            "ready_audit": check.get("ready_audit"),
+            "ready_idempotency": check.get("ready_idempotency"),
+            "missing_guard_fail_closed": check.get("missing_guard_fail_closed"),
+            "missing_guard_count": self._coerce_optional_non_negative_int(
+                check.get("missing_guard_count")
+            ) or 0,
+            "unsafe_payload_blocked": check.get("unsafe_payload_blocked"),
+            "unsafe_blocked_reason": str(check.get("unsafe_blocked_reason") or ""),
+            "compact_attempt_valid": check.get("compact_attempt_valid"),
+            "dispatch_status": str(check.get("dispatch_status") or ""),
+            "backend_result_status": str(check.get("backend_result_status") or ""),
+            "backend_invocation_count": self._coerce_optional_non_negative_int(
+                check.get("backend_invocation_count")
+            ) or 0,
+            "default_worker_enabled": check.get("default_worker_enabled"),
+        })
+
+    def _normalize_child_executor_sandbox_backend_coverage(
+        self,
+        coverage: Mapping[str, Any],
+    ) -> Dict[str, Any]:
+        contract_version = str(coverage.get("contract_version") or "")
+        ready_adapter_contract = self._coerce_truthy_flag(coverage.get("ready_adapter_contract"))
+        ready_sandbox_guard = self._coerce_truthy_flag(coverage.get("ready_sandbox_guard"))
+        ready_audit = self._coerce_truthy_flag(coverage.get("ready_audit"))
+        ready_idempotency = self._coerce_truthy_flag(coverage.get("ready_idempotency"))
+        missing_guard_fail_closed = self._coerce_truthy_flag(coverage.get("missing_guard_fail_closed"))
+        missing_guard_count = (
+            self._coerce_optional_non_negative_int(coverage.get("missing_guard_count")) or 0
+        )
+        unsafe_payload_blocked = self._coerce_truthy_flag(coverage.get("unsafe_payload_blocked"))
+        unsafe_blocked_reason = str(coverage.get("unsafe_blocked_reason") or "")
+        compact_attempt_valid = self._coerce_truthy_flag(coverage.get("compact_attempt_valid"))
+        dispatch_status = str(coverage.get("dispatch_status") or "")
+        backend_result_status = str(coverage.get("backend_result_status") or "")
+        backend_invocation_count = (
+            self._coerce_optional_non_negative_int(coverage.get("backend_invocation_count")) or 0
+        )
+        default_worker_enabled = self._coerce_truthy_flag(coverage.get("default_worker_enabled"))
+        sandbox_backend_smoke = (
+            self._coerce_truthy_flag(coverage.get("sandbox_backend_smoke"))
+            and contract_version == "phase-ii-child-executor-sandbox-worker-backend-v1"
+            and ready_adapter_contract
+            and ready_sandbox_guard
+            and ready_audit
+            and ready_idempotency
+            and missing_guard_fail_closed
+            and missing_guard_count > 0
+            and unsafe_payload_blocked
+            and unsafe_blocked_reason == "sandbox_payload_unsafe"
+            and compact_attempt_valid
+            and dispatch_status == "dispatched"
+            and backend_result_status == "completed"
+            and backend_invocation_count == 1
+            and not default_worker_enabled
+        )
+        return {
+            "sandbox_backend_smoke": sandbox_backend_smoke,
+            "contract_version": contract_version,
+            "ready_adapter_contract": ready_adapter_contract,
+            "ready_sandbox_guard": ready_sandbox_guard,
+            "ready_audit": ready_audit,
+            "ready_idempotency": ready_idempotency,
+            "missing_guard_fail_closed": missing_guard_fail_closed,
+            "missing_guard_count": missing_guard_count,
+            "unsafe_payload_blocked": unsafe_payload_blocked,
+            "unsafe_blocked_reason": unsafe_blocked_reason,
+            "compact_attempt_valid": compact_attempt_valid,
+            "dispatch_status": dispatch_status,
+            "backend_result_status": backend_result_status,
+            "backend_invocation_count": backend_invocation_count,
+            "default_worker_enabled": default_worker_enabled,
         }
 
     def _build_subagent_lane_query_detail_coverage(self, check: Mapping[str, Any]) -> Dict[str, Any]:

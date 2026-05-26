@@ -2082,6 +2082,57 @@ class RuntimeContractGateServiceTests(unittest.TestCase):
         self.assertEqual(coverage["enabled_status"], "dispatched")
         self.assertEqual(coverage["backend_invocation_count"], 1)
 
+    def test_build_runtime_contract_derives_child_executor_sandbox_backend_coverage_from_checks(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            report_path = Path(tmp_dir) / "quality-gate-report.json"
+            report_path.write_text(
+                json.dumps(
+                    {
+                        "generated_at": "2026-05-24T00:00:00Z",
+                        "steps": [
+                            {
+                                "name": "Quality gate smoke",
+                                "contract_checks": [
+                                    {
+                                        "name": "child_executor_sandbox_backend",
+                                        "ok": True,
+                                        "contract_version": "phase-ii-child-executor-sandbox-worker-backend-v1",
+                                        "ready_adapter_contract": True,
+                                        "ready_sandbox_guard": True,
+                                        "ready_audit": True,
+                                        "ready_idempotency": True,
+                                        "missing_guard_fail_closed": True,
+                                        "missing_guard_count": 3,
+                                        "unsafe_payload_blocked": True,
+                                        "unsafe_blocked_reason": "sandbox_payload_unsafe",
+                                        "compact_attempt_valid": True,
+                                        "dispatch_status": "dispatched",
+                                        "backend_result_status": "completed",
+                                        "backend_invocation_count": 1,
+                                        "default_worker_enabled": False,
+                                    },
+                                ],
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            contract = RuntimeContractGateService(report_path=report_path).build_runtime_contract()
+
+        coverage = contract["runtime_contract_summary"]["child_executor_sandbox_backend_coverage"]
+        self.assertTrue(coverage["sandbox_backend_smoke"])
+        self.assertEqual(
+            coverage["contract_version"],
+            "phase-ii-child-executor-sandbox-worker-backend-v1",
+        )
+        self.assertTrue(coverage["ready_adapter_contract"])
+        self.assertTrue(coverage["missing_guard_fail_closed"])
+        self.assertTrue(coverage["unsafe_payload_blocked"])
+        self.assertTrue(coverage["compact_attempt_valid"])
+        self.assertFalse(coverage["default_worker_enabled"])
+
     def test_build_runtime_contract_fails_closed_when_child_executor_gate_summary_evidence_disagrees(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
             report_path = Path(tmp_dir) / "quality-gate-report.json"
@@ -2212,6 +2263,55 @@ class RuntimeContractGateServiceTests(unittest.TestCase):
         self.assertFalse(coverage["dispatcher_smoke"])
         self.assertEqual(coverage["enabled_status"], "blocked")
         self.assertFalse(coverage["enabled_will_dispatch"])
+
+    def test_build_runtime_contract_fails_closed_when_child_executor_sandbox_backend_summary_evidence_disagrees(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            report_path = Path(tmp_dir) / "quality-gate-report.json"
+            report_path.write_text(
+                json.dumps(
+                    {
+                        "generated_at": "2026-05-24T00:00:00Z",
+                        "steps": [
+                            {
+                                "name": "Quality gate smoke",
+                                "runtime_contract_summary": {
+                                    "overall_status": "healthy",
+                                    "check_count": 1,
+                                    "failed_check_count": 0,
+                                    "missing_payload_count": 0,
+                                    "child_executor_sandbox_backend_coverage": {
+                                        "sandbox_backend_smoke": True,
+                                        "contract_version": "phase-ii-child-executor-sandbox-worker-backend-v1",
+                                        "ready_adapter_contract": True,
+                                        "ready_sandbox_guard": True,
+                                        "ready_audit": True,
+                                        "ready_idempotency": True,
+                                        "missing_guard_fail_closed": True,
+                                        "missing_guard_count": 0,
+                                        "unsafe_payload_blocked": True,
+                                        "unsafe_blocked_reason": "sandbox_payload_unsafe",
+                                        "compact_attempt_valid": True,
+                                        "dispatch_status": "dispatched",
+                                        "backend_result_status": "completed",
+                                        "backend_invocation_count": 1,
+                                        "default_worker_enabled": False,
+                                    },
+                                },
+                                "contract_checks": [
+                                    {"name": "runtime_profile_contract_snapshot", "ok": True},
+                                ],
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            contract = RuntimeContractGateService(report_path=report_path).build_runtime_contract()
+
+        coverage = contract["runtime_contract_summary"]["child_executor_sandbox_backend_coverage"]
+        self.assertFalse(coverage["sandbox_backend_smoke"])
+        self.assertEqual(coverage["missing_guard_count"], 0)
 
     def test_build_runtime_contract_fails_closed_when_recovery_retry_summary_evidence_disagrees(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
