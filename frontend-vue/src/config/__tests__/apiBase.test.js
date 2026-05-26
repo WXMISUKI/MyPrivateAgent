@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { buildApiUrl, getApiBaseUrl } from '../apiBase'
 
 function setHostname(hostname) {
@@ -11,6 +11,7 @@ function setHostname(hostname) {
 describe('apiBase', () => {
   afterEach(() => {
     delete globalThis.__APP_CONFIG__
+    vi.unstubAllEnvs()
     setHostname('localhost')
   })
 
@@ -29,6 +30,13 @@ describe('apiBase', () => {
 
     expect(getApiBaseUrl()).toBe('/api')
     expect(buildApiUrl('/models')).toBe('/api/models')
+  })
+
+  it('ignores stale build-time api base on vercel host', () => {
+    setHostname('my-private-agent.vercel.app')
+    vi.stubEnv('VITE_API_BASE_URL', 'https://stale-railway.example.com/api')
+
+    expect(getApiBaseUrl()).toBe('/api')
   })
 
   it('uses local /api proxy for localhost', () => {

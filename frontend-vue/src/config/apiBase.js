@@ -14,11 +14,19 @@ function inferApiBaseByHostname(hostname) {
   return ''
 }
 
+function isVercelHost() {
+  const host =
+    typeof globalThis !== 'undefined' ? String(globalThis.location?.hostname || '').toLowerCase() : ''
+  return host.endsWith('.vercel.app')
+}
+
 export function getApiBaseUrl() {
   if (typeof globalThis !== 'undefined') {
     const runtime = normalizeBaseUrl(globalThis.__APP_CONFIG__?.apiBaseUrl)
     if (runtime) return runtime
   }
+
+  if (isVercelHost()) return DEFAULT_API_BASE_URL
 
   const envValue = normalizeBaseUrl(import.meta.env.VITE_API_BASE_URL)
   if (envValue) return envValue

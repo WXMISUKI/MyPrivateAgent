@@ -11,13 +11,7 @@
 /skill_store
 /tests
 /问题记录
-/api
-/backend
 /scripts/docker
 /node_modules
-/requirements.txt
-/pyproject.toml
-/uv.lock
-/.python-version
 /err_log.txt
 /Dockerfile

@@ -23,6 +23,7 @@
 3. Framework Preset 选择 `Other`
 4. Build Command 使用仓库内 `vercel.json` 配置
 5. Output Directory 使用仓库内 `vercel.json` 配置
+6. 确认 Vercel 项目中没有配置 `VITE_API_BASE_URL` 指向 Railway；一体化部署应让前端默认请求同域 `/api`
 
 ## 4. 环境变量
 
@@ -39,6 +40,8 @@ LOG_LEVEL=INFO
 CORS_ALLOWED_ORIGINS=https://你的-vercel-域名
 CORS_ALLOWED_ORIGIN_REGEX=https://.*\.vercel\.app
 ```
+
+Python 版本由根目录 `.python-version` 与 `pyproject.toml` 约束为 `3.12.*`，避免 Vercel 选择更新 Python 版本时触发 PyO3/Rust 扩展依赖兼容问题。
 
 建议不要在 Vercel 上配置：
 
