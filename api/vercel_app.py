@@ -17,6 +17,7 @@ DEFAULT_MODEL = os.getenv("DEFAULT_MODEL", "doubao").strip() or "doubao"
 ARK_API_KEY = os.getenv("ARK_API_KEY", "").strip()
 ARK_BASE_URL = os.getenv("ARK_BASE_URL", "https://ark.cn-beijing.volces.com/api/v3").rstrip("/")
 ARK_MODEL = os.getenv("ARK_MODEL", "").strip() or DEFAULT_MODEL
+EFFECTIVE_MODEL = ARK_MODEL or DEFAULT_MODEL
 
 
 app = FastAPI(title="MyPrivateAgent Vercel Runtime", version="0.1.0")
@@ -60,6 +61,13 @@ def _require_user(authorization: str | None) -> dict[str, Any]:
     return _guest_user()
 
 
+def _resolve_provider_model(model_name: str | None = None) -> str:
+    requested = str(model_name or "").strip()
+    if not requested or requested == DEFAULT_MODEL:
+        return EFFECTIVE_MODEL
+    return requested
+
+
 def _chat_completion(message: str, model_name: str | None = None) -> str:
     if not ARK_API_KEY:
         return (
@@ -69,7 +77,7 @@ def _chat_completion(message: str, model_name: str | None = None) -> str:
         )
 
     payload = {
-        "model": model_name or ARK_MODEL,
+        "model": _resolve_provider_model(model_name),
         "messages": [
             {
                 "role": "system",
@@ -116,7 +124,7 @@ def runtime_profile() -> dict[str, Any]:
     return {
         "agent_mode": "vercel_demo",
         "auth_mode": AUTH_MODE,
-        "default_model": DEFAULT_MODEL,
+        "default_model": EFFECTIVE_MODEL,
         "runtime": "vercel_serverless",
         "storage": {"mode": "memory_only", "persistent": False},
         "capabilities": {
@@ -166,8 +174,8 @@ def auth_logout() -> dict[str, Any]:
 def models() -> list[dict[str, Any]]:
     return [
         {
-            "name": DEFAULT_MODEL,
-            "display_name": DEFAULT_MODEL,
+            "name": EFFECTIVE_MODEL,
+            "display_name": DEFAULT_MODEL if DEFAULT_MODEL != EFFECTIVE_MODEL else EFFECTIVE_MODEL,
             "provider": "ark" if ARK_API_KEY else "vercel-demo",
             "is_default": True,
             "available": True,
