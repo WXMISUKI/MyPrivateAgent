@@ -182,6 +182,12 @@ def _normalize_runtime_contract_gate_summary(summary: object) -> dict:
             "recovery_retry_scheduler_coverage": _normalize_recovery_retry_scheduler_coverage({}),
             "durable_recovery_loader_coverage": _normalize_durable_recovery_loader_coverage({}),
             "child_executor_dispatcher_coverage": _normalize_child_executor_dispatcher_coverage({}),
+            "child_executor_dispatch_result_handoff_coverage": (
+                _normalize_child_executor_dispatch_result_handoff_coverage({})
+            ),
+            "child_executor_dispatch_result_retry_audit_coverage": (
+                _normalize_child_executor_dispatch_result_retry_audit_coverage({})
+            ),
             "subagent_lane_query_detail_coverage": _normalize_subagent_lane_query_detail_coverage({}),
         }
     coverage = summary.get("approval_replay_coverage")
@@ -226,6 +232,16 @@ def _normalize_runtime_contract_gate_summary(summary: object) -> dict:
     child_executor_dispatcher_coverage = summary.get("child_executor_dispatcher_coverage")
     if not isinstance(child_executor_dispatcher_coverage, dict):
         child_executor_dispatcher_coverage = {}
+    child_executor_dispatch_result_handoff_coverage = summary.get(
+        "child_executor_dispatch_result_handoff_coverage"
+    )
+    if not isinstance(child_executor_dispatch_result_handoff_coverage, dict):
+        child_executor_dispatch_result_handoff_coverage = {}
+    child_executor_dispatch_result_retry_audit_coverage = summary.get(
+        "child_executor_dispatch_result_retry_audit_coverage"
+    )
+    if not isinstance(child_executor_dispatch_result_retry_audit_coverage, dict):
+        child_executor_dispatch_result_retry_audit_coverage = {}
     subagent_lane_detail_coverage = summary.get("subagent_lane_query_detail_coverage")
     if not isinstance(subagent_lane_detail_coverage, dict):
         subagent_lane_detail_coverage = {}
@@ -276,6 +292,16 @@ def _normalize_runtime_contract_gate_summary(summary: object) -> dict:
         ),
         "child_executor_dispatcher_coverage": _normalize_child_executor_dispatcher_coverage(
             child_executor_dispatcher_coverage
+        ),
+        "child_executor_dispatch_result_handoff_coverage": (
+            _normalize_child_executor_dispatch_result_handoff_coverage(
+                child_executor_dispatch_result_handoff_coverage
+            )
+        ),
+        "child_executor_dispatch_result_retry_audit_coverage": (
+            _normalize_child_executor_dispatch_result_retry_audit_coverage(
+                child_executor_dispatch_result_retry_audit_coverage
+            )
         ),
         "subagent_lane_query_detail_coverage": _normalize_subagent_lane_query_detail_coverage(
             subagent_lane_detail_coverage
@@ -606,6 +632,16 @@ def _normalize_child_executor_dispatch_coverage(coverage: dict) -> dict:
     relationship_seam_preserved = bool(coverage.get("relationship_seam_preserved"))
     blocker_count = _coerce_runtime_contract_non_negative_int(coverage.get("blocker_count"))
     recommended_next_step = str(coverage.get("recommended_next_step") or "").strip()
+    dispatch_attempt_handoff_status = str(
+        coverage.get("dispatch_attempt_handoff_status") or ""
+    ).strip()
+    dispatch_attempt_handoff_ready = bool(coverage.get("dispatch_attempt_handoff_ready"))
+    opt_in_dispatch_attempt_handoff_ready = bool(
+        coverage.get("opt_in_dispatch_attempt_handoff_ready")
+    )
+    opt_in_attempt_validation_ready = bool(
+        coverage.get("opt_in_attempt_validation_ready")
+    )
     dispatch_smoke = (
         bool(coverage.get("dispatch_smoke"))
         and bool(contract_version)
@@ -615,6 +651,10 @@ def _normalize_child_executor_dispatch_coverage(coverage: dict) -> dict:
         and not backend_dispatch_ready
         and relationship_seam_preserved
         and blocker_count > 0
+        and dispatch_attempt_handoff_status == "blocked"
+        and not dispatch_attempt_handoff_ready
+        and opt_in_dispatch_attempt_handoff_ready
+        and opt_in_attempt_validation_ready
         and bool(recommended_next_step)
     )
     return {
@@ -626,6 +666,10 @@ def _normalize_child_executor_dispatch_coverage(coverage: dict) -> dict:
         "backend_dispatch_ready": backend_dispatch_ready,
         "relationship_seam_preserved": relationship_seam_preserved,
         "blocker_count": blocker_count,
+        "dispatch_attempt_handoff_status": dispatch_attempt_handoff_status,
+        "dispatch_attempt_handoff_ready": dispatch_attempt_handoff_ready,
+        "opt_in_dispatch_attempt_handoff_ready": opt_in_dispatch_attempt_handoff_ready,
+        "opt_in_attempt_validation_ready": opt_in_attempt_validation_ready,
         "recommended_next_step": recommended_next_step,
     }
 
@@ -781,6 +825,151 @@ def _normalize_child_executor_dispatcher_coverage(coverage: dict) -> dict:
         "enabled_will_dispatch": enabled_will_dispatch,
         "backend_result_status": backend_result_status,
         "backend_invocation_count": backend_invocation_count,
+    }
+
+
+def _normalize_child_executor_dispatch_result_handoff_coverage(coverage: dict) -> dict:
+    contract_version = str(coverage.get("contract_version") or "").strip()
+    ready_handoff_status = str(coverage.get("ready_handoff_status") or "").strip()
+    ready_handoff_ready = bool(coverage.get("ready_handoff_ready"))
+    ready_output_ref_present = bool(coverage.get("ready_output_ref_present"))
+    ready_audit_evidence_present = bool(coverage.get("ready_audit_evidence_present"))
+    ready_backend_result_schema_valid = bool(
+        coverage.get("ready_backend_result_schema_valid")
+    )
+    ready_parent_merge_performed = bool(coverage.get("ready_parent_merge_performed"))
+    ready_merge_authorization = bool(coverage.get("ready_merge_authorization"))
+    ready_retry_scheduled = bool(coverage.get("ready_retry_scheduled"))
+    ready_production_dispatch_authorized = bool(
+        coverage.get("ready_production_dispatch_authorized")
+    )
+    blocked_handoff_status = str(coverage.get("blocked_handoff_status") or "").strip()
+    blocked_dispatcher_reason = str(coverage.get("blocked_dispatcher_reason") or "").strip()
+    blocked_missing_sections = [
+        str(item)
+        for item in coverage.get("blocked_missing_sections") or []
+        if str(item or "").strip()
+    ]
+    malformed_handoff_status = str(coverage.get("malformed_handoff_status") or "").strip()
+    malformed_missing_sections = [
+        str(item)
+        for item in coverage.get("malformed_missing_sections") or []
+        if str(item or "").strip()
+    ]
+    result_handoff_smoke = (
+        bool(coverage.get("result_handoff_smoke"))
+        and contract_version == "phase-ii-child-executor-dispatch-result-handoff-v1"
+        and ready_handoff_status == "ready"
+        and ready_handoff_ready
+        and ready_output_ref_present
+        and ready_audit_evidence_present
+        and ready_backend_result_schema_valid
+        and not ready_parent_merge_performed
+        and not ready_merge_authorization
+        and not ready_retry_scheduled
+        and not ready_production_dispatch_authorized
+        and blocked_handoff_status == "blocked"
+        and blocked_dispatcher_reason == "dispatcher_disabled"
+        and "dispatch_success" in blocked_missing_sections
+        and malformed_handoff_status == "blocked"
+        and "output_ref" in malformed_missing_sections
+        and "audit_evidence" in malformed_missing_sections
+    )
+    return {
+        "result_handoff_smoke": result_handoff_smoke,
+        "contract_version": contract_version,
+        "ready_handoff_status": ready_handoff_status,
+        "ready_handoff_ready": ready_handoff_ready,
+        "ready_output_ref_present": ready_output_ref_present,
+        "ready_audit_evidence_present": ready_audit_evidence_present,
+        "ready_backend_result_schema_valid": ready_backend_result_schema_valid,
+        "ready_parent_merge_performed": ready_parent_merge_performed,
+        "ready_merge_authorization": ready_merge_authorization,
+        "ready_retry_scheduled": ready_retry_scheduled,
+        "ready_production_dispatch_authorized": ready_production_dispatch_authorized,
+        "blocked_handoff_status": blocked_handoff_status,
+        "blocked_dispatcher_reason": blocked_dispatcher_reason,
+        "blocked_missing_sections": blocked_missing_sections,
+        "malformed_handoff_status": malformed_handoff_status,
+        "malformed_missing_sections": malformed_missing_sections,
+    }
+
+
+def _normalize_child_executor_dispatch_result_retry_audit_coverage(coverage: dict) -> dict:
+    contract_version = str(coverage.get("contract_version") or "").strip()
+    success_policy_status = str(coverage.get("success_policy_status") or "").strip()
+    success_retry_policy_status = str(coverage.get("success_retry_policy_status") or "").strip()
+    success_retry_scheduled = bool(coverage.get("success_retry_scheduled"))
+    success_will_retry = bool(coverage.get("success_will_retry"))
+    retryable_policy_status = str(coverage.get("retryable_policy_status") or "").strip()
+    retryable_retry_policy_status = str(coverage.get("retryable_retry_policy_status") or "").strip()
+    retryable_audit_evidence_present = bool(coverage.get("retryable_audit_evidence_present"))
+    retryable_idempotency_evidence_present = bool(
+        coverage.get("retryable_idempotency_evidence_present")
+    )
+    retryable_scheduler_required = bool(coverage.get("retryable_scheduler_required"))
+    retryable_retry_reason = str(coverage.get("retryable_retry_reason") or "").strip()
+    retryable_retry_scheduled = bool(coverage.get("retryable_retry_scheduled"))
+    retryable_will_retry = bool(coverage.get("retryable_will_retry"))
+    terminal_policy_status = str(coverage.get("terminal_policy_status") or "").strip()
+    terminal_retry_policy_status = str(coverage.get("terminal_retry_policy_status") or "").strip()
+    terminal_reason = str(coverage.get("terminal_reason") or "").strip()
+    terminal_will_retry = bool(coverage.get("terminal_will_retry"))
+    missing_idempotency_status = str(coverage.get("missing_idempotency_status") or "").strip()
+    missing_idempotency_missing_sections = [
+        str(item)
+        for item in coverage.get("missing_idempotency_missing_sections") or []
+        if str(item or "").strip()
+    ]
+    missing_idempotency_retry_scheduled = bool(
+        coverage.get("missing_idempotency_retry_scheduled")
+    )
+    retry_audit_smoke = (
+        bool(coverage.get("retry_audit_smoke"))
+        and contract_version
+        == "phase-ii-child-executor-dispatch-result-retry-audit-policy-v1"
+        and success_policy_status == "ready"
+        and success_retry_policy_status == "not_required"
+        and not success_retry_scheduled
+        and not success_will_retry
+        and retryable_policy_status == "ready"
+        and retryable_retry_policy_status == "retryable"
+        and retryable_audit_evidence_present
+        and retryable_idempotency_evidence_present
+        and retryable_scheduler_required
+        and retryable_retry_reason == "sandbox_timeout"
+        and not retryable_retry_scheduled
+        and not retryable_will_retry
+        and terminal_policy_status == "ready"
+        and terminal_retry_policy_status == "terminal"
+        and terminal_reason == "sandbox_payload_unsafe"
+        and not terminal_will_retry
+        and missing_idempotency_status == "blocked"
+        and "idempotency_evidence" in missing_idempotency_missing_sections
+        and not missing_idempotency_retry_scheduled
+    )
+    return {
+        "retry_audit_smoke": retry_audit_smoke,
+        "contract_version": contract_version,
+        "success_policy_status": success_policy_status,
+        "success_retry_policy_status": success_retry_policy_status,
+        "success_retry_scheduled": success_retry_scheduled,
+        "success_will_retry": success_will_retry,
+        "retryable_policy_status": retryable_policy_status,
+        "retryable_retry_policy_status": retryable_retry_policy_status,
+        "retryable_audit_evidence_present": retryable_audit_evidence_present,
+        "retryable_idempotency_evidence_present": retryable_idempotency_evidence_present,
+        "retryable_scheduler_required": retryable_scheduler_required,
+        "retryable_retry_reason": retryable_retry_reason,
+        "retryable_retry_scheduled": retryable_retry_scheduled,
+        "retryable_will_retry": retryable_will_retry,
+        "terminal_policy_status": terminal_policy_status,
+        "terminal_retry_policy_status": terminal_retry_policy_status,
+        "terminal_reason": terminal_reason,
+        "terminal_will_retry": terminal_will_retry,
+        "missing_idempotency_status": missing_idempotency_status,
+        "missing_idempotency_missing_sections": missing_idempotency_missing_sections,
+        "missing_idempotency_retry_scheduled": missing_idempotency_retry_scheduled,
     }
 
 
@@ -1095,6 +1284,18 @@ def _record_runtime_contract_gate_timeline(
         raw_runtime_contract_summary,
         runtime_contract_summary,
     )
+    child_executor_result_handoff_label = _format_runtime_contract_coverage_label(
+        raw_runtime_contract_summary,
+        runtime_contract_summary,
+        coverage_name="child_executor_dispatch_result_handoff_coverage",
+        smoke_field="result_handoff_smoke",
+    )
+    child_executor_retry_audit_label = _format_runtime_contract_coverage_label(
+        raw_runtime_contract_summary,
+        runtime_contract_summary,
+        coverage_name="child_executor_dispatch_result_retry_audit_coverage",
+        smoke_field="retry_audit_smoke",
+    )
     subagent_detail_label = _format_runtime_contract_coverage_label(
         raw_runtime_contract_summary,
         runtime_contract_summary,
@@ -1124,6 +1325,8 @@ def _record_runtime_contract_gate_timeline(
             f"recovery_retry_scheduler={recovery_retry_scheduler_label} "
             f"durable_loader={durable_loader_label} "
             f"child_executor_dispatcher={child_executor_dispatcher_label} "
+            f"child_executor_result_handoff={child_executor_result_handoff_label} "
+            f"child_executor_retry_audit={child_executor_retry_audit_label} "
             f"subagent_detail={subagent_detail_label}"
         ),
         severity="warning",

@@ -145,6 +145,34 @@ class _StubTestClient:
                         "explicit_executor_binding_ready": False,
                         "explicit_executor_binding_status": "blocked",
                         "explicit_executor_binding_source": "",
+                        "child_executor_dispatch_attempt_handoff": {
+                            "contract_version": "phase-ii-child-executor-dispatch-attempt-handoff-v1",
+                            "overall_status": "blocked",
+                            "ready": False,
+                            "dispatch_contract_ready": False,
+                            "dispatcher_enabled_by_default": False,
+                            "dispatcher_opt_in_required": True,
+                            "backend_id": "embedded_sdk_worker",
+                            "backend_adapter_kind": "",
+                            "sandbox_backend_selected": False,
+                            "sandbox_attempt_schema_ready": False,
+                            "attempt_envelope_supported": False,
+                            "attempt_validation_ready": False,
+                            "audit_required": True,
+                            "idempotency_required": True,
+                            "unsafe_payload_guard_ready": True,
+                            "will_dispatch": False,
+                            "missing_sections": [
+                                "dispatch_contract_ready",
+                                "sandbox_backend_selected",
+                                "sandbox_attempt_schema",
+                                "attempt_envelope_supported",
+                                "attempt_validation_ready",
+                            ],
+                            "blocked_reason": "dispatch_contract_ready",
+                            "next_allowed_action": "complete_dispatch_attempt_handoff_contract",
+                            "non_goals": [],
+                        },
                         "recommended_next_step": "implement_child_executor_backend_dispatch",
                     },
                 },
@@ -981,6 +1009,18 @@ class RuntimeContractSmokeTests(unittest.TestCase):
         self.assertEqual(checks_by_name["child_executor_dispatch_contract"]["dispatch_status"], "blocked")
         self.assertFalse(checks_by_name["child_executor_dispatch_contract"]["dispatch_ready"])
         self.assertFalse(checks_by_name["child_executor_dispatch_contract"]["will_dispatch"])
+        self.assertEqual(
+            checks_by_name["child_executor_dispatch_contract"]["dispatch_attempt_handoff_status"],
+            "blocked",
+        )
+        self.assertTrue(
+            checks_by_name["child_executor_dispatch_contract"][
+                "opt_in_dispatch_attempt_handoff_ready"
+            ]
+        )
+        self.assertTrue(
+            checks_by_name["child_executor_dispatch_contract"]["opt_in_attempt_validation_ready"]
+        )
         self.assertEqual(checks_by_name["child_executor_dispatcher"]["default_status"], "blocked")
         self.assertEqual(checks_by_name["child_executor_dispatcher"]["enabled_status"], "dispatched")
         self.assertIn(

@@ -12,7 +12,10 @@ from .child_executor_backends import (
     build_child_executor_backend_registry_contract,
     resolve_child_executor_backend,
 )
-from .child_executor_dispatcher import build_child_executor_dispatcher_contract
+from .child_executor_dispatcher import (
+    build_child_executor_dispatch_attempt_handoff_contract,
+    build_child_executor_dispatcher_contract,
+)
 from .continuation_registry import EmbeddedContinuationRegistry, get_embedded_continuation_registry
 from .continuations import (
     CONTINUATION_RECOVERY_REASON_DESCRIPTOR_MISSING,
@@ -1158,7 +1161,7 @@ def build_child_executor_dispatch_contract(
         if value:
             blockers.append(value)
     blockers = list(dict.fromkeys(blockers))
-    return {
+    dispatch_contract = {
         "contract_version": "phase-ii-child-executor-dispatch-v1",
         "overall_status": "ready" if dispatch_ready else "blocked",
         "dispatch_ready": dispatch_ready,
@@ -1222,6 +1225,13 @@ def build_child_executor_dispatch_contract(
             "sandbox_or_queue_execution",
         ],
     }
+    attempt_handoff = build_child_executor_dispatch_attempt_handoff_contract(
+        dispatch_contract=dispatch_contract
+    )
+    dispatch_contract["child_executor_dispatch_attempt_handoff"] = attempt_handoff
+    dispatch_contract["dispatch_attempt_handoff"] = attempt_handoff
+    dispatch_contract["evidence"]["dispatch_attempt_handoff"] = attempt_handoff
+    return dispatch_contract
 
 
 def build_child_executor_routing_contract(

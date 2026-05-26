@@ -2034,6 +2034,21 @@ class RuntimeContractGateServiceTests(unittest.TestCase):
                                         "opt_in_explicit_executor_binding_source": (
                                             "payload.explicit_executor_binding_opt_in"
                                         ),
+                                        "dispatch_attempt_handoff_status": "blocked",
+                                        "dispatch_attempt_handoff_ready": False,
+                                        "dispatch_attempt_handoff_missing_sections": [
+                                            "dispatch_contract_ready",
+                                        ],
+                                        "dispatch_attempt_handoff_will_dispatch": False,
+                                        "opt_in_dispatch_attempt_handoff_status": "ready",
+                                        "opt_in_dispatch_attempt_handoff_ready": True,
+                                        "opt_in_attempt_envelope_supported": True,
+                                        "opt_in_attempt_validation_ready": True,
+                                        "opt_in_attempt_will_dispatch": False,
+                                        "opt_in_unsafe_payload_guard_ready": True,
+                                        "unsafe_payload_guard_status": "blocked",
+                                        "unsafe_payload_guard_ready": False,
+                                        "unsafe_payload_keys": ["handler"],
                                         "recommended_next_step": "implement_child_executor_backend_dispatch",
                                     },
                                 ],
@@ -2054,6 +2069,9 @@ class RuntimeContractGateServiceTests(unittest.TestCase):
         self.assertFalse(coverage["will_dispatch"])
         self.assertFalse(coverage["backend_dispatch_ready"])
         self.assertEqual(coverage["blocker_count"], 2)
+        self.assertEqual(coverage["dispatch_attempt_handoff_status"], "blocked")
+        self.assertTrue(coverage["opt_in_dispatch_attempt_handoff_ready"])
+        self.assertTrue(coverage["opt_in_attempt_validation_ready"])
 
     def test_build_runtime_contract_derives_child_executor_dispatcher_coverage_from_checks(self):
         with tempfile.TemporaryDirectory() as tmp_dir:

@@ -1194,6 +1194,10 @@ class HealthRouterTests(unittest.TestCase):
                         "backend_dispatch_ready": False,
                         "relationship_seam_preserved": True,
                         "blocker_count": 2,
+                        "dispatch_attempt_handoff_status": "blocked",
+                        "dispatch_attempt_handoff_ready": False,
+                        "opt_in_dispatch_attempt_handoff_ready": True,
+                        "opt_in_attempt_validation_ready": True,
                         "recommended_next_step": "implement_child_executor_backend_dispatch",
                     },
                     "recovery_retry_evidence_coverage": {

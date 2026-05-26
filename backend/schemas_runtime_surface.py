@@ -174,6 +174,8 @@ class RuntimeSurfaceChildExecutorDispatchContract(BaseModel):
     prerequisites_ready: bool = False
     relationship_seam_preserved: bool = True
     blockers: List[str] = Field(default_factory=list)
+    child_executor_dispatch_attempt_handoff: dict = Field(default_factory=dict)
+    dispatch_attempt_handoff: dict = Field(default_factory=dict)
     recommended_next_step: Optional[str] = None
 
 

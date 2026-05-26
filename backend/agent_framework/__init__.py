@@ -64,6 +64,11 @@ from .sdk import (
     build_embedded_sdk_contract,
     validate_embedded_sdk_event_payloads,
 )
+from .child_executor_dispatcher import (
+    build_child_executor_dispatch_attempt_handoff_contract,
+    build_child_executor_dispatch_result_handoff_contract,
+    build_child_executor_dispatch_result_retry_audit_policy_contract,
+)
 from .recovery_retry_scheduler import (
     build_recovery_retry_production_scheduler_gate_contract,
     build_recovery_retry_scheduler_contract,
@@ -148,6 +153,9 @@ __all__ = [
     "build_sandbox_dispatch_attempt_envelope",
     "build_sandbox_worker_backend_adapter_contract",
     "build_child_executor_dispatch_contract",
+    "build_child_executor_dispatch_attempt_handoff_contract",
+    "build_child_executor_dispatch_result_handoff_contract",
+    "build_child_executor_dispatch_result_retry_audit_policy_contract",
     "build_child_result_merge_handoff_contract",
     "build_durable_workspace_production_recovery_gate_contract",
     "build_search_summary_card",

@@ -43,6 +43,19 @@ Default runtime construction MUST keep real child executor dispatch disabled unl
 - **THEN** child executor dispatch remains blocked
 - **AND** `will_dispatch` remains false
 
+### Requirement: Dispatcher Must Keep Attempt Handoff Opt-In
+The child executor dispatcher MUST remain disabled by default and MUST treat dispatch attempt handoff readiness as evidence only.
+
+#### Scenario: Handoff ready does not dispatch by itself
+- **WHEN** a dispatch attempt handoff contract reports ready
+- **THEN** the dispatcher MUST still require explicit enablement and an injected backend adapter
+- **AND** default dispatch MUST remain blocked
+
+#### Scenario: Unsafe sandbox payload is guarded
+- **WHEN** a sandbox dispatch payload includes unsafe executable handles
+- **THEN** the dispatcher or handoff validation MUST report the unsafe payload keys
+- **AND** it MUST fail closed before backend adapter invocation
+
 ### Requirement: Dispatcher coverage MUST be machine-readable
 
 Runtime contract smoke, quality gate summary, Runtime Contract Gate, and snapshot guard MUST expose `child_executor_dispatcher_coverage.dispatcher_smoke`.
@@ -52,3 +65,17 @@ Runtime contract smoke, quality gate summary, Runtime Contract Gate, and snapsho
 - **WHEN** a legacy or malformed quality gate report omits dispatcher evidence
 - **THEN** `child_executor_dispatcher_coverage.dispatcher_smoke` is false
 - **AND** snapshot guard reports the missing field as degraded
+
+### Requirement: Dispatcher MUST attach dispatch result handoff evidence
+The child executor dispatcher MUST attach compact result handoff evidence to dispatcher attempts after backend invocation or fail-closed blocking.
+
+#### Scenario: Dispatcher invokes sandbox backend
+- **WHEN** the dispatcher invokes a ready sandbox backend adapter
+- **THEN** the returned dispatch attempt MUST include `dispatch_result_handoff`
+- **AND** the evidence MUST identify whether output and audit references are present
+- **AND** it MUST NOT claim parent merge or retry scheduling occurred
+
+#### Scenario: Dispatcher blocks before backend invocation
+- **WHEN** the dispatcher blocks due to disabled dispatcher, blocked contract, missing adapter, unsafe payload, adapter exception, or malformed backend result
+- **THEN** the returned dispatch attempt MUST include blocked result handoff evidence
+- **AND** the evidence MUST preserve the blocked reason in compact form

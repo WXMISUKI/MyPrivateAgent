@@ -373,6 +373,10 @@ def _build_complete_profile():
                     "backend_dispatch_ready": False,
                     "relationship_seam_preserved": True,
                     "blocker_count": 2,
+                    "dispatch_attempt_handoff_status": "blocked",
+                    "dispatch_attempt_handoff_ready": False,
+                    "opt_in_dispatch_attempt_handoff_ready": True,
+                    "opt_in_attempt_validation_ready": True,
                     "recommended_next_step": "implement_child_executor_backend_dispatch",
                 },
                 "child_executor_dispatcher_coverage": {
@@ -387,6 +391,47 @@ def _build_complete_profile():
                     "enabled_will_dispatch": True,
                     "backend_result_status": "completed",
                     "backend_invocation_count": 1,
+                },
+                "child_executor_dispatch_result_handoff_coverage": {
+                    "result_handoff_smoke": True,
+                    "contract_version": "phase-ii-child-executor-dispatch-result-handoff-v1",
+                    "ready_handoff_status": "ready",
+                    "ready_handoff_ready": True,
+                    "ready_output_ref_present": True,
+                    "ready_audit_evidence_present": True,
+                    "ready_backend_result_schema_valid": True,
+                    "ready_parent_merge_performed": False,
+                    "ready_merge_authorization": False,
+                    "ready_retry_scheduled": False,
+                    "ready_production_dispatch_authorized": False,
+                    "blocked_handoff_status": "blocked",
+                    "blocked_dispatcher_reason": "dispatcher_disabled",
+                    "blocked_missing_sections": ["dispatch_success"],
+                    "malformed_handoff_status": "blocked",
+                    "malformed_missing_sections": ["output_ref", "audit_evidence"],
+                },
+                "child_executor_dispatch_result_retry_audit_coverage": {
+                    "retry_audit_smoke": True,
+                    "contract_version": "phase-ii-child-executor-dispatch-result-retry-audit-policy-v1",
+                    "success_policy_status": "ready",
+                    "success_retry_policy_status": "not_required",
+                    "success_retry_scheduled": False,
+                    "success_will_retry": False,
+                    "retryable_policy_status": "ready",
+                    "retryable_retry_policy_status": "retryable",
+                    "retryable_audit_evidence_present": True,
+                    "retryable_idempotency_evidence_present": True,
+                    "retryable_scheduler_required": True,
+                    "retryable_retry_reason": "sandbox_timeout",
+                    "retryable_retry_scheduled": False,
+                    "retryable_will_retry": False,
+                    "terminal_policy_status": "ready",
+                    "terminal_retry_policy_status": "terminal",
+                    "terminal_reason": "sandbox_payload_unsafe",
+                    "terminal_will_retry": False,
+                    "missing_idempotency_status": "blocked",
+                    "missing_idempotency_missing_sections": ["idempotency_evidence"],
+                    "missing_idempotency_retry_scheduled": False,
                 },
                 "child_executor_sandbox_backend_coverage": {
                     "sandbox_backend_smoke": True,
@@ -449,6 +494,9 @@ def _build_complete_profile():
                     "child_executor_execution_prerequisites_coverage.opt_in_merge_handoff_ready",
                     "child_executor_dispatch_coverage",
                     "child_executor_dispatch_coverage.dispatch_smoke",
+                    "child_executor_dispatch_coverage.dispatch_attempt_handoff_status",
+                    "child_executor_dispatch_coverage.opt_in_dispatch_attempt_handoff_ready",
+                    "child_executor_dispatch_coverage.opt_in_attempt_validation_ready",
                     "child_executor_dispatcher_coverage",
                     "child_executor_dispatcher_coverage.dispatcher_smoke",
                     "child_executor_sandbox_backend_coverage",
@@ -478,6 +526,12 @@ def _build_complete_profile():
                 "child_executor_promotion_gate",
                 "child_executor_execution_prerequisites",
             ],
+            "child_executor_dispatch_attempt_handoff": {
+                "contract_version": "phase-ii-child-executor-dispatch-attempt-handoff-v1",
+                "overall_status": "blocked",
+                "ready": False,
+                "will_dispatch": False,
+            },
             "recommended_next_step": "implement_child_executor_backend_dispatch",
         },
         "main_chat_query_detail": {
@@ -796,11 +850,47 @@ class RuntimeContractSnapshotServiceTests(unittest.TestCase):
             by_name["runtime_contract_gate"]["stable_fields"],
         )
         self.assertIn(
+            "runtime_contract_summary.child_executor_dispatch_coverage.dispatch_attempt_handoff_status",
+            by_name["runtime_contract_gate"]["stable_fields"],
+        )
+        self.assertIn(
+            "runtime_contract_summary.child_executor_dispatch_coverage.opt_in_dispatch_attempt_handoff_ready",
+            by_name["runtime_contract_gate"]["stable_fields"],
+        )
+        self.assertIn(
+            "runtime_contract_summary.child_executor_dispatch_coverage.opt_in_attempt_validation_ready",
+            by_name["runtime_contract_gate"]["stable_fields"],
+        )
+        self.assertIn(
             "runtime_contract_summary.child_executor_dispatcher_coverage",
             by_name["runtime_contract_gate"]["stable_fields"],
         )
         self.assertIn(
             "runtime_contract_summary.child_executor_dispatcher_coverage.dispatcher_smoke",
+            by_name["runtime_contract_gate"]["stable_fields"],
+        )
+        self.assertIn(
+            "runtime_contract_summary.child_executor_dispatch_result_handoff_coverage",
+            by_name["runtime_contract_gate"]["stable_fields"],
+        )
+        self.assertIn(
+            "runtime_contract_summary.child_executor_dispatch_result_handoff_coverage.result_handoff_smoke",
+            by_name["runtime_contract_gate"]["stable_fields"],
+        )
+        self.assertIn(
+            "runtime_contract_summary.child_executor_dispatch_result_retry_audit_coverage",
+            by_name["runtime_contract_gate"]["stable_fields"],
+        )
+        self.assertIn(
+            "runtime_contract_summary.child_executor_dispatch_result_retry_audit_coverage.retry_audit_smoke",
+            by_name["runtime_contract_gate"]["stable_fields"],
+        )
+        self.assertIn(
+            "runtime_contract_summary.child_executor_dispatch_result_retry_audit_coverage.retryable_retry_policy_status",
+            by_name["runtime_contract_gate"]["stable_fields"],
+        )
+        self.assertIn(
+            "runtime_contract_summary.child_executor_dispatch_result_retry_audit_coverage.missing_idempotency_status",
             by_name["runtime_contract_gate"]["stable_fields"],
         )
         self.assertIn(
@@ -832,6 +922,10 @@ class RuntimeContractSnapshotServiceTests(unittest.TestCase):
         self.assertIn("dispatch_ready", by_name["child_executor_dispatch_contract"]["stable_fields"])
         self.assertIn("will_dispatch", by_name["child_executor_dispatch_contract"]["stable_fields"])
         self.assertIn("backend_dispatch_ready", by_name["child_executor_dispatch_contract"]["stable_fields"])
+        self.assertIn(
+            "child_executor_dispatch_attempt_handoff.ready",
+            by_name["child_executor_dispatch_contract"]["stable_fields"],
+        )
         self.assertIn("main_chat_query_detail", by_name)
         self.assertIn("read_model_layer", by_name["main_chat_query_detail"]["stable_fields"])
         self.assertIn("source_channel", by_name["main_chat_query_detail"]["stable_fields"])
@@ -871,7 +965,7 @@ class RuntimeContractSnapshotServiceTests(unittest.TestCase):
         by_name = {item["contract_name"]: item for item in snapshot["contracts"]}
         self.assertEqual(snapshot["overall_status"], "degraded")
         self.assertEqual(snapshot["missing_contract_count"], 1)
-        self.assertEqual(snapshot["missing_field_count"], 72)
+        self.assertEqual(snapshot["missing_field_count"], 83)
         self.assertEqual(by_name["skill_contract"]["status"], "missing")
         self.assertEqual(
             by_name["command_contract"]["missing_fields"],
@@ -936,8 +1030,19 @@ class RuntimeContractSnapshotServiceTests(unittest.TestCase):
                 "runtime_contract_summary.child_executor_execution_prerequisites_coverage.opt_in_merge_handoff_ready",
                 "runtime_contract_summary.child_executor_dispatch_coverage",
                 "runtime_contract_summary.child_executor_dispatch_coverage.dispatch_smoke",
+                "runtime_contract_summary.child_executor_dispatch_coverage.dispatch_attempt_handoff_status",
+                "runtime_contract_summary.child_executor_dispatch_coverage.opt_in_dispatch_attempt_handoff_ready",
+                "runtime_contract_summary.child_executor_dispatch_coverage.opt_in_attempt_validation_ready",
                 "runtime_contract_summary.child_executor_dispatcher_coverage",
                 "runtime_contract_summary.child_executor_dispatcher_coverage.dispatcher_smoke",
+                "runtime_contract_summary.child_executor_dispatch_result_handoff_coverage",
+                "runtime_contract_summary.child_executor_dispatch_result_handoff_coverage.result_handoff_smoke",
+                "runtime_contract_summary.child_executor_dispatch_result_handoff_coverage.ready_handoff_status",
+                "runtime_contract_summary.child_executor_dispatch_result_handoff_coverage.malformed_handoff_status",
+                "runtime_contract_summary.child_executor_dispatch_result_retry_audit_coverage",
+                "runtime_contract_summary.child_executor_dispatch_result_retry_audit_coverage.retry_audit_smoke",
+                "runtime_contract_summary.child_executor_dispatch_result_retry_audit_coverage.retryable_retry_policy_status",
+                "runtime_contract_summary.child_executor_dispatch_result_retry_audit_coverage.missing_idempotency_status",
                 "runtime_contract_summary.child_executor_sandbox_backend_coverage",
                 "runtime_contract_summary.child_executor_sandbox_backend_coverage.sandbox_backend_smoke",
                 "runtime_contract_summary.subagent_lane_query_detail_coverage",

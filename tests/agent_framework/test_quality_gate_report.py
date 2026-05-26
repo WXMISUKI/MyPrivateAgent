@@ -1560,6 +1560,36 @@ class QualityGateReportTests(unittest.TestCase):
             },
             "child_executor_dispatch_coverage": {
                 "dispatch_smoke": True,
+                "contract_version": "phase-ii-child-executor-dispatch-v1",
+                "overall_status": "blocked",
+                "dispatch_ready": False,
+                "will_dispatch": False,
+                "backend_dispatch_ready": False,
+                "relationship_seam_preserved": True,
+                "blocker_count": 1,
+                "dispatch_blockers": ["explicit_executor_binding_opt_in"],
+                "explicit_executor_binding_ready": False,
+                "explicit_executor_binding_status": "blocked",
+                "opt_in_dispatch_status": "blocked",
+                "opt_in_dispatch_ready": False,
+                "opt_in_will_dispatch": False,
+                "opt_in_backend_dispatch_ready": False,
+                "opt_in_explicit_executor_binding_ready": True,
+                "opt_in_explicit_executor_binding_status": "ready",
+                "dispatch_attempt_handoff_status": "blocked",
+                "dispatch_attempt_handoff_ready": False,
+                "dispatch_attempt_handoff_missing_sections": ["dispatch_contract_ready"],
+                "dispatch_attempt_handoff_will_dispatch": False,
+                "opt_in_dispatch_attempt_handoff_status": "ready",
+                "opt_in_dispatch_attempt_handoff_ready": True,
+                "opt_in_attempt_envelope_supported": True,
+                "opt_in_attempt_validation_ready": True,
+                "opt_in_attempt_will_dispatch": False,
+                "opt_in_unsafe_payload_guard_ready": True,
+                "unsafe_payload_guard_status": "blocked",
+                "unsafe_payload_guard_ready": False,
+                "unsafe_payload_keys": ["handler"],
+                "recommended_next_step": "implement_child_executor_backend_dispatch",
             },
                     },
                 }
@@ -1567,8 +1597,8 @@ class QualityGateReportTests(unittest.TestCase):
         })
 
         self.assertIn("## Runtime Contract Summary", summary)
-        self.assertIn("| Step | Status | Checks | Failed | Missing Payloads | Approval Replay Coverage | Approval Lifecycle Recovery | Approved Tool Bridge | SDK Tool Bridge | Checkpoint Cursor | Worker Ownership Mode | Recovery Audit | Registry/Checkpoint Policy | Recovery Retry | Retry Scheduler | Durable Loader | Descriptor Lifecycle | Loader Handoff | Child Executor Gate | Child Executor Dispatch | Child Executor Dispatcher | Subagent Lane Detail |", summary)
-        self.assertIn("| Quality gate smoke | healthy | 2 | 0 | 0 | yes | yes | yes | no | no | yes | no | no | no | no | no | no | no | no | yes | no | yes |", summary)
+        self.assertIn("| Step | Status | Checks | Failed | Missing Payloads | Approval Replay Coverage | Approval Lifecycle Recovery | Approved Tool Bridge | SDK Tool Bridge | Checkpoint Cursor | Worker Ownership Mode | Recovery Audit | Registry/Checkpoint Policy | Recovery Retry | Retry Scheduler | Durable Loader | Descriptor Lifecycle | Loader Handoff | Child Executor Gate | Child Executor Dispatch | Child Executor Dispatcher | Child Result Handoff | Child Retry Audit | Subagent Lane Detail |", summary)
+        self.assertIn("| Quality gate smoke | healthy | 2 | 0 | 0 | yes | yes | yes | no | no | yes | no | no | no | no | no | no | no | no | yes | no | no | no | yes |", summary)
 
     def test_render_summary_fails_closed_when_approval_lifecycle_recovery_evidence_disagrees(self):
         summary = _render_summary({
@@ -1972,13 +2002,43 @@ class QualityGateReportTests(unittest.TestCase):
                         },
                         "child_executor_dispatch_coverage": {
                             "dispatch_smoke": True,
+                            "contract_version": "phase-ii-child-executor-dispatch-v1",
+                            "overall_status": "blocked",
+                            "dispatch_ready": False,
+                            "will_dispatch": False,
+                            "backend_dispatch_ready": False,
+                            "relationship_seam_preserved": True,
+                            "blocker_count": 1,
+                            "dispatch_blockers": ["explicit_executor_binding_opt_in"],
+                            "explicit_executor_binding_ready": False,
+                            "explicit_executor_binding_status": "blocked",
+                            "opt_in_dispatch_status": "blocked",
+                            "opt_in_dispatch_ready": False,
+                            "opt_in_will_dispatch": False,
+                            "opt_in_backend_dispatch_ready": False,
+                            "opt_in_explicit_executor_binding_ready": True,
+                            "opt_in_explicit_executor_binding_status": "ready",
+                            "dispatch_attempt_handoff_status": "blocked",
+                            "dispatch_attempt_handoff_ready": False,
+                            "dispatch_attempt_handoff_missing_sections": ["dispatch_contract_ready"],
+                            "dispatch_attempt_handoff_will_dispatch": False,
+                            "opt_in_dispatch_attempt_handoff_status": "ready",
+                            "opt_in_dispatch_attempt_handoff_ready": True,
+                            "opt_in_attempt_envelope_supported": True,
+                            "opt_in_attempt_validation_ready": True,
+                            "opt_in_attempt_will_dispatch": False,
+                            "opt_in_unsafe_payload_guard_ready": True,
+                            "unsafe_payload_guard_status": "blocked",
+                            "unsafe_payload_guard_ready": False,
+                            "unsafe_payload_keys": ["handler"],
+                            "recommended_next_step": "implement_child_executor_backend_dispatch",
                         },
                     },
                 }
             ],
         })
 
-        self.assertIn("| Quality gate smoke | healthy | 1 | 0 | 0 | yes | no | yes | no | no | yes | no | no | no | no | no | no | no | no | yes | no | yes |", summary)
+        self.assertIn("| Quality gate smoke | healthy | 1 | 0 | 0 | yes | no | yes | no | no | yes | no | no | no | no | no | no | no | no | yes | no | no | no | yes |", summary)
 
     def test_runtime_contract_summary_defaults_child_executor_promotion_gate_coverage_for_legacy_reports(self):
         from backend.scripts.quality_gate_report import _build_runtime_contract_summary

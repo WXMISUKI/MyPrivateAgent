@@ -841,6 +841,12 @@ class RuntimeSurfaceService:
                 "prerequisites_ready": bool(dispatch.get("prerequisites_ready")),
                 "relationship_seam_preserved": bool(dispatch.get("relationship_seam_preserved")),
                 "blockers": list(dispatch.get("blockers") or []),
+                "child_executor_dispatch_attempt_handoff": dict(
+                    dispatch.get("child_executor_dispatch_attempt_handoff") or {}
+                ),
+                "dispatch_attempt_handoff": dict(
+                    dispatch.get("dispatch_attempt_handoff") or {}
+                ),
                 "recommended_next_step": str(dispatch.get("recommended_next_step") or "").strip(),
             },
             "approval": {

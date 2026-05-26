@@ -64,8 +64,19 @@ RUNTIME_CONTRACT_SUMMARY_REQUIRED_FIELDS = (
     "child_executor_execution_prerequisites_coverage.opt_in_merge_handoff_ready",
     "child_executor_dispatch_coverage",
     "child_executor_dispatch_coverage.dispatch_smoke",
+    "child_executor_dispatch_coverage.dispatch_attempt_handoff_status",
+    "child_executor_dispatch_coverage.opt_in_dispatch_attempt_handoff_ready",
+    "child_executor_dispatch_coverage.opt_in_attempt_validation_ready",
     "child_executor_dispatcher_coverage",
     "child_executor_dispatcher_coverage.dispatcher_smoke",
+    "child_executor_dispatch_result_handoff_coverage",
+    "child_executor_dispatch_result_handoff_coverage.result_handoff_smoke",
+    "child_executor_dispatch_result_handoff_coverage.ready_handoff_status",
+    "child_executor_dispatch_result_handoff_coverage.malformed_handoff_status",
+    "child_executor_dispatch_result_retry_audit_coverage",
+    "child_executor_dispatch_result_retry_audit_coverage.retry_audit_smoke",
+    "child_executor_dispatch_result_retry_audit_coverage.retryable_retry_policy_status",
+    "child_executor_dispatch_result_retry_audit_coverage.missing_idempotency_status",
     "child_executor_sandbox_backend_coverage",
     "child_executor_sandbox_backend_coverage.sandbox_backend_smoke",
     "subagent_lane_query_detail_coverage",
@@ -231,6 +242,23 @@ def _build_runtime_contract_summary(checks: list[dict[str, Any]]) -> dict[str, A
         (check for check in checks if str(check.get("name") or "").strip() == "child_executor_dispatcher"),
         {},
     )
+    child_executor_dispatch_result_handoff_check = next(
+        (
+            check
+            for check in checks
+            if str(check.get("name") or "").strip() == "child_executor_dispatch_result_handoff"
+        ),
+        {},
+    )
+    child_executor_dispatch_result_retry_audit_check = next(
+        (
+            check
+            for check in checks
+            if str(check.get("name") or "").strip()
+            == "child_executor_dispatch_result_retry_audit_policy"
+        ),
+        {},
+    )
     child_executor_sandbox_backend_check = next(
         (check for check in checks if str(check.get("name") or "").strip() == "child_executor_sandbox_backend"),
         {},
@@ -291,6 +319,16 @@ def _build_runtime_contract_summary(checks: list[dict[str, Any]]) -> dict[str, A
         ),
         "child_executor_dispatcher_coverage": _build_child_executor_dispatcher_coverage(
             child_executor_dispatcher_check
+        ),
+        "child_executor_dispatch_result_handoff_coverage": (
+            _build_child_executor_dispatch_result_handoff_coverage(
+                child_executor_dispatch_result_handoff_check
+            )
+        ),
+        "child_executor_dispatch_result_retry_audit_coverage": (
+            _build_child_executor_dispatch_result_retry_audit_coverage(
+                child_executor_dispatch_result_retry_audit_check
+            )
         ),
         "child_executor_sandbox_backend_coverage": _build_child_executor_sandbox_backend_coverage(
             child_executor_sandbox_backend_check
@@ -2707,6 +2745,31 @@ def _build_child_executor_dispatch_coverage(check: dict[str, Any]) -> dict[str, 
     opt_in_explicit_binding_status = str(
         check.get("opt_in_explicit_executor_binding_status") or ""
     ).strip()
+    dispatch_attempt_handoff_status = str(
+        check.get("dispatch_attempt_handoff_status") or ""
+    ).strip()
+    dispatch_attempt_handoff_ready = bool(check.get("dispatch_attempt_handoff_ready"))
+    dispatch_attempt_handoff_missing_sections = _normalize_string_list(
+        check.get("dispatch_attempt_handoff_missing_sections")
+    )
+    dispatch_attempt_handoff_will_dispatch = bool(
+        check.get("dispatch_attempt_handoff_will_dispatch")
+    )
+    opt_in_dispatch_attempt_handoff_status = str(
+        check.get("opt_in_dispatch_attempt_handoff_status") or ""
+    ).strip()
+    opt_in_dispatch_attempt_handoff_ready = bool(
+        check.get("opt_in_dispatch_attempt_handoff_ready")
+    )
+    opt_in_attempt_envelope_supported = bool(
+        check.get("opt_in_attempt_envelope_supported")
+    )
+    opt_in_attempt_validation_ready = bool(check.get("opt_in_attempt_validation_ready"))
+    opt_in_attempt_will_dispatch = bool(check.get("opt_in_attempt_will_dispatch"))
+    opt_in_unsafe_payload_guard_ready = bool(check.get("opt_in_unsafe_payload_guard_ready"))
+    unsafe_payload_guard_status = str(check.get("unsafe_payload_guard_status") or "").strip()
+    unsafe_payload_guard_ready = bool(check.get("unsafe_payload_guard_ready"))
+    unsafe_payload_keys = _normalize_string_list(check.get("unsafe_payload_keys"))
     recommended_next_step = str(check.get("recommended_next_step") or "").strip()
     dispatch_smoke = (
         bool(check.get("ok"))
@@ -2726,6 +2789,19 @@ def _build_child_executor_dispatch_coverage(check: dict[str, Any]) -> dict[str, 
         and not opt_in_backend_dispatch_ready
         and opt_in_explicit_binding_ready
         and opt_in_explicit_binding_status == "ready"
+        and dispatch_attempt_handoff_status == "blocked"
+        and not dispatch_attempt_handoff_ready
+        and "dispatch_contract_ready" in dispatch_attempt_handoff_missing_sections
+        and not dispatch_attempt_handoff_will_dispatch
+        and opt_in_dispatch_attempt_handoff_status == "ready"
+        and opt_in_dispatch_attempt_handoff_ready
+        and opt_in_attempt_envelope_supported
+        and opt_in_attempt_validation_ready
+        and not opt_in_attempt_will_dispatch
+        and opt_in_unsafe_payload_guard_ready
+        and unsafe_payload_guard_status == "blocked"
+        and not unsafe_payload_guard_ready
+        and "handler" in unsafe_payload_keys
         and bool(recommended_next_step)
     )
     return {
@@ -2752,6 +2828,19 @@ def _build_child_executor_dispatch_coverage(check: dict[str, Any]) -> dict[str, 
         "opt_in_explicit_executor_binding_source": str(
             check.get("opt_in_explicit_executor_binding_source") or ""
         ).strip(),
+        "dispatch_attempt_handoff_status": dispatch_attempt_handoff_status,
+        "dispatch_attempt_handoff_ready": dispatch_attempt_handoff_ready,
+        "dispatch_attempt_handoff_missing_sections": dispatch_attempt_handoff_missing_sections,
+        "dispatch_attempt_handoff_will_dispatch": dispatch_attempt_handoff_will_dispatch,
+        "opt_in_dispatch_attempt_handoff_status": opt_in_dispatch_attempt_handoff_status,
+        "opt_in_dispatch_attempt_handoff_ready": opt_in_dispatch_attempt_handoff_ready,
+        "opt_in_attempt_envelope_supported": opt_in_attempt_envelope_supported,
+        "opt_in_attempt_validation_ready": opt_in_attempt_validation_ready,
+        "opt_in_attempt_will_dispatch": opt_in_attempt_will_dispatch,
+        "opt_in_unsafe_payload_guard_ready": opt_in_unsafe_payload_guard_ready,
+        "unsafe_payload_guard_status": unsafe_payload_guard_status,
+        "unsafe_payload_guard_ready": unsafe_payload_guard_ready,
+        "unsafe_payload_keys": unsafe_payload_keys,
         "recommended_next_step": recommended_next_step,
     }
 
@@ -2792,6 +2881,141 @@ def _build_child_executor_dispatcher_coverage(check: dict[str, Any]) -> dict[str
         "enabled_will_dispatch": enabled_will_dispatch,
         "backend_result_status": backend_result_status,
         "backend_invocation_count": backend_invocation_count,
+    }
+
+
+def _build_child_executor_dispatch_result_handoff_coverage(check: dict[str, Any]) -> dict[str, Any]:
+    contract_version = str(check.get("contract_version") or "").strip()
+    ready_handoff_status = str(check.get("ready_handoff_status") or "").strip()
+    ready_handoff_ready = bool(check.get("ready_handoff_ready"))
+    ready_output_ref_present = bool(check.get("ready_output_ref_present"))
+    ready_audit_evidence_present = bool(check.get("ready_audit_evidence_present"))
+    ready_backend_result_schema_valid = bool(check.get("ready_backend_result_schema_valid"))
+    ready_parent_merge_performed = bool(check.get("ready_parent_merge_performed"))
+    ready_merge_authorization = bool(check.get("ready_merge_authorization"))
+    ready_retry_scheduled = bool(check.get("ready_retry_scheduled"))
+    ready_production_dispatch_authorized = bool(
+        check.get("ready_production_dispatch_authorized")
+    )
+    blocked_handoff_status = str(check.get("blocked_handoff_status") or "").strip()
+    blocked_dispatcher_reason = str(check.get("blocked_dispatcher_reason") or "").strip()
+    blocked_missing_sections = _normalize_string_list(check.get("blocked_missing_sections"))
+    malformed_handoff_status = str(check.get("malformed_handoff_status") or "").strip()
+    malformed_missing_sections = _normalize_string_list(
+        check.get("malformed_missing_sections")
+    )
+    result_handoff_smoke = (
+        bool(check.get("ok"))
+        and contract_version == "phase-ii-child-executor-dispatch-result-handoff-v1"
+        and ready_handoff_status == "ready"
+        and ready_handoff_ready
+        and ready_output_ref_present
+        and ready_audit_evidence_present
+        and ready_backend_result_schema_valid
+        and not ready_parent_merge_performed
+        and not ready_merge_authorization
+        and not ready_retry_scheduled
+        and not ready_production_dispatch_authorized
+        and blocked_handoff_status == "blocked"
+        and blocked_dispatcher_reason == "dispatcher_disabled"
+        and "dispatch_success" in blocked_missing_sections
+        and malformed_handoff_status == "blocked"
+        and "output_ref" in malformed_missing_sections
+        and "audit_evidence" in malformed_missing_sections
+    )
+    return {
+        "result_handoff_smoke": result_handoff_smoke,
+        "contract_version": contract_version,
+        "ready_handoff_status": ready_handoff_status,
+        "ready_handoff_ready": ready_handoff_ready,
+        "ready_output_ref_present": ready_output_ref_present,
+        "ready_audit_evidence_present": ready_audit_evidence_present,
+        "ready_backend_result_schema_valid": ready_backend_result_schema_valid,
+        "ready_parent_merge_performed": ready_parent_merge_performed,
+        "ready_merge_authorization": ready_merge_authorization,
+        "ready_retry_scheduled": ready_retry_scheduled,
+        "ready_production_dispatch_authorized": ready_production_dispatch_authorized,
+        "blocked_handoff_status": blocked_handoff_status,
+        "blocked_dispatcher_reason": blocked_dispatcher_reason,
+        "blocked_missing_sections": blocked_missing_sections,
+        "malformed_handoff_status": malformed_handoff_status,
+        "malformed_missing_sections": malformed_missing_sections,
+    }
+
+
+def _build_child_executor_dispatch_result_retry_audit_coverage(check: dict[str, Any]) -> dict[str, Any]:
+    contract_version = str(check.get("contract_version") or "").strip()
+    success_policy_status = str(check.get("success_policy_status") or "").strip()
+    success_retry_policy_status = str(check.get("success_retry_policy_status") or "").strip()
+    success_retry_scheduled = bool(check.get("success_retry_scheduled"))
+    success_will_retry = bool(check.get("success_will_retry"))
+    retryable_policy_status = str(check.get("retryable_policy_status") or "").strip()
+    retryable_retry_policy_status = str(check.get("retryable_retry_policy_status") or "").strip()
+    retryable_audit_evidence_present = bool(check.get("retryable_audit_evidence_present"))
+    retryable_idempotency_evidence_present = bool(
+        check.get("retryable_idempotency_evidence_present")
+    )
+    retryable_scheduler_required = bool(check.get("retryable_scheduler_required"))
+    retryable_retry_reason = str(check.get("retryable_retry_reason") or "").strip()
+    retryable_retry_scheduled = bool(check.get("retryable_retry_scheduled"))
+    retryable_will_retry = bool(check.get("retryable_will_retry"))
+    terminal_policy_status = str(check.get("terminal_policy_status") or "").strip()
+    terminal_retry_policy_status = str(check.get("terminal_retry_policy_status") or "").strip()
+    terminal_reason = str(check.get("terminal_reason") or "").strip()
+    terminal_will_retry = bool(check.get("terminal_will_retry"))
+    missing_idempotency_status = str(check.get("missing_idempotency_status") or "").strip()
+    missing_idempotency_missing_sections = _normalize_string_list(
+        check.get("missing_idempotency_missing_sections")
+    )
+    missing_idempotency_retry_scheduled = bool(
+        check.get("missing_idempotency_retry_scheduled")
+    )
+    retry_audit_smoke = (
+        bool(check.get("ok"))
+        and contract_version
+        == "phase-ii-child-executor-dispatch-result-retry-audit-policy-v1"
+        and success_policy_status == "ready"
+        and success_retry_policy_status == "not_required"
+        and not success_retry_scheduled
+        and not success_will_retry
+        and retryable_policy_status == "ready"
+        and retryable_retry_policy_status == "retryable"
+        and retryable_audit_evidence_present
+        and retryable_idempotency_evidence_present
+        and retryable_scheduler_required
+        and retryable_retry_reason == "sandbox_timeout"
+        and not retryable_retry_scheduled
+        and not retryable_will_retry
+        and terminal_policy_status == "ready"
+        and terminal_retry_policy_status == "terminal"
+        and terminal_reason == "sandbox_payload_unsafe"
+        and not terminal_will_retry
+        and missing_idempotency_status == "blocked"
+        and "idempotency_evidence" in missing_idempotency_missing_sections
+        and not missing_idempotency_retry_scheduled
+    )
+    return {
+        "retry_audit_smoke": retry_audit_smoke,
+        "contract_version": contract_version,
+        "success_policy_status": success_policy_status,
+        "success_retry_policy_status": success_retry_policy_status,
+        "success_retry_scheduled": success_retry_scheduled,
+        "success_will_retry": success_will_retry,
+        "retryable_policy_status": retryable_policy_status,
+        "retryable_retry_policy_status": retryable_retry_policy_status,
+        "retryable_audit_evidence_present": retryable_audit_evidence_present,
+        "retryable_idempotency_evidence_present": retryable_idempotency_evidence_present,
+        "retryable_scheduler_required": retryable_scheduler_required,
+        "retryable_retry_reason": retryable_retry_reason,
+        "retryable_retry_scheduled": retryable_retry_scheduled,
+        "retryable_will_retry": retryable_will_retry,
+        "terminal_policy_status": terminal_policy_status,
+        "terminal_retry_policy_status": terminal_retry_policy_status,
+        "terminal_reason": terminal_reason,
+        "terminal_will_retry": terminal_will_retry,
+        "missing_idempotency_status": missing_idempotency_status,
+        "missing_idempotency_missing_sections": missing_idempotency_missing_sections,
+        "missing_idempotency_retry_scheduled": missing_idempotency_retry_scheduled,
     }
 
 
@@ -2977,8 +3201,8 @@ def _render_summary(report: dict[str, Any]) -> str:
             "",
             "## Runtime Contract Summary",
             "",
-            "| Step | Status | Checks | Failed | Missing Payloads | Approval Replay Coverage | Approval Lifecycle Recovery | Approved Tool Bridge | SDK Tool Bridge | Checkpoint Cursor | Worker Ownership Mode | Recovery Audit | Registry/Checkpoint Policy | Recovery Retry | Retry Scheduler | Durable Loader | Descriptor Lifecycle | Loader Handoff | Child Executor Gate | Child Executor Dispatch | Child Executor Dispatcher | Subagent Lane Detail |",
-            "| --- | --- | ---: | ---: | ---: | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+            "| Step | Status | Checks | Failed | Missing Payloads | Approval Replay Coverage | Approval Lifecycle Recovery | Approved Tool Bridge | SDK Tool Bridge | Checkpoint Cursor | Worker Ownership Mode | Recovery Audit | Registry/Checkpoint Policy | Recovery Retry | Retry Scheduler | Durable Loader | Descriptor Lifecycle | Loader Handoff | Child Executor Gate | Child Executor Dispatch | Child Executor Dispatcher | Child Result Handoff | Child Retry Audit | Subagent Lane Detail |",
+            "| --- | --- | ---: | ---: | ---: | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
         ])
         for step, runtime_summary in summary_rows:
             approval_coverage = runtime_summary.get("approval_replay_coverage") or {}
@@ -3053,6 +3277,14 @@ def _render_summary(report: dict[str, Any]) -> str:
             if not isinstance(child_executor_dispatcher_coverage, dict):
                 child_executor_dispatcher_coverage = {}
             child_executor_dispatcher_label = "yes" if _is_child_executor_dispatcher_coverage_aligned(child_executor_dispatcher_coverage) else "no"
+            child_executor_result_handoff_coverage = runtime_summary.get("child_executor_dispatch_result_handoff_coverage") or {}
+            if not isinstance(child_executor_result_handoff_coverage, dict):
+                child_executor_result_handoff_coverage = {}
+            child_executor_result_handoff_label = "yes" if _is_child_executor_dispatch_result_handoff_coverage_aligned(child_executor_result_handoff_coverage) else "no"
+            child_executor_retry_audit_coverage = runtime_summary.get("child_executor_dispatch_result_retry_audit_coverage") or {}
+            if not isinstance(child_executor_retry_audit_coverage, dict):
+                child_executor_retry_audit_coverage = {}
+            child_executor_retry_audit_label = "yes" if _is_child_executor_dispatch_result_retry_audit_coverage_aligned(child_executor_retry_audit_coverage) else "no"
             subagent_detail_coverage = runtime_summary.get("subagent_lane_query_detail_coverage") or {}
             if not isinstance(subagent_detail_coverage, dict):
                 subagent_detail_coverage = {}
@@ -3063,7 +3295,7 @@ def _render_summary(report: dict[str, Any]) -> str:
                 f"{_format_markdown_table_cell(runtime_summary.get('check_count', 0))} | "
                 f"{_format_markdown_table_cell(runtime_summary.get('failed_check_count', 0))} | "
                 f"{_format_markdown_table_cell(runtime_summary.get('missing_payload_count', 0))} | "
-                f"{coverage_label} | {lifecycle_label} | {approved_tool_label} | {sdk_tool_label} | {checkpoint_cursor_label} | {worker_ownership_label} | {recovery_audit_label} | {registry_checkpoint_label} | {recovery_retry_label} | {retry_scheduler_label} | {durable_loader_label} | {lifecycle_descriptor_label} | {handoff_label} | {child_executor_gate_label} | {child_executor_dispatch_label} | {child_executor_dispatcher_label} | {subagent_detail_label} |"
+                f"{coverage_label} | {lifecycle_label} | {approved_tool_label} | {sdk_tool_label} | {checkpoint_cursor_label} | {worker_ownership_label} | {recovery_audit_label} | {registry_checkpoint_label} | {recovery_retry_label} | {retry_scheduler_label} | {durable_loader_label} | {lifecycle_descriptor_label} | {handoff_label} | {child_executor_gate_label} | {child_executor_dispatch_label} | {child_executor_dispatcher_label} | {child_executor_result_handoff_label} | {child_executor_retry_audit_label} | {subagent_detail_label} |"
             )
     schema_rows = [
         (step, step.get("runtime_contract_artifact_schema") or {})
@@ -3812,6 +4044,70 @@ def _is_child_executor_dispatcher_coverage_aligned(coverage: dict[str, Any]) -> 
         and _coerce_truthy_flag(coverage.get("enabled_will_dispatch"))
         and str(coverage.get("backend_result_status") or "").strip() == "completed"
         and _coerce_non_negative_int(coverage.get("backend_invocation_count"), 0) == 1
+    )
+
+
+def _is_child_executor_dispatch_result_handoff_coverage_aligned(
+    coverage: dict[str, Any],
+) -> bool:
+    return (
+        _coerce_truthy_flag(coverage.get("result_handoff_smoke"))
+        and str(coverage.get("contract_version") or "").strip()
+        == "phase-ii-child-executor-dispatch-result-handoff-v1"
+        and str(coverage.get("ready_handoff_status") or "").strip() == "ready"
+        and _coerce_truthy_flag(coverage.get("ready_handoff_ready"))
+        and _coerce_truthy_flag(coverage.get("ready_output_ref_present"))
+        and _coerce_truthy_flag(coverage.get("ready_audit_evidence_present"))
+        and _coerce_truthy_flag(coverage.get("ready_backend_result_schema_valid"))
+        and not _coerce_truthy_flag(coverage.get("ready_parent_merge_performed"))
+        and not _coerce_truthy_flag(coverage.get("ready_merge_authorization"))
+        and not _coerce_truthy_flag(coverage.get("ready_retry_scheduled"))
+        and not _coerce_truthy_flag(coverage.get("ready_production_dispatch_authorized"))
+        and str(coverage.get("blocked_handoff_status") or "").strip() == "blocked"
+        and str(coverage.get("blocked_dispatcher_reason") or "").strip()
+        == "dispatcher_disabled"
+        and "dispatch_success" in _normalize_string_list(coverage.get("blocked_missing_sections"))
+        and str(coverage.get("malformed_handoff_status") or "").strip() == "blocked"
+        and "output_ref" in _normalize_string_list(coverage.get("malformed_missing_sections"))
+        and "audit_evidence" in _normalize_string_list(
+            coverage.get("malformed_missing_sections")
+        )
+    )
+
+
+def _is_child_executor_dispatch_result_retry_audit_coverage_aligned(
+    coverage: dict[str, Any],
+) -> bool:
+    return (
+        _coerce_truthy_flag(coverage.get("retry_audit_smoke"))
+        and str(coverage.get("contract_version") or "").strip()
+        == "phase-ii-child-executor-dispatch-result-retry-audit-policy-v1"
+        and str(coverage.get("success_policy_status") or "").strip() == "ready"
+        and str(coverage.get("success_retry_policy_status") or "").strip()
+        == "not_required"
+        and not _coerce_truthy_flag(coverage.get("success_retry_scheduled"))
+        and not _coerce_truthy_flag(coverage.get("success_will_retry"))
+        and str(coverage.get("retryable_policy_status") or "").strip() == "ready"
+        and str(coverage.get("retryable_retry_policy_status") or "").strip()
+        == "retryable"
+        and _coerce_truthy_flag(coverage.get("retryable_audit_evidence_present"))
+        and _coerce_truthy_flag(coverage.get("retryable_idempotency_evidence_present"))
+        and _coerce_truthy_flag(coverage.get("retryable_scheduler_required"))
+        and str(coverage.get("retryable_retry_reason") or "").strip()
+        == "sandbox_timeout"
+        and not _coerce_truthy_flag(coverage.get("retryable_retry_scheduled"))
+        and not _coerce_truthy_flag(coverage.get("retryable_will_retry"))
+        and str(coverage.get("terminal_policy_status") or "").strip() == "ready"
+        and str(coverage.get("terminal_retry_policy_status") or "").strip()
+        == "terminal"
+        and str(coverage.get("terminal_reason") or "").strip()
+        == "sandbox_payload_unsafe"
+        and not _coerce_truthy_flag(coverage.get("terminal_will_retry"))
+        and str(coverage.get("missing_idempotency_status") or "").strip()
+        == "blocked"
+        and "idempotency_evidence"
+        in _normalize_string_list(coverage.get("missing_idempotency_missing_sections"))
+        and not _coerce_truthy_flag(coverage.get("missing_idempotency_retry_scheduled"))
     )
 
 

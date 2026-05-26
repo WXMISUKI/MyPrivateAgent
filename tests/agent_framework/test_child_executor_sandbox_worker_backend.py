@@ -43,8 +43,34 @@ def _ready_gate_for_backend(backend_evidence):
                     "requirement": "worker_backend_dispatch_ready",
                     "status": "ready",
                     "evidence": backend_evidence,
+                },
+                {
+                    "requirement": "explicit_executor_binding_opt_in",
+                    "status": "ready",
+                    "evidence": {
+                        "contract_version": "phase-ii-child-executor-explicit-binding-v1",
+                        "binding_status": "ready",
+                        "ready": True,
+                        "binding_source": "test.explicit_opt_in",
+                        "selected_backend": backend_evidence["backend_id"],
+                        "backend_id": backend_evidence["backend_id"],
+                        "adapter_kind": backend_evidence.get("adapter_kind", ""),
+                        "missing_requirements": [],
+                        "blockers": [],
+                        "will_execute": False,
+                        "will_dispatch": False,
+                    },
                 }
             ],
+            "explicit_executor_binding": {
+                "contract_version": "phase-ii-child-executor-explicit-binding-v1",
+                "binding_status": "ready",
+                "ready": True,
+                "binding_source": "test.explicit_opt_in",
+                "selected_backend": backend_evidence["backend_id"],
+                "backend_id": backend_evidence["backend_id"],
+                "adapter_kind": backend_evidence.get("adapter_kind", ""),
+            },
         },
     }
 
@@ -119,6 +145,25 @@ class ChildExecutorSandboxWorkerBackendTests(unittest.TestCase):
         self.assertFalse(contract["sandbox_backend_ready"])
         self.assertIn("sandbox_guard_ready", contract["blockers"])
         self.assertIn("sandbox_guard_missing:network_policy", contract["blockers"])
+
+    def test_dispatch_contract_nests_attempt_handoff_evidence(self):
+        entry = build_child_executor_sandbox_worker_backend_entry(
+            backend_id="sandbox_worker",
+            label="Sandbox worker",
+            adapter_contract=_ready_adapter_contract(),
+        )
+
+        contract = build_child_executor_dispatch_contract(
+            gate=_ready_gate_for_backend(entry),
+            backend_registry=build_child_executor_backend_registry_contract(extra_backends=[entry]),
+        )
+
+        handoff = contract["child_executor_dispatch_attempt_handoff"]
+        self.assertEqual(contract["overall_status"], "ready")
+        self.assertEqual(handoff["overall_status"], "ready")
+        self.assertTrue(handoff["attempt_envelope_supported"])
+        self.assertTrue(handoff["attempt_validation_ready"])
+        self.assertFalse(handoff["will_dispatch"])
 
     def test_validate_sandbox_dispatch_attempt_requires_compact_envelope(self):
         invalid = validate_sandbox_dispatch_attempt({"status": "completed"})

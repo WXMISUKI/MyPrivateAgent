@@ -30,6 +30,15 @@ try:
     from agent_framework.durable_recovery_loader import DurableRecoveryLoader
     from agent_framework.loader_handoff import build_durable_loader_execution_handoff_decision
     from agent_framework.child_executor_dispatcher import ChildExecutorDispatcher
+    from agent_framework.child_executor_dispatcher import (
+        build_child_executor_dispatch_attempt_handoff_contract,
+        build_child_executor_dispatch_result_handoff_contract,
+        build_child_executor_dispatch_result_retry_audit_policy_contract,
+    )
+    from agent_framework.child_executor_backends import (
+        build_child_executor_backend_registry_contract,
+        build_child_executor_sandbox_worker_backend_entry,
+    )
     from agent_framework.child_executor_sandbox_worker_backend import (
         build_sandbox_dispatch_attempt_envelope,
         build_sandbox_worker_backend_adapter_contract,
@@ -67,6 +76,15 @@ except ModuleNotFoundError:  # pragma: no cover - package import compatibility
     from backend.agent_framework.durable_recovery_loader import DurableRecoveryLoader
     from backend.agent_framework.loader_handoff import build_durable_loader_execution_handoff_decision
     from backend.agent_framework.child_executor_dispatcher import ChildExecutorDispatcher
+    from backend.agent_framework.child_executor_dispatcher import (
+        build_child_executor_dispatch_attempt_handoff_contract,
+        build_child_executor_dispatch_result_handoff_contract,
+        build_child_executor_dispatch_result_retry_audit_policy_contract,
+    )
+    from backend.agent_framework.child_executor_backends import (
+        build_child_executor_backend_registry_contract,
+        build_child_executor_sandbox_worker_backend_entry,
+    )
     from backend.agent_framework.child_executor_sandbox_worker_backend import (
         build_sandbox_dispatch_attempt_envelope,
         build_sandbox_worker_backend_adapter_contract,
@@ -260,6 +278,24 @@ def main() -> int:
             {
                 "name": "child_executor_dispatcher",
                 **child_executor_dispatcher_result,
+            }
+        )
+        child_executor_dispatch_result_handoff_result = (
+            _run_child_executor_dispatch_result_handoff_contract_check()
+        )
+        checks.append(
+            {
+                "name": "child_executor_dispatch_result_handoff",
+                **child_executor_dispatch_result_handoff_result,
+            }
+        )
+        child_executor_dispatch_result_retry_audit_result = (
+            _run_child_executor_dispatch_result_retry_audit_policy_contract_check()
+        )
+        checks.append(
+            {
+                "name": "child_executor_dispatch_result_retry_audit_policy",
+                **child_executor_dispatch_result_retry_audit_result,
             }
         )
         child_executor_sandbox_backend_result = _run_child_executor_sandbox_backend_contract_check()
@@ -2659,6 +2695,7 @@ def _run_child_executor_promotion_gate_contract_check(runtime_profile_payload: d
 
 def _run_child_executor_dispatch_contract_check(runtime_profile_payload: dict) -> dict:
     dispatch = dict((runtime_profile_payload or {}).get("child_executor_dispatch_contract") or {})
+    handoff = dict(dispatch.get("child_executor_dispatch_attempt_handoff") or {})
     blockers = dispatch.get("blockers") if isinstance(dispatch.get("blockers"), list) else []
     contract_version = str(dispatch.get("contract_version") or "").strip()
     overall_status = str(dispatch.get("overall_status") or "").strip()
@@ -2682,10 +2719,108 @@ def _run_child_executor_dispatch_contract_check(runtime_profile_payload: dict) -
     opt_in_dispatch = build_child_executor_dispatch_contract(
         gate=opt_in_sdk.evaluate_child_executor_gate(opt_in_payload)
     )
+    ready_adapter_contract = build_sandbox_worker_backend_adapter_contract(
+        backend_id="sandbox_worker",
+        input_contract={"required_fields": ["child_run_id"]},
+        output_contract={"required_fields": ["output_ref", "audit_ref"]},
+        resource_limits={"cpu_seconds": 30, "memory_mb": 512, "timeout_seconds": 60},
+        isolation_guards={
+            "process_or_worker_isolation": True,
+            "environment_allowlist": ["PYTHONPATH"],
+            "workspace_boundary": "run_workspace",
+            "network_policy": "disabled_by_default",
+        },
+        audit_hooks={"record_dispatch": True},
+        idempotency={"idempotency_key_required": True},
+    )
+    sandbox_entry = build_child_executor_sandbox_worker_backend_entry(
+        backend_id="sandbox_worker",
+        label="Sandbox worker",
+        adapter_contract=ready_adapter_contract,
+    )
+    sandbox_registry = build_child_executor_backend_registry_contract(
+        extra_backends=[sandbox_entry]
+    )
+    sandbox_gate = {
+        "allowed": True,
+        "gate_status": "allowed",
+        "preflight": {
+            "worker_runtime_backend": "sandbox_worker",
+            "backend_registry": sandbox_registry,
+        },
+        "child_executor_execution_prerequisites": {
+            "ready": True,
+            "overall_status": "ready",
+            "missing_requirements": [],
+            "requirements": [
+                {
+                    "requirement": "worker_backend_dispatch_ready",
+                    "status": "ready",
+                    "evidence": sandbox_entry,
+                },
+                {
+                    "requirement": "explicit_executor_binding_opt_in",
+                    "status": "ready",
+                    "evidence": {
+                        "contract_version": "phase-ii-child-executor-explicit-binding-v1",
+                        "binding_status": "ready",
+                        "ready": True,
+                        "binding_source": "smoke.opt_in_sandbox_backend",
+                        "selected_backend": "sandbox_worker",
+                        "backend_id": "sandbox_worker",
+                        "adapter_kind": "sandbox_worker",
+                        "missing_requirements": [],
+                        "blockers": [],
+                        "will_execute": False,
+                        "will_dispatch": False,
+                    },
+                },
+            ],
+            "explicit_executor_binding": {
+                "contract_version": "phase-ii-child-executor-explicit-binding-v1",
+                "binding_status": "ready",
+                "ready": True,
+                "binding_source": "smoke.opt_in_sandbox_backend",
+                "selected_backend": "sandbox_worker",
+                "backend_id": "sandbox_worker",
+                "adapter_kind": "sandbox_worker",
+            },
+        },
+    }
+    opt_in_sandbox_dispatch = build_child_executor_dispatch_contract(
+        gate=sandbox_gate,
+        backend_registry=sandbox_registry,
+    )
+    opt_in_handoff = dict(
+        opt_in_sandbox_dispatch.get("child_executor_dispatch_attempt_handoff") or {}
+    )
+    unsafe_handoff = build_child_executor_dispatch_attempt_handoff_contract(
+        dispatch_contract=opt_in_sandbox_dispatch,
+        payload={"child_run_id": "unsafe-child", "handler": object()},
+    )
     opt_in_dispatch_ready = bool(opt_in_dispatch.get("dispatch_ready"))
     opt_in_will_dispatch = bool(opt_in_dispatch.get("will_dispatch"))
     opt_in_backend_dispatch_ready = bool(opt_in_dispatch.get("backend_dispatch_ready"))
     opt_in_explicit_binding_ready = bool(opt_in_dispatch.get("explicit_executor_binding_ready"))
+    dispatch_handoff_blocked = (
+        str(handoff.get("overall_status") or "").strip() == "blocked"
+        and not bool(handoff.get("ready"))
+        and not bool(handoff.get("will_dispatch"))
+        and "dispatch_contract_ready" in [str(item) for item in (handoff.get("missing_sections") or [])]
+    )
+    opt_in_handoff_ready = (
+        str(opt_in_handoff.get("overall_status") or "").strip() == "ready"
+        and bool(opt_in_handoff.get("ready"))
+        and bool(opt_in_handoff.get("attempt_envelope_supported"))
+        and bool(opt_in_handoff.get("attempt_validation_ready"))
+        and not bool(opt_in_handoff.get("will_dispatch"))
+    )
+    unsafe_handoff_guarded = (
+        str(unsafe_handoff.get("overall_status") or "").strip() == "blocked"
+        and not bool(unsafe_handoff.get("unsafe_payload_guard_ready"))
+        and "unsafe_payload_guard" in [str(item) for item in (unsafe_handoff.get("missing_sections") or [])]
+        and "handler" in [str(item) for item in (unsafe_handoff.get("unsafe_payload_keys") or [])]
+    )
     ok = (
         bool(contract_version)
         and overall_status == "blocked"
@@ -2702,6 +2837,9 @@ def _run_child_executor_dispatch_contract_check(runtime_profile_payload: dict) -
         and not opt_in_dispatch_ready
         and not opt_in_will_dispatch
         and not opt_in_backend_dispatch_ready
+        and dispatch_handoff_blocked
+        and opt_in_handoff_ready
+        and unsafe_handoff_guarded
         and bool(recommended_next_step)
     )
     return {
@@ -2728,6 +2866,25 @@ def _run_child_executor_dispatch_contract_check(runtime_profile_payload: dict) -
         "opt_in_explicit_executor_binding_source": str(
             opt_in_dispatch.get("explicit_executor_binding_source") or ""
         ),
+        "dispatch_attempt_handoff_status": str(handoff.get("overall_status") or ""),
+        "dispatch_attempt_handoff_ready": bool(handoff.get("ready")),
+        "dispatch_attempt_handoff_missing_sections": [
+            str(item) for item in (handoff.get("missing_sections") or [])
+        ],
+        "dispatch_attempt_handoff_will_dispatch": bool(handoff.get("will_dispatch")),
+        "opt_in_dispatch_attempt_handoff_status": str(opt_in_handoff.get("overall_status") or ""),
+        "opt_in_dispatch_attempt_handoff_ready": bool(opt_in_handoff.get("ready")),
+        "opt_in_attempt_envelope_supported": bool(
+            opt_in_handoff.get("attempt_envelope_supported")
+        ),
+        "opt_in_attempt_validation_ready": bool(opt_in_handoff.get("attempt_validation_ready")),
+        "opt_in_attempt_will_dispatch": bool(opt_in_handoff.get("will_dispatch")),
+        "opt_in_unsafe_payload_guard_ready": bool(
+            opt_in_handoff.get("unsafe_payload_guard_ready")
+        ),
+        "unsafe_payload_guard_status": str(unsafe_handoff.get("overall_status") or ""),
+        "unsafe_payload_guard_ready": bool(unsafe_handoff.get("unsafe_payload_guard_ready")),
+        "unsafe_payload_keys": [str(item) for item in (unsafe_handoff.get("unsafe_payload_keys") or [])],
         "recommended_next_step": recommended_next_step,
         "failure_reason": "" if ok else "child_executor_dispatch_contract_incomplete",
     }
@@ -2809,6 +2966,243 @@ def _run_child_executor_dispatcher_contract_check() -> dict:
         "backend_result_status": str((dispatched_attempt.get("backend_result") or {}).get("status") or ""),
         "backend_invocation_count": len(invoked),
         "failure_reason": "" if ok else "child_executor_dispatcher_incomplete",
+    }
+
+
+def _run_child_executor_dispatch_result_handoff_contract_check() -> dict:
+    ready_contract = {
+        "contract_version": "phase-ii-child-executor-dispatch-v1",
+        "overall_status": "ready",
+        "dispatch_ready": True,
+        "will_dispatch": False,
+        "backend_id": "sandbox_worker",
+        "backend_adapter_kind": "sandbox_worker",
+        "backend_status": "ready",
+        "backend_dispatch_ready": True,
+        "gate_allowed": True,
+        "prerequisites_ready": True,
+        "blockers": [],
+    }
+
+    def _sandbox_adapter(payload):
+        return build_sandbox_dispatch_attempt_envelope(
+            attempt_id="result-handoff-smoke-attempt",
+            backend_id="sandbox_worker",
+            child_run_id=str((payload or {}).get("child_run_id") or ""),
+            status="completed",
+            will_dispatch=True,
+            sandbox_ref="sandbox://result-handoff-smoke-attempt",
+            output_ref="artifact://result-handoff-child/output",
+            audit_ref="trace://result-handoff-smoke-attempt",
+        )
+
+    ready_attempt = ChildExecutorDispatcher(
+        enabled=True,
+        backend_adapters={"sandbox_worker": _sandbox_adapter},
+    ).dispatch(
+        dispatch_contract=ready_contract,
+        payload={"parent_run_id": "parent-smoke", "child_run_id": "result-handoff-child"},
+    )
+    blocked_attempt = ChildExecutorDispatcher(
+        enabled=False,
+        backend_adapters={"sandbox_worker": _sandbox_adapter},
+    ).dispatch(
+        dispatch_contract=ready_contract,
+        payload={"parent_run_id": "parent-smoke", "child_run_id": "blocked-child"},
+    )
+    malformed_handoff = build_child_executor_dispatch_result_handoff_contract(
+        dispatch_attempt={
+            "dispatch_status": "dispatched",
+            "dispatched": True,
+            "will_dispatch": True,
+            "backend_id": "sandbox_worker",
+            "backend_result": {
+                "status": "completed",
+                "child_run_id": "malformed-child",
+            },
+            "audit": {},
+        }
+    )
+    ready_handoff = dict(ready_attempt.get("dispatch_result_handoff") or {})
+    blocked_handoff = dict(blocked_attempt.get("dispatch_result_handoff") or {})
+    ready_missing_sections = [str(item) for item in (ready_handoff.get("missing_sections") or [])]
+    blocked_missing_sections = [str(item) for item in (blocked_handoff.get("missing_sections") or [])]
+    malformed_missing_sections = [
+        str(item) for item in (malformed_handoff.get("missing_sections") or [])
+    ]
+    ready_handoff_ok = (
+        str(ready_handoff.get("contract_version") or "").strip()
+        == "phase-ii-child-executor-dispatch-result-handoff-v1"
+        and str(ready_handoff.get("overall_status") or "").strip() == "ready"
+        and bool(ready_handoff.get("ready"))
+        and str(ready_handoff.get("child_run_id") or "").strip() == "result-handoff-child"
+        and bool(ready_handoff.get("output_ref_present"))
+        and bool(ready_handoff.get("audit_evidence_present"))
+        and bool(ready_handoff.get("backend_result_schema_valid"))
+        and not bool(ready_handoff.get("parent_merge_performed"))
+        and not bool(ready_handoff.get("merge_authorization"))
+        and not bool(ready_handoff.get("retry_scheduled"))
+        and not bool(ready_handoff.get("production_dispatch_authorized"))
+        and not ready_missing_sections
+    )
+    blocked_handoff_ok = (
+        str(blocked_handoff.get("overall_status") or "").strip() == "blocked"
+        and not bool(blocked_handoff.get("ready"))
+        and str(blocked_handoff.get("dispatcher_blocked_reason") or "").strip()
+        == "dispatcher_disabled"
+        and "dispatch_success" in blocked_missing_sections
+        and not bool(blocked_handoff.get("parent_merge_performed"))
+    )
+    malformed_handoff_ok = (
+        str(malformed_handoff.get("overall_status") or "").strip() == "blocked"
+        and not bool(malformed_handoff.get("ready"))
+        and "output_ref" in malformed_missing_sections
+        and "audit_evidence" in malformed_missing_sections
+        and not bool(malformed_handoff.get("merge_authorization"))
+    )
+    ok = ready_handoff_ok and blocked_handoff_ok and malformed_handoff_ok
+    return {
+        "ok": ok,
+        "contract_version": str(ready_handoff.get("contract_version") or ""),
+        "ready_handoff_status": str(ready_handoff.get("overall_status") or ""),
+        "ready_handoff_ready": bool(ready_handoff.get("ready")),
+        "ready_output_ref_present": bool(ready_handoff.get("output_ref_present")),
+        "ready_audit_evidence_present": bool(ready_handoff.get("audit_evidence_present")),
+        "ready_backend_result_schema_valid": bool(
+            ready_handoff.get("backend_result_schema_valid")
+        ),
+        "ready_parent_merge_performed": bool(ready_handoff.get("parent_merge_performed")),
+        "ready_merge_authorization": bool(ready_handoff.get("merge_authorization")),
+        "ready_retry_scheduled": bool(ready_handoff.get("retry_scheduled")),
+        "ready_production_dispatch_authorized": bool(
+            ready_handoff.get("production_dispatch_authorized")
+        ),
+        "blocked_handoff_status": str(blocked_handoff.get("overall_status") or ""),
+        "blocked_dispatcher_reason": str(
+            blocked_handoff.get("dispatcher_blocked_reason") or ""
+        ),
+        "blocked_missing_sections": blocked_missing_sections,
+        "malformed_handoff_status": str(malformed_handoff.get("overall_status") or ""),
+        "malformed_missing_sections": malformed_missing_sections,
+        "failure_reason": "" if ok else "child_executor_dispatch_result_handoff_incomplete",
+    }
+
+
+def _run_child_executor_dispatch_result_retry_audit_policy_contract_check() -> dict:
+    success_policy = build_child_executor_dispatch_result_retry_audit_policy_contract(
+        result_handoff={
+            "overall_status": "ready",
+            "ready": True,
+            "dispatch_status": "dispatched",
+            "backend_result_status": "completed",
+            "retryable": False,
+            "audit_evidence_present": True,
+            "idempotency_key": "child-dispatch:success",
+        }
+    )
+    retryable_policy = build_child_executor_dispatch_result_retry_audit_policy_contract(
+        result_handoff={
+            "overall_status": "blocked",
+            "ready": False,
+            "dispatch_status": "dispatched",
+            "backend_result_status": "failed",
+            "backend_result_error_code": "sandbox_timeout",
+            "retryable": True,
+            "audit_evidence_present": True,
+            "idempotency_key": "child-dispatch:retryable",
+            "missing_sections": ["backend_result"],
+        }
+    )
+    terminal_policy = build_child_executor_dispatch_result_retry_audit_policy_contract(
+        result_handoff={
+            "overall_status": "blocked",
+            "ready": False,
+            "dispatch_status": "blocked",
+            "dispatcher_blocked_reason": "sandbox_payload_unsafe",
+            "retryable": False,
+            "audit_evidence_present": True,
+            "idempotency_key": "child-dispatch:terminal",
+        }
+    )
+    missing_idempotency_policy = build_child_executor_dispatch_result_retry_audit_policy_contract(
+        result_handoff={
+            "overall_status": "blocked",
+            "ready": False,
+            "dispatch_status": "dispatched",
+            "backend_result_status": "failed",
+            "backend_result_error_code": "sandbox_timeout",
+            "retryable": True,
+            "audit_evidence_present": True,
+            "idempotency_key": "",
+        }
+    )
+    success_ok = (
+        str(success_policy.get("contract_version") or "").strip()
+        == "phase-ii-child-executor-dispatch-result-retry-audit-policy-v1"
+        and str(success_policy.get("overall_status") or "").strip() == "ready"
+        and str(success_policy.get("retry_policy_status") or "").strip() == "not_required"
+        and not bool(success_policy.get("retry_scheduled"))
+        and not bool(success_policy.get("will_retry"))
+    )
+    retryable_ok = (
+        str(retryable_policy.get("overall_status") or "").strip() == "ready"
+        and str(retryable_policy.get("retry_policy_status") or "").strip() == "retryable"
+        and bool(retryable_policy.get("retryable"))
+        and bool(retryable_policy.get("audit_evidence_present"))
+        and bool(retryable_policy.get("idempotency_evidence_present"))
+        and bool(retryable_policy.get("scheduler_required"))
+        and str(retryable_policy.get("retry_reason") or "").strip() == "sandbox_timeout"
+        and not bool(retryable_policy.get("retry_scheduled"))
+        and not bool(retryable_policy.get("will_retry"))
+    )
+    terminal_ok = (
+        str(terminal_policy.get("overall_status") or "").strip() == "ready"
+        and str(terminal_policy.get("retry_policy_status") or "").strip() == "terminal"
+        and bool(terminal_policy.get("terminal"))
+        and str(terminal_policy.get("dispatcher_blocked_reason") or "").strip()
+        == "sandbox_payload_unsafe"
+        and not bool(terminal_policy.get("will_retry"))
+    )
+    missing_idempotency_ok = (
+        str(missing_idempotency_policy.get("overall_status") or "").strip() == "blocked"
+        and str(missing_idempotency_policy.get("retry_policy_status") or "").strip()
+        == "retryable"
+        and "idempotency_evidence"
+        in [str(item) for item in (missing_idempotency_policy.get("missing_sections") or [])]
+        and not bool(missing_idempotency_policy.get("retry_scheduled"))
+    )
+    ok = success_ok and retryable_ok and terminal_ok and missing_idempotency_ok
+    return {
+        "ok": ok,
+        "contract_version": str(success_policy.get("contract_version") or ""),
+        "success_policy_status": str(success_policy.get("overall_status") or ""),
+        "success_retry_policy_status": str(success_policy.get("retry_policy_status") or ""),
+        "success_retry_scheduled": bool(success_policy.get("retry_scheduled")),
+        "success_will_retry": bool(success_policy.get("will_retry")),
+        "retryable_policy_status": str(retryable_policy.get("overall_status") or ""),
+        "retryable_retry_policy_status": str(retryable_policy.get("retry_policy_status") or ""),
+        "retryable_audit_evidence_present": bool(
+            retryable_policy.get("audit_evidence_present")
+        ),
+        "retryable_idempotency_evidence_present": bool(
+            retryable_policy.get("idempotency_evidence_present")
+        ),
+        "retryable_scheduler_required": bool(retryable_policy.get("scheduler_required")),
+        "retryable_retry_reason": str(retryable_policy.get("retry_reason") or ""),
+        "retryable_retry_scheduled": bool(retryable_policy.get("retry_scheduled")),
+        "retryable_will_retry": bool(retryable_policy.get("will_retry")),
+        "terminal_policy_status": str(terminal_policy.get("overall_status") or ""),
+        "terminal_retry_policy_status": str(terminal_policy.get("retry_policy_status") or ""),
+        "terminal_reason": str(terminal_policy.get("dispatcher_blocked_reason") or ""),
+        "terminal_will_retry": bool(terminal_policy.get("will_retry")),
+        "missing_idempotency_status": str(missing_idempotency_policy.get("overall_status") or ""),
+        "missing_idempotency_missing_sections": [
+            str(item) for item in (missing_idempotency_policy.get("missing_sections") or [])
+        ],
+        "missing_idempotency_retry_scheduled": bool(
+            missing_idempotency_policy.get("retry_scheduled")
+        ),
+        "failure_reason": "" if ok else "child_executor_dispatch_result_retry_audit_incomplete",
     }
 
 

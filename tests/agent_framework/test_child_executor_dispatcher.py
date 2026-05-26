@@ -1,8 +1,14 @@
 import unittest
 
 from backend.agent_framework.child_executor_dispatcher import (
+    CHILD_EXECUTOR_DISPATCH_ATTEMPT_HANDOFF_CONTRACT_VERSION,
+    CHILD_EXECUTOR_DISPATCH_RESULT_HANDOFF_CONTRACT_VERSION,
+    CHILD_EXECUTOR_DISPATCH_RESULT_RETRY_AUDIT_POLICY_CONTRACT_VERSION,
     CHILD_EXECUTOR_DISPATCHER_CONTRACT_VERSION,
     ChildExecutorDispatcher,
+    build_child_executor_dispatch_attempt_handoff_contract,
+    build_child_executor_dispatch_result_handoff_contract,
+    build_child_executor_dispatch_result_retry_audit_policy_contract,
     build_child_executor_dispatcher_contract,
 )
 from backend.agent_framework.child_executor_sandbox_worker_backend import (
@@ -62,6 +68,48 @@ class ChildExecutorDispatcherTests(unittest.TestCase):
         self.assertTrue(contract["opt_in_required"])
         self.assertFalse(contract["default_will_dispatch"])
 
+    def test_dispatch_attempt_handoff_blocks_default_non_sandbox_contract(self):
+        handoff = build_child_executor_dispatch_attempt_handoff_contract(
+            dispatch_contract={
+                **_ready_dispatch_contract(),
+                "overall_status": "blocked",
+                "dispatch_ready": False,
+            }
+        )
+
+        self.assertEqual(
+            handoff["contract_version"],
+            CHILD_EXECUTOR_DISPATCH_ATTEMPT_HANDOFF_CONTRACT_VERSION,
+        )
+        self.assertEqual(handoff["overall_status"], "blocked")
+        self.assertFalse(handoff["ready"])
+        self.assertFalse(handoff["will_dispatch"])
+        self.assertIn("dispatch_contract_ready", handoff["missing_sections"])
+        self.assertIn("sandbox_backend_selected", handoff["missing_sections"])
+
+    def test_dispatch_attempt_handoff_ready_for_opt_in_sandbox_envelope(self):
+        handoff = build_child_executor_dispatch_attempt_handoff_contract(
+            dispatch_contract=_ready_sandbox_dispatch_contract()
+        )
+
+        self.assertEqual(handoff["overall_status"], "ready")
+        self.assertTrue(handoff["ready"])
+        self.assertTrue(handoff["attempt_envelope_supported"])
+        self.assertTrue(handoff["attempt_validation_ready"])
+        self.assertTrue(handoff["unsafe_payload_guard_ready"])
+        self.assertFalse(handoff["will_dispatch"])
+
+    def test_dispatch_attempt_handoff_guards_unsafe_payload(self):
+        handoff = build_child_executor_dispatch_attempt_handoff_contract(
+            dispatch_contract=_ready_sandbox_dispatch_contract(),
+            payload={"child_run_id": "child-1", "handler": object()},
+        )
+
+        self.assertEqual(handoff["overall_status"], "blocked")
+        self.assertFalse(handoff["unsafe_payload_guard_ready"])
+        self.assertIn("unsafe_payload_guard", handoff["missing_sections"])
+        self.assertEqual(handoff["unsafe_payload_keys"], ["handler"])
+
     def test_dispatcher_default_disabled_does_not_invoke_backend(self):
         invoked = []
         dispatcher = ChildExecutorDispatcher(
@@ -76,6 +124,8 @@ class ChildExecutorDispatcherTests(unittest.TestCase):
         self.assertEqual(attempt["dispatch_status"], "blocked")
         self.assertEqual(attempt["blocked_reason"], "dispatcher_disabled")
         self.assertFalse(attempt["will_dispatch"])
+        self.assertEqual(attempt["dispatch_result_handoff"]["overall_status"], "blocked")
+        self.assertFalse(attempt["dispatch_result_handoff"]["parent_merge_performed"])
         self.assertEqual(invoked, [])
 
     def test_dispatcher_fails_closed_when_dispatch_contract_is_blocked(self):
@@ -131,6 +181,23 @@ class ChildExecutorDispatcherTests(unittest.TestCase):
         self.assertEqual(attempt["backend_result"]["output_ref"], "artifact://child-1/output")
         self.assertTrue(attempt["audit"]["trace_written"])
         self.assertEqual(audit.dispatches[0]["attempt_id"], attempt["attempt_id"])
+        handoff = attempt["dispatch_result_handoff"]
+        self.assertEqual(handoff["contract_version"], CHILD_EXECUTOR_DISPATCH_RESULT_HANDOFF_CONTRACT_VERSION)
+        self.assertEqual(handoff["overall_status"], "ready")
+        self.assertEqual(handoff["child_run_id"], "child-1")
+        self.assertTrue(handoff["output_ref_present"])
+        self.assertTrue(handoff["audit_evidence_present"])
+        self.assertFalse(handoff["parent_merge_performed"])
+        self.assertFalse(handoff["merge_authorization"])
+        self.assertFalse(handoff["retry_scheduled"])
+        retry_policy = handoff["dispatch_result_retry_audit_policy"]
+        self.assertEqual(
+            retry_policy["contract_version"],
+            CHILD_EXECUTOR_DISPATCH_RESULT_RETRY_AUDIT_POLICY_CONTRACT_VERSION,
+        )
+        self.assertEqual(retry_policy["retry_policy_status"], "not_required")
+        self.assertFalse(retry_policy["retry_scheduled"])
+        self.assertFalse(retry_policy["will_retry"])
 
     def test_dispatcher_fails_closed_when_backend_adapter_raises(self):
         def _adapter(_payload):
@@ -174,6 +241,16 @@ class ChildExecutorDispatcherTests(unittest.TestCase):
         self.assertTrue(attempt["will_dispatch"])
         self.assertEqual(attempt["backend_result"]["sandbox_ref"], "sandbox://attempt-1")
         self.assertEqual(attempt["backend_result"]["audit_ref"], "trace://attempt-1")
+        handoff = attempt["dispatch_result_handoff"]
+        self.assertEqual(handoff["overall_status"], "ready")
+        self.assertTrue(handoff["backend_result_schema_valid"])
+        self.assertEqual(handoff["sandbox_ref"], "sandbox://attempt-1")
+        self.assertEqual(handoff["audit_ref"], "trace://attempt-1")
+        self.assertFalse(handoff["production_dispatch_authorized"])
+        self.assertEqual(
+            handoff["dispatch_result_retry_audit_policy"]["retry_policy_status"],
+            "not_required",
+        )
 
     def test_dispatcher_fails_closed_when_sandbox_output_is_malformed(self):
         dispatcher = ChildExecutorDispatcher(
@@ -190,6 +267,14 @@ class ChildExecutorDispatcherTests(unittest.TestCase):
         self.assertEqual(attempt["blocked_reason"], "sandbox_attempt_invalid")
         self.assertEqual(attempt["error_code"], "sandbox_attempt_missing_fields")
         self.assertIn("attempt_id", attempt["missing_backend_result_fields"])
+        handoff = attempt["dispatch_result_handoff"]
+        self.assertEqual(handoff["overall_status"], "blocked")
+        self.assertEqual(handoff["blocked_reason"], "sandbox_attempt_invalid")
+        self.assertIn("backend_result", handoff["missing_sections"])
+        self.assertFalse(handoff["merge_authorization"])
+        retry_policy = handoff["dispatch_result_retry_audit_policy"]
+        self.assertEqual(retry_policy["retry_policy_status"], "terminal")
+        self.assertFalse(retry_policy["will_retry"])
 
     def test_dispatcher_rejects_unsafe_sandbox_payload(self):
         invoked = []
@@ -207,6 +292,88 @@ class ChildExecutorDispatcherTests(unittest.TestCase):
         self.assertEqual(attempt["blocked_reason"], "sandbox_payload_unsafe")
         self.assertEqual(attempt["error_code"], "unsafe_payload")
         self.assertEqual(invoked, [])
+
+    def test_dispatch_result_handoff_blocks_malformed_result_directly(self):
+        handoff = build_child_executor_dispatch_result_handoff_contract(
+            dispatch_attempt={
+                "dispatch_status": "dispatched",
+                "dispatched": True,
+                "will_dispatch": True,
+                "backend_id": "sandbox_worker",
+                "backend_result": {
+                    "status": "completed",
+                    "child_run_id": "child-1",
+                    "output_ref": "",
+                },
+                "audit": {},
+            }
+        )
+
+        self.assertEqual(handoff["overall_status"], "blocked")
+        self.assertFalse(handoff["ready"])
+        self.assertIn("output_ref", handoff["missing_sections"])
+        self.assertIn("audit_evidence", handoff["missing_sections"])
+        self.assertFalse(handoff["parent_merge_performed"])
+
+    def test_dispatch_result_retry_audit_policy_marks_retryable_failure_ready(self):
+        policy = build_child_executor_dispatch_result_retry_audit_policy_contract(
+            result_handoff={
+                "overall_status": "blocked",
+                "ready": False,
+                "dispatch_status": "dispatched",
+                "backend_result_status": "failed",
+                "backend_result_error_code": "sandbox_timeout",
+                "retryable": True,
+                "audit_evidence_present": True,
+                "idempotency_key": "child-dispatch:attempt-1",
+                "missing_sections": ["backend_result"],
+            }
+        )
+
+        self.assertEqual(policy["overall_status"], "ready")
+        self.assertEqual(policy["retry_policy_status"], "retryable")
+        self.assertTrue(policy["retryable"])
+        self.assertTrue(policy["scheduler_required"])
+        self.assertFalse(policy["retry_scheduled"])
+        self.assertFalse(policy["will_retry"])
+        self.assertEqual(policy["retry_reason"], "sandbox_timeout")
+
+    def test_dispatch_result_retry_audit_policy_requires_idempotency_for_retryable_failure(self):
+        policy = build_child_executor_dispatch_result_retry_audit_policy_contract(
+            result_handoff={
+                "overall_status": "blocked",
+                "ready": False,
+                "dispatch_status": "dispatched",
+                "backend_result_status": "failed",
+                "backend_result_error_code": "sandbox_timeout",
+                "retryable": True,
+                "audit_evidence_present": True,
+                "idempotency_key": "",
+            }
+        )
+
+        self.assertEqual(policy["overall_status"], "blocked")
+        self.assertEqual(policy["retry_policy_status"], "retryable")
+        self.assertIn("idempotency_evidence", policy["missing_sections"])
+        self.assertFalse(policy["retry_scheduled"])
+
+    def test_dispatch_result_retry_audit_policy_marks_unsafe_payload_terminal(self):
+        policy = build_child_executor_dispatch_result_retry_audit_policy_contract(
+            result_handoff={
+                "overall_status": "blocked",
+                "ready": False,
+                "dispatch_status": "blocked",
+                "dispatcher_blocked_reason": "sandbox_payload_unsafe",
+                "retryable": False,
+                "audit_evidence_present": True,
+                "idempotency_key": "child-dispatch:attempt-unsafe",
+            }
+        )
+
+        self.assertEqual(policy["overall_status"], "ready")
+        self.assertEqual(policy["retry_policy_status"], "terminal")
+        self.assertTrue(policy["terminal"])
+        self.assertFalse(policy["will_retry"])
 
 
 if __name__ == "__main__":
