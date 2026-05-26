@@ -40,9 +40,11 @@ try:
         build_child_executor_sandbox_worker_backend_entry,
     )
     from agent_framework.child_executor_sandbox_worker_backend import (
+        SandboxChildExecutorBackend,
         build_child_executor_sandbox_backend_binding_contract,
         build_sandbox_dispatch_attempt_envelope,
         build_sandbox_worker_backend_adapter_contract,
+        validate_sandbox_dispatch_attempt,
     )
     from agent_framework.harness import create_agent
     from agent_framework.persistence import InMemoryEmbeddedRunWorkspaceStore
@@ -87,9 +89,11 @@ except ModuleNotFoundError:  # pragma: no cover - package import compatibility
         build_child_executor_sandbox_worker_backend_entry,
     )
     from backend.agent_framework.child_executor_sandbox_worker_backend import (
+        SandboxChildExecutorBackend,
         build_child_executor_sandbox_backend_binding_contract,
         build_sandbox_dispatch_attempt_envelope,
         build_sandbox_worker_backend_adapter_contract,
+        validate_sandbox_dispatch_attempt,
     )
     from backend.agent_framework.harness import create_agent
     from backend.agent_framework.persistence import InMemoryEmbeddedRunWorkspaceStore
@@ -3280,6 +3284,57 @@ def _run_child_executor_sandbox_backend_contract_check() -> dict:
         dispatch_contract=ready_contract,
         payload={"parent_run_id": "parent-smoke", "child_run_id": "unsafe-child", "handler": object()},
     )
+    execution_backend = SandboxChildExecutorBackend()
+    execution_completed = execution_backend.dispatch({
+        "parent_run_id": "parent-smoke",
+        "child_run_id": "child-execution-smoke",
+        "idempotency_key": "idem-child-execution-smoke",
+    })
+    execution_missing_idempotency = execution_backend.dispatch({
+        "parent_run_id": "parent-smoke",
+        "child_run_id": "child-missing-idem",
+    })
+    execution_unsafe = execution_backend.dispatch({
+        "parent_run_id": "parent-smoke",
+        "child_run_id": "child-unsafe",
+        "idempotency_key": "idem-child-unsafe",
+        "handler": object(),
+    })
+
+    def _raise(_payload):
+        raise RuntimeError("smoke failure")
+
+    failing_execution_backend = SandboxChildExecutorBackend(executor=_raise)
+    execution_handler_failure = failing_execution_backend.dispatch({
+        "parent_run_id": "parent-smoke",
+        "child_run_id": "child-failing",
+        "idempotency_key": "idem-child-failing",
+    })
+    dispatcher_execution_backend = SandboxChildExecutorBackend()
+    dispatcher_execution_attempt = ChildExecutorDispatcher(
+        enabled=True,
+        backend_adapters={"sandbox_worker": dispatcher_execution_backend},
+    ).dispatch(
+        dispatch_contract={
+            **ready_contract,
+            "child_executor_sandbox_backend_binding": {
+                "contract_version": "phase-ii-child-executor-sandbox-backend-binding-v1",
+                "overall_status": "ready",
+                "ready": True,
+                "backend_id": "sandbox_worker",
+                "binding_status": "ready",
+                "dispatcher_binding_ready": True,
+                "missing_sections": [],
+            },
+        },
+        payload={
+            "parent_run_id": "parent-smoke",
+            "child_run_id": "child-execution-dispatcher",
+            "idempotency_key": "idem-child-execution-dispatcher",
+        },
+    )
+    execution_seam = execution_backend.describe_execution_seam()
+    execution_completed_valid = bool(validate_sandbox_dispatch_attempt(execution_completed).get("valid"))
     backend_result = dict(dispatched_attempt.get("backend_result") or {})
     missing_guards = [
         str(item)
@@ -3316,6 +3371,26 @@ def _run_child_executor_sandbox_backend_contract_check() -> dict:
         and unsafe_payload_blocked
         and compact_attempt_valid
         and len(invoked) == 1
+        and bool(execution_seam.get("supported"))
+        and not bool(execution_seam.get("starts_by_default"))
+        and str(execution_completed.get("status") or "").strip() == "completed"
+        and bool(execution_completed.get("will_dispatch"))
+        and execution_completed_valid
+        and str(execution_missing_idempotency.get("status") or "").strip() == "blocked"
+        and str(execution_missing_idempotency.get("error_code") or "").strip()
+        == "sandbox_payload_missing_fields"
+        and "idempotency_key" in (execution_missing_idempotency.get("blocked_sections") or [])
+        and str(execution_unsafe.get("status") or "").strip() == "blocked"
+        and str(execution_unsafe.get("error_code") or "").strip() == "sandbox_payload_unsafe"
+        and str(execution_handler_failure.get("status") or "").strip() == "failed"
+        and str(execution_handler_failure.get("error_code") or "").strip()
+        == "sandbox_executor_failed"
+        and bool(execution_handler_failure.get("retryable"))
+        and str(dispatcher_execution_attempt.get("dispatch_status") or "").strip() == "dispatched"
+        and dispatcher_execution_backend.invocation_count == 1
+        and not bool(execution_seam.get("parent_merge_performed"))
+        and not bool(execution_seam.get("retry_scheduled"))
+        and not bool(execution_seam.get("production_dispatch_authorized"))
     )
     return {
         "ok": ok,
@@ -3333,6 +3408,33 @@ def _run_child_executor_sandbox_backend_contract_check() -> dict:
         "backend_result_status": str(backend_result.get("status") or ""),
         "backend_invocation_count": len(invoked),
         "default_worker_enabled": False,
+        "execution_seam_supported": bool(execution_seam.get("supported")),
+        "execution_default_enabled": bool(execution_seam.get("starts_by_default")),
+        "execution_completed_status": str(execution_completed.get("status") or ""),
+        "execution_completed_valid": execution_completed_valid,
+        "execution_completed_will_dispatch": bool(execution_completed.get("will_dispatch")),
+        "execution_missing_idempotency_status": str(execution_missing_idempotency.get("status") or ""),
+        "execution_missing_idempotency_error_code": str(
+            execution_missing_idempotency.get("error_code") or ""
+        ),
+        "execution_unsafe_status": str(execution_unsafe.get("status") or ""),
+        "execution_unsafe_error_code": str(execution_unsafe.get("error_code") or ""),
+        "execution_handler_failure_status": str(execution_handler_failure.get("status") or ""),
+        "execution_handler_failure_error_code": str(
+            execution_handler_failure.get("error_code") or ""
+        ),
+        "execution_handler_failure_retryable": bool(execution_handler_failure.get("retryable")),
+        "execution_invocation_count": int(execution_seam.get("invocation_count") or 0),
+        "execution_executor_invocation_count": int(
+            execution_seam.get("executor_invocation_count") or 0
+        ),
+        "execution_dispatcher_status": str(dispatcher_execution_attempt.get("dispatch_status") or ""),
+        "execution_dispatcher_invocation_count": dispatcher_execution_backend.invocation_count,
+        "execution_parent_merge_performed": bool(execution_seam.get("parent_merge_performed")),
+        "execution_retry_scheduled": bool(execution_seam.get("retry_scheduled")),
+        "execution_production_authorized": bool(
+            execution_seam.get("production_dispatch_authorized")
+        ),
         "failure_reason": "" if ok else "child_executor_sandbox_backend_incomplete",
     }
 

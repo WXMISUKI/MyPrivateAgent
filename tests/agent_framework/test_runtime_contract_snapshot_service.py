@@ -449,6 +449,25 @@ def _build_complete_profile():
                     "backend_result_status": "completed",
                     "backend_invocation_count": 1,
                     "default_worker_enabled": False,
+                    "execution_seam_supported": True,
+                    "execution_default_enabled": False,
+                    "execution_completed_status": "completed",
+                    "execution_completed_valid": True,
+                    "execution_completed_will_dispatch": True,
+                    "execution_missing_idempotency_status": "blocked",
+                    "execution_missing_idempotency_error_code": "sandbox_payload_missing_fields",
+                    "execution_unsafe_status": "blocked",
+                    "execution_unsafe_error_code": "sandbox_payload_unsafe",
+                    "execution_handler_failure_status": "failed",
+                    "execution_handler_failure_error_code": "sandbox_executor_failed",
+                    "execution_handler_failure_retryable": True,
+                    "execution_invocation_count": 3,
+                    "execution_executor_invocation_count": 1,
+                    "execution_dispatcher_status": "dispatched",
+                    "execution_dispatcher_invocation_count": 1,
+                    "execution_parent_merge_performed": False,
+                    "execution_retry_scheduled": False,
+                    "execution_production_authorized": False,
                 },
                 "child_executor_sandbox_backend_binding_coverage": {
                     "binding_smoke": True,
@@ -522,6 +541,10 @@ def _build_complete_profile():
                     "child_executor_sandbox_backend_binding_coverage.missing_callable_status",
                     "child_executor_sandbox_backend_coverage",
                     "child_executor_sandbox_backend_coverage.sandbox_backend_smoke",
+                    "child_executor_sandbox_backend_coverage.execution_seam_supported",
+                    "child_executor_sandbox_backend_coverage.execution_completed_status",
+                    "child_executor_sandbox_backend_coverage.execution_missing_idempotency_status",
+                    "child_executor_sandbox_backend_coverage.execution_handler_failure_status",
                     "subagent_lane_query_detail_coverage",
                     "subagent_lane_query_detail_coverage.detail_smoke",
                 ],
@@ -939,6 +962,22 @@ class RuntimeContractSnapshotServiceTests(unittest.TestCase):
             by_name["runtime_contract_gate"]["stable_fields"],
         )
         self.assertIn(
+            "runtime_contract_summary.child_executor_sandbox_backend_coverage.execution_seam_supported",
+            by_name["runtime_contract_gate"]["stable_fields"],
+        )
+        self.assertIn(
+            "runtime_contract_summary.child_executor_sandbox_backend_coverage.execution_completed_status",
+            by_name["runtime_contract_gate"]["stable_fields"],
+        )
+        self.assertIn(
+            "runtime_contract_summary.child_executor_sandbox_backend_coverage.execution_missing_idempotency_status",
+            by_name["runtime_contract_gate"]["stable_fields"],
+        )
+        self.assertIn(
+            "runtime_contract_summary.child_executor_sandbox_backend_coverage.execution_handler_failure_status",
+            by_name["runtime_contract_gate"]["stable_fields"],
+        )
+        self.assertIn(
             "runtime_contract_summary.approval_lifecycle_recovery_coverage",
             by_name["runtime_contract_gate"]["stable_fields"],
         )
@@ -1002,7 +1041,7 @@ class RuntimeContractSnapshotServiceTests(unittest.TestCase):
         by_name = {item["contract_name"]: item for item in snapshot["contracts"]}
         self.assertEqual(snapshot["overall_status"], "degraded")
         self.assertEqual(snapshot["missing_contract_count"], 1)
-        self.assertEqual(snapshot["missing_field_count"], 87)
+        self.assertEqual(snapshot["missing_field_count"], 91)
         self.assertEqual(by_name["skill_contract"]["status"], "missing")
         self.assertEqual(
             by_name["command_contract"]["missing_fields"],
@@ -1086,6 +1125,10 @@ class RuntimeContractSnapshotServiceTests(unittest.TestCase):
                 "runtime_contract_summary.child_executor_sandbox_backend_binding_coverage.missing_callable_status",
                 "runtime_contract_summary.child_executor_sandbox_backend_coverage",
                 "runtime_contract_summary.child_executor_sandbox_backend_coverage.sandbox_backend_smoke",
+                "runtime_contract_summary.child_executor_sandbox_backend_coverage.execution_seam_supported",
+                "runtime_contract_summary.child_executor_sandbox_backend_coverage.execution_completed_status",
+                "runtime_contract_summary.child_executor_sandbox_backend_coverage.execution_missing_idempotency_status",
+                "runtime_contract_summary.child_executor_sandbox_backend_coverage.execution_handler_failure_status",
                 "runtime_contract_summary.subagent_lane_query_detail_coverage",
                 "runtime_contract_summary.subagent_lane_query_detail_coverage.detail_smoke",
                 "runtime_contract_artifact_schema",

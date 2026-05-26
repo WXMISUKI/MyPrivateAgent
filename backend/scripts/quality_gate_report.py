@@ -83,6 +83,10 @@ RUNTIME_CONTRACT_SUMMARY_REQUIRED_FIELDS = (
     "child_executor_sandbox_backend_binding_coverage.missing_callable_status",
     "child_executor_sandbox_backend_coverage",
     "child_executor_sandbox_backend_coverage.sandbox_backend_smoke",
+    "child_executor_sandbox_backend_coverage.execution_seam_supported",
+    "child_executor_sandbox_backend_coverage.execution_completed_status",
+    "child_executor_sandbox_backend_coverage.execution_missing_idempotency_status",
+    "child_executor_sandbox_backend_coverage.execution_handler_failure_status",
     "subagent_lane_query_detail_coverage",
     "subagent_lane_query_detail_coverage.detail_smoke",
 )
@@ -3051,6 +3055,39 @@ def _build_child_executor_sandbox_backend_coverage(check: dict[str, Any]) -> dic
     backend_result_status = str(check.get("backend_result_status") or "").strip()
     backend_invocation_count = _coerce_non_negative_int(check.get("backend_invocation_count"), 0)
     default_worker_enabled = bool(check.get("default_worker_enabled"))
+    execution_seam_supported = bool(check.get("execution_seam_supported"))
+    execution_default_enabled = bool(check.get("execution_default_enabled"))
+    execution_completed_status = str(check.get("execution_completed_status") or "").strip()
+    execution_completed_valid = bool(check.get("execution_completed_valid"))
+    execution_completed_will_dispatch = bool(check.get("execution_completed_will_dispatch"))
+    execution_missing_idempotency_status = str(
+        check.get("execution_missing_idempotency_status") or ""
+    ).strip()
+    execution_missing_idempotency_error_code = str(
+        check.get("execution_missing_idempotency_error_code") or ""
+    ).strip()
+    execution_unsafe_status = str(check.get("execution_unsafe_status") or "").strip()
+    execution_unsafe_error_code = str(check.get("execution_unsafe_error_code") or "").strip()
+    execution_handler_failure_status = str(
+        check.get("execution_handler_failure_status") or ""
+    ).strip()
+    execution_handler_failure_error_code = str(
+        check.get("execution_handler_failure_error_code") or ""
+    ).strip()
+    execution_handler_failure_retryable = bool(check.get("execution_handler_failure_retryable"))
+    execution_invocation_count = _coerce_non_negative_int(check.get("execution_invocation_count"), 0)
+    execution_executor_invocation_count = _coerce_non_negative_int(
+        check.get("execution_executor_invocation_count"),
+        0,
+    )
+    execution_dispatcher_status = str(check.get("execution_dispatcher_status") or "").strip()
+    execution_dispatcher_invocation_count = _coerce_non_negative_int(
+        check.get("execution_dispatcher_invocation_count"),
+        0,
+    )
+    execution_parent_merge_performed = bool(check.get("execution_parent_merge_performed"))
+    execution_retry_scheduled = bool(check.get("execution_retry_scheduled"))
+    execution_production_authorized = bool(check.get("execution_production_authorized"))
     sandbox_backend_smoke = (
         bool(check.get("ok"))
         and contract_version == "phase-ii-child-executor-sandbox-worker-backend-v1"
@@ -3067,6 +3104,25 @@ def _build_child_executor_sandbox_backend_coverage(check: dict[str, Any]) -> dic
         and backend_result_status == "completed"
         and backend_invocation_count == 1
         and not default_worker_enabled
+        and execution_seam_supported
+        and not execution_default_enabled
+        and execution_completed_status == "completed"
+        and execution_completed_valid
+        and execution_completed_will_dispatch
+        and execution_missing_idempotency_status == "blocked"
+        and execution_missing_idempotency_error_code == "sandbox_payload_missing_fields"
+        and execution_unsafe_status == "blocked"
+        and execution_unsafe_error_code == "sandbox_payload_unsafe"
+        and execution_handler_failure_status == "failed"
+        and execution_handler_failure_error_code == "sandbox_executor_failed"
+        and execution_handler_failure_retryable
+        and execution_invocation_count == 3
+        and execution_executor_invocation_count == 1
+        and execution_dispatcher_status == "dispatched"
+        and execution_dispatcher_invocation_count == 1
+        and not execution_parent_merge_performed
+        and not execution_retry_scheduled
+        and not execution_production_authorized
     )
     return {
         "sandbox_backend_smoke": sandbox_backend_smoke,
@@ -3084,6 +3140,25 @@ def _build_child_executor_sandbox_backend_coverage(check: dict[str, Any]) -> dic
         "backend_result_status": backend_result_status,
         "backend_invocation_count": backend_invocation_count,
         "default_worker_enabled": default_worker_enabled,
+        "execution_seam_supported": execution_seam_supported,
+        "execution_default_enabled": execution_default_enabled,
+        "execution_completed_status": execution_completed_status,
+        "execution_completed_valid": execution_completed_valid,
+        "execution_completed_will_dispatch": execution_completed_will_dispatch,
+        "execution_missing_idempotency_status": execution_missing_idempotency_status,
+        "execution_missing_idempotency_error_code": execution_missing_idempotency_error_code,
+        "execution_unsafe_status": execution_unsafe_status,
+        "execution_unsafe_error_code": execution_unsafe_error_code,
+        "execution_handler_failure_status": execution_handler_failure_status,
+        "execution_handler_failure_error_code": execution_handler_failure_error_code,
+        "execution_handler_failure_retryable": execution_handler_failure_retryable,
+        "execution_invocation_count": execution_invocation_count,
+        "execution_executor_invocation_count": execution_executor_invocation_count,
+        "execution_dispatcher_status": execution_dispatcher_status,
+        "execution_dispatcher_invocation_count": execution_dispatcher_invocation_count,
+        "execution_parent_merge_performed": execution_parent_merge_performed,
+        "execution_retry_scheduled": execution_retry_scheduled,
+        "execution_production_authorized": execution_production_authorized,
     }
 
 

@@ -822,6 +822,31 @@ class RuntimeContractSmokeTests(unittest.TestCase):
         self.assertEqual(result["backend_result_status"], "completed")
         self.assertEqual(result["backend_invocation_count"], 1)
         self.assertFalse(result["default_worker_enabled"])
+        self.assertTrue(result["execution_seam_supported"])
+        self.assertFalse(result["execution_default_enabled"])
+        self.assertEqual(result["execution_completed_status"], "completed")
+        self.assertTrue(result["execution_completed_valid"])
+        self.assertTrue(result["execution_completed_will_dispatch"])
+        self.assertEqual(result["execution_missing_idempotency_status"], "blocked")
+        self.assertEqual(
+            result["execution_missing_idempotency_error_code"],
+            "sandbox_payload_missing_fields",
+        )
+        self.assertEqual(result["execution_unsafe_status"], "blocked")
+        self.assertEqual(result["execution_unsafe_error_code"], "sandbox_payload_unsafe")
+        self.assertEqual(result["execution_handler_failure_status"], "failed")
+        self.assertEqual(
+            result["execution_handler_failure_error_code"],
+            "sandbox_executor_failed",
+        )
+        self.assertTrue(result["execution_handler_failure_retryable"])
+        self.assertEqual(result["execution_invocation_count"], 3)
+        self.assertEqual(result["execution_executor_invocation_count"], 1)
+        self.assertEqual(result["execution_dispatcher_status"], "dispatched")
+        self.assertEqual(result["execution_dispatcher_invocation_count"], 1)
+        self.assertFalse(result["execution_parent_merge_performed"])
+        self.assertFalse(result["execution_retry_scheduled"])
+        self.assertFalse(result["execution_production_authorized"])
 
     def test_sdk_tool_runtime_execution_bridge_check_covers_auto_ask_and_deny_paths(self):
         result = runtime_contract_smoke._run_sdk_tool_runtime_execution_bridge_check()

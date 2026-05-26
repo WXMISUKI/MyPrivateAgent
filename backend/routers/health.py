@@ -191,6 +191,9 @@ def _normalize_runtime_contract_gate_summary(summary: object) -> dict:
             "child_executor_sandbox_backend_binding_coverage": (
                 _normalize_child_executor_sandbox_backend_binding_coverage({})
             ),
+            "child_executor_sandbox_backend_coverage": (
+                _normalize_child_executor_sandbox_backend_coverage({})
+            ),
             "subagent_lane_query_detail_coverage": _normalize_subagent_lane_query_detail_coverage({}),
         }
     coverage = summary.get("approval_replay_coverage")
@@ -250,6 +253,11 @@ def _normalize_runtime_contract_gate_summary(summary: object) -> dict:
     )
     if not isinstance(child_executor_sandbox_backend_binding_coverage, dict):
         child_executor_sandbox_backend_binding_coverage = {}
+    child_executor_sandbox_backend_coverage = summary.get(
+        "child_executor_sandbox_backend_coverage"
+    )
+    if not isinstance(child_executor_sandbox_backend_coverage, dict):
+        child_executor_sandbox_backend_coverage = {}
     subagent_lane_detail_coverage = summary.get("subagent_lane_query_detail_coverage")
     if not isinstance(subagent_lane_detail_coverage, dict):
         subagent_lane_detail_coverage = {}
@@ -314,6 +322,11 @@ def _normalize_runtime_contract_gate_summary(summary: object) -> dict:
         "child_executor_sandbox_backend_binding_coverage": (
             _normalize_child_executor_sandbox_backend_binding_coverage(
                 child_executor_sandbox_backend_binding_coverage
+            )
+        ),
+        "child_executor_sandbox_backend_coverage": (
+            _normalize_child_executor_sandbox_backend_coverage(
+                child_executor_sandbox_backend_coverage
             )
         ),
         "subagent_lane_query_detail_coverage": _normalize_subagent_lane_query_detail_coverage(
@@ -1047,6 +1060,132 @@ def _normalize_child_executor_sandbox_backend_binding_coverage(coverage: dict) -
     }
 
 
+def _normalize_child_executor_sandbox_backend_coverage(coverage: dict) -> dict:
+    contract_version = str(coverage.get("contract_version") or "").strip()
+    ready_adapter_contract = bool(coverage.get("ready_adapter_contract"))
+    ready_sandbox_guard = bool(coverage.get("ready_sandbox_guard"))
+    ready_audit = bool(coverage.get("ready_audit"))
+    ready_idempotency = bool(coverage.get("ready_idempotency"))
+    missing_guard_fail_closed = bool(coverage.get("missing_guard_fail_closed"))
+    missing_guard_count = _coerce_runtime_contract_non_negative_int(
+        coverage.get("missing_guard_count")
+    )
+    unsafe_payload_blocked = bool(coverage.get("unsafe_payload_blocked"))
+    unsafe_blocked_reason = str(coverage.get("unsafe_blocked_reason") or "").strip()
+    compact_attempt_valid = bool(coverage.get("compact_attempt_valid"))
+    dispatch_status = str(coverage.get("dispatch_status") or "").strip()
+    backend_result_status = str(coverage.get("backend_result_status") or "").strip()
+    backend_invocation_count = _coerce_runtime_contract_non_negative_int(
+        coverage.get("backend_invocation_count")
+    )
+    default_worker_enabled = bool(coverage.get("default_worker_enabled"))
+    execution_seam_supported = bool(coverage.get("execution_seam_supported"))
+    execution_default_enabled = bool(coverage.get("execution_default_enabled"))
+    execution_completed_status = str(coverage.get("execution_completed_status") or "").strip()
+    execution_completed_valid = bool(coverage.get("execution_completed_valid"))
+    execution_completed_will_dispatch = bool(coverage.get("execution_completed_will_dispatch"))
+    execution_missing_idempotency_status = str(
+        coverage.get("execution_missing_idempotency_status") or ""
+    ).strip()
+    execution_missing_idempotency_error_code = str(
+        coverage.get("execution_missing_idempotency_error_code") or ""
+    ).strip()
+    execution_unsafe_status = str(coverage.get("execution_unsafe_status") or "").strip()
+    execution_unsafe_error_code = str(coverage.get("execution_unsafe_error_code") or "").strip()
+    execution_handler_failure_status = str(
+        coverage.get("execution_handler_failure_status") or ""
+    ).strip()
+    execution_handler_failure_error_code = str(
+        coverage.get("execution_handler_failure_error_code") or ""
+    ).strip()
+    execution_handler_failure_retryable = bool(coverage.get("execution_handler_failure_retryable"))
+    execution_invocation_count = _coerce_runtime_contract_non_negative_int(
+        coverage.get("execution_invocation_count")
+    )
+    execution_executor_invocation_count = _coerce_runtime_contract_non_negative_int(
+        coverage.get("execution_executor_invocation_count")
+    )
+    execution_dispatcher_status = str(coverage.get("execution_dispatcher_status") or "").strip()
+    execution_dispatcher_invocation_count = _coerce_runtime_contract_non_negative_int(
+        coverage.get("execution_dispatcher_invocation_count")
+    )
+    execution_parent_merge_performed = bool(coverage.get("execution_parent_merge_performed"))
+    execution_retry_scheduled = bool(coverage.get("execution_retry_scheduled"))
+    execution_production_authorized = bool(coverage.get("execution_production_authorized"))
+    sandbox_backend_smoke = (
+        bool(coverage.get("sandbox_backend_smoke"))
+        and contract_version == "phase-ii-child-executor-sandbox-worker-backend-v1"
+        and ready_adapter_contract
+        and ready_sandbox_guard
+        and ready_audit
+        and ready_idempotency
+        and missing_guard_fail_closed
+        and missing_guard_count > 0
+        and unsafe_payload_blocked
+        and unsafe_blocked_reason == "sandbox_payload_unsafe"
+        and compact_attempt_valid
+        and dispatch_status == "dispatched"
+        and backend_result_status == "completed"
+        and backend_invocation_count == 1
+        and not default_worker_enabled
+        and execution_seam_supported
+        and not execution_default_enabled
+        and execution_completed_status == "completed"
+        and execution_completed_valid
+        and execution_completed_will_dispatch
+        and execution_missing_idempotency_status == "blocked"
+        and execution_missing_idempotency_error_code == "sandbox_payload_missing_fields"
+        and execution_unsafe_status == "blocked"
+        and execution_unsafe_error_code == "sandbox_payload_unsafe"
+        and execution_handler_failure_status == "failed"
+        and execution_handler_failure_error_code == "sandbox_executor_failed"
+        and execution_handler_failure_retryable
+        and execution_invocation_count == 3
+        and execution_executor_invocation_count == 1
+        and execution_dispatcher_status == "dispatched"
+        and execution_dispatcher_invocation_count == 1
+        and not execution_parent_merge_performed
+        and not execution_retry_scheduled
+        and not execution_production_authorized
+    )
+    return {
+        "sandbox_backend_smoke": sandbox_backend_smoke,
+        "contract_version": contract_version,
+        "ready_adapter_contract": ready_adapter_contract,
+        "ready_sandbox_guard": ready_sandbox_guard,
+        "ready_audit": ready_audit,
+        "ready_idempotency": ready_idempotency,
+        "missing_guard_fail_closed": missing_guard_fail_closed,
+        "missing_guard_count": missing_guard_count,
+        "unsafe_payload_blocked": unsafe_payload_blocked,
+        "unsafe_blocked_reason": unsafe_blocked_reason,
+        "compact_attempt_valid": compact_attempt_valid,
+        "dispatch_status": dispatch_status,
+        "backend_result_status": backend_result_status,
+        "backend_invocation_count": backend_invocation_count,
+        "default_worker_enabled": default_worker_enabled,
+        "execution_seam_supported": execution_seam_supported,
+        "execution_default_enabled": execution_default_enabled,
+        "execution_completed_status": execution_completed_status,
+        "execution_completed_valid": execution_completed_valid,
+        "execution_completed_will_dispatch": execution_completed_will_dispatch,
+        "execution_missing_idempotency_status": execution_missing_idempotency_status,
+        "execution_missing_idempotency_error_code": execution_missing_idempotency_error_code,
+        "execution_unsafe_status": execution_unsafe_status,
+        "execution_unsafe_error_code": execution_unsafe_error_code,
+        "execution_handler_failure_status": execution_handler_failure_status,
+        "execution_handler_failure_error_code": execution_handler_failure_error_code,
+        "execution_handler_failure_retryable": execution_handler_failure_retryable,
+        "execution_invocation_count": execution_invocation_count,
+        "execution_executor_invocation_count": execution_executor_invocation_count,
+        "execution_dispatcher_status": execution_dispatcher_status,
+        "execution_dispatcher_invocation_count": execution_dispatcher_invocation_count,
+        "execution_parent_merge_performed": execution_parent_merge_performed,
+        "execution_retry_scheduled": execution_retry_scheduled,
+        "execution_production_authorized": execution_production_authorized,
+    }
+
+
 def _normalize_subagent_lane_query_detail_coverage(coverage: dict) -> dict:
     return {
         "detail_smoke": bool(coverage.get("detail_smoke")),
@@ -1376,6 +1515,12 @@ def _record_runtime_contract_gate_timeline(
         coverage_name="child_executor_sandbox_backend_binding_coverage",
         smoke_field="binding_smoke",
     )
+    child_executor_sandbox_backend_label = _format_runtime_contract_coverage_label(
+        raw_runtime_contract_summary,
+        runtime_contract_summary,
+        coverage_name="child_executor_sandbox_backend_coverage",
+        smoke_field="sandbox_backend_smoke",
+    )
     subagent_detail_label = _format_runtime_contract_coverage_label(
         raw_runtime_contract_summary,
         runtime_contract_summary,
@@ -1408,6 +1553,7 @@ def _record_runtime_contract_gate_timeline(
             f"child_executor_result_handoff={child_executor_result_handoff_label} "
             f"child_executor_retry_audit={child_executor_retry_audit_label} "
             f"child_executor_sandbox_binding={child_executor_sandbox_binding_label} "
+            f"child_executor_sandbox_backend={child_executor_sandbox_backend_label} "
             f"subagent_detail={subagent_detail_label}"
         ),
         severity="warning",

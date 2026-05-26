@@ -20,6 +20,7 @@ from .child_executor_backends import (
     resolve_child_executor_backend,
 )
 from .child_executor_sandbox_worker_backend import (
+    SandboxChildExecutorBackend,
     build_child_executor_sandbox_backend_binding_contract,
     build_sandbox_dispatch_attempt_envelope,
     build_sandbox_worker_backend_adapter_contract,
@@ -139,6 +140,7 @@ __all__ = [
     "ProviderBackend",
     "SessionRecord",
     "SessionStore",
+    "SandboxChildExecutorBackend",
     "ToolRenderMode",
     "ToolExecutionEnvelope",
     "ToolResultCache",

@@ -5,6 +5,7 @@ from backend.agent_framework.child_executor_backends import (
     build_child_executor_sandbox_worker_backend_entry,
 )
 from backend.agent_framework.child_executor_sandbox_worker_backend import (
+    SandboxChildExecutorBackend,
     build_child_executor_sandbox_backend_binding_contract,
     build_sandbox_dispatch_attempt_envelope,
     build_sandbox_worker_backend_adapter_contract,
@@ -189,6 +190,74 @@ class ChildExecutorSandboxWorkerBackendTests(unittest.TestCase):
         self.assertTrue(binding["attempt_envelope_supported"])
         self.assertTrue(binding["audit_idempotency_ready"])
         self.assertFalse(binding["will_dispatch"])
+
+    def test_sandbox_execution_seam_completes_valid_payload_compactly(self):
+        backend = SandboxChildExecutorBackend()
+
+        result = backend.dispatch({
+            "child_run_id": "child-1",
+            "idempotency_key": "idem-child-1",
+        })
+
+        self.assertEqual(result["status"], "completed")
+        self.assertTrue(result["will_dispatch"])
+        self.assertEqual(result["child_run_id"], "child-1")
+        self.assertEqual(result["backend_id"], "sandbox_worker")
+        self.assertTrue(result["sandbox_ref"].startswith("sandbox://"))
+        self.assertTrue(result["output_ref"].startswith("artifact://child-1/output"))
+        self.assertTrue(result["audit_ref"].startswith("trace://"))
+        self.assertEqual(result["error_code"], "")
+        self.assertFalse(result["retryable"])
+        self.assertEqual(backend.invocation_count, 1)
+        self.assertEqual(backend.executor_invocation_count, 1)
+        self.assertFalse(backend.describe_execution_seam()["starts_by_default"])
+        self.assertFalse(backend.describe_execution_seam()["parent_merge_performed"])
+        self.assertFalse(backend.describe_execution_seam()["retry_scheduled"])
+
+    def test_sandbox_execution_seam_blocks_missing_idempotency_without_executor_invocation(self):
+        invoked = []
+        backend = SandboxChildExecutorBackend(executor=lambda payload: invoked.append(payload))
+
+        result = backend.dispatch({"child_run_id": "child-1"})
+
+        self.assertEqual(result["status"], "blocked")
+        self.assertFalse(result["will_dispatch"])
+        self.assertEqual(result["error_code"], "sandbox_payload_missing_fields")
+        self.assertIn("idempotency_key", result["blocked_sections"])
+        self.assertEqual(invoked, [])
+        self.assertEqual(backend.executor_invocation_count, 0)
+
+    def test_sandbox_execution_seam_blocks_unsafe_payload_without_executor_invocation(self):
+        invoked = []
+        backend = SandboxChildExecutorBackend(executor=lambda payload: invoked.append(payload))
+
+        result = backend.dispatch({
+            "child_run_id": "child-1",
+            "idempotency_key": "idem-child-1",
+            "handler": object(),
+        })
+
+        self.assertEqual(result["status"], "blocked")
+        self.assertEqual(result["error_code"], "sandbox_payload_unsafe")
+        self.assertIn("handler", result["blocked_sections"])
+        self.assertEqual(invoked, [])
+        self.assertEqual(backend.executor_invocation_count, 0)
+
+    def test_sandbox_execution_seam_returns_failed_envelope_when_executor_raises(self):
+        def _raise(_payload):
+            raise RuntimeError("boom")
+
+        backend = SandboxChildExecutorBackend(executor=_raise)
+
+        result = backend.dispatch({
+            "child_run_id": "child-1",
+            "idempotency_key": "idem-child-1",
+        })
+
+        self.assertEqual(result["status"], "failed")
+        self.assertFalse(result["will_dispatch"])
+        self.assertEqual(result["error_code"], "sandbox_executor_failed")
+        self.assertTrue(result["retryable"])
 
     def test_dispatch_contract_blocks_sandbox_backend_with_missing_guard_evidence(self):
         backend_evidence = {

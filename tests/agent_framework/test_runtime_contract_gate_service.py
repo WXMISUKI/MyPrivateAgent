@@ -2144,6 +2144,29 @@ class RuntimeContractGateServiceTests(unittest.TestCase):
                                         "backend_result_status": "completed",
                                         "backend_invocation_count": 1,
                                         "default_worker_enabled": False,
+                                        "execution_seam_supported": True,
+                                        "execution_default_enabled": False,
+                                        "execution_completed_status": "completed",
+                                        "execution_completed_valid": True,
+                                        "execution_completed_will_dispatch": True,
+                                        "execution_missing_idempotency_status": "blocked",
+                                        "execution_missing_idempotency_error_code": (
+                                            "sandbox_payload_missing_fields"
+                                        ),
+                                        "execution_unsafe_status": "blocked",
+                                        "execution_unsafe_error_code": "sandbox_payload_unsafe",
+                                        "execution_handler_failure_status": "failed",
+                                        "execution_handler_failure_error_code": (
+                                            "sandbox_executor_failed"
+                                        ),
+                                        "execution_handler_failure_retryable": True,
+                                        "execution_invocation_count": 3,
+                                        "execution_executor_invocation_count": 1,
+                                        "execution_dispatcher_status": "dispatched",
+                                        "execution_dispatcher_invocation_count": 1,
+                                        "execution_parent_merge_performed": False,
+                                        "execution_retry_scheduled": False,
+                                        "execution_production_authorized": False,
                                     },
                                 ],
                             }
@@ -2166,6 +2189,11 @@ class RuntimeContractGateServiceTests(unittest.TestCase):
         self.assertTrue(coverage["unsafe_payload_blocked"])
         self.assertTrue(coverage["compact_attempt_valid"])
         self.assertFalse(coverage["default_worker_enabled"])
+        self.assertTrue(coverage["execution_seam_supported"])
+        self.assertFalse(coverage["execution_default_enabled"])
+        self.assertEqual(coverage["execution_completed_status"], "completed")
+        self.assertEqual(coverage["execution_missing_idempotency_status"], "blocked")
+        self.assertEqual(coverage["execution_handler_failure_status"], "failed")
 
     def test_build_runtime_contract_fails_closed_when_child_executor_gate_summary_evidence_disagrees(self):
         with tempfile.TemporaryDirectory() as tmp_dir:

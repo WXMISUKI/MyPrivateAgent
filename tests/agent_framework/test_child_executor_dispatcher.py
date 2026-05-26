@@ -12,6 +12,7 @@ from backend.agent_framework.child_executor_dispatcher import (
     build_child_executor_dispatcher_contract,
 )
 from backend.agent_framework.child_executor_sandbox_worker_backend import (
+    SandboxChildExecutorBackend,
     build_sandbox_dispatch_attempt_envelope,
 )
 
@@ -268,6 +269,34 @@ class ChildExecutorDispatcherTests(unittest.TestCase):
             handoff["dispatch_result_retry_audit_policy"]["retry_policy_status"],
             "not_required",
         )
+
+    def test_dispatcher_invokes_opt_in_sandbox_execution_seam_once(self):
+        backend = SandboxChildExecutorBackend()
+        dispatcher = ChildExecutorDispatcher(
+            enabled=True,
+            backend_adapters={"sandbox_worker": backend},
+        )
+
+        attempt = dispatcher.dispatch(
+            dispatch_contract=_ready_sandbox_dispatch_contract_with_binding(),
+            payload={
+                "parent_run_id": "parent-1",
+                "child_run_id": "child-1",
+                "idempotency_key": "idem-child-1",
+            },
+        )
+
+        self.assertEqual(attempt["dispatch_status"], "dispatched")
+        self.assertTrue(attempt["will_dispatch"])
+        self.assertEqual(backend.invocation_count, 1)
+        self.assertEqual(backend.executor_invocation_count, 1)
+        self.assertEqual(attempt["backend_result"]["status"], "completed")
+        self.assertEqual(attempt["backend_result"]["output_ref"], "artifact://child-1/output")
+        handoff = attempt["dispatch_result_handoff"]
+        self.assertEqual(handoff["overall_status"], "ready")
+        self.assertFalse(handoff["parent_merge_performed"])
+        self.assertFalse(handoff["retry_scheduled"])
+        self.assertFalse(handoff["production_dispatch_authorized"])
 
     def test_dispatcher_fails_closed_when_sandbox_output_is_malformed(self):
         dispatcher = ChildExecutorDispatcher(

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Dict, Mapping
+from typing import Any, Callable, Dict, Mapping
 
 
 CHILD_EXECUTOR_SANDBOX_WORKER_BACKEND_CONTRACT_VERSION = (
@@ -48,6 +48,11 @@ _UNSAFE_PAYLOAD_KEYS = {
     "stream_iterator",
     "tool_executor",
 }
+
+REQUIRED_SANDBOX_EXECUTION_PAYLOAD_FIELDS = (
+    "child_run_id",
+    "idempotency_key",
+)
 
 
 def _utc_now() -> str:
@@ -327,6 +332,174 @@ def build_sandbox_dispatch_attempt_envelope(
         "error_code": _normalize_text(error_code),
         "retryable": _normalize_bool(retryable),
     }
+
+
+class SandboxChildExecutorBackend:
+    """Explicit opt-in sandbox execution seam for child executor dispatch.
+
+    The seam is intentionally small: constructing it starts no worker. It only
+    returns compact dispatch attempt evidence when explicitly invoked by a
+    caller such as ChildExecutorDispatcher.
+    """
+
+    def __init__(
+        self,
+        *,
+        backend_id: str = "sandbox_worker",
+        executor: Callable[[Mapping[str, Any]], Mapping[str, Any] | None] | None = None,
+        sandbox_ref_prefix: str = "sandbox://",
+        artifact_ref_prefix: str = "artifact://",
+        audit_ref_prefix: str = "trace://",
+    ) -> None:
+        self.backend_id = _normalize_text(backend_id) or "sandbox_worker"
+        self._executor = executor
+        self._sandbox_ref_prefix = _normalize_text(sandbox_ref_prefix) or "sandbox://"
+        self._artifact_ref_prefix = _normalize_text(artifact_ref_prefix) or "artifact://"
+        self._audit_ref_prefix = _normalize_text(audit_ref_prefix) or "trace://"
+        self.invocation_count = 0
+        self.executor_invocation_count = 0
+        self.starts_by_default = False
+        self.parent_merge_performed = False
+        self.retry_scheduled = False
+        self.production_dispatch_authorized = False
+
+    def __call__(self, payload: Mapping[str, Any]) -> Dict[str, Any]:
+        return self.dispatch(payload)
+
+    def dispatch(self, payload: Mapping[str, Any] | None = None) -> Dict[str, Any]:
+        self.invocation_count += 1
+        payload_dict = dict(payload or {})
+        child_run_id = _normalize_text(payload_dict.get("child_run_id"))
+        attempt_id = _normalize_text(payload_dict.get("attempt_id")) or (
+            f"sandbox:{child_run_id or 'missing-child'}:{self.invocation_count}"
+        )
+        unsafe_keys = find_unsafe_sandbox_payload_keys(payload_dict)
+        if unsafe_keys:
+            return self._blocked_attempt(
+                attempt_id=attempt_id,
+                child_run_id=child_run_id,
+                error_code="sandbox_payload_unsafe",
+                retryable=False,
+                blocked_sections=unsafe_keys,
+            )
+
+        missing_fields = [
+            field
+            for field in REQUIRED_SANDBOX_EXECUTION_PAYLOAD_FIELDS
+            if not _normalize_text(payload_dict.get(field))
+        ]
+        if missing_fields:
+            return self._blocked_attempt(
+                attempt_id=attempt_id,
+                child_run_id=child_run_id,
+                error_code="sandbox_payload_missing_fields",
+                retryable=False,
+                blocked_sections=missing_fields,
+            )
+
+        try:
+            self.executor_invocation_count += 1
+            executor_result = self._executor(payload_dict) if self._executor is not None else {}
+        except Exception:
+            return self._failed_attempt(
+                attempt_id=attempt_id,
+                child_run_id=child_run_id,
+                error_code="sandbox_executor_failed",
+                retryable=True,
+            )
+        if executor_result is not None and not isinstance(executor_result, Mapping):
+            return self._failed_attempt(
+                attempt_id=attempt_id,
+                child_run_id=child_run_id,
+                error_code="sandbox_executor_result_invalid",
+                retryable=False,
+            )
+        raw_result = dict(executor_result or {})
+
+        status = _normalize_text(raw_result.get("status")) or "completed"
+        if status not in {"completed", "succeeded", "success", "ok"}:
+            return self._failed_attempt(
+                attempt_id=attempt_id,
+                child_run_id=child_run_id,
+                error_code=_normalize_text(raw_result.get("error_code")) or "sandbox_executor_failed",
+                retryable=bool(raw_result.get("retryable")),
+            )
+        return build_sandbox_dispatch_attempt_envelope(
+            attempt_id=attempt_id,
+            backend_id=self.backend_id,
+            child_run_id=child_run_id,
+            status="completed",
+            will_dispatch=True,
+            sandbox_ref=(
+                _normalize_text(raw_result.get("sandbox_ref"))
+                or f"{self._sandbox_ref_prefix}{attempt_id}"
+            ),
+            output_ref=(
+                _normalize_text(raw_result.get("output_ref"))
+                or f"{self._artifact_ref_prefix}{child_run_id}/output"
+            ),
+            audit_ref=(
+                _normalize_text(raw_result.get("audit_ref"))
+                or f"{self._audit_ref_prefix}{attempt_id}"
+            ),
+            error_code="",
+            retryable=False,
+        )
+
+    def _blocked_attempt(
+        self,
+        *,
+        attempt_id: str,
+        child_run_id: str,
+        error_code: str,
+        retryable: bool,
+        blocked_sections: list[str],
+    ) -> Dict[str, Any]:
+        attempt = build_sandbox_dispatch_attempt_envelope(
+            attempt_id=attempt_id,
+            backend_id=self.backend_id,
+            child_run_id=child_run_id,
+            status="blocked",
+            will_dispatch=False,
+            error_code=error_code,
+            retryable=retryable,
+        )
+        attempt["blocked_sections"] = [
+            _normalize_text(item) for item in blocked_sections if _normalize_text(item)
+        ]
+        return attempt
+
+    def _failed_attempt(
+        self,
+        *,
+        attempt_id: str,
+        child_run_id: str,
+        error_code: str,
+        retryable: bool,
+    ) -> Dict[str, Any]:
+        return build_sandbox_dispatch_attempt_envelope(
+            attempt_id=attempt_id,
+            backend_id=self.backend_id,
+            child_run_id=child_run_id,
+            status="failed",
+            will_dispatch=False,
+            error_code=error_code,
+            retryable=retryable,
+        )
+
+    def describe_execution_seam(self) -> Dict[str, Any]:
+        return {
+            "supported": True,
+            "backend_id": self.backend_id,
+            "starts_by_default": self.starts_by_default,
+            "executor_bound": self._executor is not None,
+            "invocation_count": self.invocation_count,
+            "executor_invocation_count": self.executor_invocation_count,
+            "required_payload_fields": list(REQUIRED_SANDBOX_EXECUTION_PAYLOAD_FIELDS),
+            "parent_merge_performed": self.parent_merge_performed,
+            "retry_scheduled": self.retry_scheduled,
+            "production_dispatch_authorized": self.production_dispatch_authorized,
+        }
 
 
 def find_unsafe_sandbox_payload_keys(payload: Mapping[str, Any] | None) -> list[str]:

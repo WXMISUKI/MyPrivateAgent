@@ -28,6 +28,15 @@ When sandbox backend binding evidence is present, the dispatcher MUST preserve c
 - **THEN** the dispatcher may invoke the selected backend adapter
 - **AND** it records compact dispatch evidence
 
+#### Scenario: Dispatcher invokes opt-in sandbox execution seam
+
+- **WHEN** dispatch is explicitly enabled
+- **AND** dispatch contract, sandbox backend binding, and backend adapter evidence are ready
+- **AND** the dispatcher backend adapter is a sandbox backend execution seam
+- **THEN** the dispatcher MAY invoke it exactly once for the dispatch request
+- **AND** the returned attempt MUST include compact backend result and result handoff evidence
+- **AND** it MUST NOT claim parent merge, retry scheduling, or production dispatch authorization
+
 #### Scenario: Sandbox adapter output is malformed
 
 - **WHEN** the selected backend adapter returns non-object output or omits required dispatch attempt evidence
