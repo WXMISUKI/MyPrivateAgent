@@ -4,17 +4,18 @@
 
 - 前后端部署到同一个 Vercel 项目
 - 前端静态资源由 Vercel CDN 托管
-- 后端 FastAPI 通过 Vercel Python Serverless 提供 `/api/*`
+- 后端通过轻量 FastAPI Serverless 提供 `/api/*`
 - 线上默认使用内存态存储，不依赖数据库
 - 不适合 Vercel 的本地文件写入和本地进程能力显式降级
 
 ## 2. 当前实现
 
 - 根目录 `vercel.json` 负责统一部署编排
-- 根目录 `api/index.py` 作为 Vercel Python 入口
+- 根目录 `api/index.py` 作为 Vercel Python 入口，运行轻量 `api/vercel_app.py`
 - `frontend-vue/dist` 作为前端构建输出目录
 - 前端线上默认请求同域 `/api`
 - Vercel 环境默认 `DB_MODE=memory`
+- 完整 LangChain/LangGraph/MCP/技能运行时仍由本地或 Docker 后端承载；Vercel 免费部署保留登录、模型目录和基础聊天演示能力
 
 ## 3. 部署步骤
 
