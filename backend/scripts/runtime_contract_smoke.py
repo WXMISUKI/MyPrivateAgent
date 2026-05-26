@@ -2805,7 +2805,35 @@ def _run_child_executor_dispatch_contract_check(runtime_profile_payload: dict) -
     opt_in_sandbox_dispatch = build_child_executor_dispatch_contract(
         gate=sandbox_gate,
         backend_registry=sandbox_registry,
-        dispatcher_backend_adapters={"sandbox_worker": lambda _payload: {}},
+        dispatcher_backend_adapters={"sandbox_worker": SandboxChildExecutorBackend()},
+        payload={
+            "parent_run_id": "parent-smoke",
+            "child_run_id": "child-dispatch-ready-smoke",
+            "idempotency_key": "idem-child-dispatch-ready-smoke",
+        },
+        sandbox_execution_seam=SandboxChildExecutorBackend().describe_execution_seam(),
+    )
+    missing_idempotency_dispatch = build_child_executor_dispatch_contract(
+        gate=sandbox_gate,
+        backend_registry=sandbox_registry,
+        dispatcher_backend_adapters={"sandbox_worker": SandboxChildExecutorBackend()},
+        payload={
+            "parent_run_id": "parent-smoke",
+            "child_run_id": "child-dispatch-missing-idem-smoke",
+        },
+        sandbox_execution_seam=SandboxChildExecutorBackend().describe_execution_seam(),
+    )
+    unsafe_dispatch = build_child_executor_dispatch_contract(
+        gate=sandbox_gate,
+        backend_registry=sandbox_registry,
+        dispatcher_backend_adapters={"sandbox_worker": SandboxChildExecutorBackend()},
+        payload={
+            "parent_run_id": "parent-smoke",
+            "child_run_id": "child-dispatch-unsafe-smoke",
+            "idempotency_key": "idem-child-dispatch-unsafe-smoke",
+            "handler": object(),
+        },
+        sandbox_execution_seam=SandboxChildExecutorBackend().describe_execution_seam(),
     )
     opt_in_handoff = dict(
         opt_in_sandbox_dispatch.get("child_executor_dispatch_attempt_handoff") or {}
@@ -2814,10 +2842,25 @@ def _run_child_executor_dispatch_contract_check(runtime_profile_payload: dict) -
         dispatch_contract=opt_in_sandbox_dispatch,
         payload={"child_run_id": "unsafe-child", "handler": object()},
     )
-    opt_in_dispatch_ready = bool(opt_in_dispatch.get("dispatch_ready"))
-    opt_in_will_dispatch = bool(opt_in_dispatch.get("will_dispatch"))
-    opt_in_backend_dispatch_ready = bool(opt_in_dispatch.get("backend_dispatch_ready"))
-    opt_in_explicit_binding_ready = bool(opt_in_dispatch.get("explicit_executor_binding_ready"))
+    opt_in_dispatch_ready = bool(opt_in_sandbox_dispatch.get("dispatch_ready"))
+    opt_in_will_dispatch = bool(opt_in_sandbox_dispatch.get("will_dispatch"))
+    opt_in_backend_dispatch_ready = bool(opt_in_sandbox_dispatch.get("backend_dispatch_ready"))
+    opt_in_explicit_binding_ready = bool(
+        opt_in_sandbox_dispatch.get("explicit_executor_binding_ready")
+    )
+    opt_in_ready_handoff_ready = bool(opt_in_handoff.get("ready"))
+    missing_idempotency_blocked = (
+        str(missing_idempotency_dispatch.get("overall_status") or "").strip() == "blocked"
+        and not bool(missing_idempotency_dispatch.get("dispatch_ready"))
+        and "sandbox_payload_idempotency_ready"
+        in [str(item) for item in (missing_idempotency_dispatch.get("blockers") or [])]
+    )
+    unsafe_dispatch_blocked = (
+        str(unsafe_dispatch.get("overall_status") or "").strip() == "blocked"
+        and not bool(unsafe_dispatch.get("dispatch_ready"))
+        and "sandbox_payload_unsafe" in [str(item) for item in (unsafe_dispatch.get("blockers") or [])]
+        and "handler" in [str(item) for item in (unsafe_dispatch.get("sandbox_payload_unsafe_keys") or [])]
+    )
     dispatch_handoff_blocked = (
         str(handoff.get("overall_status") or "").strip() == "blocked"
         and not bool(handoff.get("ready"))
@@ -2850,9 +2893,15 @@ def _run_child_executor_dispatch_contract_check(runtime_profile_payload: dict) -
         and not explicit_executor_binding_ready
         and explicit_executor_binding_status == "blocked"
         and opt_in_explicit_binding_ready
-        and not opt_in_dispatch_ready
+        and opt_in_dispatch_ready
         and not opt_in_will_dispatch
-        and not opt_in_backend_dispatch_ready
+        and opt_in_backend_dispatch_ready
+        and bool(opt_in_sandbox_dispatch.get("sandbox_dispatch_ready_opt_in"))
+        and bool(opt_in_sandbox_dispatch.get("sandbox_execution_seam_supported"))
+        and bool(opt_in_sandbox_dispatch.get("sandbox_payload_idempotency_ready"))
+        and opt_in_ready_handoff_ready
+        and missing_idempotency_blocked
+        and unsafe_dispatch_blocked
         and dispatch_handoff_blocked
         and opt_in_handoff_ready
         and unsafe_handoff_guarded
@@ -2871,16 +2920,41 @@ def _run_child_executor_dispatch_contract_check(runtime_profile_payload: dict) -
         "explicit_executor_binding_ready": explicit_executor_binding_ready,
         "explicit_executor_binding_status": explicit_executor_binding_status,
         "explicit_executor_binding_source": explicit_executor_binding_source,
-        "opt_in_dispatch_status": str(opt_in_dispatch.get("overall_status") or ""),
+        "opt_in_dispatch_status": str(opt_in_sandbox_dispatch.get("overall_status") or ""),
         "opt_in_dispatch_ready": opt_in_dispatch_ready,
         "opt_in_will_dispatch": opt_in_will_dispatch,
         "opt_in_backend_dispatch_ready": opt_in_backend_dispatch_ready,
+        "opt_in_sandbox_dispatch_ready": bool(
+            opt_in_sandbox_dispatch.get("sandbox_dispatch_ready_opt_in")
+        ),
+        "opt_in_sandbox_execution_seam_supported": bool(
+            opt_in_sandbox_dispatch.get("sandbox_execution_seam_supported")
+        ),
+        "opt_in_sandbox_payload_idempotency_ready": bool(
+            opt_in_sandbox_dispatch.get("sandbox_payload_idempotency_ready")
+        ),
+        "opt_in_ready_handoff_ready": opt_in_ready_handoff_ready,
+        "missing_idempotency_dispatch_status": str(
+            missing_idempotency_dispatch.get("overall_status") or ""
+        ),
+        "missing_idempotency_dispatch_ready": bool(
+            missing_idempotency_dispatch.get("dispatch_ready")
+        ),
+        "missing_idempotency_dispatch_blockers": [
+            str(item) for item in (missing_idempotency_dispatch.get("blockers") or [])
+        ],
+        "unsafe_dispatch_status": str(unsafe_dispatch.get("overall_status") or ""),
+        "unsafe_dispatch_ready": bool(unsafe_dispatch.get("dispatch_ready")),
+        "unsafe_dispatch_blockers": [str(item) for item in (unsafe_dispatch.get("blockers") or [])],
+        "unsafe_dispatch_payload_keys": [
+            str(item) for item in (unsafe_dispatch.get("sandbox_payload_unsafe_keys") or [])
+        ],
         "opt_in_explicit_executor_binding_ready": opt_in_explicit_binding_ready,
         "opt_in_explicit_executor_binding_status": str(
-            opt_in_dispatch.get("explicit_executor_binding_status") or ""
+            opt_in_sandbox_dispatch.get("explicit_executor_binding_status") or ""
         ),
         "opt_in_explicit_executor_binding_source": str(
-            opt_in_dispatch.get("explicit_executor_binding_source") or ""
+            opt_in_sandbox_dispatch.get("explicit_executor_binding_source") or ""
         ),
         "dispatch_attempt_handoff_status": str(handoff.get("overall_status") or ""),
         "dispatch_attempt_handoff_ready": bool(handoff.get("ready")),
@@ -3470,7 +3544,8 @@ def _run_child_executor_sandbox_backend_binding_contract_check() -> dict:
         "will_execute": False,
         "will_dispatch": False,
     }
-    dispatcher_adapters = {"sandbox_worker": lambda _payload: {}}
+    sandbox_backend = SandboxChildExecutorBackend()
+    dispatcher_adapters = {"sandbox_worker": sandbox_backend}
     default_binding = build_child_executor_sandbox_backend_binding_contract(
         backend_id="sandbox_worker",
         backend_registry_entry=sandbox_entry,
@@ -3524,6 +3599,12 @@ def _run_child_executor_sandbox_backend_binding_contract_check() -> dict:
         gate=sandbox_gate,
         backend_registry=sandbox_registry,
         dispatcher_backend_adapters=dispatcher_adapters,
+        payload={
+            "parent_run_id": "parent-binding-smoke",
+            "child_run_id": "child-binding-smoke",
+            "idempotency_key": "idem-child-binding-smoke",
+        },
+        sandbox_execution_seam=sandbox_backend.describe_execution_seam(),
     )
     dispatch_binding = dict(
         dispatch_contract.get("child_executor_sandbox_backend_binding") or {}

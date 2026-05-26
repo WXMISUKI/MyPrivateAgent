@@ -19,11 +19,13 @@ The contract MUST include:
 - blockers
 - dispatch attempt handoff evidence
 - sandbox backend binding evidence when the selected backend is a sandbox worker
+- sandbox execution seam evidence when an opt-in sandbox worker dispatch boundary is being evaluated
+- sandbox payload readiness evidence, including child run id, idempotency, and unsafe payload keys
 - required contracts
 - recommended next step
 - non-goals
 
-When the selected backend is a sandbox worker backend, dispatch readiness MUST also require adapter contract readiness, sandbox guard readiness, audit readiness, idempotency readiness, explicit sandbox backend binding evidence, and a callable dispatcher backend adapter binding.
+When the selected backend is a sandbox worker backend, dispatch readiness MUST also require adapter contract readiness, sandbox guard readiness, audit readiness, idempotency readiness, explicit sandbox backend binding evidence, a callable dispatcher backend adapter binding, sandbox execution seam support, a child run payload, idempotency evidence, and an unsafe payload guard.
 
 #### Scenario: Default dispatch is blocked
 - **WHEN** the default child executor dispatch contract is built
@@ -45,10 +47,35 @@ When the selected backend is a sandbox worker backend, dispatch readiness MUST a
 - **AND** it MUST expose a blocker for the missing sandbox backend evidence
 - **AND** it MUST set `will_dispatch = false`
 
+#### Scenario: Opt-in sandbox dispatch boundary is ready
+- **WHEN** promotion gate, execution prerequisites, backend registry, sandbox backend binding, sandbox execution seam, child run payload, and idempotency evidence are all ready
+- **THEN** the dispatch contract MAY report `overall_status = ready`
+- **AND** it MUST set `dispatch_ready = true`
+- **AND** it MUST expose `sandbox_dispatch_ready_opt_in = true`
+- **AND** it MUST expose `sandbox_execution_seam_supported = true`
+- **AND** it MUST expose `sandbox_payload_child_run_ready = true`
+- **AND** it MUST expose `sandbox_payload_idempotency_ready = true`
+- **AND** it MUST keep `will_dispatch = false`
+- **AND** it MUST NOT invoke the sandbox backend adapter
+
+#### Scenario: Opt-in sandbox dispatch blocks missing idempotency
+- **WHEN** an opt-in sandbox dispatch boundary is evaluated without idempotency evidence
+- **THEN** the dispatch contract MUST remain blocked
+- **AND** it MUST include `sandbox_payload_idempotency_ready` in blockers
+- **AND** it MUST keep `will_dispatch = false`
+
+#### Scenario: Opt-in sandbox dispatch blocks unsafe payload
+- **WHEN** an opt-in sandbox dispatch boundary is evaluated with an unsafe payload field such as a callable handler
+- **THEN** the dispatch contract MUST remain blocked
+- **AND** it MUST include `sandbox_payload_unsafe` in blockers
+- **AND** it MUST expose the unsafe payload keys
+- **AND** it MUST keep `will_dispatch = false`
+
 #### Scenario: Dispatch contract is quality-gated
 - **WHEN** runtime contract smoke evaluates Runtime Profile
 - **THEN** it MUST emit a `child_executor_dispatch_contract` check
 - **AND** quality gate summary MUST expose `child_executor_dispatch_coverage`
+- **AND** coverage MUST include opt-in ready sandbox dispatch status, handoff readiness, no-dispatch posture, missing-idempotency blocking, and unsafe payload blocking
 - **AND** missing or malformed dispatch evidence MUST fail closed as uncovered
 
 ### Requirement: Dispatch Contract Must Expose Attempt Handoff Evidence

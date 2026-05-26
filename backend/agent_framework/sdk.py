@@ -18,6 +18,7 @@ from .child_executor_dispatcher import (
 )
 from .child_executor_sandbox_worker_backend import (
     build_child_executor_sandbox_backend_binding_contract,
+    find_unsafe_sandbox_payload_keys,
 )
 from .continuation_registry import EmbeddedContinuationRegistry, get_embedded_continuation_registry
 from .continuations import (
@@ -1035,6 +1036,8 @@ def build_child_executor_dispatch_contract(
     gate: Dict[str, Any],
     backend_registry: Dict[str, Any] | None = None,
     dispatcher_backend_adapters: Mapping[str, Any] | None = None,
+    payload: Mapping[str, Any] | None = None,
+    sandbox_execution_seam: Mapping[str, Any] | None = None,
 ) -> Dict[str, Any]:
     normalized_gate = dict(gate or {})
     normalized_preflight = dict(normalized_gate.get("preflight") or {})
@@ -1129,6 +1132,30 @@ def build_child_executor_dispatch_contract(
         not sandbox_backend_selected
         or bool(sandbox_backend_binding.get("ready"))
     )
+    payload_dict = dict(payload or {})
+    unsafe_payload_keys = find_unsafe_sandbox_payload_keys(payload_dict)
+    sandbox_payload_child_run_ready = (
+        not sandbox_backend_selected
+        or bool(str(payload_dict.get("child_run_id") or "").strip())
+    )
+    sandbox_payload_idempotency_ready = (
+        not sandbox_backend_selected
+        or bool(str(payload_dict.get("idempotency_key") or "").strip())
+    )
+    sandbox_payload_unsafe = sandbox_backend_selected and bool(unsafe_payload_keys)
+    sandbox_seam = dict(sandbox_execution_seam or {})
+    sandbox_execution_seam_supported = (
+        not sandbox_backend_selected
+        or bool(sandbox_seam.get("supported"))
+    )
+    sandbox_dispatch_ready_opt_in = (
+        sandbox_backend_selected
+        and sandbox_backend_binding_ready
+        and sandbox_execution_seam_supported
+        and sandbox_payload_child_run_ready
+        and sandbox_payload_idempotency_ready
+        and not sandbox_payload_unsafe
+    )
     dispatch_mode = str(
         backend_evidence.get("dispatch_mode")
         or backend_lookup.get("dispatch_mode")
@@ -1143,6 +1170,10 @@ def build_child_executor_dispatch_contract(
         and sandbox_backend_ready
         and sandbox_backend_binding_ready
         and explicit_binding_ready
+        and sandbox_execution_seam_supported
+        and sandbox_payload_child_run_ready
+        and sandbox_payload_idempotency_ready
+        and not sandbox_payload_unsafe
     )
     blockers = []
     if not gate_allowed:
@@ -1166,6 +1197,14 @@ def build_child_executor_dispatch_contract(
             blockers.append("sandbox_idempotency_ready")
         if not sandbox_backend_binding_ready:
             blockers.append("sandbox_backend_binding_ready")
+        if not sandbox_execution_seam_supported:
+            blockers.append("sandbox_execution_seam_supported")
+        if not sandbox_payload_child_run_ready:
+            blockers.append("sandbox_payload_child_run_ready")
+        if not sandbox_payload_idempotency_ready:
+            blockers.append("sandbox_payload_idempotency_ready")
+        if sandbox_payload_unsafe:
+            blockers.append("sandbox_payload_unsafe")
         for item in (
             backend_evidence.get("missing_guard_blockers")
             or backend_lookup.get("missing_guard_blockers")
@@ -1199,6 +1238,11 @@ def build_child_executor_dispatch_contract(
         "sandbox_backend_selected": sandbox_backend_selected,
         "sandbox_backend_ready": sandbox_backend_ready,
         "sandbox_backend_binding_ready": sandbox_backend_binding_ready,
+        "sandbox_execution_seam_supported": sandbox_execution_seam_supported,
+        "sandbox_payload_child_run_ready": sandbox_payload_child_run_ready,
+        "sandbox_payload_idempotency_ready": sandbox_payload_idempotency_ready,
+        "sandbox_payload_unsafe_keys": unsafe_payload_keys,
+        "sandbox_dispatch_ready_opt_in": sandbox_dispatch_ready_opt_in,
         "sandbox_adapter_ready": sandbox_adapter_ready,
         "sandbox_guard_ready": sandbox_guard_ready,
         "sandbox_audit_ready": sandbox_audit_ready,
@@ -1219,6 +1263,12 @@ def build_child_executor_dispatch_contract(
             "backend": backend_evidence or backend_lookup,
             "explicit_executor_binding": explicit_binding_evidence,
             "child_executor_sandbox_backend_binding": sandbox_backend_binding,
+            "sandbox_execution_seam": sandbox_seam,
+            "sandbox_payload": {
+                "child_run_ready": sandbox_payload_child_run_ready,
+                "idempotency_ready": sandbox_payload_idempotency_ready,
+                "unsafe_payload_keys": unsafe_payload_keys,
+            },
             "promotion_gate": {
                 "gate_status": str(normalized_gate.get("gate_status") or "").strip(),
                 "allowed": gate_allowed,

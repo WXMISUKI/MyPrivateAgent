@@ -14,7 +14,12 @@ from backend.agent_framework.continuation_registry import InMemoryEmbeddedContin
 from backend.agent_framework.persistence import InMemoryEmbeddedRunWorkspaceStore
 from backend.agent_framework.child_executor_backends import (
     build_child_executor_backend_registry_contract,
+    build_child_executor_sandbox_worker_backend_entry,
     resolve_child_executor_backend,
+)
+from backend.agent_framework.child_executor_sandbox_worker_backend import (
+    SandboxChildExecutorBackend,
+    build_sandbox_worker_backend_adapter_contract,
 )
 from backend.agent_framework.runtime_dependencies import (
     EmbeddedRuntimeDependencies,
@@ -1252,6 +1257,251 @@ class EmbeddedAgentRuntimeSDKTests(unittest.TestCase):
         self.assertFalse(dispatch["prerequisites_ready"])
         self.assertFalse(dispatch["backend_dispatch_ready"])
         self.assertIn("worker_backend_dispatch_ready", dispatch["blockers"])
+
+    def test_child_executor_dispatch_contract_can_report_opt_in_ready_sandbox_boundary(self):
+        adapter_contract = build_sandbox_worker_backend_adapter_contract(
+            backend_id="sandbox_worker",
+            input_contract={"required_fields": ["child_run_id"]},
+            output_contract={"required_fields": ["output_ref", "audit_ref"]},
+            resource_limits={"cpu_seconds": 30, "memory_mb": 512, "timeout_seconds": 60},
+            isolation_guards={
+                "process_or_worker_isolation": True,
+                "environment_allowlist": ["PYTHONPATH"],
+                "workspace_boundary": "run_workspace",
+                "network_policy": "disabled_by_default",
+            },
+            audit_hooks={"record_dispatch": True},
+            idempotency={"idempotency_key_required": True},
+        )
+        sandbox_entry = build_child_executor_sandbox_worker_backend_entry(
+            backend_id="sandbox_worker",
+            label="Sandbox worker",
+            adapter_contract=adapter_contract,
+        )
+        sandbox_registry = build_child_executor_backend_registry_contract(
+            extra_backends=[sandbox_entry]
+        )
+        gate = {
+            "allowed": True,
+            "gate_status": "passed",
+            "preflight": {
+                "worker_runtime_backend": "sandbox_worker",
+                "backend_registry": sandbox_registry,
+            },
+            "child_executor_execution_prerequisites": {
+                "ready": True,
+                "overall_status": "ready",
+                "missing_requirements": [],
+                "requirements": [
+                    {
+                        "requirement": "worker_backend_dispatch_ready",
+                        "status": "ready",
+                        "evidence": sandbox_entry,
+                    },
+                    {
+                        "requirement": "explicit_executor_binding_opt_in",
+                        "status": "ready",
+                        "evidence": {
+                            "contract_version": "phase-ii-child-executor-explicit-binding-v1",
+                            "binding_status": "ready",
+                            "ready": True,
+                            "binding_source": "test.opt_in_sandbox_backend",
+                            "selected_backend": "sandbox_worker",
+                            "backend_id": "sandbox_worker",
+                            "adapter_kind": "sandbox_worker",
+                            "missing_requirements": [],
+                            "blockers": [],
+                            "will_execute": False,
+                            "will_dispatch": False,
+                        },
+                    },
+                ],
+                "explicit_executor_binding": {
+                    "contract_version": "phase-ii-child-executor-explicit-binding-v1",
+                    "binding_status": "ready",
+                    "ready": True,
+                    "binding_source": "test.opt_in_sandbox_backend",
+                    "selected_backend": "sandbox_worker",
+                    "backend_id": "sandbox_worker",
+                    "adapter_kind": "sandbox_worker",
+                },
+            },
+        }
+        backend = SandboxChildExecutorBackend()
+
+        contract = build_child_executor_dispatch_contract(
+            gate=gate,
+            backend_registry=sandbox_registry,
+            dispatcher_backend_adapters={"sandbox_worker": backend},
+            payload={
+                "parent_run_id": "parent-test",
+                "child_run_id": "child-test",
+                "idempotency_key": "idem-child-test",
+            },
+            sandbox_execution_seam=backend.describe_execution_seam(),
+        )
+
+        self.assertEqual(contract["overall_status"], "ready")
+        self.assertTrue(contract["dispatch_ready"])
+        self.assertFalse(contract["will_dispatch"])
+        self.assertTrue(contract["relationship_seam_preserved"])
+        self.assertEqual(contract["blockers"], [])
+        self.assertTrue(contract["sandbox_backend_binding_ready"])
+        self.assertTrue(contract["sandbox_execution_seam_supported"])
+        self.assertTrue(contract["sandbox_payload_child_run_ready"])
+        self.assertTrue(contract["sandbox_payload_idempotency_ready"])
+        self.assertEqual(contract["sandbox_payload_unsafe_keys"], [])
+        self.assertTrue(contract["sandbox_dispatch_ready_opt_in"])
+        self.assertEqual(
+            contract["child_executor_dispatch_attempt_handoff"]["overall_status"],
+            "ready",
+        )
+        self.assertTrue(contract["child_executor_dispatch_attempt_handoff"]["ready"])
+        self.assertFalse(contract["child_executor_dispatch_attempt_handoff"]["will_dispatch"])
+        self.assertEqual(backend.invocation_count, 0)
+
+    def test_child_executor_dispatch_contract_blocks_opt_in_sandbox_without_idempotency(self):
+        adapter_contract = build_sandbox_worker_backend_adapter_contract(
+            backend_id="sandbox_worker",
+            input_contract={"required_fields": ["child_run_id"]},
+            output_contract={"required_fields": ["output_ref", "audit_ref"]},
+            resource_limits={"cpu_seconds": 30, "memory_mb": 512, "timeout_seconds": 60},
+            isolation_guards={
+                "process_or_worker_isolation": True,
+                "environment_allowlist": ["PYTHONPATH"],
+                "workspace_boundary": "run_workspace",
+                "network_policy": "disabled_by_default",
+            },
+            audit_hooks={"record_dispatch": True},
+            idempotency={"idempotency_key_required": True},
+        )
+        sandbox_entry = build_child_executor_sandbox_worker_backend_entry(
+            backend_id="sandbox_worker",
+            label="Sandbox worker",
+            adapter_contract=adapter_contract,
+        )
+        sandbox_registry = build_child_executor_backend_registry_contract(
+            extra_backends=[sandbox_entry]
+        )
+        gate = {
+            "allowed": True,
+            "gate_status": "passed",
+            "preflight": {"worker_runtime_backend": "sandbox_worker"},
+            "child_executor_execution_prerequisites": {
+                "ready": True,
+                "overall_status": "ready",
+                "missing_requirements": [],
+                "requirements": [
+                    {
+                        "requirement": "worker_backend_dispatch_ready",
+                        "status": "ready",
+                        "evidence": sandbox_entry,
+                    },
+                    {
+                        "requirement": "explicit_executor_binding_opt_in",
+                        "status": "ready",
+                        "evidence": {
+                            "binding_status": "ready",
+                            "ready": True,
+                            "backend_id": "sandbox_worker",
+                            "selected_backend": "sandbox_worker",
+                            "adapter_kind": "sandbox_worker",
+                        },
+                    },
+                ],
+            },
+        }
+        backend = SandboxChildExecutorBackend()
+
+        contract = build_child_executor_dispatch_contract(
+            gate=gate,
+            backend_registry=sandbox_registry,
+            dispatcher_backend_adapters={"sandbox_worker": backend},
+            payload={"parent_run_id": "parent-test", "child_run_id": "child-test"},
+            sandbox_execution_seam=backend.describe_execution_seam(),
+        )
+
+        self.assertEqual(contract["overall_status"], "blocked")
+        self.assertFalse(contract["dispatch_ready"])
+        self.assertFalse(contract["will_dispatch"])
+        self.assertIn("sandbox_payload_idempotency_ready", contract["blockers"])
+        self.assertFalse(contract["sandbox_payload_idempotency_ready"])
+        self.assertFalse(contract["sandbox_dispatch_ready_opt_in"])
+        self.assertEqual(backend.invocation_count, 0)
+
+    def test_child_executor_dispatch_contract_blocks_opt_in_sandbox_unsafe_payload(self):
+        adapter_contract = build_sandbox_worker_backend_adapter_contract(
+            backend_id="sandbox_worker",
+            input_contract={"required_fields": ["child_run_id"]},
+            output_contract={"required_fields": ["output_ref", "audit_ref"]},
+            resource_limits={"cpu_seconds": 30, "memory_mb": 512, "timeout_seconds": 60},
+            isolation_guards={
+                "process_or_worker_isolation": True,
+                "environment_allowlist": ["PYTHONPATH"],
+                "workspace_boundary": "run_workspace",
+                "network_policy": "disabled_by_default",
+            },
+            audit_hooks={"record_dispatch": True},
+            idempotency={"idempotency_key_required": True},
+        )
+        sandbox_entry = build_child_executor_sandbox_worker_backend_entry(
+            backend_id="sandbox_worker",
+            label="Sandbox worker",
+            adapter_contract=adapter_contract,
+        )
+        sandbox_registry = build_child_executor_backend_registry_contract(
+            extra_backends=[sandbox_entry]
+        )
+        gate = {
+            "allowed": True,
+            "gate_status": "passed",
+            "preflight": {"worker_runtime_backend": "sandbox_worker"},
+            "child_executor_execution_prerequisites": {
+                "ready": True,
+                "overall_status": "ready",
+                "missing_requirements": [],
+                "requirements": [
+                    {
+                        "requirement": "worker_backend_dispatch_ready",
+                        "status": "ready",
+                        "evidence": sandbox_entry,
+                    },
+                    {
+                        "requirement": "explicit_executor_binding_opt_in",
+                        "status": "ready",
+                        "evidence": {
+                            "binding_status": "ready",
+                            "ready": True,
+                            "backend_id": "sandbox_worker",
+                            "selected_backend": "sandbox_worker",
+                            "adapter_kind": "sandbox_worker",
+                        },
+                    },
+                ],
+            },
+        }
+        backend = SandboxChildExecutorBackend()
+
+        contract = build_child_executor_dispatch_contract(
+            gate=gate,
+            backend_registry=sandbox_registry,
+            dispatcher_backend_adapters={"sandbox_worker": backend},
+            payload={
+                "parent_run_id": "parent-test",
+                "child_run_id": "child-test",
+                "idempotency_key": "idem-child-test",
+                "handler": object(),
+            },
+            sandbox_execution_seam=backend.describe_execution_seam(),
+        )
+
+        self.assertEqual(contract["overall_status"], "blocked")
+        self.assertFalse(contract["dispatch_ready"])
+        self.assertFalse(contract["will_dispatch"])
+        self.assertIn("sandbox_payload_unsafe", contract["blockers"])
+        self.assertEqual(contract["sandbox_payload_unsafe_keys"], ["handler"])
+        self.assertFalse(contract["sandbox_dispatch_ready_opt_in"])
+        self.assertEqual(backend.invocation_count, 0)
 
     def test_evaluate_child_executor_routing_reports_blocked_and_routed_status(self):
         sdk = EmbeddedAgentRuntimeSDK()

@@ -1045,6 +1045,30 @@ class RuntimeContractSmokeTests(unittest.TestCase):
                 "opt_in_dispatch_attempt_handoff_ready"
             ]
         )
+        self.assertTrue(checks_by_name["child_executor_dispatch_contract"]["opt_in_dispatch_ready"])
+        self.assertFalse(checks_by_name["child_executor_dispatch_contract"]["opt_in_will_dispatch"])
+        self.assertTrue(
+            checks_by_name["child_executor_dispatch_contract"]["opt_in_sandbox_dispatch_ready"]
+        )
+        self.assertTrue(
+            checks_by_name["child_executor_dispatch_contract"][
+                "opt_in_sandbox_execution_seam_supported"
+            ]
+        )
+        self.assertEqual(
+            checks_by_name["child_executor_dispatch_contract"]["missing_idempotency_dispatch_status"],
+            "blocked",
+        )
+        self.assertIn(
+            "sandbox_payload_idempotency_ready",
+            checks_by_name["child_executor_dispatch_contract"][
+                "missing_idempotency_dispatch_blockers"
+            ],
+        )
+        self.assertIn(
+            "sandbox_payload_unsafe",
+            checks_by_name["child_executor_dispatch_contract"]["unsafe_dispatch_blockers"],
+        )
         self.assertTrue(
             checks_by_name["child_executor_dispatch_contract"]["opt_in_attempt_validation_ready"]
         )

@@ -292,22 +292,31 @@ class ChildExecutorSandboxWorkerBackendTests(unittest.TestCase):
             label="Sandbox worker",
             adapter_contract=_ready_adapter_contract(),
         )
+        backend = SandboxChildExecutorBackend()
 
         contract = build_child_executor_dispatch_contract(
             gate=_ready_gate_for_backend(entry),
             backend_registry=build_child_executor_backend_registry_contract(extra_backends=[entry]),
-            dispatcher_backend_adapters={"sandbox_worker": lambda _payload: {}},
+            dispatcher_backend_adapters={"sandbox_worker": backend},
+            payload={
+                "parent_run_id": "parent-1",
+                "child_run_id": "child-1",
+                "idempotency_key": "idem-child-1",
+            },
+            sandbox_execution_seam=backend.describe_execution_seam(),
         )
 
         handoff = contract["child_executor_dispatch_attempt_handoff"]
         binding = contract["child_executor_sandbox_backend_binding"]
         self.assertEqual(contract["overall_status"], "ready")
+        self.assertTrue(contract["sandbox_dispatch_ready_opt_in"])
         self.assertEqual(binding["overall_status"], "ready")
         self.assertTrue(contract["sandbox_backend_binding_ready"])
         self.assertEqual(handoff["overall_status"], "ready")
         self.assertTrue(handoff["attempt_envelope_supported"])
         self.assertTrue(handoff["attempt_validation_ready"])
         self.assertFalse(handoff["will_dispatch"])
+        self.assertEqual(backend.invocation_count, 0)
 
     def test_validate_sandbox_dispatch_attempt_requires_compact_envelope(self):
         invalid = validate_sandbox_dispatch_attempt({"status": "completed"})

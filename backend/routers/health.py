@@ -668,6 +668,12 @@ def _normalize_child_executor_dispatch_coverage(coverage: dict) -> dict:
     opt_in_attempt_validation_ready = bool(
         coverage.get("opt_in_attempt_validation_ready")
     )
+    opt_in_ready_dispatch_status = str(
+        coverage.get("opt_in_ready_dispatch_status") or ""
+    ).strip()
+    opt_in_ready_dispatch_ready = bool(coverage.get("opt_in_ready_dispatch_ready"))
+    opt_in_ready_handoff_ready = bool(coverage.get("opt_in_ready_handoff_ready"))
+    opt_in_ready_will_dispatch = bool(coverage.get("opt_in_ready_will_dispatch"))
     dispatch_smoke = (
         bool(coverage.get("dispatch_smoke"))
         and bool(contract_version)
@@ -681,6 +687,10 @@ def _normalize_child_executor_dispatch_coverage(coverage: dict) -> dict:
         and not dispatch_attempt_handoff_ready
         and opt_in_dispatch_attempt_handoff_ready
         and opt_in_attempt_validation_ready
+        and opt_in_ready_dispatch_status == "ready"
+        and opt_in_ready_dispatch_ready
+        and opt_in_ready_handoff_ready
+        and not opt_in_ready_will_dispatch
         and bool(recommended_next_step)
     )
     return {
@@ -696,6 +706,10 @@ def _normalize_child_executor_dispatch_coverage(coverage: dict) -> dict:
         "dispatch_attempt_handoff_ready": dispatch_attempt_handoff_ready,
         "opt_in_dispatch_attempt_handoff_ready": opt_in_dispatch_attempt_handoff_ready,
         "opt_in_attempt_validation_ready": opt_in_attempt_validation_ready,
+        "opt_in_ready_dispatch_status": opt_in_ready_dispatch_status,
+        "opt_in_ready_dispatch_ready": opt_in_ready_dispatch_ready,
+        "opt_in_ready_handoff_ready": opt_in_ready_handoff_ready,
+        "opt_in_ready_will_dispatch": opt_in_ready_will_dispatch,
         "recommended_next_step": recommended_next_step,
     }
 

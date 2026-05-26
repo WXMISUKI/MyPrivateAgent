@@ -2025,10 +2025,26 @@ class RuntimeContractGateServiceTests(unittest.TestCase):
                                         "explicit_executor_binding_ready": False,
                                         "explicit_executor_binding_status": "blocked",
                                         "explicit_executor_binding_source": "",
-                                        "opt_in_dispatch_status": "blocked",
-                                        "opt_in_dispatch_ready": False,
+                                        "opt_in_dispatch_status": "ready",
+                                        "opt_in_dispatch_ready": True,
                                         "opt_in_will_dispatch": False,
-                                        "opt_in_backend_dispatch_ready": False,
+                                        "opt_in_backend_dispatch_ready": True,
+                                        "opt_in_ready_dispatch_status": "ready",
+                                        "opt_in_ready_dispatch_ready": True,
+                                        "opt_in_ready_handoff_ready": True,
+                                        "opt_in_ready_will_dispatch": False,
+                                        "opt_in_sandbox_dispatch_ready": True,
+                                        "opt_in_sandbox_execution_seam_supported": True,
+                                        "opt_in_sandbox_payload_idempotency_ready": True,
+                                        "missing_idempotency_dispatch_status": "blocked",
+                                        "missing_idempotency_dispatch_ready": False,
+                                        "missing_idempotency_dispatch_blockers": [
+                                            "sandbox_payload_idempotency_ready",
+                                        ],
+                                        "unsafe_dispatch_status": "blocked",
+                                        "unsafe_dispatch_ready": False,
+                                        "unsafe_dispatch_blockers": ["sandbox_payload_unsafe"],
+                                        "unsafe_dispatch_payload_keys": ["handler"],
                                         "opt_in_explicit_executor_binding_ready": True,
                                         "opt_in_explicit_executor_binding_status": "ready",
                                         "opt_in_explicit_executor_binding_source": (
@@ -2072,6 +2088,10 @@ class RuntimeContractGateServiceTests(unittest.TestCase):
         self.assertEqual(coverage["dispatch_attempt_handoff_status"], "blocked")
         self.assertTrue(coverage["opt_in_dispatch_attempt_handoff_ready"])
         self.assertTrue(coverage["opt_in_attempt_validation_ready"])
+        self.assertEqual(coverage["opt_in_ready_dispatch_status"], "ready")
+        self.assertTrue(coverage["opt_in_ready_dispatch_ready"])
+        self.assertTrue(coverage["opt_in_ready_handoff_ready"])
+        self.assertFalse(coverage["opt_in_ready_will_dispatch"])
 
     def test_build_runtime_contract_derives_child_executor_dispatcher_coverage_from_checks(self):
         with tempfile.TemporaryDirectory() as tmp_dir:

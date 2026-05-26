@@ -377,6 +377,10 @@ def _build_complete_profile():
                     "dispatch_attempt_handoff_ready": False,
                     "opt_in_dispatch_attempt_handoff_ready": True,
                     "opt_in_attempt_validation_ready": True,
+                    "opt_in_ready_dispatch_status": "ready",
+                    "opt_in_ready_dispatch_ready": True,
+                    "opt_in_ready_handoff_ready": True,
+                    "opt_in_ready_will_dispatch": False,
                     "recommended_next_step": "implement_child_executor_backend_dispatch",
                 },
                 "child_executor_dispatcher_coverage": {
@@ -533,6 +537,10 @@ def _build_complete_profile():
                     "child_executor_dispatch_coverage.dispatch_attempt_handoff_status",
                     "child_executor_dispatch_coverage.opt_in_dispatch_attempt_handoff_ready",
                     "child_executor_dispatch_coverage.opt_in_attempt_validation_ready",
+                    "child_executor_dispatch_coverage.opt_in_ready_dispatch_status",
+                    "child_executor_dispatch_coverage.opt_in_ready_dispatch_ready",
+                    "child_executor_dispatch_coverage.opt_in_ready_handoff_ready",
+                    "child_executor_dispatch_coverage.opt_in_ready_will_dispatch",
                     "child_executor_dispatcher_coverage",
                     "child_executor_dispatcher_coverage.dispatcher_smoke",
                     "child_executor_sandbox_backend_binding_coverage",
@@ -906,6 +914,22 @@ class RuntimeContractSnapshotServiceTests(unittest.TestCase):
             by_name["runtime_contract_gate"]["stable_fields"],
         )
         self.assertIn(
+            "runtime_contract_summary.child_executor_dispatch_coverage.opt_in_ready_dispatch_status",
+            by_name["runtime_contract_gate"]["stable_fields"],
+        )
+        self.assertIn(
+            "runtime_contract_summary.child_executor_dispatch_coverage.opt_in_ready_dispatch_ready",
+            by_name["runtime_contract_gate"]["stable_fields"],
+        )
+        self.assertIn(
+            "runtime_contract_summary.child_executor_dispatch_coverage.opt_in_ready_handoff_ready",
+            by_name["runtime_contract_gate"]["stable_fields"],
+        )
+        self.assertIn(
+            "runtime_contract_summary.child_executor_dispatch_coverage.opt_in_ready_will_dispatch",
+            by_name["runtime_contract_gate"]["stable_fields"],
+        )
+        self.assertIn(
             "runtime_contract_summary.child_executor_dispatcher_coverage",
             by_name["runtime_contract_gate"]["stable_fields"],
         )
@@ -1041,7 +1065,7 @@ class RuntimeContractSnapshotServiceTests(unittest.TestCase):
         by_name = {item["contract_name"]: item for item in snapshot["contracts"]}
         self.assertEqual(snapshot["overall_status"], "degraded")
         self.assertEqual(snapshot["missing_contract_count"], 1)
-        self.assertEqual(snapshot["missing_field_count"], 91)
+        self.assertEqual(snapshot["missing_field_count"], 95)
         self.assertEqual(by_name["skill_contract"]["status"], "missing")
         self.assertEqual(
             by_name["command_contract"]["missing_fields"],
@@ -1109,6 +1133,10 @@ class RuntimeContractSnapshotServiceTests(unittest.TestCase):
                 "runtime_contract_summary.child_executor_dispatch_coverage.dispatch_attempt_handoff_status",
                 "runtime_contract_summary.child_executor_dispatch_coverage.opt_in_dispatch_attempt_handoff_ready",
                 "runtime_contract_summary.child_executor_dispatch_coverage.opt_in_attempt_validation_ready",
+                "runtime_contract_summary.child_executor_dispatch_coverage.opt_in_ready_dispatch_status",
+                "runtime_contract_summary.child_executor_dispatch_coverage.opt_in_ready_dispatch_ready",
+                "runtime_contract_summary.child_executor_dispatch_coverage.opt_in_ready_handoff_ready",
+                "runtime_contract_summary.child_executor_dispatch_coverage.opt_in_ready_will_dispatch",
                 "runtime_contract_summary.child_executor_dispatcher_coverage",
                 "runtime_contract_summary.child_executor_dispatcher_coverage.dispatcher_smoke",
                 "runtime_contract_summary.child_executor_dispatch_result_handoff_coverage",

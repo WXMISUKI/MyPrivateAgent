@@ -1198,6 +1198,10 @@ class HealthRouterTests(unittest.TestCase):
                         "dispatch_attempt_handoff_ready": False,
                         "opt_in_dispatch_attempt_handoff_ready": True,
                         "opt_in_attempt_validation_ready": True,
+                        "opt_in_ready_dispatch_status": "ready",
+                        "opt_in_ready_dispatch_ready": True,
+                        "opt_in_ready_handoff_ready": True,
+                        "opt_in_ready_will_dispatch": False,
                         "recommended_next_step": "implement_child_executor_backend_dispatch",
                     },
                     "recovery_retry_evidence_coverage": {
@@ -1341,6 +1345,8 @@ class HealthRouterTests(unittest.TestCase):
         child_dispatch_coverage = trace_call["payload"]["runtime_contract_summary"]["child_executor_dispatch_coverage"]
         self.assertTrue(child_dispatch_coverage["dispatch_smoke"])
         self.assertFalse(child_dispatch_coverage["will_dispatch"])
+        self.assertEqual(child_dispatch_coverage["opt_in_ready_dispatch_status"], "ready")
+        self.assertTrue(child_dispatch_coverage["opt_in_ready_dispatch_ready"])
         retry_coverage = trace_call["payload"]["runtime_contract_summary"]["recovery_retry_evidence_coverage"]
         self.assertTrue(retry_coverage["retry_smoke"])
         self.assertEqual(retry_coverage["contract_version"], "phase-ii-recovery-retry-protocol-v1")

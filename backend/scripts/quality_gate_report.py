@@ -67,6 +67,10 @@ RUNTIME_CONTRACT_SUMMARY_REQUIRED_FIELDS = (
     "child_executor_dispatch_coverage.dispatch_attempt_handoff_status",
     "child_executor_dispatch_coverage.opt_in_dispatch_attempt_handoff_ready",
     "child_executor_dispatch_coverage.opt_in_attempt_validation_ready",
+    "child_executor_dispatch_coverage.opt_in_ready_dispatch_status",
+    "child_executor_dispatch_coverage.opt_in_ready_dispatch_ready",
+    "child_executor_dispatch_coverage.opt_in_ready_handoff_ready",
+    "child_executor_dispatch_coverage.opt_in_ready_will_dispatch",
     "child_executor_dispatcher_coverage",
     "child_executor_dispatcher_coverage.dispatcher_smoke",
     "child_executor_dispatch_result_handoff_coverage",
@@ -2760,6 +2764,25 @@ def _build_child_executor_dispatch_coverage(check: dict[str, Any]) -> dict[str, 
     opt_in_dispatch_ready = bool(check.get("opt_in_dispatch_ready"))
     opt_in_will_dispatch = bool(check.get("opt_in_will_dispatch"))
     opt_in_backend_dispatch_ready = bool(check.get("opt_in_backend_dispatch_ready"))
+    opt_in_sandbox_dispatch_ready = bool(check.get("opt_in_sandbox_dispatch_ready"))
+    opt_in_sandbox_execution_seam_supported = bool(
+        check.get("opt_in_sandbox_execution_seam_supported")
+    )
+    opt_in_sandbox_payload_idempotency_ready = bool(
+        check.get("opt_in_sandbox_payload_idempotency_ready")
+    )
+    opt_in_ready_handoff_ready = bool(check.get("opt_in_ready_handoff_ready"))
+    missing_idempotency_dispatch_status = str(
+        check.get("missing_idempotency_dispatch_status") or ""
+    ).strip()
+    missing_idempotency_dispatch_ready = bool(check.get("missing_idempotency_dispatch_ready"))
+    missing_idempotency_dispatch_blockers = _normalize_string_list(
+        check.get("missing_idempotency_dispatch_blockers")
+    )
+    unsafe_dispatch_status = str(check.get("unsafe_dispatch_status") or "").strip()
+    unsafe_dispatch_ready = bool(check.get("unsafe_dispatch_ready"))
+    unsafe_dispatch_blockers = _normalize_string_list(check.get("unsafe_dispatch_blockers"))
+    unsafe_dispatch_payload_keys = _normalize_string_list(check.get("unsafe_dispatch_payload_keys"))
     opt_in_explicit_binding_ready = bool(
         check.get("opt_in_explicit_executor_binding_ready")
     )
@@ -2804,10 +2827,21 @@ def _build_child_executor_dispatch_coverage(check: dict[str, Any]) -> dict[str, 
         and "explicit_executor_binding_opt_in" in dispatch_blockers
         and explicit_binding_status == "blocked"
         and not explicit_binding_ready
-        and opt_in_dispatch_status == "blocked"
-        and not opt_in_dispatch_ready
+        and opt_in_dispatch_status == "ready"
+        and opt_in_dispatch_ready
         and not opt_in_will_dispatch
-        and not opt_in_backend_dispatch_ready
+        and opt_in_backend_dispatch_ready
+        and opt_in_sandbox_dispatch_ready
+        and opt_in_sandbox_execution_seam_supported
+        and opt_in_sandbox_payload_idempotency_ready
+        and opt_in_ready_handoff_ready
+        and missing_idempotency_dispatch_status == "blocked"
+        and not missing_idempotency_dispatch_ready
+        and "sandbox_payload_idempotency_ready" in missing_idempotency_dispatch_blockers
+        and unsafe_dispatch_status == "blocked"
+        and not unsafe_dispatch_ready
+        and "sandbox_payload_unsafe" in unsafe_dispatch_blockers
+        and "handler" in unsafe_dispatch_payload_keys
         and opt_in_explicit_binding_ready
         and opt_in_explicit_binding_status == "ready"
         and dispatch_attempt_handoff_status == "blocked"
@@ -2844,6 +2878,20 @@ def _build_child_executor_dispatch_coverage(check: dict[str, Any]) -> dict[str, 
         "opt_in_dispatch_ready": opt_in_dispatch_ready,
         "opt_in_will_dispatch": opt_in_will_dispatch,
         "opt_in_backend_dispatch_ready": opt_in_backend_dispatch_ready,
+        "opt_in_ready_dispatch_status": opt_in_dispatch_status,
+        "opt_in_ready_dispatch_ready": opt_in_dispatch_ready,
+        "opt_in_ready_handoff_ready": opt_in_ready_handoff_ready,
+        "opt_in_ready_will_dispatch": opt_in_will_dispatch,
+        "opt_in_sandbox_dispatch_ready": opt_in_sandbox_dispatch_ready,
+        "opt_in_sandbox_execution_seam_supported": opt_in_sandbox_execution_seam_supported,
+        "opt_in_sandbox_payload_idempotency_ready": opt_in_sandbox_payload_idempotency_ready,
+        "missing_idempotency_dispatch_status": missing_idempotency_dispatch_status,
+        "missing_idempotency_dispatch_ready": missing_idempotency_dispatch_ready,
+        "missing_idempotency_dispatch_blockers": missing_idempotency_dispatch_blockers,
+        "unsafe_dispatch_status": unsafe_dispatch_status,
+        "unsafe_dispatch_ready": unsafe_dispatch_ready,
+        "unsafe_dispatch_blockers": unsafe_dispatch_blockers,
+        "unsafe_dispatch_payload_keys": unsafe_dispatch_payload_keys,
         "opt_in_explicit_executor_binding_ready": opt_in_explicit_binding_ready,
         "opt_in_explicit_executor_binding_status": opt_in_explicit_binding_status,
         "opt_in_explicit_executor_binding_source": str(
