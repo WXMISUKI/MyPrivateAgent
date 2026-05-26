@@ -8,11 +8,11 @@
 ## Build, Test, and Development Commands
 Backend setup and run:
 ```powershell
-cd backend
-pip install -r requirements.txt
-python -m uvicorn main:app --reload --port 8000
+cd D:\AI\AIcode\MyPrivateAgent
+pip install -r backend\requirements.txt
+python -m uvicorn backend.main:app --reload --port 8000
 ```
-Use `python main.py` for a simpler local start.
+Use `python -m backend.main` for a simpler local start.
 
 Vue frontend:
 ```powershell

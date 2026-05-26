@@ -17,10 +17,11 @@
 
 ### 1. 后端
 ```powershell
-cd D:\AI\AIcode\MyPrivateAgent\backend
-pip install -r requirements.txt
-python scripts/doctor.py
-python -m uvicorn main:app --reload --port 8000
+conda activate myenv
+cd D:\AI\AIcode\MyPrivateAgent
+pip install -r backend\requirements.txt
+python backend\scripts\doctor.py
+python -m uvicorn backend.main:app --reload --port 8000
 ```
 
 ### 2. 前端

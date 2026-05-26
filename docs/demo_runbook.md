@@ -110,8 +110,8 @@
 安装命令：
 
 ```powershell
-cd D:\AI\AIcode\MyPrivateAgent\backend
-pip install -r requirements.txt
+cd D:\AI\AIcode\MyPrivateAgent
+pip install -r backend\requirements.txt
 ```
 
 如果你之前已经在 `myenv` 里装过一轮失败或混乱的依赖，不建议直接在原环境上反复覆盖。更稳妥的做法是重建环境：
@@ -119,8 +119,8 @@ pip install -r requirements.txt
 ```powershell
 conda create -n myenv python=3.11 -y
 conda activate myenv
-cd D:\AI\AIcode\MyPrivateAgent\backend
-pip install -r requirements.txt
+cd D:\AI\AIcode\MyPrivateAgent
+pip install -r backend\requirements.txt
 ```
 
 ### 3.2 前端
@@ -142,10 +142,10 @@ npm install
 ### 4.1 启动后端
 
 ```powershell
-cd D:\AI\AIcode\MyPrivateAgent\backend
+cd D:\AI\AIcode\MyPrivateAgent
 conda activate myenv
-python scripts/doctor.py
-python -m uvicorn main:app --reload --port 8000
+python backend\scripts\doctor.py
+python -m uvicorn backend.main:app --reload --port 8000
 ```
 
 说明：
@@ -348,8 +348,8 @@ conda deactivate
 conda remove -n myenv --all -y
 conda create -n myenv python=3.11 -y
 conda activate myenv
-cd D:\AI\AIcode\MyPrivateAgent\backend
-pip install -r requirements.txt
+cd D:\AI\AIcode\MyPrivateAgent
+pip install -r backend\requirements.txt
 ```
 
 如果安装完成后还出现这类提示：
@@ -417,9 +417,9 @@ DB_PASSWORD=your_password
 然后重新执行：
 
 ```powershell
-cd backend
-python scripts/doctor.py
-python -m uvicorn main:app --reload --port 8000
+cd D:\AI\AIcode\MyPrivateAgent
+python backend\scripts\doctor.py
+python -m uvicorn backend.main:app --reload --port 8000
 ```
 
 ### 8.7 能力治理门禁失败（doctor 返回 2）

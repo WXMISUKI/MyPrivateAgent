@@ -40,3 +40,9 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+
+# Local Docker dependency cache
+.docker/wheelhouse/**
+!.docker/wheelhouse/
+!.docker/wheelhouse/backend/
+!.docker/wheelhouse/backend/.gitkeep

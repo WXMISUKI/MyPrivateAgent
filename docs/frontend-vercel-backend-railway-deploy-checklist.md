@@ -19,6 +19,29 @@
 - Railway 后端允许来自 Vercel 域名的 CORS。
 - `/api/*` 路由可正常响应 `OPTIONS` 预检请求。
 - 关键接口自检：`/api/models`、`/api/auth/me`、`/api/chat`。
+- Docker/Railway 启动命令应使用包式入口：`python -m uvicorn backend.main:app --host 0.0.0.0 --port $PORT`。
+
+## 4.1 本地构建 GHCR 镜像
+- 详细说明见：`docs/docker-local-ghcr-build-guide.md`。
+- 先准备 Linux 容器可用的本地 wheelhouse：
+  ```powershell
+  .\scripts\docker\prepare-backend-wheelhouse.ps1 -Clear
+  ```
+- 构建镜像，默认使用清华 PyPI 源，并优先使用 `.docker/wheelhouse/backend` 中的本地包：
+  ```powershell
+  .\scripts\docker\build-backend-ghcr.ps1 -Tag latest
+  ```
+- 如果需要强制离线安装依赖：
+  ```powershell
+  .\scripts\docker\build-backend-ghcr.ps1 -Tag latest -InstallMode offline
+  ```
+- 如果 `docker login ghcr.io` 报 `denied: denied`，但 GitHub PAT 已能获取 GHCR token，可创建临时 Docker config 后推送：
+  ```powershell
+  $dockerConfig = "$env:TEMP\docker-ghcr-myprivateagent"
+  .\scripts\docker\new-ghcr-docker-config.ps1 -OutputPath $dockerConfig
+  .\scripts\docker\build-backend-ghcr.ps1 -Tag latest -DockerConfig $dockerConfig -Push
+  Remove-Item $dockerConfig -Recurse -Force
+  ```
 
 ## 5. Railway CORS 环境变量（建议）
 - `CORS_ALLOWED_ORIGINS`:
