@@ -356,6 +356,12 @@ def _build_complete_profile():
                     "overall_status": "blocked",
                     "ready": False,
                     "missing_requirement_count": 2,
+                    "context_budget_policy_status": "blocked",
+                    "context_budget_policy_missing_sections": ["budget_source", "bounded_budget_limit"],
+                    "opt_in_context_budget_policy_ready": True,
+                    "merge_handoff_status": "blocked",
+                    "merge_handoff_missing_sections": ["merge_source", "merge_strategy", "intent_policy"],
+                    "opt_in_merge_handoff_ready": True,
                     "recommended_next_step": "keep_relationship_only",
                 },
                 "child_executor_dispatch_coverage": {
@@ -435,6 +441,12 @@ def _build_complete_profile():
                     "child_executor_promotion_gate_coverage.gate_smoke",
                     "child_executor_execution_prerequisites_coverage",
                     "child_executor_execution_prerequisites_coverage.prerequisites_smoke",
+                    "child_executor_execution_prerequisites_coverage.context_budget_policy_status",
+                    "child_executor_execution_prerequisites_coverage.context_budget_policy_missing_sections",
+                    "child_executor_execution_prerequisites_coverage.opt_in_context_budget_policy_ready",
+                    "child_executor_execution_prerequisites_coverage.merge_handoff_status",
+                    "child_executor_execution_prerequisites_coverage.merge_handoff_missing_sections",
+                    "child_executor_execution_prerequisites_coverage.opt_in_merge_handoff_ready",
                     "child_executor_dispatch_coverage",
                     "child_executor_dispatch_coverage.dispatch_smoke",
                     "child_executor_dispatcher_coverage",
@@ -859,7 +871,7 @@ class RuntimeContractSnapshotServiceTests(unittest.TestCase):
         by_name = {item["contract_name"]: item for item in snapshot["contracts"]}
         self.assertEqual(snapshot["overall_status"], "degraded")
         self.assertEqual(snapshot["missing_contract_count"], 1)
-        self.assertEqual(snapshot["missing_field_count"], 66)
+        self.assertEqual(snapshot["missing_field_count"], 72)
         self.assertEqual(by_name["skill_contract"]["status"], "missing")
         self.assertEqual(
             by_name["command_contract"]["missing_fields"],
@@ -916,6 +928,12 @@ class RuntimeContractSnapshotServiceTests(unittest.TestCase):
                 "runtime_contract_summary.child_executor_promotion_gate_coverage.gate_smoke",
                 "runtime_contract_summary.child_executor_execution_prerequisites_coverage",
                 "runtime_contract_summary.child_executor_execution_prerequisites_coverage.prerequisites_smoke",
+                "runtime_contract_summary.child_executor_execution_prerequisites_coverage.context_budget_policy_status",
+                "runtime_contract_summary.child_executor_execution_prerequisites_coverage.context_budget_policy_missing_sections",
+                "runtime_contract_summary.child_executor_execution_prerequisites_coverage.opt_in_context_budget_policy_ready",
+                "runtime_contract_summary.child_executor_execution_prerequisites_coverage.merge_handoff_status",
+                "runtime_contract_summary.child_executor_execution_prerequisites_coverage.merge_handoff_missing_sections",
+                "runtime_contract_summary.child_executor_execution_prerequisites_coverage.opt_in_merge_handoff_ready",
                 "runtime_contract_summary.child_executor_dispatch_coverage",
                 "runtime_contract_summary.child_executor_dispatch_coverage.dispatch_smoke",
                 "runtime_contract_summary.child_executor_dispatcher_coverage",

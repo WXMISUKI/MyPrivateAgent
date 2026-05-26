@@ -432,6 +432,182 @@ def _is_truthy_opt_in(value: Any) -> bool:
     return bool(value)
 
 
+def _coerce_positive_int(value: Any) -> int | None:
+    if isinstance(value, bool) or value is None:
+        return None
+    if isinstance(value, int):
+        return value if value > 0 else None
+    if isinstance(value, float):
+        return int(value) if value > 0 and value.is_integer() else None
+    if isinstance(value, str):
+        normalized = value.strip()
+        if not normalized:
+            return None
+        try:
+            parsed = int(normalized)
+        except ValueError:
+            return None
+        return parsed if parsed > 0 else None
+    return None
+
+
+def _first_positive_int(mapping: Dict[str, Any], *keys: str) -> int | None:
+    for key in keys:
+        value = _coerce_positive_int(mapping.get(key))
+        if value is not None:
+            return value
+    return None
+
+
+def build_child_executor_context_budget_policy_contract(
+    *,
+    payload: Dict[str, Any] | None = None,
+) -> Dict[str, Any]:
+    normalized_payload = dict(payload or {})
+    metadata = dict(normalized_payload.get("metadata") or {})
+    payload_scheduler_policy = dict(normalized_payload.get("scheduler_policy") or {})
+    metadata_scheduler_policy = dict(metadata.get("scheduler_policy") or {})
+
+    budget_present, budget_path, raw_budget = _select_first_evidence(
+        (normalized_payload.get("child_context_budget"), "payload.child_context_budget"),
+        (metadata.get("child_context_budget"), "metadata.child_context_budget"),
+        (normalized_payload.get("context_budget"), "payload.context_budget"),
+        (metadata.get("context_budget"), "metadata.context_budget"),
+        (payload_scheduler_policy.get("timeout_seconds"), "payload.scheduler_policy.timeout_seconds"),
+        (metadata_scheduler_policy.get("timeout_seconds"), "metadata.scheduler_policy.timeout_seconds"),
+        (payload_scheduler_policy.get("max_turns"), "payload.scheduler_policy.max_turns"),
+        (metadata_scheduler_policy.get("max_turns"), "metadata.scheduler_policy.max_turns"),
+    )
+
+    max_turns = None
+    timeout_seconds = None
+    token_budget = None
+    artifact_budget = None
+    if isinstance(raw_budget, dict):
+        max_turns = _first_positive_int(raw_budget, "max_turns", "turns", "max_iterations")
+        timeout_seconds = _first_positive_int(raw_budget, "timeout_seconds", "timeout", "max_seconds")
+        token_budget = _first_positive_int(raw_budget, "token_budget", "max_tokens", "tokens")
+        artifact_budget = _first_positive_int(raw_budget, "artifact_budget", "max_artifacts", "artifacts")
+    elif budget_present:
+        value = _coerce_positive_int(raw_budget)
+        if budget_path and budget_path.endswith("timeout_seconds"):
+            timeout_seconds = value
+        elif budget_path and budget_path.endswith("max_turns"):
+            max_turns = value
+        else:
+            max_turns = value
+
+    bounded_limit_present = any(
+        item is not None
+        for item in (max_turns, timeout_seconds, token_budget, artifact_budget)
+    )
+    missing_sections = []
+    if not budget_present or not budget_path:
+        missing_sections.append("budget_source")
+    if not bounded_limit_present:
+        missing_sections.append("bounded_budget_limit")
+    ready = not missing_sections
+    return {
+        "contract_version": "phase-ii-child-executor-context-budget-policy-v1",
+        "overall_status": "ready" if ready else "blocked",
+        "ready": ready,
+        "budget_source": str(budget_path or ""),
+        "raw_budget_present": bool(budget_present),
+        "max_turns": max_turns,
+        "timeout_seconds": timeout_seconds,
+        "token_budget": token_budget,
+        "artifact_budget": artifact_budget,
+        "missing_sections": missing_sections,
+        "fail_closed_reason": "" if ready else "child_executor_context_budget_policy_incomplete",
+        "next_allowed_action": (
+            "continue_child_executor_prerequisite_evaluation"
+            if ready
+            else "declare_bounded_child_context_budget"
+        ),
+        "non_goals": [
+            "token_accounting_enforcement",
+            "scheduler_preemption",
+            "worker_timeout_cancellation",
+            "real_child_executor_dispatch",
+        ],
+    }
+
+
+SUPPORTED_CHILD_RESULT_MERGE_STRATEGIES = {"append_summary", "role_sections"}
+
+
+def _normalize_child_result_merge_strategy(raw_value: Any) -> str:
+    if isinstance(raw_value, dict):
+        return str(
+            raw_value.get("strategy")
+            or raw_value.get("merge_strategy")
+            or raw_value.get("mode")
+            or ""
+        ).strip()
+    return str(raw_value or "").strip()
+
+
+def build_child_result_merge_handoff_contract(
+    *,
+    payload: Dict[str, Any] | None = None,
+) -> Dict[str, Any]:
+    normalized_payload = dict(payload or {})
+    metadata = dict(normalized_payload.get("metadata") or {})
+    merge_present, merge_path, raw_merge = _select_first_evidence(
+        (normalized_payload.get("merge_strategy"), "payload.merge_strategy"),
+        (metadata.get("merge_strategy"), "metadata.merge_strategy"),
+        (normalized_payload.get("child_result_merge_strategy"), "payload.child_result_merge_strategy"),
+        (metadata.get("child_result_merge_strategy"), "metadata.child_result_merge_strategy"),
+        (normalized_payload.get("result_merge_policy"), "payload.result_merge_policy"),
+        (metadata.get("result_merge_policy"), "metadata.result_merge_policy"),
+    )
+    merge_strategy = _normalize_child_result_merge_strategy(raw_merge)
+    supported_merge_strategy = merge_strategy in SUPPORTED_CHILD_RESULT_MERGE_STRATEGIES
+    intent_policy_ready = supported_merge_strategy
+    artifact_envelope_required = True
+    section_handoff_required = True
+    parent_metadata_update_supported = True
+    replay_compatible = True
+    missing_sections = []
+    if not merge_present or not merge_path:
+        missing_sections.append("merge_source")
+    if not merge_strategy:
+        missing_sections.append("merge_strategy")
+    elif not supported_merge_strategy:
+        missing_sections.append("supported_merge_strategy")
+    if not intent_policy_ready:
+        missing_sections.append("intent_policy")
+    ready = not missing_sections
+    return {
+        "contract_version": "phase-ii-child-result-merge-handoff-v1",
+        "overall_status": "ready" if ready else "blocked",
+        "ready": ready,
+        "merge_source": str(merge_path or ""),
+        "raw_merge_present": bool(merge_present),
+        "merge_strategy": merge_strategy,
+        "supported_merge_strategies": sorted(SUPPORTED_CHILD_RESULT_MERGE_STRATEGIES),
+        "supported_merge_strategy": supported_merge_strategy,
+        "intent_policy_ready": intent_policy_ready,
+        "artifact_envelope_required": artifact_envelope_required,
+        "section_handoff_required": section_handoff_required,
+        "parent_metadata_update_supported": parent_metadata_update_supported,
+        "replay_compatible": replay_compatible,
+        "missing_sections": missing_sections,
+        "fail_closed_reason": "" if ready else "child_result_merge_handoff_incomplete",
+        "next_allowed_action": (
+            "continue_child_executor_prerequisite_evaluation"
+            if ready
+            else "declare_supported_child_result_merge_strategy"
+        ),
+        "non_goals": [
+            "parent_merge_execution",
+            "remote_worker_result_streaming",
+            "durable_merge_replay_execution",
+            "real_child_executor_dispatch",
+        ],
+    }
+
+
 def _build_child_executor_explicit_binding_evidence(
     *,
     payload: Dict[str, Any] | None = None,
@@ -486,12 +662,6 @@ def _build_child_executor_requirement_checks(
 ) -> list[Dict[str, Any]]:
     normalized_payload = dict(payload or {})
     metadata = dict(normalized_payload.get("metadata") or {})
-    scheduler_policy = dict(
-        normalized_payload.get("scheduler_policy")
-        or metadata.get("scheduler_policy")
-        or {}
-    )
-
     checks = []
     recovery_ok = workspace_store is not None
     checks.append({
@@ -506,43 +676,35 @@ def _build_child_executor_requirement_checks(
         ),
     })
 
-    budget_ok, budget_path, budget_value = _select_first_evidence(
-        (normalized_payload.get("child_context_budget"), "payload.child_context_budget"),
-        (metadata.get("child_context_budget"), "metadata.child_context_budget"),
-        (normalized_payload.get("context_budget"), "payload.context_budget"),
-        (metadata.get("context_budget"), "metadata.context_budget"),
-        (scheduler_policy.get("timeout_seconds"), "metadata.scheduler_policy.timeout_seconds"),
-        (scheduler_policy.get("max_turns"), "metadata.scheduler_policy.max_turns"),
-    )
+    budget_policy = build_child_executor_context_budget_policy_contract(payload=normalized_payload)
+    budget_ok = bool(budget_policy.get("ready"))
+    budget_path = str(budget_policy.get("budget_source") or "")
     checks.append({
         "requirement": "child_context_budget_defined",
         "satisfied": budget_ok,
-        "source_path": budget_path or "",
-        "evidence": budget_value,
+        "source_path": budget_path,
+        "evidence": budget_policy,
+        "blockers": list(budget_policy.get("missing_sections") or []),
         "summary": (
             f"child context budget defined via {budget_path}"
             if budget_ok and budget_path
-            else "child context budget not defined"
+            else "child context budget policy is incomplete"
         ),
     })
 
-    merge_ok, merge_path, merge_value = _select_first_evidence(
-        (normalized_payload.get("merge_strategy"), "payload.merge_strategy"),
-        (metadata.get("merge_strategy"), "metadata.merge_strategy"),
-        (normalized_payload.get("child_result_merge_strategy"), "payload.child_result_merge_strategy"),
-        (metadata.get("child_result_merge_strategy"), "metadata.child_result_merge_strategy"),
-        (normalized_payload.get("result_merge_policy"), "payload.result_merge_policy"),
-        (metadata.get("result_merge_policy"), "metadata.result_merge_policy"),
-    )
+    merge_handoff = build_child_result_merge_handoff_contract(payload=normalized_payload)
+    merge_ok = bool(merge_handoff.get("ready"))
+    merge_path = str(merge_handoff.get("merge_source") or "")
     checks.append({
         "requirement": "child_result_merge_semantics_defined",
         "satisfied": merge_ok,
-        "source_path": merge_path or "",
-        "evidence": merge_value,
+        "source_path": merge_path,
+        "evidence": merge_handoff,
+        "blockers": list(merge_handoff.get("missing_sections") or []),
         "summary": (
             f"child result merge semantics defined via {merge_path}"
             if merge_ok and merge_path
-            else "child result merge semantics not defined"
+            else "child result merge handoff is incomplete"
         ),
     })
 
@@ -660,6 +822,24 @@ def build_child_executor_preflight_contract(
             "parallel_worker_budget_enforcement",
         ],
         "backend_registry": build_child_executor_backend_registry_contract(),
+        "child_executor_context_budget_policy": next(
+            (
+                dict(item.get("evidence") or {})
+                for item in requirement_checks
+                if str(item.get("requirement") or "").strip() == "child_context_budget_defined"
+                and isinstance(item.get("evidence"), dict)
+            ),
+            build_child_executor_context_budget_policy_contract(payload=normalized_payload),
+        ),
+        "child_result_merge_handoff_contract": next(
+            (
+                dict(item.get("evidence") or {})
+                for item in requirement_checks
+                if str(item.get("requirement") or "").strip() == "child_result_merge_semantics_defined"
+                and isinstance(item.get("evidence"), dict)
+            ),
+            build_child_result_merge_handoff_contract(payload=normalized_payload),
+        ),
         "requirement_checks": requirement_checks,
         "missing_requirements": missing_requirements,
         "approved_reference_slices": [dict(item) for item in EMBEDDED_CHILD_EXECUTOR_PREFLIGHT_REFERENCE_SLICES],
@@ -759,6 +939,32 @@ def build_child_executor_execution_prerequisites_contract(
         if isinstance(explicit_binding_check, dict)
         else {}
     )
+    budget_check = next(
+        (
+            item
+            for item in requirement_checks
+            if str(item.get("requirement") or "").strip() == "child_context_budget_defined"
+        ),
+        {},
+    )
+    context_budget_policy = (
+        dict(budget_check.get("evidence") or {})
+        if isinstance(budget_check, dict)
+        else {}
+    )
+    merge_check = next(
+        (
+            item
+            for item in requirement_checks
+            if str(item.get("requirement") or "").strip() == "child_result_merge_semantics_defined"
+        ),
+        {},
+    )
+    merge_handoff = (
+        dict(merge_check.get("evidence") or {})
+        if isinstance(merge_check, dict)
+        else {}
+    )
     backend_dispatch_ready = bool(backend_registry_evidence.get("dispatch_ready"))
     if not backend_dispatch_ready:
         missing_requirements.append("worker_backend_dispatch_ready")
@@ -811,6 +1017,10 @@ def build_child_executor_execution_prerequisites_contract(
             ).strip()
         ),
         "explicit_executor_binding": explicit_binding_evidence,
+        "child_executor_context_budget_policy": context_budget_policy,
+        "context_budget_policy": context_budget_policy,
+        "child_result_merge_handoff_contract": merge_handoff,
+        "merge_handoff_contract": merge_handoff,
     }
 
 

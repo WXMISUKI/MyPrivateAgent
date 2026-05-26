@@ -41,7 +41,11 @@ try:
     )
     from agent_framework.recovery_operations import build_recovery_operation_contract
     from agent_framework.runtime_dependencies import EmbeddedRuntimeDependencies, EmbeddedRuntimeFactory
-    from agent_framework.sdk import EmbeddedAgentRuntimeSDK, validate_embedded_sdk_event_payloads
+    from agent_framework.sdk import (
+        EmbeddedAgentRuntimeSDK,
+        build_child_executor_dispatch_contract,
+        validate_embedded_sdk_event_payloads,
+    )
     from agent_framework.tools import ToolSpec
     from agent_framework.worker_ownership import (
         InMemoryRuntimeWorkerOwnershipStore,
@@ -74,7 +78,11 @@ except ModuleNotFoundError:  # pragma: no cover - package import compatibility
     )
     from backend.agent_framework.recovery_operations import build_recovery_operation_contract
     from backend.agent_framework.runtime_dependencies import EmbeddedRuntimeDependencies, EmbeddedRuntimeFactory
-    from backend.agent_framework.sdk import EmbeddedAgentRuntimeSDK, validate_embedded_sdk_event_payloads
+    from backend.agent_framework.sdk import (
+        EmbeddedAgentRuntimeSDK,
+        build_child_executor_dispatch_contract,
+        validate_embedded_sdk_event_payloads,
+    )
     from backend.agent_framework.tools import ToolSpec
     from backend.agent_framework.worker_ownership import (
         InMemoryRuntimeWorkerOwnershipStore,
@@ -2501,6 +2509,59 @@ def _run_child_executor_promotion_gate_contract_check(runtime_profile_payload: d
     recommended_next_step = str(gate.get("recommended_next_step") or "").strip()
     prerequisites_contract_version = str(prerequisites.get("contract_version") or "").strip()
     prerequisites_status = str(prerequisites.get("overall_status") or "").strip()
+    explicit_binding = dict(prerequisites.get("explicit_executor_binding") or {})
+    explicit_binding_status = str(explicit_binding.get("binding_status") or "").strip()
+    explicit_binding_ready = bool(explicit_binding.get("ready"))
+    explicit_binding_source = str(explicit_binding.get("binding_source") or "").strip()
+    context_budget_policy = dict(
+        prerequisites.get("child_executor_context_budget_policy")
+        or prerequisites.get("context_budget_policy")
+        or {}
+    )
+    context_budget_policy_status = str(context_budget_policy.get("overall_status") or "").strip()
+    context_budget_policy_ready = bool(context_budget_policy.get("ready"))
+    context_budget_policy_missing_sections = (
+        context_budget_policy.get("missing_sections")
+        if isinstance(context_budget_policy.get("missing_sections"), list)
+        else []
+    )
+    merge_handoff = dict(
+        prerequisites.get("child_result_merge_handoff_contract")
+        or prerequisites.get("merge_handoff_contract")
+        or {}
+    )
+    merge_handoff_status = str(merge_handoff.get("overall_status") or "").strip()
+    merge_handoff_ready = bool(merge_handoff.get("ready"))
+    merge_handoff_missing_sections = (
+        merge_handoff.get("missing_sections")
+        if isinstance(merge_handoff.get("missing_sections"), list)
+        else []
+    )
+
+    opt_in_sdk = EmbeddedAgentRuntimeSDK(workspace_store=InMemoryEmbeddedRunWorkspaceStore())
+    opt_in_payload = {
+        "input": "风险复核子任务",
+        "child_context_budget": {"max_turns": 1},
+        "merge_strategy": "append_summary",
+        "worker_runtime_backend": "embedded_sdk_worker",
+        "explicit_executor_binding_opt_in": True,
+    }
+    opt_in_gate = opt_in_sdk.evaluate_child_executor_gate(opt_in_payload)
+    opt_in_prerequisites = dict(opt_in_gate.get("child_executor_execution_prerequisites") or {})
+    opt_in_explicit_binding = dict(opt_in_prerequisites.get("explicit_executor_binding") or {})
+    opt_in_context_budget_policy = dict(
+        opt_in_prerequisites.get("child_executor_context_budget_policy")
+        or opt_in_prerequisites.get("context_budget_policy")
+        or {}
+    )
+    opt_in_merge_handoff = dict(
+        opt_in_prerequisites.get("child_result_merge_handoff_contract")
+        or opt_in_prerequisites.get("merge_handoff_contract")
+        or {}
+    )
+    opt_in_binding = opt_in_sdk.bind_child_executor_routing(opt_in_payload)
+    opt_in_execution = opt_in_sdk.execute_bound_child_executor(opt_in_binding)
+
     ok = (
         bool(contract_version)
         and gate_status == "blocked"
@@ -2513,6 +2574,28 @@ def _run_child_executor_promotion_gate_contract_check(runtime_profile_payload: d
         and bool(prerequisites.get("ready")) is False
         and isinstance(prerequisites.get("requirements"), list)
         and isinstance(prerequisites.get("missing_requirements"), list)
+        and "explicit_executor_binding_opt_in" in [str(item) for item in missing_requirements]
+        and "child_context_budget_defined" in [str(item) for item in missing_requirements]
+        and "child_result_merge_semantics_defined" in [str(item) for item in missing_requirements]
+        and explicit_binding_status == "blocked"
+        and not explicit_binding_ready
+        and context_budget_policy_status == "blocked"
+        and not context_budget_policy_ready
+        and "budget_source" in [str(item) for item in context_budget_policy_missing_sections]
+        and "bounded_budget_limit" in [str(item) for item in context_budget_policy_missing_sections]
+        and opt_in_explicit_binding.get("binding_status") == "ready"
+        and bool(opt_in_explicit_binding.get("ready"))
+        and opt_in_context_budget_policy.get("overall_status") == "ready"
+        and bool(opt_in_context_budget_policy.get("ready"))
+        and int(opt_in_context_budget_policy.get("max_turns") or 0) == 1
+        and opt_in_merge_handoff.get("overall_status") == "ready"
+        and bool(opt_in_merge_handoff.get("ready"))
+        and opt_in_merge_handoff.get("merge_strategy") == "append_summary"
+        and merge_handoff_status == "blocked"
+        and not merge_handoff_ready
+        and "merge_source" in [str(item) for item in merge_handoff_missing_sections]
+        and opt_in_execution.get("execution_status") == "executed"
+        and bool(opt_in_execution.get("will_execute"))
     )
     return {
         "ok": ok,
@@ -2529,6 +2612,48 @@ def _run_child_executor_promotion_gate_contract_check(runtime_profile_payload: d
         "prerequisites_requirement_count": len(requirement_entries),
         "prerequisites_missing_requirement_count": len(missing_requirements),
         "prerequisites_missing_requirements": [str(item) for item in missing_requirements],
+        "explicit_executor_binding_status": explicit_binding_status,
+        "explicit_executor_binding_ready": explicit_binding_ready,
+        "explicit_executor_binding_source": explicit_binding_source,
+        "explicit_executor_binding_missing": "explicit_executor_binding_opt_in" in [str(item) for item in missing_requirements],
+        "context_budget_policy_status": context_budget_policy_status,
+        "context_budget_policy_ready": context_budget_policy_ready,
+        "context_budget_policy_source": str(context_budget_policy.get("budget_source") or ""),
+        "context_budget_policy_missing_sections": [str(item) for item in context_budget_policy_missing_sections],
+        "context_budget_policy_missing": "child_context_budget_defined" in [str(item) for item in missing_requirements],
+        "merge_handoff_status": merge_handoff_status,
+        "merge_handoff_ready": merge_handoff_ready,
+        "merge_handoff_strategy": str(merge_handoff.get("merge_strategy") or ""),
+        "merge_handoff_source": str(merge_handoff.get("merge_source") or ""),
+        "merge_handoff_missing_sections": [str(item) for item in merge_handoff_missing_sections],
+        "merge_handoff_missing": "child_result_merge_semantics_defined" in [str(item) for item in missing_requirements],
+        "opt_in_explicit_executor_binding_status": str(
+            opt_in_explicit_binding.get("binding_status") or ""
+        ),
+        "opt_in_explicit_executor_binding_ready": bool(opt_in_explicit_binding.get("ready")),
+        "opt_in_explicit_executor_binding_source": str(
+            opt_in_explicit_binding.get("binding_source") or ""
+        ),
+        "opt_in_explicit_executor_binding_backend": str(
+            opt_in_explicit_binding.get("selected_backend") or opt_in_explicit_binding.get("backend_id") or ""
+        ),
+        "opt_in_context_budget_policy_status": str(
+            opt_in_context_budget_policy.get("overall_status") or ""
+        ),
+        "opt_in_context_budget_policy_ready": bool(opt_in_context_budget_policy.get("ready")),
+        "opt_in_context_budget_policy_source": str(
+            opt_in_context_budget_policy.get("budget_source") or ""
+        ),
+        "opt_in_context_budget_policy_max_turns": int(
+            opt_in_context_budget_policy.get("max_turns") or 0
+        ),
+        "opt_in_merge_handoff_status": str(opt_in_merge_handoff.get("overall_status") or ""),
+        "opt_in_merge_handoff_ready": bool(opt_in_merge_handoff.get("ready")),
+        "opt_in_merge_handoff_strategy": str(opt_in_merge_handoff.get("merge_strategy") or ""),
+        "opt_in_merge_handoff_source": str(opt_in_merge_handoff.get("merge_source") or ""),
+        "opt_in_skeleton_execution_status": str(opt_in_execution.get("execution_status") or ""),
+        "opt_in_skeleton_will_execute": bool(opt_in_execution.get("will_execute")),
+        "opt_in_skeleton_execution_mode": str(opt_in_execution.get("execution_mode") or ""),
     }
 
 
@@ -2542,6 +2667,25 @@ def _run_child_executor_dispatch_contract_check(runtime_profile_payload: dict) -
     will_dispatch = bool(dispatch.get("will_dispatch"))
     backend_dispatch_ready = bool(dispatch.get("backend_dispatch_ready"))
     relationship_seam_preserved = bool(dispatch.get("relationship_seam_preserved"))
+    explicit_executor_binding_ready = bool(dispatch.get("explicit_executor_binding_ready"))
+    explicit_executor_binding_status = str(dispatch.get("explicit_executor_binding_status") or "").strip()
+    explicit_executor_binding_source = str(dispatch.get("explicit_executor_binding_source") or "").strip()
+
+    opt_in_sdk = EmbeddedAgentRuntimeSDK(workspace_store=InMemoryEmbeddedRunWorkspaceStore())
+    opt_in_payload = {
+        "input": "风险复核子任务",
+        "child_context_budget": {"max_turns": 1},
+        "merge_strategy": "append_summary",
+        "worker_runtime_backend": "embedded_sdk_worker",
+        "explicit_executor_binding_opt_in": True,
+    }
+    opt_in_dispatch = build_child_executor_dispatch_contract(
+        gate=opt_in_sdk.evaluate_child_executor_gate(opt_in_payload)
+    )
+    opt_in_dispatch_ready = bool(opt_in_dispatch.get("dispatch_ready"))
+    opt_in_will_dispatch = bool(opt_in_dispatch.get("will_dispatch"))
+    opt_in_backend_dispatch_ready = bool(opt_in_dispatch.get("backend_dispatch_ready"))
+    opt_in_explicit_binding_ready = bool(opt_in_dispatch.get("explicit_executor_binding_ready"))
     ok = (
         bool(contract_version)
         and overall_status == "blocked"
@@ -2551,6 +2695,13 @@ def _run_child_executor_dispatch_contract_check(runtime_profile_payload: dict) -
         and relationship_seam_preserved
         and isinstance(dispatch.get("blockers"), list)
         and "worker_backend_dispatch_ready" in [str(item) for item in blockers]
+        and "explicit_executor_binding_opt_in" in [str(item) for item in blockers]
+        and not explicit_executor_binding_ready
+        and explicit_executor_binding_status == "blocked"
+        and opt_in_explicit_binding_ready
+        and not opt_in_dispatch_ready
+        and not opt_in_will_dispatch
+        and not opt_in_backend_dispatch_ready
         and bool(recommended_next_step)
     )
     return {
@@ -2563,6 +2714,20 @@ def _run_child_executor_dispatch_contract_check(runtime_profile_payload: dict) -
         "relationship_seam_preserved": relationship_seam_preserved,
         "dispatch_blocker_count": len(blockers),
         "dispatch_blockers": [str(item) for item in blockers],
+        "explicit_executor_binding_ready": explicit_executor_binding_ready,
+        "explicit_executor_binding_status": explicit_executor_binding_status,
+        "explicit_executor_binding_source": explicit_executor_binding_source,
+        "opt_in_dispatch_status": str(opt_in_dispatch.get("overall_status") or ""),
+        "opt_in_dispatch_ready": opt_in_dispatch_ready,
+        "opt_in_will_dispatch": opt_in_will_dispatch,
+        "opt_in_backend_dispatch_ready": opt_in_backend_dispatch_ready,
+        "opt_in_explicit_executor_binding_ready": opt_in_explicit_binding_ready,
+        "opt_in_explicit_executor_binding_status": str(
+            opt_in_dispatch.get("explicit_executor_binding_status") or ""
+        ),
+        "opt_in_explicit_executor_binding_source": str(
+            opt_in_dispatch.get("explicit_executor_binding_source") or ""
+        ),
         "recommended_next_step": recommended_next_step,
         "failure_reason": "" if ok else "child_executor_dispatch_contract_incomplete",
     }

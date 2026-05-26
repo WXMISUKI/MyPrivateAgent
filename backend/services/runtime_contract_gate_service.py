@@ -49,6 +49,12 @@ RUNTIME_CONTRACT_SUMMARY_REQUIRED_FIELDS = (
     "child_executor_promotion_gate_coverage.gate_smoke",
     "child_executor_execution_prerequisites_coverage",
     "child_executor_execution_prerequisites_coverage.prerequisites_smoke",
+    "child_executor_execution_prerequisites_coverage.context_budget_policy_status",
+    "child_executor_execution_prerequisites_coverage.context_budget_policy_missing_sections",
+    "child_executor_execution_prerequisites_coverage.opt_in_context_budget_policy_ready",
+    "child_executor_execution_prerequisites_coverage.merge_handoff_status",
+    "child_executor_execution_prerequisites_coverage.merge_handoff_missing_sections",
+    "child_executor_execution_prerequisites_coverage.opt_in_merge_handoff_ready",
     "child_executor_dispatch_coverage",
     "child_executor_dispatch_coverage.dispatch_smoke",
     "child_executor_dispatcher_coverage",
@@ -1500,6 +1506,25 @@ class RuntimeContractGateService:
             "prerequisites_missing_requirements": self._normalize_string_list(
                 raw_check.get("prerequisites_missing_requirements")
             ),
+            "explicit_executor_binding_status": str(raw_check.get("explicit_executor_binding_status") or ""),
+            "explicit_executor_binding_ready": raw_check.get("explicit_executor_binding_ready"),
+            "explicit_executor_binding_source": str(raw_check.get("explicit_executor_binding_source") or ""),
+            "explicit_executor_binding_missing": raw_check.get("explicit_executor_binding_missing"),
+            "opt_in_explicit_executor_binding_status": str(
+                raw_check.get("opt_in_explicit_executor_binding_status") or ""
+            ),
+            "opt_in_explicit_executor_binding_ready": raw_check.get(
+                "opt_in_explicit_executor_binding_ready"
+            ),
+            "opt_in_explicit_executor_binding_source": str(
+                raw_check.get("opt_in_explicit_executor_binding_source") or ""
+            ),
+            "opt_in_explicit_executor_binding_backend": str(
+                raw_check.get("opt_in_explicit_executor_binding_backend") or ""
+            ),
+            "opt_in_skeleton_execution_status": str(raw_check.get("opt_in_skeleton_execution_status") or ""),
+            "opt_in_skeleton_will_execute": raw_check.get("opt_in_skeleton_will_execute"),
+            "opt_in_skeleton_execution_mode": str(raw_check.get("opt_in_skeleton_execution_mode") or ""),
             "dispatch_status": str(raw_check.get("dispatch_status") or ""),
             "dispatch_ready": raw_check.get("dispatch_ready"),
             "will_dispatch": raw_check.get("will_dispatch"),
@@ -1507,6 +1532,10 @@ class RuntimeContractGateService:
             "relationship_seam_preserved": raw_check.get("relationship_seam_preserved"),
             "dispatch_blocker_count": self._coerce_optional_non_negative_int(raw_check.get("dispatch_blocker_count")),
             "dispatch_blockers": self._normalize_string_list(raw_check.get("dispatch_blockers")),
+            "opt_in_dispatch_status": str(raw_check.get("opt_in_dispatch_status") or ""),
+            "opt_in_dispatch_ready": raw_check.get("opt_in_dispatch_ready"),
+            "opt_in_will_dispatch": raw_check.get("opt_in_will_dispatch"),
+            "opt_in_backend_dispatch_ready": raw_check.get("opt_in_backend_dispatch_ready"),
             "default_status": str(raw_check.get("default_status") or ""),
             "default_eligible": raw_check.get("default_eligible"),
             "default_will_execute": raw_check.get("default_will_execute"),
@@ -5022,6 +5051,55 @@ class RuntimeContractGateService:
                 check.get("prerequisites_missing_requirement_count")
             ) or 0,
             "missing_requirements": self._normalize_string_list(check.get("prerequisites_missing_requirements")),
+            "explicit_executor_binding_status": str(check.get("explicit_executor_binding_status") or ""),
+            "explicit_executor_binding_ready": check.get("explicit_executor_binding_ready"),
+            "explicit_executor_binding_missing": check.get("explicit_executor_binding_missing"),
+            "context_budget_policy_status": str(check.get("context_budget_policy_status") or ""),
+            "context_budget_policy_ready": check.get("context_budget_policy_ready"),
+            "context_budget_policy_missing": check.get("context_budget_policy_missing"),
+            "context_budget_policy_missing_sections": self._normalize_string_list(
+                check.get("context_budget_policy_missing_sections")
+            ),
+            "context_budget_policy_source": str(check.get("context_budget_policy_source") or ""),
+            "merge_handoff_status": str(check.get("merge_handoff_status") or ""),
+            "merge_handoff_ready": check.get("merge_handoff_ready"),
+            "merge_handoff_missing": check.get("merge_handoff_missing"),
+            "merge_handoff_missing_sections": self._normalize_string_list(
+                check.get("merge_handoff_missing_sections")
+            ),
+            "merge_handoff_strategy": str(check.get("merge_handoff_strategy") or ""),
+            "merge_handoff_source": str(check.get("merge_handoff_source") or ""),
+            "opt_in_explicit_executor_binding_status": str(
+                check.get("opt_in_explicit_executor_binding_status") or ""
+            ),
+            "opt_in_explicit_executor_binding_ready": check.get(
+                "opt_in_explicit_executor_binding_ready"
+            ),
+            "opt_in_explicit_executor_binding_source": str(
+                check.get("opt_in_explicit_executor_binding_source") or ""
+            ),
+            "opt_in_explicit_executor_binding_backend": str(
+                check.get("opt_in_explicit_executor_binding_backend") or ""
+            ),
+            "opt_in_context_budget_policy_status": str(
+                check.get("opt_in_context_budget_policy_status") or ""
+            ),
+            "opt_in_context_budget_policy_ready": check.get(
+                "opt_in_context_budget_policy_ready"
+            ),
+            "opt_in_context_budget_policy_source": str(
+                check.get("opt_in_context_budget_policy_source") or ""
+            ),
+            "opt_in_context_budget_policy_max_turns": self._coerce_optional_non_negative_int(
+                check.get("opt_in_context_budget_policy_max_turns")
+            ) or 0,
+            "opt_in_merge_handoff_status": str(check.get("opt_in_merge_handoff_status") or ""),
+            "opt_in_merge_handoff_ready": check.get("opt_in_merge_handoff_ready"),
+            "opt_in_merge_handoff_strategy": str(check.get("opt_in_merge_handoff_strategy") or ""),
+            "opt_in_merge_handoff_source": str(check.get("opt_in_merge_handoff_source") or ""),
+            "opt_in_skeleton_execution_status": str(check.get("opt_in_skeleton_execution_status") or ""),
+            "opt_in_skeleton_will_execute": check.get("opt_in_skeleton_will_execute"),
+            "opt_in_skeleton_execution_mode": str(check.get("opt_in_skeleton_execution_mode") or ""),
         })
 
     def _normalize_child_executor_execution_prerequisites_coverage(
@@ -5036,6 +5114,50 @@ class RuntimeContractGateService:
             self._coerce_optional_non_negative_int(coverage.get("missing_requirement_count")) or 0
         )
         missing_requirements = self._normalize_string_list(coverage.get("missing_requirements"))
+        explicit_binding_status = str(coverage.get("explicit_executor_binding_status") or "")
+        explicit_binding_ready = self._coerce_truthy_flag(coverage.get("explicit_executor_binding_ready"))
+        explicit_binding_missing = self._coerce_truthy_flag(coverage.get("explicit_executor_binding_missing"))
+        context_budget_policy_status = str(coverage.get("context_budget_policy_status") or "")
+        context_budget_policy_ready = self._coerce_truthy_flag(coverage.get("context_budget_policy_ready"))
+        context_budget_policy_missing = self._coerce_truthy_flag(coverage.get("context_budget_policy_missing"))
+        context_budget_policy_missing_sections = self._normalize_string_list(
+            coverage.get("context_budget_policy_missing_sections")
+        )
+        merge_handoff_status = str(coverage.get("merge_handoff_status") or "")
+        merge_handoff_ready = self._coerce_truthy_flag(coverage.get("merge_handoff_ready"))
+        merge_handoff_missing = self._coerce_truthy_flag(coverage.get("merge_handoff_missing"))
+        merge_handoff_missing_sections = self._normalize_string_list(
+            coverage.get("merge_handoff_missing_sections")
+        )
+        opt_in_explicit_binding_status = str(
+            coverage.get("opt_in_explicit_executor_binding_status") or ""
+        )
+        opt_in_explicit_binding_ready = self._coerce_truthy_flag(
+            coverage.get("opt_in_explicit_executor_binding_ready")
+        )
+        opt_in_context_budget_policy_status = str(
+            coverage.get("opt_in_context_budget_policy_status") or ""
+        )
+        opt_in_context_budget_policy_ready = self._coerce_truthy_flag(
+            coverage.get("opt_in_context_budget_policy_ready")
+        )
+        opt_in_context_budget_policy_max_turns = (
+            self._coerce_optional_non_negative_int(
+                coverage.get("opt_in_context_budget_policy_max_turns")
+            )
+            or 0
+        )
+        opt_in_merge_handoff_status = str(coverage.get("opt_in_merge_handoff_status") or "")
+        opt_in_merge_handoff_ready = self._coerce_truthy_flag(
+            coverage.get("opt_in_merge_handoff_ready")
+        )
+        opt_in_merge_handoff_strategy = str(coverage.get("opt_in_merge_handoff_strategy") or "")
+        opt_in_skeleton_execution_status = str(
+            coverage.get("opt_in_skeleton_execution_status") or ""
+        )
+        opt_in_skeleton_will_execute = self._coerce_truthy_flag(
+            coverage.get("opt_in_skeleton_will_execute")
+        )
         prerequisites_smoke = (
             self._coerce_truthy_flag(coverage.get("prerequisites_smoke"))
             and bool(contract_version)
@@ -5043,6 +5165,31 @@ class RuntimeContractGateService:
             and not ready
             and requirement_count > 0
             and missing_requirement_count == len(missing_requirements)
+            and explicit_binding_missing
+            and "explicit_executor_binding_opt_in" in missing_requirements
+            and explicit_binding_status == "blocked"
+            and not explicit_binding_ready
+            and context_budget_policy_missing
+            and "child_context_budget_defined" in missing_requirements
+            and context_budget_policy_status == "blocked"
+            and not context_budget_policy_ready
+            and "budget_source" in context_budget_policy_missing_sections
+            and "bounded_budget_limit" in context_budget_policy_missing_sections
+            and merge_handoff_missing
+            and "child_result_merge_semantics_defined" in missing_requirements
+            and merge_handoff_status == "blocked"
+            and not merge_handoff_ready
+            and "merge_source" in merge_handoff_missing_sections
+            and opt_in_explicit_binding_status == "ready"
+            and opt_in_explicit_binding_ready
+            and opt_in_context_budget_policy_status == "ready"
+            and opt_in_context_budget_policy_ready
+            and opt_in_context_budget_policy_max_turns > 0
+            and opt_in_merge_handoff_status == "ready"
+            and opt_in_merge_handoff_ready
+            and opt_in_merge_handoff_strategy in {"append_summary", "role_sections"}
+            and opt_in_skeleton_execution_status == "executed"
+            and opt_in_skeleton_will_execute
         )
         return {
             "prerequisites_smoke": prerequisites_smoke,
@@ -5052,6 +5199,45 @@ class RuntimeContractGateService:
             "requirement_count": requirement_count,
             "missing_requirement_count": missing_requirement_count,
             "missing_requirements": missing_requirements,
+            "explicit_executor_binding_status": explicit_binding_status,
+            "explicit_executor_binding_ready": explicit_binding_ready,
+            "explicit_executor_binding_missing": explicit_binding_missing,
+            "context_budget_policy_status": context_budget_policy_status,
+            "context_budget_policy_ready": context_budget_policy_ready,
+            "context_budget_policy_missing": context_budget_policy_missing,
+            "context_budget_policy_missing_sections": context_budget_policy_missing_sections,
+            "context_budget_policy_source": str(
+                coverage.get("context_budget_policy_source") or ""
+            ),
+            "merge_handoff_status": merge_handoff_status,
+            "merge_handoff_ready": merge_handoff_ready,
+            "merge_handoff_missing": merge_handoff_missing,
+            "merge_handoff_missing_sections": merge_handoff_missing_sections,
+            "merge_handoff_strategy": str(coverage.get("merge_handoff_strategy") or ""),
+            "merge_handoff_source": str(coverage.get("merge_handoff_source") or ""),
+            "opt_in_explicit_executor_binding_status": opt_in_explicit_binding_status,
+            "opt_in_explicit_executor_binding_ready": opt_in_explicit_binding_ready,
+            "opt_in_explicit_executor_binding_source": str(
+                coverage.get("opt_in_explicit_executor_binding_source") or ""
+            ),
+            "opt_in_explicit_executor_binding_backend": str(
+                coverage.get("opt_in_explicit_executor_binding_backend") or ""
+            ),
+            "opt_in_context_budget_policy_status": opt_in_context_budget_policy_status,
+            "opt_in_context_budget_policy_ready": opt_in_context_budget_policy_ready,
+            "opt_in_context_budget_policy_source": str(
+                coverage.get("opt_in_context_budget_policy_source") or ""
+            ),
+            "opt_in_context_budget_policy_max_turns": opt_in_context_budget_policy_max_turns,
+            "opt_in_merge_handoff_status": opt_in_merge_handoff_status,
+            "opt_in_merge_handoff_ready": opt_in_merge_handoff_ready,
+            "opt_in_merge_handoff_strategy": opt_in_merge_handoff_strategy,
+            "opt_in_merge_handoff_source": str(coverage.get("opt_in_merge_handoff_source") or ""),
+            "opt_in_skeleton_execution_status": opt_in_skeleton_execution_status,
+            "opt_in_skeleton_will_execute": opt_in_skeleton_will_execute,
+            "opt_in_skeleton_execution_mode": str(
+                coverage.get("opt_in_skeleton_execution_mode") or ""
+            ),
         }
 
     def _build_child_executor_dispatch_coverage(self, check: Mapping[str, Any]) -> Dict[str, Any]:
@@ -5064,6 +5250,23 @@ class RuntimeContractGateService:
             "backend_dispatch_ready": check.get("backend_dispatch_ready"),
             "relationship_seam_preserved": check.get("relationship_seam_preserved"),
             "blocker_count": self._coerce_optional_non_negative_int(check.get("dispatch_blocker_count")) or 0,
+            "dispatch_blockers": self._normalize_string_list(check.get("dispatch_blockers")),
+            "explicit_executor_binding_ready": check.get("explicit_executor_binding_ready"),
+            "explicit_executor_binding_status": str(check.get("explicit_executor_binding_status") or ""),
+            "explicit_executor_binding_source": str(check.get("explicit_executor_binding_source") or ""),
+            "opt_in_dispatch_status": str(check.get("opt_in_dispatch_status") or ""),
+            "opt_in_dispatch_ready": check.get("opt_in_dispatch_ready"),
+            "opt_in_will_dispatch": check.get("opt_in_will_dispatch"),
+            "opt_in_backend_dispatch_ready": check.get("opt_in_backend_dispatch_ready"),
+            "opt_in_explicit_executor_binding_ready": check.get(
+                "opt_in_explicit_executor_binding_ready"
+            ),
+            "opt_in_explicit_executor_binding_status": str(
+                check.get("opt_in_explicit_executor_binding_status") or ""
+            ),
+            "opt_in_explicit_executor_binding_source": str(
+                check.get("opt_in_explicit_executor_binding_source") or ""
+            ),
             "recommended_next_step": str(check.get("recommended_next_step") or ""),
         })
 
@@ -5078,6 +5281,21 @@ class RuntimeContractGateService:
         backend_dispatch_ready = self._coerce_truthy_flag(coverage.get("backend_dispatch_ready"))
         relationship_seam_preserved = self._coerce_truthy_flag(coverage.get("relationship_seam_preserved"))
         blocker_count = self._coerce_optional_non_negative_int(coverage.get("blocker_count")) or 0
+        dispatch_blockers = self._normalize_string_list(coverage.get("dispatch_blockers"))
+        explicit_binding_ready = self._coerce_truthy_flag(coverage.get("explicit_executor_binding_ready"))
+        explicit_binding_status = str(coverage.get("explicit_executor_binding_status") or "")
+        opt_in_dispatch_status = str(coverage.get("opt_in_dispatch_status") or "")
+        opt_in_dispatch_ready = self._coerce_truthy_flag(coverage.get("opt_in_dispatch_ready"))
+        opt_in_will_dispatch = self._coerce_truthy_flag(coverage.get("opt_in_will_dispatch"))
+        opt_in_backend_dispatch_ready = self._coerce_truthy_flag(
+            coverage.get("opt_in_backend_dispatch_ready")
+        )
+        opt_in_explicit_binding_ready = self._coerce_truthy_flag(
+            coverage.get("opt_in_explicit_executor_binding_ready")
+        )
+        opt_in_explicit_binding_status = str(
+            coverage.get("opt_in_explicit_executor_binding_status") or ""
+        )
         recommended_next_step = str(coverage.get("recommended_next_step") or "")
         dispatch_smoke = (
             self._coerce_truthy_flag(coverage.get("dispatch_smoke"))
@@ -5088,6 +5306,15 @@ class RuntimeContractGateService:
             and not backend_dispatch_ready
             and relationship_seam_preserved
             and blocker_count > 0
+            and "explicit_executor_binding_opt_in" in dispatch_blockers
+            and explicit_binding_status == "blocked"
+            and not explicit_binding_ready
+            and opt_in_dispatch_status == "blocked"
+            and not opt_in_dispatch_ready
+            and not opt_in_will_dispatch
+            and not opt_in_backend_dispatch_ready
+            and opt_in_explicit_binding_ready
+            and opt_in_explicit_binding_status == "ready"
             and bool(recommended_next_step)
         )
         return {
@@ -5099,6 +5326,19 @@ class RuntimeContractGateService:
             "backend_dispatch_ready": backend_dispatch_ready,
             "relationship_seam_preserved": relationship_seam_preserved,
             "blocker_count": blocker_count,
+            "dispatch_blockers": dispatch_blockers,
+            "explicit_executor_binding_ready": explicit_binding_ready,
+            "explicit_executor_binding_status": explicit_binding_status,
+            "explicit_executor_binding_source": str(coverage.get("explicit_executor_binding_source") or ""),
+            "opt_in_dispatch_status": opt_in_dispatch_status,
+            "opt_in_dispatch_ready": opt_in_dispatch_ready,
+            "opt_in_will_dispatch": opt_in_will_dispatch,
+            "opt_in_backend_dispatch_ready": opt_in_backend_dispatch_ready,
+            "opt_in_explicit_executor_binding_ready": opt_in_explicit_binding_ready,
+            "opt_in_explicit_executor_binding_status": opt_in_explicit_binding_status,
+            "opt_in_explicit_executor_binding_source": str(
+                coverage.get("opt_in_explicit_executor_binding_source") or ""
+            ),
             "recommended_next_step": recommended_next_step,
         }
 

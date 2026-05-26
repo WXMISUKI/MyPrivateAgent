@@ -2018,6 +2018,22 @@ class RuntimeContractGateServiceTests(unittest.TestCase):
                                         "backend_dispatch_ready": False,
                                         "relationship_seam_preserved": True,
                                         "dispatch_blocker_count": 2,
+                                        "dispatch_blockers": [
+                                            "worker_backend_dispatch_ready",
+                                            "explicit_executor_binding_opt_in",
+                                        ],
+                                        "explicit_executor_binding_ready": False,
+                                        "explicit_executor_binding_status": "blocked",
+                                        "explicit_executor_binding_source": "",
+                                        "opt_in_dispatch_status": "blocked",
+                                        "opt_in_dispatch_ready": False,
+                                        "opt_in_will_dispatch": False,
+                                        "opt_in_backend_dispatch_ready": False,
+                                        "opt_in_explicit_executor_binding_ready": True,
+                                        "opt_in_explicit_executor_binding_status": "ready",
+                                        "opt_in_explicit_executor_binding_source": (
+                                            "payload.explicit_executor_binding_opt_in"
+                                        ),
                                         "recommended_next_step": "implement_child_executor_backend_dispatch",
                                     },
                                 ],

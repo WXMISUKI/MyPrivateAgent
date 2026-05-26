@@ -56,6 +56,12 @@ RUNTIME_CONTRACT_SUMMARY_REQUIRED_FIELDS = (
     "child_executor_promotion_gate_coverage.gate_smoke",
     "child_executor_execution_prerequisites_coverage",
     "child_executor_execution_prerequisites_coverage.prerequisites_smoke",
+    "child_executor_execution_prerequisites_coverage.context_budget_policy_status",
+    "child_executor_execution_prerequisites_coverage.context_budget_policy_missing_sections",
+    "child_executor_execution_prerequisites_coverage.opt_in_context_budget_policy_ready",
+    "child_executor_execution_prerequisites_coverage.merge_handoff_status",
+    "child_executor_execution_prerequisites_coverage.merge_handoff_missing_sections",
+    "child_executor_execution_prerequisites_coverage.opt_in_merge_handoff_ready",
     "child_executor_dispatch_coverage",
     "child_executor_dispatch_coverage.dispatch_smoke",
     "child_executor_dispatcher_coverage",
@@ -2561,6 +2567,44 @@ def _build_child_executor_execution_prerequisites_coverage(check: dict[str, Any]
         0,
     )
     missing_requirements = _normalize_string_list(check.get("prerequisites_missing_requirements"))
+    explicit_binding_status = str(check.get("explicit_executor_binding_status") or "").strip()
+    explicit_binding_ready = bool(check.get("explicit_executor_binding_ready"))
+    explicit_binding_missing = bool(check.get("explicit_executor_binding_missing"))
+    context_budget_policy_status = str(check.get("context_budget_policy_status") or "").strip()
+    context_budget_policy_ready = bool(check.get("context_budget_policy_ready"))
+    context_budget_policy_missing = bool(check.get("context_budget_policy_missing"))
+    context_budget_policy_missing_sections = _normalize_string_list(
+        check.get("context_budget_policy_missing_sections")
+    )
+    merge_handoff_status = str(check.get("merge_handoff_status") or "").strip()
+    merge_handoff_ready = bool(check.get("merge_handoff_ready"))
+    merge_handoff_missing = bool(check.get("merge_handoff_missing"))
+    merge_handoff_missing_sections = _normalize_string_list(
+        check.get("merge_handoff_missing_sections")
+    )
+    opt_in_explicit_binding_status = str(
+        check.get("opt_in_explicit_executor_binding_status") or ""
+    ).strip()
+    opt_in_explicit_binding_ready = bool(
+        check.get("opt_in_explicit_executor_binding_ready")
+    )
+    opt_in_context_budget_policy_status = str(
+        check.get("opt_in_context_budget_policy_status") or ""
+    ).strip()
+    opt_in_context_budget_policy_ready = bool(
+        check.get("opt_in_context_budget_policy_ready")
+    )
+    opt_in_context_budget_policy_max_turns = _coerce_non_negative_int(
+        check.get("opt_in_context_budget_policy_max_turns"),
+        0,
+    )
+    opt_in_merge_handoff_status = str(check.get("opt_in_merge_handoff_status") or "").strip()
+    opt_in_merge_handoff_ready = bool(check.get("opt_in_merge_handoff_ready"))
+    opt_in_merge_handoff_strategy = str(check.get("opt_in_merge_handoff_strategy") or "").strip()
+    opt_in_skeleton_execution_status = str(
+        check.get("opt_in_skeleton_execution_status") or ""
+    ).strip()
+    opt_in_skeleton_will_execute = bool(check.get("opt_in_skeleton_will_execute"))
     prerequisites_smoke = (
         bool(check.get("ok"))
         and bool(contract_version)
@@ -2568,6 +2612,31 @@ def _build_child_executor_execution_prerequisites_coverage(check: dict[str, Any]
         and not ready
         and requirement_count > 0
         and missing_requirement_count == len(missing_requirements)
+        and explicit_binding_missing
+        and "explicit_executor_binding_opt_in" in missing_requirements
+        and explicit_binding_status == "blocked"
+        and not explicit_binding_ready
+        and context_budget_policy_missing
+        and "child_context_budget_defined" in missing_requirements
+        and context_budget_policy_status == "blocked"
+        and not context_budget_policy_ready
+        and "budget_source" in context_budget_policy_missing_sections
+        and "bounded_budget_limit" in context_budget_policy_missing_sections
+        and merge_handoff_missing
+        and "child_result_merge_semantics_defined" in missing_requirements
+        and merge_handoff_status == "blocked"
+        and not merge_handoff_ready
+        and "merge_source" in merge_handoff_missing_sections
+        and opt_in_explicit_binding_status == "ready"
+        and opt_in_explicit_binding_ready
+        and opt_in_context_budget_policy_status == "ready"
+        and opt_in_context_budget_policy_ready
+        and opt_in_context_budget_policy_max_turns > 0
+        and opt_in_merge_handoff_status == "ready"
+        and opt_in_merge_handoff_ready
+        and opt_in_merge_handoff_strategy in {"append_summary", "role_sections"}
+        and opt_in_skeleton_execution_status == "executed"
+        and opt_in_skeleton_will_execute
     )
     return {
         "prerequisites_smoke": prerequisites_smoke,
@@ -2577,6 +2646,43 @@ def _build_child_executor_execution_prerequisites_coverage(check: dict[str, Any]
         "requirement_count": requirement_count,
         "missing_requirement_count": missing_requirement_count,
         "missing_requirements": missing_requirements,
+        "explicit_executor_binding_status": explicit_binding_status,
+        "explicit_executor_binding_ready": explicit_binding_ready,
+        "explicit_executor_binding_missing": explicit_binding_missing,
+        "context_budget_policy_status": context_budget_policy_status,
+        "context_budget_policy_ready": context_budget_policy_ready,
+        "context_budget_policy_missing": context_budget_policy_missing,
+        "context_budget_policy_missing_sections": context_budget_policy_missing_sections,
+        "context_budget_policy_source": str(check.get("context_budget_policy_source") or "").strip(),
+        "merge_handoff_status": merge_handoff_status,
+        "merge_handoff_ready": merge_handoff_ready,
+        "merge_handoff_missing": merge_handoff_missing,
+        "merge_handoff_missing_sections": merge_handoff_missing_sections,
+        "merge_handoff_strategy": str(check.get("merge_handoff_strategy") or "").strip(),
+        "merge_handoff_source": str(check.get("merge_handoff_source") or "").strip(),
+        "opt_in_explicit_executor_binding_status": opt_in_explicit_binding_status,
+        "opt_in_explicit_executor_binding_ready": opt_in_explicit_binding_ready,
+        "opt_in_explicit_executor_binding_source": str(
+            check.get("opt_in_explicit_executor_binding_source") or ""
+        ).strip(),
+        "opt_in_explicit_executor_binding_backend": str(
+            check.get("opt_in_explicit_executor_binding_backend") or ""
+        ).strip(),
+        "opt_in_context_budget_policy_status": opt_in_context_budget_policy_status,
+        "opt_in_context_budget_policy_ready": opt_in_context_budget_policy_ready,
+        "opt_in_context_budget_policy_source": str(
+            check.get("opt_in_context_budget_policy_source") or ""
+        ).strip(),
+        "opt_in_context_budget_policy_max_turns": opt_in_context_budget_policy_max_turns,
+        "opt_in_merge_handoff_status": opt_in_merge_handoff_status,
+        "opt_in_merge_handoff_ready": opt_in_merge_handoff_ready,
+        "opt_in_merge_handoff_strategy": opt_in_merge_handoff_strategy,
+        "opt_in_merge_handoff_source": str(check.get("opt_in_merge_handoff_source") or "").strip(),
+        "opt_in_skeleton_execution_status": opt_in_skeleton_execution_status,
+        "opt_in_skeleton_will_execute": opt_in_skeleton_will_execute,
+        "opt_in_skeleton_execution_mode": str(
+            check.get("opt_in_skeleton_execution_mode") or ""
+        ).strip(),
     }
 
 
@@ -2588,6 +2694,19 @@ def _build_child_executor_dispatch_coverage(check: dict[str, Any]) -> dict[str, 
     backend_dispatch_ready = bool(check.get("backend_dispatch_ready"))
     relationship_seam_preserved = bool(check.get("relationship_seam_preserved"))
     blocker_count = _coerce_non_negative_int(check.get("dispatch_blocker_count"), 0)
+    dispatch_blockers = _normalize_string_list(check.get("dispatch_blockers"))
+    explicit_binding_ready = bool(check.get("explicit_executor_binding_ready"))
+    explicit_binding_status = str(check.get("explicit_executor_binding_status") or "").strip()
+    opt_in_dispatch_status = str(check.get("opt_in_dispatch_status") or "").strip()
+    opt_in_dispatch_ready = bool(check.get("opt_in_dispatch_ready"))
+    opt_in_will_dispatch = bool(check.get("opt_in_will_dispatch"))
+    opt_in_backend_dispatch_ready = bool(check.get("opt_in_backend_dispatch_ready"))
+    opt_in_explicit_binding_ready = bool(
+        check.get("opt_in_explicit_executor_binding_ready")
+    )
+    opt_in_explicit_binding_status = str(
+        check.get("opt_in_explicit_executor_binding_status") or ""
+    ).strip()
     recommended_next_step = str(check.get("recommended_next_step") or "").strip()
     dispatch_smoke = (
         bool(check.get("ok"))
@@ -2598,6 +2717,15 @@ def _build_child_executor_dispatch_coverage(check: dict[str, Any]) -> dict[str, 
         and not backend_dispatch_ready
         and relationship_seam_preserved
         and blocker_count > 0
+        and "explicit_executor_binding_opt_in" in dispatch_blockers
+        and explicit_binding_status == "blocked"
+        and not explicit_binding_ready
+        and opt_in_dispatch_status == "blocked"
+        and not opt_in_dispatch_ready
+        and not opt_in_will_dispatch
+        and not opt_in_backend_dispatch_ready
+        and opt_in_explicit_binding_ready
+        and opt_in_explicit_binding_status == "ready"
         and bool(recommended_next_step)
     )
     return {
@@ -2609,6 +2737,21 @@ def _build_child_executor_dispatch_coverage(check: dict[str, Any]) -> dict[str, 
         "backend_dispatch_ready": backend_dispatch_ready,
         "relationship_seam_preserved": relationship_seam_preserved,
         "blocker_count": blocker_count,
+        "dispatch_blockers": dispatch_blockers,
+        "explicit_executor_binding_ready": explicit_binding_ready,
+        "explicit_executor_binding_status": explicit_binding_status,
+        "explicit_executor_binding_source": str(
+            check.get("explicit_executor_binding_source") or ""
+        ).strip(),
+        "opt_in_dispatch_status": opt_in_dispatch_status,
+        "opt_in_dispatch_ready": opt_in_dispatch_ready,
+        "opt_in_will_dispatch": opt_in_will_dispatch,
+        "opt_in_backend_dispatch_ready": opt_in_backend_dispatch_ready,
+        "opt_in_explicit_executor_binding_ready": opt_in_explicit_binding_ready,
+        "opt_in_explicit_executor_binding_status": opt_in_explicit_binding_status,
+        "opt_in_explicit_executor_binding_source": str(
+            check.get("opt_in_explicit_executor_binding_source") or ""
+        ).strip(),
         "recommended_next_step": recommended_next_step,
     }
 

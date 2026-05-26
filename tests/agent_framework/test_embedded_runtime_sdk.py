@@ -24,7 +24,9 @@ from backend.agent_framework.runtime_dependencies import (
 )
 from backend.agent_framework.sdk import (
     EmbeddedAgentRuntimeSDK,
+    build_child_executor_context_budget_policy_contract,
     build_child_executor_dispatch_contract,
+    build_child_result_merge_handoff_contract,
     build_embedded_sdk_contract,
     validate_embedded_sdk_event_payloads,
 )
@@ -279,6 +281,64 @@ class EmbeddedAgentRuntimeSDKTests(unittest.TestCase):
         self.assertIn("child_context_budget_defined", contract["delegate_preflight"]["missing_requirements"])
         self.assertIn("explicit_executor_binding_opt_in", contract["delegate_preflight"]["missing_requirements"])
         self.assertEqual(len(contract["delegate_preflight"]["requirement_checks"]), 5)
+        budget_policy = contract["delegate_preflight"]["child_executor_context_budget_policy"]
+        self.assertEqual(budget_policy["overall_status"], "blocked")
+        self.assertFalse(budget_policy["ready"])
+        self.assertIn("budget_source", budget_policy["missing_sections"])
+        self.assertIn("bounded_budget_limit", budget_policy["missing_sections"])
+        merge_handoff = contract["delegate_preflight"]["child_result_merge_handoff_contract"]
+        self.assertEqual(merge_handoff["overall_status"], "blocked")
+        self.assertFalse(merge_handoff["ready"])
+        self.assertIn("merge_source", merge_handoff["missing_sections"])
+
+    def test_child_executor_context_budget_policy_normalizes_bounded_budget(self):
+        policy = build_child_executor_context_budget_policy_contract(
+            payload={"child_context_budget": {"max_turns": 2, "token_budget": "4096"}}
+        )
+
+        self.assertEqual(policy["contract_version"], "phase-ii-child-executor-context-budget-policy-v1")
+        self.assertEqual(policy["overall_status"], "ready")
+        self.assertTrue(policy["ready"])
+        self.assertEqual(policy["budget_source"], "payload.child_context_budget")
+        self.assertEqual(policy["max_turns"], 2)
+        self.assertEqual(policy["token_budget"], 4096)
+        self.assertEqual(policy["missing_sections"], [])
+
+    def test_child_executor_context_budget_policy_fails_closed_for_unbounded_budget(self):
+        policy = build_child_executor_context_budget_policy_contract(
+            payload={"child_context_budget": {"strategy": "best_effort"}}
+        )
+
+        self.assertEqual(policy["overall_status"], "blocked")
+        self.assertFalse(policy["ready"])
+        self.assertEqual(policy["budget_source"], "payload.child_context_budget")
+        self.assertIn("bounded_budget_limit", policy["missing_sections"])
+        self.assertEqual(policy["fail_closed_reason"], "child_executor_context_budget_policy_incomplete")
+
+    def test_child_result_merge_handoff_contract_normalizes_supported_strategy(self):
+        contract = build_child_result_merge_handoff_contract(
+            payload={"result_merge_policy": {"strategy": "role_sections"}}
+        )
+
+        self.assertEqual(contract["contract_version"], "phase-ii-child-result-merge-handoff-v1")
+        self.assertEqual(contract["overall_status"], "ready")
+        self.assertTrue(contract["ready"])
+        self.assertEqual(contract["merge_source"], "payload.result_merge_policy")
+        self.assertEqual(contract["merge_strategy"], "role_sections")
+        self.assertTrue(contract["artifact_envelope_required"])
+        self.assertTrue(contract["section_handoff_required"])
+        self.assertTrue(contract["replay_compatible"])
+
+    def test_child_result_merge_handoff_contract_fails_closed_for_unsupported_strategy(self):
+        contract = build_child_result_merge_handoff_contract(
+            payload={"merge_strategy": "stream_raw_events"}
+        )
+
+        self.assertEqual(contract["overall_status"], "blocked")
+        self.assertFalse(contract["ready"])
+        self.assertEqual(contract["merge_source"], "payload.merge_strategy")
+        self.assertIn("supported_merge_strategy", contract["missing_sections"])
+        self.assertEqual(contract["fail_closed_reason"], "child_result_merge_handoff_incomplete")
 
     def test_sdk_event_payload_validator_reports_missing_required_payload_fields(self):
         validation = validate_embedded_sdk_event_payloads([
@@ -1130,6 +1190,14 @@ class EmbeddedAgentRuntimeSDKTests(unittest.TestCase):
         self.assertTrue(prerequisites["relationship_seam_preserved"])
         self.assertIn("child_context_budget_defined", prerequisites["missing_requirements"])
         self.assertIn("promotion_gate_allowed", prerequisites["missing_requirements"])
+        budget_policy = prerequisites["child_executor_context_budget_policy"]
+        self.assertEqual(budget_policy["overall_status"], "blocked")
+        self.assertFalse(budget_policy["ready"])
+        self.assertIn("budget_source", budget_policy["missing_sections"])
+        merge_handoff = prerequisites["child_result_merge_handoff_contract"]
+        self.assertEqual(merge_handoff["overall_status"], "blocked")
+        self.assertFalse(merge_handoff["ready"])
+        self.assertIn("merge_source", merge_handoff["missing_sections"])
 
     def test_evaluate_child_executor_gate_reports_passed_when_preflight_is_ready(self):
         sdk = EmbeddedAgentRuntimeSDK()
@@ -1166,6 +1234,16 @@ class EmbeddedAgentRuntimeSDKTests(unittest.TestCase):
         self.assertFalse(prerequisites["ready"])
         self.assertTrue(prerequisites["relationship_seam_preserved"])
         self.assertIn("worker_backend_dispatch_ready", prerequisites["missing_requirements"])
+        budget_policy = prerequisites["child_executor_context_budget_policy"]
+        self.assertEqual(budget_policy["overall_status"], "ready")
+        self.assertTrue(budget_policy["ready"])
+        self.assertEqual(budget_policy["budget_source"], "metadata.scheduler_policy.timeout_seconds")
+        self.assertEqual(budget_policy["timeout_seconds"], 45)
+        merge_handoff = prerequisites["child_result_merge_handoff_contract"]
+        self.assertEqual(merge_handoff["overall_status"], "ready")
+        self.assertTrue(merge_handoff["ready"])
+        self.assertEqual(merge_handoff["merge_source"], "payload.merge_strategy")
+        self.assertEqual(merge_handoff["merge_strategy"], "append_summary")
         dispatch = build_child_executor_dispatch_contract(gate=gate)
         self.assertEqual(dispatch["overall_status"], "blocked")
         self.assertFalse(dispatch["dispatch_ready"])

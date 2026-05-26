@@ -58,7 +58,9 @@ from .runtime_dependencies import (
 from .persistence import build_durable_workspace_production_recovery_gate_contract
 from .sdk import (
     EmbeddedAgentRuntimeSDK,
+    build_child_executor_context_budget_policy_contract,
     build_child_executor_dispatch_contract,
+    build_child_result_merge_handoff_contract,
     build_embedded_sdk_contract,
     validate_embedded_sdk_event_payloads,
 )
@@ -141,10 +143,12 @@ __all__ = [
     "build_embedded_sdk_contract",
     "build_agent_harness_facade_contract",
     "build_child_executor_backend_registry_contract",
+    "build_child_executor_context_budget_policy_contract",
     "build_child_executor_sandbox_worker_backend_entry",
     "build_sandbox_dispatch_attempt_envelope",
     "build_sandbox_worker_backend_adapter_contract",
     "build_child_executor_dispatch_contract",
+    "build_child_result_merge_handoff_contract",
     "build_durable_workspace_production_recovery_gate_contract",
     "build_search_summary_card",
     "build_policy_engine_tool_policy",

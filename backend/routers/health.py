@@ -539,6 +539,18 @@ def _normalize_child_executor_execution_prerequisites_coverage(coverage: dict) -
         for item in (raw_missing_requirements if isinstance(raw_missing_requirements, list) else [])
         if str(item or "").strip()
     ]
+    raw_budget_missing_sections = coverage.get("context_budget_policy_missing_sections")
+    context_budget_policy_missing_sections = [
+        str(item).strip()
+        for item in (raw_budget_missing_sections if isinstance(raw_budget_missing_sections, list) else [])
+        if str(item or "").strip()
+    ]
+    raw_merge_handoff_missing_sections = coverage.get("merge_handoff_missing_sections")
+    merge_handoff_missing_sections = [
+        str(item).strip()
+        for item in (raw_merge_handoff_missing_sections if isinstance(raw_merge_handoff_missing_sections, list) else [])
+        if str(item or "").strip()
+    ]
     prerequisites_smoke = (
         bool(coverage.get("prerequisites_smoke"))
         and bool(contract_version)
@@ -555,6 +567,33 @@ def _normalize_child_executor_execution_prerequisites_coverage(coverage: dict) -
         "requirement_count": requirement_count,
         "missing_requirement_count": missing_requirement_count,
         "missing_requirements": missing_requirements,
+        "context_budget_policy_status": str(coverage.get("context_budget_policy_status") or "").strip(),
+        "context_budget_policy_ready": bool(coverage.get("context_budget_policy_ready")),
+        "context_budget_policy_missing": bool(coverage.get("context_budget_policy_missing")),
+        "context_budget_policy_missing_sections": context_budget_policy_missing_sections,
+        "context_budget_policy_source": str(coverage.get("context_budget_policy_source") or "").strip(),
+        "opt_in_context_budget_policy_status": str(
+            coverage.get("opt_in_context_budget_policy_status") or ""
+        ).strip(),
+        "opt_in_context_budget_policy_ready": bool(
+            coverage.get("opt_in_context_budget_policy_ready")
+        ),
+        "opt_in_context_budget_policy_source": str(
+            coverage.get("opt_in_context_budget_policy_source") or ""
+        ).strip(),
+        "opt_in_context_budget_policy_max_turns": _coerce_runtime_contract_non_negative_int(
+            coverage.get("opt_in_context_budget_policy_max_turns")
+        ),
+        "merge_handoff_status": str(coverage.get("merge_handoff_status") or "").strip(),
+        "merge_handoff_ready": bool(coverage.get("merge_handoff_ready")),
+        "merge_handoff_missing": bool(coverage.get("merge_handoff_missing")),
+        "merge_handoff_missing_sections": merge_handoff_missing_sections,
+        "merge_handoff_strategy": str(coverage.get("merge_handoff_strategy") or "").strip(),
+        "merge_handoff_source": str(coverage.get("merge_handoff_source") or "").strip(),
+        "opt_in_merge_handoff_status": str(coverage.get("opt_in_merge_handoff_status") or "").strip(),
+        "opt_in_merge_handoff_ready": bool(coverage.get("opt_in_merge_handoff_ready")),
+        "opt_in_merge_handoff_strategy": str(coverage.get("opt_in_merge_handoff_strategy") or "").strip(),
+        "opt_in_merge_handoff_source": str(coverage.get("opt_in_merge_handoff_source") or "").strip(),
     }
 
 

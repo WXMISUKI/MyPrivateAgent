@@ -749,6 +749,8 @@ Governance Timeline 前端继续瘦身仍有价值，但不应继续作为最高
   - Durable workspace production recovery gate 已落地第一刀：`persistence_interface.production_recovery_gate` 会证明 `durable_ready` 只是 backend capability，不是默认跨进程恢复授权；descriptor lifecycle governance、registry/checkpoint production policy、loader execution handoff policy 与 recovery audit operation history 已进入 evidence 与 quality gate，worker ownership gate 与 rollout 缺失时仍为 blocked
   - Child executor promotion gate 已进入 runtime contract smoke / Quality Gate / Runtime Contract Gate / Snapshot 守护：`child_executor_promotion_gate` check 会固定默认 relationship-only blocked 决策，summary 归一化为 `runtime_contract_summary.child_executor_promotion_gate_coverage`
   - Child executor execution prerequisites 已作为 promotion gate 的嵌套 contract 落地：默认仍保持 blocked / relationship seam preserved，并通过 runtime contract smoke、Quality Gate、Runtime Contract Gate 与 Snapshot 守护 `runtime_contract_summary.child_executor_execution_prerequisites_coverage.prerequisites_smoke`
+  - Child executor context budget 已从字段存在检查收紧为 `child_executor_context_budget_policy`：默认缺失 budget source / bounded limit 时 fail-closed，显式 opt-in 样本中的 `max_turns` 可被归一化为 ready evidence，但仍不代表 worker dispatch、sandbox runtime 或远端 executor 已启用。
+  - Child result merge semantics 已从字段存在检查收紧为 `child_result_merge_handoff_contract`：默认缺失 merge source / strategy / intent policy 时 fail-closed，显式 opt-in 样本中的 `append_summary` 可被归一化为 ready evidence，但仍不执行 parent merge，也不代表 worker dispatch。
   - Child executor dispatch contract 已作为真实 dispatch 前的最终 side-effect-free boundary 落地：默认 `dispatch_ready = false`、`will_dispatch = false`，并在 Runtime Surface / Embedded Runtime Boundaries / Governance Overview 中暴露。
   - Child executor dispatch contract 已进入 runtime contract smoke / Quality Gate / Runtime Contract Gate / Snapshot 守护：`child_executor_dispatch_contract` check 会固定默认 blocked / no-dispatch 证据，summary 归一化为 `runtime_contract_summary.child_executor_dispatch_coverage.dispatch_smoke`
   - Child executor backend registry 已落地：`embedded_sdk_worker` 现在是 known candidate 但 `dispatch_ready = false`，preflight 可区分 known/unknown backend，execution prerequisites 用 `worker_backend_dispatch_ready` 阻断真实 executor dispatch
@@ -777,6 +779,8 @@ Governance Timeline 前端继续瘦身仍有价值，但不应继续作为最高
 - 在 child run 恢复边界、上下文预算和 merge 语义收清前，不默认把 `delegate_run(...)` 视为真实 child executor 起点。
 - 新增 child executor 升格消费方时，优先读取 `child_executor_promotion_gate`，不从 preflight / binding / merged semantics 自行重算最终 allow/deny。
 - 新增真实 child executor 执行消费方时，优先读取 `child_executor_promotion_gate.child_executor_execution_prerequisites`，确认 `ready / requirements / missing_requirements`，不要在 executor 或前端侧重算 execution readiness。
+- 新增 child executor context budget 消费方时，优先读取 `child_executor_context_budget_policy`，不要把任意非空 `child_context_budget` 字段当成可执行预算；无界 budget 应继续阻断真实 executor handoff。
+- 新增 child result merge 消费方时，优先读取 `child_result_merge_handoff_contract`，不要把任意非空 `merge_strategy` 字段当成 parent merge 授权；未知策略应继续阻断真实 executor handoff。
 - 新增 worker backend 时，先进入 `child_executor_backend_registry` 并明确 `dispatch_ready / dispatch_mode / blockers`，不要只靠 payload 中的 backend 字符串作为真实执行授权。
 - 新增真实 dispatcher 时，必须先读取 `child_executor_dispatch_contract`，确认 `dispatch_ready = true` 且后续实现显式接管 `will_dispatch` 语义；不要把 promotion gate passed 直接等同于可启动 worker。
 - 新增 sandbox worker backend 消费方时，优先读取 `runtime_contract_summary.child_executor_sandbox_backend_coverage` 与 backend registry evidence，确认 adapter contract、guard、audit、idempotency、unsafe payload fail-closed 与 compact attempt evidence 均已进入门禁；不要把 coverage 健康误解释为默认可启动 worker。
@@ -789,7 +793,8 @@ Governance Timeline 前端继续瘦身仍有价值，但不应继续作为最高
 - 新增持久化姿态消费方时，优先读取 `persistence_interface`；`durable_ready` 只能表示 storage candidate，不能绕过 checkpoint / cursor / registry binding 的单 run 恢复 gate。
 - 优先继续收 child intent taxonomy 与 parent merge contract，不先扩更多展示面。
 - 下一刀 child executor 方向再评估是否需要把不同 intent 的 parent merge 结果进一步拆到更明确的 intent-specific sections；默认不扩一块新的通用展示面。
-- 再下一刀若继续推进 child executor，sandbox backend adapter gate coverage 已收口；应优先评估真实 executor binding 的显式 opt-in adapter 装配、child run context budget 与结果 merge handoff，而不是继续追加 overview 字段或默认启用 worker。
+- Child executor explicit executor binding opt-in 已补齐：preflight / execution prerequisites 会把 `explicit_executor_binding_opt_in` 作为真实执行前置要求，record-only binding 不再能被误读为 executor authorization；dispatch contract 也会暴露 explicit binding status/source/backend evidence，缺失 opt-in 时保持 blocked 且 `will_dispatch = false`。该能力只允许显式 opt-in skeleton execution 进入测试路径，不启动 worker、queue、sandbox runtime 或远端 executor。
+- 再下一刀若继续推进 child executor，应优先评估 child run context budget 的可执行 policy 或 parent merge handoff，而不是继续追加 overview 字段或默认启用 worker。
 
 是否继续优化：
 
