@@ -4,11 +4,13 @@ from backend.agent_framework.child_executor_dispatcher import (
     CHILD_EXECUTOR_DISPATCH_ATTEMPT_HANDOFF_CONTRACT_VERSION,
     CHILD_EXECUTOR_DISPATCH_RESULT_HANDOFF_CONTRACT_VERSION,
     CHILD_EXECUTOR_DISPATCH_RESULT_RETRY_AUDIT_POLICY_CONTRACT_VERSION,
+    CHILD_EXECUTOR_DISPATCH_RETRY_SCHEDULER_HANDOFF_CONTRACT_VERSION,
     CHILD_EXECUTOR_DISPATCHER_CONTRACT_VERSION,
     ChildExecutorDispatcher,
     build_child_executor_dispatch_attempt_handoff_contract,
     build_child_executor_dispatch_result_handoff_contract,
     build_child_executor_dispatch_result_retry_audit_policy_contract,
+    build_child_executor_dispatch_retry_scheduler_handoff_contract,
     build_child_executor_dispatcher_contract,
 )
 from backend.agent_framework.child_executor_sandbox_worker_backend import (
@@ -413,6 +415,17 @@ class ChildExecutorDispatcherTests(unittest.TestCase):
         self.assertFalse(policy["retry_scheduled"])
         self.assertFalse(policy["will_retry"])
         self.assertEqual(policy["retry_reason"], "sandbox_timeout")
+        scheduler_handoff = policy["dispatch_retry_scheduler_handoff"]
+        self.assertEqual(
+            scheduler_handoff["contract_version"],
+            CHILD_EXECUTOR_DISPATCH_RETRY_SCHEDULER_HANDOFF_CONTRACT_VERSION,
+        )
+        self.assertEqual(scheduler_handoff["overall_status"], "blocked")
+        self.assertTrue(scheduler_handoff["retryable_result_detected"])
+        self.assertTrue(scheduler_handoff["idempotency_evidence_ready"])
+        self.assertTrue(scheduler_handoff["audit_evidence_ready"])
+        self.assertIn("scheduler_binding", scheduler_handoff["missing_sections"])
+        self.assertFalse(scheduler_handoff["will_schedule_retry"])
 
     def test_dispatch_result_retry_audit_policy_requires_idempotency_for_retryable_failure(self):
         policy = build_child_executor_dispatch_result_retry_audit_policy_contract(
@@ -432,6 +445,9 @@ class ChildExecutorDispatcherTests(unittest.TestCase):
         self.assertEqual(policy["retry_policy_status"], "retryable")
         self.assertIn("idempotency_evidence", policy["missing_sections"])
         self.assertFalse(policy["retry_scheduled"])
+        scheduler_handoff = policy["dispatch_retry_scheduler_handoff"]
+        self.assertIn("idempotency_evidence", scheduler_handoff["missing_sections"])
+        self.assertFalse(scheduler_handoff["will_schedule_retry"])
 
     def test_dispatch_result_retry_audit_policy_marks_unsafe_payload_terminal(self):
         policy = build_child_executor_dispatch_result_retry_audit_policy_contract(
@@ -450,6 +466,58 @@ class ChildExecutorDispatcherTests(unittest.TestCase):
         self.assertEqual(policy["retry_policy_status"], "terminal")
         self.assertTrue(policy["terminal"])
         self.assertFalse(policy["will_retry"])
+        scheduler_handoff = policy["dispatch_retry_scheduler_handoff"]
+        self.assertFalse(scheduler_handoff["retryable_result_detected"])
+        self.assertIn("retryable_policy", scheduler_handoff["missing_sections"])
+        self.assertFalse(scheduler_handoff["will_schedule_retry"])
+
+    def test_dispatch_retry_scheduler_handoff_blocks_missing_audit_evidence(self):
+        policy = build_child_executor_dispatch_result_retry_audit_policy_contract(
+            result_handoff={
+                "overall_status": "blocked",
+                "ready": False,
+                "dispatch_status": "dispatched",
+                "backend_result_status": "failed",
+                "backend_result_error_code": "sandbox_timeout",
+                "retryable": True,
+                "audit_evidence_present": False,
+                "idempotency_key": "child-dispatch:attempt-1",
+            }
+        )
+
+        handoff = build_child_executor_dispatch_retry_scheduler_handoff_contract(
+            retry_audit_policy=policy
+        )
+
+        self.assertEqual(handoff["overall_status"], "blocked")
+        self.assertTrue(handoff["retryable_result_detected"])
+        self.assertIn("audit_evidence", handoff["missing_sections"])
+        self.assertFalse(handoff["will_schedule_retry"])
+
+    def test_dispatch_retry_scheduler_handoff_can_be_ready_but_never_schedules(self):
+        policy = build_child_executor_dispatch_result_retry_audit_policy_contract(
+            result_handoff={
+                "overall_status": "blocked",
+                "ready": False,
+                "dispatch_status": "dispatched",
+                "backend_result_status": "failed",
+                "backend_result_error_code": "sandbox_timeout",
+                "retryable": True,
+                "audit_evidence_present": True,
+                "idempotency_key": "child-dispatch:attempt-1",
+            }
+        )
+
+        handoff = build_child_executor_dispatch_retry_scheduler_handoff_contract(
+            retry_audit_policy=policy,
+            scheduler_bound=True,
+        )
+
+        self.assertEqual(handoff["overall_status"], "ready")
+        self.assertTrue(handoff["retry_scheduler_handoff_ready"])
+        self.assertTrue(handoff["retryable_result_detected"])
+        self.assertEqual(handoff["missing_sections"], [])
+        self.assertFalse(handoff["will_schedule_retry"])
 
 
 if __name__ == "__main__":

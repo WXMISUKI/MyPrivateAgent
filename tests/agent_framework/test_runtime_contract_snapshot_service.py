@@ -437,6 +437,27 @@ def _build_complete_profile():
                     "missing_idempotency_missing_sections": ["idempotency_evidence"],
                     "missing_idempotency_retry_scheduled": False,
                 },
+                "child_executor_dispatch_retry_scheduler_handoff_coverage": {
+                    "handoff_smoke": True,
+                    "contract_version": "phase-ii-child-executor-dispatch-retry-scheduler-handoff-v1",
+                    "default_status": "blocked",
+                    "default_handoff_ready": False,
+                    "default_retryable_result_detected": True,
+                    "default_scheduler_bound": False,
+                    "default_missing_sections": ["scheduler_binding"],
+                    "default_will_schedule_retry": False,
+                    "missing_idempotency_status": "blocked",
+                    "missing_idempotency_sections": ["idempotency_evidence"],
+                    "missing_audit_status": "blocked",
+                    "missing_audit_sections": ["audit_evidence"],
+                    "terminal_status": "blocked",
+                    "terminal_retryable_result_detected": False,
+                    "terminal_missing_sections": ["retryable_policy"],
+                    "bound_status": "ready",
+                    "bound_handoff_ready": True,
+                    "bound_scheduler_bound": True,
+                    "bound_will_schedule_retry": False,
+                },
                 "child_executor_sandbox_backend_coverage": {
                     "sandbox_backend_smoke": True,
                     "contract_version": "phase-ii-child-executor-sandbox-worker-backend-v1",
@@ -962,6 +983,22 @@ class RuntimeContractSnapshotServiceTests(unittest.TestCase):
             by_name["runtime_contract_gate"]["stable_fields"],
         )
         self.assertIn(
+            "runtime_contract_summary.child_executor_dispatch_retry_scheduler_handoff_coverage",
+            by_name["runtime_contract_gate"]["stable_fields"],
+        )
+        self.assertIn(
+            "runtime_contract_summary.child_executor_dispatch_retry_scheduler_handoff_coverage.handoff_smoke",
+            by_name["runtime_contract_gate"]["stable_fields"],
+        )
+        self.assertIn(
+            "runtime_contract_summary.child_executor_dispatch_retry_scheduler_handoff_coverage.default_status",
+            by_name["runtime_contract_gate"]["stable_fields"],
+        )
+        self.assertIn(
+            "runtime_contract_summary.child_executor_dispatch_retry_scheduler_handoff_coverage.bound_status",
+            by_name["runtime_contract_gate"]["stable_fields"],
+        )
+        self.assertIn(
             "runtime_contract_summary.child_executor_sandbox_backend_binding_coverage",
             by_name["runtime_contract_gate"]["stable_fields"],
         )
@@ -1065,7 +1102,7 @@ class RuntimeContractSnapshotServiceTests(unittest.TestCase):
         by_name = {item["contract_name"]: item for item in snapshot["contracts"]}
         self.assertEqual(snapshot["overall_status"], "degraded")
         self.assertEqual(snapshot["missing_contract_count"], 1)
-        self.assertEqual(snapshot["missing_field_count"], 95)
+        self.assertEqual(snapshot["missing_field_count"], 99)
         self.assertEqual(by_name["skill_contract"]["status"], "missing")
         self.assertEqual(
             by_name["command_contract"]["missing_fields"],
@@ -1147,6 +1184,10 @@ class RuntimeContractSnapshotServiceTests(unittest.TestCase):
                 "runtime_contract_summary.child_executor_dispatch_result_retry_audit_coverage.retry_audit_smoke",
                 "runtime_contract_summary.child_executor_dispatch_result_retry_audit_coverage.retryable_retry_policy_status",
                 "runtime_contract_summary.child_executor_dispatch_result_retry_audit_coverage.missing_idempotency_status",
+                "runtime_contract_summary.child_executor_dispatch_retry_scheduler_handoff_coverage",
+                "runtime_contract_summary.child_executor_dispatch_retry_scheduler_handoff_coverage.handoff_smoke",
+                "runtime_contract_summary.child_executor_dispatch_retry_scheduler_handoff_coverage.default_status",
+                "runtime_contract_summary.child_executor_dispatch_retry_scheduler_handoff_coverage.bound_status",
                 "runtime_contract_summary.child_executor_sandbox_backend_binding_coverage",
                 "runtime_contract_summary.child_executor_sandbox_backend_binding_coverage.binding_smoke",
                 "runtime_contract_summary.child_executor_sandbox_backend_binding_coverage.ready_status",

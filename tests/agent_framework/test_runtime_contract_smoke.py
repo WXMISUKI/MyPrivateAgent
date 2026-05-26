@@ -801,6 +801,29 @@ class RuntimeContractSmokeTests(unittest.TestCase):
         self.assertEqual(result["backend_result_status"], "completed")
         self.assertEqual(result["backend_invocation_count"], 1)
 
+    def test_child_executor_dispatch_retry_scheduler_handoff_check_keeps_retry_scheduling_blocked(self):
+        result = runtime_contract_smoke._run_child_executor_dispatch_retry_scheduler_handoff_contract_check()
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(
+            result["contract_version"],
+            "phase-ii-child-executor-dispatch-retry-scheduler-handoff-v1",
+        )
+        self.assertEqual(result["default_status"], "blocked")
+        self.assertFalse(result["default_handoff_ready"])
+        self.assertTrue(result["default_retryable_result_detected"])
+        self.assertIn("scheduler_binding", result["default_missing_sections"])
+        self.assertFalse(result["default_will_schedule_retry"])
+        self.assertEqual(result["missing_idempotency_status"], "blocked")
+        self.assertIn("idempotency_evidence", result["missing_idempotency_sections"])
+        self.assertEqual(result["missing_audit_status"], "blocked")
+        self.assertIn("audit_evidence", result["missing_audit_sections"])
+        self.assertEqual(result["terminal_status"], "blocked")
+        self.assertFalse(result["terminal_retryable_result_detected"])
+        self.assertEqual(result["bound_status"], "ready")
+        self.assertTrue(result["bound_handoff_ready"])
+        self.assertFalse(result["bound_will_schedule_retry"])
+
     def test_child_executor_sandbox_backend_check_covers_adapter_gate_paths(self):
         result = runtime_contract_smoke._run_child_executor_sandbox_backend_contract_check()
 

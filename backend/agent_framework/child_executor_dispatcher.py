@@ -24,6 +24,9 @@ CHILD_EXECUTOR_DISPATCH_RESULT_HANDOFF_CONTRACT_VERSION = (
 CHILD_EXECUTOR_DISPATCH_RESULT_RETRY_AUDIT_POLICY_CONTRACT_VERSION = (
     "phase-ii-child-executor-dispatch-result-retry-audit-policy-v1"
 )
+CHILD_EXECUTOR_DISPATCH_RETRY_SCHEDULER_HANDOFF_CONTRACT_VERSION = (
+    "phase-ii-child-executor-dispatch-retry-scheduler-handoff-v1"
+)
 
 
 def _utc_now() -> str:
@@ -365,7 +368,7 @@ def build_child_executor_dispatch_result_retry_audit_policy_contract(
         policy_missing_sections.append("result_handoff")
     policy_missing_sections = list(dict.fromkeys(policy_missing_sections))
     ready = not policy_missing_sections
-    return {
+    policy = {
         "contract_version": CHILD_EXECUTOR_DISPATCH_RESULT_RETRY_AUDIT_POLICY_CONTRACT_VERSION,
         "overall_status": "ready" if ready else "blocked",
         "ready": ready,
@@ -392,6 +395,121 @@ def build_child_executor_dispatch_result_retry_audit_policy_contract(
         "non_goals": [
             "schedule_child_executor_retry",
             "execute_retry",
+            "start_child_executor_worker",
+            "merge_child_result_into_parent",
+        ],
+    }
+    policy["dispatch_retry_scheduler_handoff"] = (
+        build_child_executor_dispatch_retry_scheduler_handoff_contract(
+            retry_audit_policy=policy,
+        )
+    )
+    return policy
+
+
+def build_child_executor_dispatch_retry_scheduler_handoff_contract(
+    *,
+    retry_audit_policy: Mapping[str, Any] | None = None,
+    retry_scheduler_contract: Mapping[str, Any] | None = None,
+    scheduler_bound: bool = False,
+    idempotency_evidence: Mapping[str, Any] | None = None,
+    audit_evidence: Mapping[str, Any] | None = None,
+) -> Dict[str, Any]:
+    """Describe whether child dispatch retry evidence may be handed to a scheduler.
+
+    This contract is intentionally side-effect-free. It can explain a retryable
+    child dispatch result, but it never schedules a retry.
+    """
+
+    policy = dict(retry_audit_policy or {})
+    scheduler = dict(retry_scheduler_contract or {})
+    production_gate = dict(scheduler.get("production_scheduler_gate") or {})
+    retry_policy_status = _normalize_text(policy.get("retry_policy_status"))
+    policy_ready = bool(policy.get("ready")) or _normalize_text(policy.get("overall_status")) == "ready"
+    retryable_result_detected = retry_policy_status == "retryable" and bool(policy.get("retryable"))
+    explicit_idempotency = dict(idempotency_evidence or {})
+    explicit_audit = dict(audit_evidence or {})
+    idempotency_evidence_ready = bool(
+        explicit_idempotency
+        or policy.get("idempotency_evidence_present")
+        or policy.get("idempotency_key_present")
+    )
+    audit_evidence_ready = bool(
+        explicit_audit
+        or policy.get("audit_evidence_present")
+    )
+    scheduler_binding_ready = bool(scheduler_bound)
+    scheduler_contract_present = bool(scheduler)
+    scheduler_opt_in_required = bool(scheduler.get("opt_in_required")) if scheduler else True
+    scheduler_enabled_by_default = bool(scheduler.get("enabled_by_default")) if scheduler else False
+    production_scheduler_gate_ready = (
+        _normalize_text(production_gate.get("overall_status")) == "ready"
+        or bool(production_gate.get("ready"))
+    )
+
+    missing_sections: list[str] = []
+    if not policy:
+        missing_sections.append("retry_audit_policy")
+    if not policy_ready:
+        missing_sections.append("retry_audit_policy_ready")
+    if not retryable_result_detected:
+        missing_sections.append("retryable_policy")
+    if not scheduler_binding_ready:
+        missing_sections.append("scheduler_binding")
+    if not idempotency_evidence_ready:
+        missing_sections.append("idempotency_evidence")
+    if not audit_evidence_ready:
+        missing_sections.append("audit_evidence")
+    if scheduler_contract_present and not scheduler_opt_in_required:
+        missing_sections.append("scheduler_opt_in_required")
+    if scheduler_enabled_by_default:
+        missing_sections.append("scheduler_default_disabled")
+    missing_sections = list(dict.fromkeys(missing_sections))
+    ready = not missing_sections
+
+    return {
+        "contract_version": CHILD_EXECUTOR_DISPATCH_RETRY_SCHEDULER_HANDOFF_CONTRACT_VERSION,
+        "overall_status": "ready" if ready else "blocked",
+        "ready": ready,
+        "retry_scheduler_handoff_ready": ready,
+        "retryable_result_detected": retryable_result_detected,
+        "retry_policy_status": retry_policy_status,
+        "retry_audit_policy_ready": policy_ready,
+        "scheduler_bound": scheduler_binding_ready,
+        "scheduler_contract_present": scheduler_contract_present,
+        "scheduler_opt_in_required": scheduler_opt_in_required,
+        "scheduler_enabled_by_default": scheduler_enabled_by_default,
+        "idempotency_evidence_ready": idempotency_evidence_ready,
+        "audit_evidence_ready": audit_evidence_ready,
+        "production_scheduler_gate_ready": production_scheduler_gate_ready,
+        "will_schedule_retry": False,
+        "retry_scheduled": False,
+        "missing_sections": missing_sections,
+        "blocked_reason": "" if ready else (missing_sections[0] if missing_sections else "blocked"),
+        "next_allowed_action": (
+            "bind_explicit_retry_scheduler_handoff"
+            if not ready
+            else "handoff_to_explicit_retry_scheduler_boundary"
+        ),
+        "evidence": {
+            "retry_audit_policy": {
+                "contract_version": _normalize_text(policy.get("contract_version")),
+                "overall_status": _normalize_text(policy.get("overall_status")),
+                "retry_policy_status": retry_policy_status,
+                "retry_reason": _normalize_text(policy.get("retry_reason")),
+                "error_code": _normalize_text(policy.get("error_code")),
+            },
+            "retry_scheduler": {
+                "contract_version": _normalize_text(scheduler.get("contract_version")),
+                "enabled_by_default": scheduler_enabled_by_default,
+                "opt_in_required": scheduler_opt_in_required,
+                "production_gate_status": _normalize_text(production_gate.get("overall_status")),
+            },
+        },
+        "non_goals": [
+            "schedule_child_executor_retry",
+            "execute_retry",
+            "start_retry_scheduler_loop",
             "start_child_executor_worker",
             "merge_child_result_into_parent",
         ],

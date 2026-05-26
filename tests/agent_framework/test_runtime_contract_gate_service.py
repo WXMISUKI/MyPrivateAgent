@@ -2136,6 +2136,66 @@ class RuntimeContractGateServiceTests(unittest.TestCase):
         self.assertEqual(coverage["enabled_status"], "dispatched")
         self.assertEqual(coverage["backend_invocation_count"], 1)
 
+    def test_build_runtime_contract_derives_child_executor_retry_scheduler_handoff_coverage_from_checks(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            report_path = Path(tmp_dir) / "quality-gate-report.json"
+            report_path.write_text(
+                json.dumps(
+                    {
+                        "generated_at": "2026-05-25T00:00:00Z",
+                        "steps": [
+                            {
+                                "name": "Quality gate smoke",
+                                "contract_checks": [
+                                    {
+                                        "name": "child_executor_dispatch_retry_scheduler_handoff",
+                                        "ok": True,
+                                        "contract_version": (
+                                            "phase-ii-child-executor-dispatch-retry-scheduler-handoff-v1"
+                                        ),
+                                        "default_status": "blocked",
+                                        "default_handoff_ready": False,
+                                        "default_retryable_result_detected": True,
+                                        "default_scheduler_bound": False,
+                                        "default_missing_sections": ["scheduler_binding"],
+                                        "default_will_schedule_retry": False,
+                                        "missing_idempotency_status": "blocked",
+                                        "missing_idempotency_sections": ["idempotency_evidence"],
+                                        "missing_audit_status": "blocked",
+                                        "missing_audit_sections": ["audit_evidence"],
+                                        "terminal_status": "blocked",
+                                        "terminal_retryable_result_detected": False,
+                                        "terminal_missing_sections": ["retryable_policy"],
+                                        "bound_status": "ready",
+                                        "bound_handoff_ready": True,
+                                        "bound_scheduler_bound": True,
+                                        "bound_will_schedule_retry": False,
+                                    },
+                                ],
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            contract = RuntimeContractGateService(report_path=report_path).build_runtime_contract()
+
+        coverage = contract["runtime_contract_summary"][
+            "child_executor_dispatch_retry_scheduler_handoff_coverage"
+        ]
+        self.assertTrue(coverage["handoff_smoke"])
+        self.assertEqual(
+            coverage["contract_version"],
+            "phase-ii-child-executor-dispatch-retry-scheduler-handoff-v1",
+        )
+        self.assertEqual(coverage["default_status"], "blocked")
+        self.assertFalse(coverage["default_handoff_ready"])
+        self.assertTrue(coverage["default_retryable_result_detected"])
+        self.assertIn("scheduler_binding", coverage["default_missing_sections"])
+        self.assertEqual(coverage["bound_status"], "ready")
+        self.assertFalse(coverage["bound_will_schedule_retry"])
+
     def test_build_runtime_contract_derives_child_executor_sandbox_backend_coverage_from_checks(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
             report_path = Path(tmp_dir) / "quality-gate-report.json"

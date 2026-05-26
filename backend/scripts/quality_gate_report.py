@@ -81,6 +81,10 @@ RUNTIME_CONTRACT_SUMMARY_REQUIRED_FIELDS = (
     "child_executor_dispatch_result_retry_audit_coverage.retry_audit_smoke",
     "child_executor_dispatch_result_retry_audit_coverage.retryable_retry_policy_status",
     "child_executor_dispatch_result_retry_audit_coverage.missing_idempotency_status",
+    "child_executor_dispatch_retry_scheduler_handoff_coverage",
+    "child_executor_dispatch_retry_scheduler_handoff_coverage.handoff_smoke",
+    "child_executor_dispatch_retry_scheduler_handoff_coverage.default_status",
+    "child_executor_dispatch_retry_scheduler_handoff_coverage.bound_status",
     "child_executor_sandbox_backend_binding_coverage",
     "child_executor_sandbox_backend_binding_coverage.binding_smoke",
     "child_executor_sandbox_backend_binding_coverage.ready_status",
@@ -271,6 +275,15 @@ def _build_runtime_contract_summary(checks: list[dict[str, Any]]) -> dict[str, A
         ),
         {},
     )
+    child_executor_dispatch_retry_scheduler_handoff_check = next(
+        (
+            check
+            for check in checks
+            if str(check.get("name") or "").strip()
+            == "child_executor_dispatch_retry_scheduler_handoff"
+        ),
+        {},
+    )
     child_executor_sandbox_backend_binding_check = next(
         (
             check
@@ -348,6 +361,11 @@ def _build_runtime_contract_summary(checks: list[dict[str, Any]]) -> dict[str, A
         "child_executor_dispatch_result_retry_audit_coverage": (
             _build_child_executor_dispatch_result_retry_audit_coverage(
                 child_executor_dispatch_result_retry_audit_check
+            )
+        ),
+        "child_executor_dispatch_retry_scheduler_handoff_coverage": (
+            _build_child_executor_dispatch_retry_scheduler_handoff_coverage(
+                child_executor_dispatch_retry_scheduler_handoff_check
             )
         ),
         "child_executor_sandbox_backend_binding_coverage": (
@@ -3085,6 +3103,74 @@ def _build_child_executor_dispatch_result_retry_audit_coverage(check: dict[str, 
         "missing_idempotency_status": missing_idempotency_status,
         "missing_idempotency_missing_sections": missing_idempotency_missing_sections,
         "missing_idempotency_retry_scheduled": missing_idempotency_retry_scheduled,
+    }
+
+
+def _build_child_executor_dispatch_retry_scheduler_handoff_coverage(check: dict[str, Any]) -> dict[str, Any]:
+    contract_version = str(check.get("contract_version") or "").strip()
+    default_status = str(check.get("default_status") or "").strip()
+    default_handoff_ready = bool(check.get("default_handoff_ready"))
+    default_retryable_result_detected = bool(check.get("default_retryable_result_detected"))
+    default_scheduler_bound = bool(check.get("default_scheduler_bound"))
+    default_missing_sections = _normalize_string_list(check.get("default_missing_sections"))
+    default_will_schedule_retry = bool(check.get("default_will_schedule_retry"))
+    missing_idempotency_status = str(check.get("missing_idempotency_status") or "").strip()
+    missing_idempotency_sections = _normalize_string_list(
+        check.get("missing_idempotency_sections")
+    )
+    missing_audit_status = str(check.get("missing_audit_status") or "").strip()
+    missing_audit_sections = _normalize_string_list(check.get("missing_audit_sections"))
+    terminal_status = str(check.get("terminal_status") or "").strip()
+    terminal_retryable_result_detected = bool(
+        check.get("terminal_retryable_result_detected")
+    )
+    terminal_missing_sections = _normalize_string_list(check.get("terminal_missing_sections"))
+    bound_status = str(check.get("bound_status") or "").strip()
+    bound_handoff_ready = bool(check.get("bound_handoff_ready"))
+    bound_scheduler_bound = bool(check.get("bound_scheduler_bound"))
+    bound_will_schedule_retry = bool(check.get("bound_will_schedule_retry"))
+    handoff_smoke = (
+        bool(check.get("ok"))
+        and contract_version
+        == "phase-ii-child-executor-dispatch-retry-scheduler-handoff-v1"
+        and default_status == "blocked"
+        and not default_handoff_ready
+        and default_retryable_result_detected
+        and not default_scheduler_bound
+        and "scheduler_binding" in default_missing_sections
+        and not default_will_schedule_retry
+        and missing_idempotency_status == "blocked"
+        and "idempotency_evidence" in missing_idempotency_sections
+        and missing_audit_status == "blocked"
+        and "audit_evidence" in missing_audit_sections
+        and terminal_status == "blocked"
+        and not terminal_retryable_result_detected
+        and "retryable_policy" in terminal_missing_sections
+        and bound_status == "ready"
+        and bound_handoff_ready
+        and bound_scheduler_bound
+        and not bound_will_schedule_retry
+    )
+    return {
+        "handoff_smoke": handoff_smoke,
+        "contract_version": contract_version,
+        "default_status": default_status,
+        "default_handoff_ready": default_handoff_ready,
+        "default_retryable_result_detected": default_retryable_result_detected,
+        "default_scheduler_bound": default_scheduler_bound,
+        "default_missing_sections": default_missing_sections,
+        "default_will_schedule_retry": default_will_schedule_retry,
+        "missing_idempotency_status": missing_idempotency_status,
+        "missing_idempotency_sections": missing_idempotency_sections,
+        "missing_audit_status": missing_audit_status,
+        "missing_audit_sections": missing_audit_sections,
+        "terminal_status": terminal_status,
+        "terminal_retryable_result_detected": terminal_retryable_result_detected,
+        "terminal_missing_sections": terminal_missing_sections,
+        "bound_status": bound_status,
+        "bound_handoff_ready": bound_handoff_ready,
+        "bound_scheduler_bound": bound_scheduler_bound,
+        "bound_will_schedule_retry": bound_will_schedule_retry,
     }
 
 

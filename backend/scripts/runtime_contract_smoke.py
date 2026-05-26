@@ -34,6 +34,7 @@ try:
         build_child_executor_dispatch_attempt_handoff_contract,
         build_child_executor_dispatch_result_handoff_contract,
         build_child_executor_dispatch_result_retry_audit_policy_contract,
+        build_child_executor_dispatch_retry_scheduler_handoff_contract,
     )
     from agent_framework.child_executor_backends import (
         build_child_executor_backend_registry_contract,
@@ -83,6 +84,7 @@ except ModuleNotFoundError:  # pragma: no cover - package import compatibility
         build_child_executor_dispatch_attempt_handoff_contract,
         build_child_executor_dispatch_result_handoff_contract,
         build_child_executor_dispatch_result_retry_audit_policy_contract,
+        build_child_executor_dispatch_retry_scheduler_handoff_contract,
     )
     from backend.agent_framework.child_executor_backends import (
         build_child_executor_backend_registry_contract,
@@ -302,6 +304,15 @@ def main() -> int:
             {
                 "name": "child_executor_dispatch_result_retry_audit_policy",
                 **child_executor_dispatch_result_retry_audit_result,
+            }
+        )
+        child_executor_dispatch_retry_scheduler_handoff_result = (
+            _run_child_executor_dispatch_retry_scheduler_handoff_contract_check()
+        )
+        checks.append(
+            {
+                "name": "child_executor_dispatch_retry_scheduler_handoff",
+                **child_executor_dispatch_retry_scheduler_handoff_result,
             }
         )
         child_executor_sandbox_backend_binding_result = (
@@ -3293,6 +3304,146 @@ def _run_child_executor_dispatch_result_retry_audit_policy_contract_check() -> d
             missing_idempotency_policy.get("retry_scheduled")
         ),
         "failure_reason": "" if ok else "child_executor_dispatch_result_retry_audit_incomplete",
+    }
+
+
+def _run_child_executor_dispatch_retry_scheduler_handoff_contract_check() -> dict:
+    retryable_policy = build_child_executor_dispatch_result_retry_audit_policy_contract(
+        result_handoff={
+            "overall_status": "blocked",
+            "ready": False,
+            "dispatch_status": "dispatched",
+            "backend_result_status": "failed",
+            "backend_result_error_code": "sandbox_timeout",
+            "retryable": True,
+            "audit_evidence_present": True,
+            "idempotency_key": "child-dispatch:retryable",
+            "missing_sections": ["backend_result"],
+        }
+    )
+    default_handoff = build_child_executor_dispatch_retry_scheduler_handoff_contract(
+        retry_audit_policy=retryable_policy
+    )
+    missing_idempotency_policy = build_child_executor_dispatch_result_retry_audit_policy_contract(
+        result_handoff={
+            "overall_status": "blocked",
+            "ready": False,
+            "dispatch_status": "dispatched",
+            "backend_result_status": "failed",
+            "backend_result_error_code": "sandbox_timeout",
+            "retryable": True,
+            "audit_evidence_present": True,
+            "idempotency_key": "",
+        }
+    )
+    missing_idempotency_handoff = (
+        build_child_executor_dispatch_retry_scheduler_handoff_contract(
+            retry_audit_policy=missing_idempotency_policy
+        )
+    )
+    missing_audit_policy = build_child_executor_dispatch_result_retry_audit_policy_contract(
+        result_handoff={
+            "overall_status": "blocked",
+            "ready": False,
+            "dispatch_status": "dispatched",
+            "backend_result_status": "failed",
+            "backend_result_error_code": "sandbox_timeout",
+            "retryable": True,
+            "audit_evidence_present": False,
+            "idempotency_key": "child-dispatch:missing-audit",
+        }
+    )
+    missing_audit_handoff = build_child_executor_dispatch_retry_scheduler_handoff_contract(
+        retry_audit_policy=missing_audit_policy
+    )
+    terminal_policy = build_child_executor_dispatch_result_retry_audit_policy_contract(
+        result_handoff={
+            "overall_status": "blocked",
+            "ready": False,
+            "dispatch_status": "blocked",
+            "dispatcher_blocked_reason": "sandbox_payload_unsafe",
+            "retryable": False,
+            "audit_evidence_present": True,
+            "idempotency_key": "child-dispatch:terminal",
+        }
+    )
+    terminal_handoff = build_child_executor_dispatch_retry_scheduler_handoff_contract(
+        retry_audit_policy=terminal_policy
+    )
+    bound_handoff = build_child_executor_dispatch_retry_scheduler_handoff_contract(
+        retry_audit_policy=retryable_policy,
+        scheduler_bound=True,
+    )
+    default_ok = (
+        str(default_handoff.get("overall_status") or "").strip() == "blocked"
+        and bool(default_handoff.get("retryable_result_detected"))
+        and bool(default_handoff.get("idempotency_evidence_ready"))
+        and bool(default_handoff.get("audit_evidence_ready"))
+        and "scheduler_binding"
+        in [str(item) for item in (default_handoff.get("missing_sections") or [])]
+        and not bool(default_handoff.get("will_schedule_retry"))
+    )
+    missing_idempotency_ok = (
+        str(missing_idempotency_handoff.get("overall_status") or "").strip() == "blocked"
+        and "idempotency_evidence"
+        in [str(item) for item in (missing_idempotency_handoff.get("missing_sections") or [])]
+        and not bool(missing_idempotency_handoff.get("will_schedule_retry"))
+    )
+    missing_audit_ok = (
+        str(missing_audit_handoff.get("overall_status") or "").strip() == "blocked"
+        and "audit_evidence"
+        in [str(item) for item in (missing_audit_handoff.get("missing_sections") or [])]
+        and not bool(missing_audit_handoff.get("will_schedule_retry"))
+    )
+    terminal_ok = (
+        str(terminal_handoff.get("overall_status") or "").strip() == "blocked"
+        and not bool(terminal_handoff.get("retryable_result_detected"))
+        and "retryable_policy"
+        in [str(item) for item in (terminal_handoff.get("missing_sections") or [])]
+        and not bool(terminal_handoff.get("will_schedule_retry"))
+    )
+    bound_ok = (
+        str(bound_handoff.get("overall_status") or "").strip() == "ready"
+        and bool(bound_handoff.get("retry_scheduler_handoff_ready"))
+        and bool(bound_handoff.get("scheduler_bound"))
+        and not bool(bound_handoff.get("will_schedule_retry"))
+    )
+    ok = default_ok and missing_idempotency_ok and missing_audit_ok and terminal_ok and bound_ok
+    return {
+        "ok": ok,
+        "contract_version": str(default_handoff.get("contract_version") or ""),
+        "default_status": str(default_handoff.get("overall_status") or ""),
+        "default_handoff_ready": bool(default_handoff.get("retry_scheduler_handoff_ready")),
+        "default_retryable_result_detected": bool(
+            default_handoff.get("retryable_result_detected")
+        ),
+        "default_scheduler_bound": bool(default_handoff.get("scheduler_bound")),
+        "default_missing_sections": [
+            str(item) for item in (default_handoff.get("missing_sections") or [])
+        ],
+        "default_will_schedule_retry": bool(default_handoff.get("will_schedule_retry")),
+        "missing_idempotency_status": str(
+            missing_idempotency_handoff.get("overall_status") or ""
+        ),
+        "missing_idempotency_sections": [
+            str(item) for item in (missing_idempotency_handoff.get("missing_sections") or [])
+        ],
+        "missing_audit_status": str(missing_audit_handoff.get("overall_status") or ""),
+        "missing_audit_sections": [
+            str(item) for item in (missing_audit_handoff.get("missing_sections") or [])
+        ],
+        "terminal_status": str(terminal_handoff.get("overall_status") or ""),
+        "terminal_retryable_result_detected": bool(
+            terminal_handoff.get("retryable_result_detected")
+        ),
+        "terminal_missing_sections": [
+            str(item) for item in (terminal_handoff.get("missing_sections") or [])
+        ],
+        "bound_status": str(bound_handoff.get("overall_status") or ""),
+        "bound_handoff_ready": bool(bound_handoff.get("retry_scheduler_handoff_ready")),
+        "bound_scheduler_bound": bool(bound_handoff.get("scheduler_bound")),
+        "bound_will_schedule_retry": bool(bound_handoff.get("will_schedule_retry")),
+        "failure_reason": "" if ok else "child_executor_dispatch_retry_scheduler_handoff_incomplete",
     }
 
 
