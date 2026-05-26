@@ -5,13 +5,11 @@
   "functions": {
     "api/index.py": {
       "runtime": "@vercel/python@4.3.0",
-      "maxDuration": 60,
-      "excludeFiles": "{.git/**,.github/**,.codex/**,.docker/**,.myagent/**,.pytest_cache/**,.tmp/**,docs/**,examples/**,frontend-vue/node_modules/**,frontend-vue/src/**,frontend-vue/public/**,frontend-vue/package*.json,openspec/**,scripts/**,skill_store/**,tests/**,问题记录/**,**/__pycache__/**,**/*.pyc,**/*.log}"
+      "maxDuration": 60
     },
     "api/[...path].py": {
       "runtime": "@vercel/python@4.3.0",
-      "maxDuration": 60,
-      "excludeFiles": "{.git/**,.github/**,.codex/**,.docker/**,.myagent/**,.pytest_cache/**,.tmp/**,docs/**,examples/**,frontend-vue/node_modules/**,frontend-vue/src/**,frontend-vue/public/**,frontend-vue/package*.json,openspec/**,scripts/**,skill_store/**,tests/**,问题记录/**,**/__pycache__/**,**/*.pyc,**/*.log}"
+      "maxDuration": 60
     }
   },
   "rewrites": [
