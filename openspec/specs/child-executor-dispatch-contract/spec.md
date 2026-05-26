@@ -18,11 +18,12 @@ The contract MUST include:
 - execution prerequisite evidence
 - blockers
 - dispatch attempt handoff evidence
+- sandbox backend binding evidence when the selected backend is a sandbox worker
 - required contracts
 - recommended next step
 - non-goals
 
-When the selected backend is a sandbox worker backend, dispatch readiness MUST also require adapter contract readiness, sandbox guard readiness, audit readiness, and idempotency readiness.
+When the selected backend is a sandbox worker backend, dispatch readiness MUST also require adapter contract readiness, sandbox guard readiness, audit readiness, idempotency readiness, explicit sandbox backend binding evidence, and a callable dispatcher backend adapter binding.
 
 #### Scenario: Default dispatch is blocked
 - **WHEN** the default child executor dispatch contract is built
@@ -106,3 +107,14 @@ The child executor dispatch contract MUST require explicit executor binding read
 - **WHEN** dispatch contract is built
 - **THEN** it MUST expose explicit binding status, source, selected backend, and blockers as compact evidence
 - **AND** consumers MUST NOT infer dispatch readiness from record-only binding fields.
+
+### Requirement: Dispatch Contract Must Carry Sandbox Backend Binding Evidence
+
+Child executor dispatch contract MUST include nested sandbox backend binding evidence when sandbox backend evidence is available.
+
+#### Scenario: Dispatch contract includes binding evidence
+
+- **WHEN** the dispatch contract is built for a sandbox backend candidate
+- **THEN** it MUST include `child_executor_sandbox_backend_binding`
+- **AND** the binding MUST be preserved under `evidence.child_executor_sandbox_backend_binding`
+- **AND** dispatch MUST remain blocked unless the existing promotion gate, prerequisites, backend dispatch readiness, explicit executor opt-in, and binding readiness are all ready

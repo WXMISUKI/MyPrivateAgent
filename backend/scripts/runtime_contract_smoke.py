@@ -40,6 +40,7 @@ try:
         build_child_executor_sandbox_worker_backend_entry,
     )
     from agent_framework.child_executor_sandbox_worker_backend import (
+        build_child_executor_sandbox_backend_binding_contract,
         build_sandbox_dispatch_attempt_envelope,
         build_sandbox_worker_backend_adapter_contract,
     )
@@ -86,6 +87,7 @@ except ModuleNotFoundError:  # pragma: no cover - package import compatibility
         build_child_executor_sandbox_worker_backend_entry,
     )
     from backend.agent_framework.child_executor_sandbox_worker_backend import (
+        build_child_executor_sandbox_backend_binding_contract,
         build_sandbox_dispatch_attempt_envelope,
         build_sandbox_worker_backend_adapter_contract,
     )
@@ -296,6 +298,15 @@ def main() -> int:
             {
                 "name": "child_executor_dispatch_result_retry_audit_policy",
                 **child_executor_dispatch_result_retry_audit_result,
+            }
+        )
+        child_executor_sandbox_backend_binding_result = (
+            _run_child_executor_sandbox_backend_binding_contract_check()
+        )
+        checks.append(
+            {
+                "name": "child_executor_sandbox_backend_binding",
+                **child_executor_sandbox_backend_binding_result,
             }
         )
         child_executor_sandbox_backend_result = _run_child_executor_sandbox_backend_contract_check()
@@ -2790,6 +2801,7 @@ def _run_child_executor_dispatch_contract_check(runtime_profile_payload: dict) -
     opt_in_sandbox_dispatch = build_child_executor_dispatch_contract(
         gate=sandbox_gate,
         backend_registry=sandbox_registry,
+        dispatcher_backend_adapters={"sandbox_worker": lambda _payload: {}},
     )
     opt_in_handoff = dict(
         opt_in_sandbox_dispatch.get("child_executor_dispatch_attempt_handoff") or {}
@@ -3322,6 +3334,138 @@ def _run_child_executor_sandbox_backend_contract_check() -> dict:
         "backend_invocation_count": len(invoked),
         "default_worker_enabled": False,
         "failure_reason": "" if ok else "child_executor_sandbox_backend_incomplete",
+    }
+
+
+def _run_child_executor_sandbox_backend_binding_contract_check() -> dict:
+    ready_adapter_contract = build_sandbox_worker_backend_adapter_contract(
+        backend_id="sandbox_worker",
+        input_contract={"required_fields": ["child_run_id"]},
+        output_contract={"required_fields": ["output_ref", "audit_ref"]},
+        resource_limits={"cpu_seconds": 30, "memory_mb": 512, "timeout_seconds": 60},
+        isolation_guards={
+            "process_or_worker_isolation": True,
+            "environment_allowlist": ["PYTHONPATH"],
+            "workspace_boundary": "run_workspace",
+            "network_policy": "disabled_by_default",
+        },
+        audit_hooks={"record_dispatch": True},
+        idempotency={"idempotency_key_required": True},
+    )
+    sandbox_entry = build_child_executor_sandbox_worker_backend_entry(
+        backend_id="sandbox_worker",
+        label="Sandbox worker",
+        adapter_contract=ready_adapter_contract,
+    )
+    explicit_binding = {
+        "contract_version": "phase-ii-child-executor-explicit-binding-v1",
+        "binding_status": "ready",
+        "ready": True,
+        "binding_source": "smoke.sandbox_backend_binding",
+        "selected_backend": "sandbox_worker",
+        "backend_id": "sandbox_worker",
+        "adapter_kind": "sandbox_worker",
+        "will_execute": False,
+        "will_dispatch": False,
+    }
+    dispatcher_adapters = {"sandbox_worker": lambda _payload: {}}
+    default_binding = build_child_executor_sandbox_backend_binding_contract(
+        backend_id="sandbox_worker",
+        backend_registry_entry=sandbox_entry,
+        adapter_contract=ready_adapter_contract,
+        dispatcher_backend_adapters=dispatcher_adapters,
+    )
+    missing_callable_binding = build_child_executor_sandbox_backend_binding_contract(
+        backend_id="sandbox_worker",
+        backend_registry_entry=sandbox_entry,
+        adapter_contract=ready_adapter_contract,
+        dispatcher_backend_adapters={},
+        explicit_binding=explicit_binding,
+    )
+    ready_binding = build_child_executor_sandbox_backend_binding_contract(
+        backend_id="sandbox_worker",
+        backend_registry_entry=sandbox_entry,
+        adapter_contract=ready_adapter_contract,
+        dispatcher_backend_adapters=dispatcher_adapters,
+        explicit_binding=explicit_binding,
+    )
+    sandbox_registry = build_child_executor_backend_registry_contract(
+        extra_backends=[sandbox_entry]
+    )
+    sandbox_gate = {
+        "allowed": True,
+        "gate_status": "allowed",
+        "preflight": {
+            "worker_runtime_backend": "sandbox_worker",
+            "backend_registry": sandbox_registry,
+        },
+        "child_executor_execution_prerequisites": {
+            "ready": True,
+            "overall_status": "ready",
+            "missing_requirements": [],
+            "requirements": [
+                {
+                    "requirement": "worker_backend_dispatch_ready",
+                    "status": "ready",
+                    "evidence": sandbox_entry,
+                },
+                {
+                    "requirement": "explicit_executor_binding_opt_in",
+                    "status": "ready",
+                    "evidence": explicit_binding,
+                },
+            ],
+            "explicit_executor_binding": explicit_binding,
+        },
+    }
+    dispatch_contract = build_child_executor_dispatch_contract(
+        gate=sandbox_gate,
+        backend_registry=sandbox_registry,
+        dispatcher_backend_adapters=dispatcher_adapters,
+    )
+    dispatch_binding = dict(
+        dispatch_contract.get("child_executor_sandbox_backend_binding") or {}
+    )
+    ok = (
+        str(default_binding.get("overall_status") or "").strip() == "blocked"
+        and "explicit_binding" in [str(item) for item in (default_binding.get("missing_sections") or [])]
+        and str(missing_callable_binding.get("overall_status") or "").strip() == "blocked"
+        and "dispatcher_backend_adapter"
+        in [str(item) for item in (missing_callable_binding.get("missing_sections") or [])]
+        and str(ready_binding.get("overall_status") or "").strip() == "ready"
+        and bool(ready_binding.get("dispatcher_binding_ready"))
+        and bool(ready_binding.get("attempt_envelope_supported"))
+        and bool(ready_binding.get("audit_idempotency_ready"))
+        and not bool(ready_binding.get("will_dispatch"))
+        and str(dispatch_binding.get("overall_status") or "").strip() == "ready"
+        and bool(dispatch_contract.get("sandbox_backend_binding_ready"))
+        and bool(dispatch_contract.get("dispatch_ready"))
+        and not bool(dispatch_contract.get("will_dispatch"))
+    )
+    return {
+        "ok": ok,
+        "contract_version": str(ready_binding.get("contract_version") or ""),
+        "default_status": str(default_binding.get("overall_status") or ""),
+        "default_missing_sections": [
+            str(item) for item in (default_binding.get("missing_sections") or [])
+        ],
+        "missing_callable_status": str(missing_callable_binding.get("overall_status") or ""),
+        "missing_callable_missing_sections": [
+            str(item)
+            for item in (missing_callable_binding.get("missing_sections") or [])
+        ],
+        "ready_status": str(ready_binding.get("overall_status") or ""),
+        "ready_dispatcher_binding_ready": bool(ready_binding.get("dispatcher_binding_ready")),
+        "ready_attempt_envelope_supported": bool(ready_binding.get("attempt_envelope_supported")),
+        "ready_audit_idempotency_ready": bool(ready_binding.get("audit_idempotency_ready")),
+        "ready_will_dispatch": bool(ready_binding.get("will_dispatch")),
+        "dispatch_contract_binding_status": str(dispatch_binding.get("overall_status") or ""),
+        "dispatch_contract_binding_ready": bool(
+            dispatch_contract.get("sandbox_backend_binding_ready")
+        ),
+        "dispatch_contract_ready": bool(dispatch_contract.get("dispatch_ready")),
+        "dispatch_contract_will_dispatch": bool(dispatch_contract.get("will_dispatch")),
+        "failure_reason": "" if ok else "child_executor_sandbox_backend_binding_incomplete",
     }
 
 

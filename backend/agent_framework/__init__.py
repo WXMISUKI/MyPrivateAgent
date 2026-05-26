@@ -20,6 +20,7 @@ from .child_executor_backends import (
     resolve_child_executor_backend,
 )
 from .child_executor_sandbox_worker_backend import (
+    build_child_executor_sandbox_backend_binding_contract,
     build_sandbox_dispatch_attempt_envelope,
     build_sandbox_worker_backend_adapter_contract,
     validate_sandbox_dispatch_attempt,
@@ -149,6 +150,7 @@ __all__ = [
     "build_agent_harness_facade_contract",
     "build_child_executor_backend_registry_contract",
     "build_child_executor_context_budget_policy_contract",
+    "build_child_executor_sandbox_backend_binding_contract",
     "build_child_executor_sandbox_worker_backend_entry",
     "build_sandbox_dispatch_attempt_envelope",
     "build_sandbox_worker_backend_adapter_contract",

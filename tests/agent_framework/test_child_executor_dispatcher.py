@@ -45,6 +45,21 @@ def _ready_sandbox_dispatch_contract():
     }
 
 
+def _ready_sandbox_dispatch_contract_with_binding():
+    return {
+        **_ready_sandbox_dispatch_contract(),
+        "child_executor_sandbox_backend_binding": {
+            "contract_version": "phase-ii-child-executor-sandbox-backend-binding-v1",
+            "overall_status": "ready",
+            "ready": True,
+            "backend_id": "sandbox_worker",
+            "binding_status": "ready",
+            "dispatcher_binding_ready": True,
+            "missing_sections": [],
+        },
+    }
+
+
 class _FakeAuditRecorder:
     def __init__(self):
         self.dispatches = []
@@ -233,11 +248,13 @@ class ChildExecutorDispatcherTests(unittest.TestCase):
         )
 
         attempt = dispatcher.dispatch(
-            dispatch_contract=_ready_sandbox_dispatch_contract(),
+            dispatch_contract=_ready_sandbox_dispatch_contract_with_binding(),
             payload={"parent_run_id": "parent-1", "child_run_id": "child-1"},
         )
 
         self.assertEqual(attempt["dispatch_status"], "dispatched")
+        self.assertEqual(attempt["sandbox_backend_binding_status"], "ready")
+        self.assertTrue(attempt["sandbox_backend_binding_ready"])
         self.assertTrue(attempt["will_dispatch"])
         self.assertEqual(attempt["backend_result"]["sandbox_ref"], "sandbox://attempt-1")
         self.assertEqual(attempt["backend_result"]["audit_ref"], "trace://attempt-1")
@@ -291,6 +308,36 @@ class ChildExecutorDispatcherTests(unittest.TestCase):
         self.assertEqual(attempt["dispatch_status"], "blocked")
         self.assertEqual(attempt["blocked_reason"], "sandbox_payload_unsafe")
         self.assertEqual(attempt["error_code"], "unsafe_payload")
+        self.assertEqual(invoked, [])
+
+    def test_dispatcher_preserves_and_enforces_sandbox_binding_evidence(self):
+        invoked = []
+        dispatcher = ChildExecutorDispatcher(
+            enabled=True,
+            backend_adapters={"sandbox_worker": lambda payload: invoked.append(payload) or {}},
+        )
+        contract = {
+            **_ready_sandbox_dispatch_contract(),
+            "child_executor_sandbox_backend_binding": {
+                "overall_status": "blocked",
+                "ready": False,
+                "missing_sections": ["dispatcher_backend_adapter"],
+            },
+        }
+
+        attempt = dispatcher.dispatch(
+            dispatch_contract=contract,
+            payload={"child_run_id": "child-1"},
+        )
+
+        self.assertEqual(attempt["dispatch_status"], "blocked")
+        self.assertEqual(attempt["blocked_reason"], "sandbox_backend_binding_not_ready")
+        self.assertEqual(attempt["sandbox_backend_binding_status"], "blocked")
+        self.assertFalse(attempt["sandbox_backend_binding_ready"])
+        self.assertEqual(
+            attempt["sandbox_backend_binding_missing_sections"],
+            ["dispatcher_backend_adapter"],
+        )
         self.assertEqual(invoked, [])
 
     def test_dispatch_result_handoff_blocks_malformed_result_directly(self):

@@ -439,6 +439,9 @@ class ChildExecutorDispatcher:
                 attempt["unsafe_payload_keys"] = unsafe_keys
                 attempt["error_code"] = "unsafe_payload"
                 return self._block(attempt, "sandbox_payload_unsafe")
+            binding = dict(contract.get("child_executor_sandbox_backend_binding") or {})
+            if binding and not bool(binding.get("ready")):
+                return self._block(attempt, "sandbox_backend_binding_not_ready")
 
         backend_id = _normalize_text(contract.get("backend_id"))
         adapter = self._backend_adapters.get(backend_id)
@@ -491,6 +494,20 @@ class ChildExecutorDispatcher:
             "dispatch_contract_status": _normalize_text(contract.get("overall_status")),
             "dispatch_ready": bool(contract.get("dispatch_ready")),
             "recorded_at": _utc_now(),
+            "sandbox_backend_binding_status": _normalize_text(
+                (contract.get("child_executor_sandbox_backend_binding") or {}).get("overall_status")
+            ),
+            "sandbox_backend_binding_ready": bool(
+                (contract.get("child_executor_sandbox_backend_binding") or {}).get("ready")
+            ),
+            "sandbox_backend_binding_missing_sections": [
+                _normalize_text(item)
+                for item in (
+                    (contract.get("child_executor_sandbox_backend_binding") or {}).get("missing_sections")
+                    or []
+                )
+                if _normalize_text(item)
+            ],
         }
 
     def _block(self, attempt: Dict[str, Any], reason: str) -> Dict[str, Any]:

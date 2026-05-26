@@ -188,6 +188,9 @@ def _normalize_runtime_contract_gate_summary(summary: object) -> dict:
             "child_executor_dispatch_result_retry_audit_coverage": (
                 _normalize_child_executor_dispatch_result_retry_audit_coverage({})
             ),
+            "child_executor_sandbox_backend_binding_coverage": (
+                _normalize_child_executor_sandbox_backend_binding_coverage({})
+            ),
             "subagent_lane_query_detail_coverage": _normalize_subagent_lane_query_detail_coverage({}),
         }
     coverage = summary.get("approval_replay_coverage")
@@ -242,6 +245,11 @@ def _normalize_runtime_contract_gate_summary(summary: object) -> dict:
     )
     if not isinstance(child_executor_dispatch_result_retry_audit_coverage, dict):
         child_executor_dispatch_result_retry_audit_coverage = {}
+    child_executor_sandbox_backend_binding_coverage = summary.get(
+        "child_executor_sandbox_backend_binding_coverage"
+    )
+    if not isinstance(child_executor_sandbox_backend_binding_coverage, dict):
+        child_executor_sandbox_backend_binding_coverage = {}
     subagent_lane_detail_coverage = summary.get("subagent_lane_query_detail_coverage")
     if not isinstance(subagent_lane_detail_coverage, dict):
         subagent_lane_detail_coverage = {}
@@ -301,6 +309,11 @@ def _normalize_runtime_contract_gate_summary(summary: object) -> dict:
         "child_executor_dispatch_result_retry_audit_coverage": (
             _normalize_child_executor_dispatch_result_retry_audit_coverage(
                 child_executor_dispatch_result_retry_audit_coverage
+            )
+        ),
+        "child_executor_sandbox_backend_binding_coverage": (
+            _normalize_child_executor_sandbox_backend_binding_coverage(
+                child_executor_sandbox_backend_binding_coverage
             )
         ),
         "subagent_lane_query_detail_coverage": _normalize_subagent_lane_query_detail_coverage(
@@ -973,6 +986,67 @@ def _normalize_child_executor_dispatch_result_retry_audit_coverage(coverage: dic
     }
 
 
+def _normalize_child_executor_sandbox_backend_binding_coverage(coverage: dict) -> dict:
+    contract_version = str(coverage.get("contract_version") or "").strip()
+    default_status = str(coverage.get("default_status") or "").strip()
+    default_missing_sections = [
+        str(item)
+        for item in coverage.get("default_missing_sections") or []
+        if str(item or "").strip()
+    ]
+    missing_callable_status = str(coverage.get("missing_callable_status") or "").strip()
+    missing_callable_missing_sections = [
+        str(item)
+        for item in coverage.get("missing_callable_missing_sections") or []
+        if str(item or "").strip()
+    ]
+    ready_status = str(coverage.get("ready_status") or "").strip()
+    ready_dispatcher_binding_ready = bool(coverage.get("ready_dispatcher_binding_ready"))
+    ready_attempt_envelope_supported = bool(coverage.get("ready_attempt_envelope_supported"))
+    ready_audit_idempotency_ready = bool(coverage.get("ready_audit_idempotency_ready"))
+    ready_will_dispatch = bool(coverage.get("ready_will_dispatch"))
+    dispatch_contract_binding_status = str(
+        coverage.get("dispatch_contract_binding_status") or ""
+    ).strip()
+    dispatch_contract_binding_ready = bool(coverage.get("dispatch_contract_binding_ready"))
+    dispatch_contract_ready = bool(coverage.get("dispatch_contract_ready"))
+    dispatch_contract_will_dispatch = bool(coverage.get("dispatch_contract_will_dispatch"))
+    binding_smoke = (
+        bool(coverage.get("binding_smoke"))
+        and contract_version == "phase-ii-child-executor-sandbox-backend-binding-v1"
+        and default_status == "blocked"
+        and "explicit_binding" in default_missing_sections
+        and missing_callable_status == "blocked"
+        and "dispatcher_backend_adapter" in missing_callable_missing_sections
+        and ready_status == "ready"
+        and ready_dispatcher_binding_ready
+        and ready_attempt_envelope_supported
+        and ready_audit_idempotency_ready
+        and not ready_will_dispatch
+        and dispatch_contract_binding_status == "ready"
+        and dispatch_contract_binding_ready
+        and dispatch_contract_ready
+        and not dispatch_contract_will_dispatch
+    )
+    return {
+        "binding_smoke": binding_smoke,
+        "contract_version": contract_version,
+        "default_status": default_status,
+        "default_missing_sections": default_missing_sections,
+        "missing_callable_status": missing_callable_status,
+        "missing_callable_missing_sections": missing_callable_missing_sections,
+        "ready_status": ready_status,
+        "ready_dispatcher_binding_ready": ready_dispatcher_binding_ready,
+        "ready_attempt_envelope_supported": ready_attempt_envelope_supported,
+        "ready_audit_idempotency_ready": ready_audit_idempotency_ready,
+        "ready_will_dispatch": ready_will_dispatch,
+        "dispatch_contract_binding_status": dispatch_contract_binding_status,
+        "dispatch_contract_binding_ready": dispatch_contract_binding_ready,
+        "dispatch_contract_ready": dispatch_contract_ready,
+        "dispatch_contract_will_dispatch": dispatch_contract_will_dispatch,
+    }
+
+
 def _normalize_subagent_lane_query_detail_coverage(coverage: dict) -> dict:
     return {
         "detail_smoke": bool(coverage.get("detail_smoke")),
@@ -1296,6 +1370,12 @@ def _record_runtime_contract_gate_timeline(
         coverage_name="child_executor_dispatch_result_retry_audit_coverage",
         smoke_field="retry_audit_smoke",
     )
+    child_executor_sandbox_binding_label = _format_runtime_contract_coverage_label(
+        raw_runtime_contract_summary,
+        runtime_contract_summary,
+        coverage_name="child_executor_sandbox_backend_binding_coverage",
+        smoke_field="binding_smoke",
+    )
     subagent_detail_label = _format_runtime_contract_coverage_label(
         raw_runtime_contract_summary,
         runtime_contract_summary,
@@ -1327,6 +1407,7 @@ def _record_runtime_contract_gate_timeline(
             f"child_executor_dispatcher={child_executor_dispatcher_label} "
             f"child_executor_result_handoff={child_executor_result_handoff_label} "
             f"child_executor_retry_audit={child_executor_retry_audit_label} "
+            f"child_executor_sandbox_binding={child_executor_sandbox_binding_label} "
             f"subagent_detail={subagent_detail_label}"
         ),
         severity="warning",

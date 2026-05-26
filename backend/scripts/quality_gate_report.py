@@ -77,6 +77,10 @@ RUNTIME_CONTRACT_SUMMARY_REQUIRED_FIELDS = (
     "child_executor_dispatch_result_retry_audit_coverage.retry_audit_smoke",
     "child_executor_dispatch_result_retry_audit_coverage.retryable_retry_policy_status",
     "child_executor_dispatch_result_retry_audit_coverage.missing_idempotency_status",
+    "child_executor_sandbox_backend_binding_coverage",
+    "child_executor_sandbox_backend_binding_coverage.binding_smoke",
+    "child_executor_sandbox_backend_binding_coverage.ready_status",
+    "child_executor_sandbox_backend_binding_coverage.missing_callable_status",
     "child_executor_sandbox_backend_coverage",
     "child_executor_sandbox_backend_coverage.sandbox_backend_smoke",
     "subagent_lane_query_detail_coverage",
@@ -259,6 +263,14 @@ def _build_runtime_contract_summary(checks: list[dict[str, Any]]) -> dict[str, A
         ),
         {},
     )
+    child_executor_sandbox_backend_binding_check = next(
+        (
+            check
+            for check in checks
+            if str(check.get("name") or "").strip() == "child_executor_sandbox_backend_binding"
+        ),
+        {},
+    )
     child_executor_sandbox_backend_check = next(
         (check for check in checks if str(check.get("name") or "").strip() == "child_executor_sandbox_backend"),
         {},
@@ -328,6 +340,11 @@ def _build_runtime_contract_summary(checks: list[dict[str, Any]]) -> dict[str, A
         "child_executor_dispatch_result_retry_audit_coverage": (
             _build_child_executor_dispatch_result_retry_audit_coverage(
                 child_executor_dispatch_result_retry_audit_check
+            )
+        ),
+        "child_executor_sandbox_backend_binding_coverage": (
+            _build_child_executor_sandbox_backend_binding_coverage(
+                child_executor_sandbox_backend_binding_check
             )
         ),
         "child_executor_sandbox_backend_coverage": _build_child_executor_sandbox_backend_coverage(
@@ -3070,6 +3087,59 @@ def _build_child_executor_sandbox_backend_coverage(check: dict[str, Any]) -> dic
     }
 
 
+def _build_child_executor_sandbox_backend_binding_coverage(check: dict[str, Any]) -> dict[str, Any]:
+    contract_version = str(check.get("contract_version") or "").strip()
+    default_status = str(check.get("default_status") or "").strip()
+    default_missing_sections = _normalize_string_list(check.get("default_missing_sections"))
+    missing_callable_status = str(check.get("missing_callable_status") or "").strip()
+    missing_callable_missing_sections = _normalize_string_list(
+        check.get("missing_callable_missing_sections")
+    )
+    ready_status = str(check.get("ready_status") or "").strip()
+    ready_dispatcher_binding_ready = bool(check.get("ready_dispatcher_binding_ready"))
+    ready_attempt_envelope_supported = bool(check.get("ready_attempt_envelope_supported"))
+    ready_audit_idempotency_ready = bool(check.get("ready_audit_idempotency_ready"))
+    ready_will_dispatch = bool(check.get("ready_will_dispatch"))
+    dispatch_contract_binding_status = str(check.get("dispatch_contract_binding_status") or "").strip()
+    dispatch_contract_binding_ready = bool(check.get("dispatch_contract_binding_ready"))
+    dispatch_contract_ready = bool(check.get("dispatch_contract_ready"))
+    dispatch_contract_will_dispatch = bool(check.get("dispatch_contract_will_dispatch"))
+    binding_smoke = (
+        bool(check.get("ok"))
+        and contract_version == "phase-ii-child-executor-sandbox-backend-binding-v1"
+        and default_status == "blocked"
+        and "explicit_binding" in default_missing_sections
+        and missing_callable_status == "blocked"
+        and "dispatcher_backend_adapter" in missing_callable_missing_sections
+        and ready_status == "ready"
+        and ready_dispatcher_binding_ready
+        and ready_attempt_envelope_supported
+        and ready_audit_idempotency_ready
+        and not ready_will_dispatch
+        and dispatch_contract_binding_status == "ready"
+        and dispatch_contract_binding_ready
+        and dispatch_contract_ready
+        and not dispatch_contract_will_dispatch
+    )
+    return {
+        "binding_smoke": binding_smoke,
+        "contract_version": contract_version,
+        "default_status": default_status,
+        "default_missing_sections": default_missing_sections,
+        "missing_callable_status": missing_callable_status,
+        "missing_callable_missing_sections": missing_callable_missing_sections,
+        "ready_status": ready_status,
+        "ready_dispatcher_binding_ready": ready_dispatcher_binding_ready,
+        "ready_attempt_envelope_supported": ready_attempt_envelope_supported,
+        "ready_audit_idempotency_ready": ready_audit_idempotency_ready,
+        "ready_will_dispatch": ready_will_dispatch,
+        "dispatch_contract_binding_status": dispatch_contract_binding_status,
+        "dispatch_contract_binding_ready": dispatch_contract_binding_ready,
+        "dispatch_contract_ready": dispatch_contract_ready,
+        "dispatch_contract_will_dispatch": dispatch_contract_will_dispatch,
+    }
+
+
 def _normalize_string_list(value: Any) -> list[str]:
     if not isinstance(value, list):
         return []
@@ -3201,8 +3271,8 @@ def _render_summary(report: dict[str, Any]) -> str:
             "",
             "## Runtime Contract Summary",
             "",
-            "| Step | Status | Checks | Failed | Missing Payloads | Approval Replay Coverage | Approval Lifecycle Recovery | Approved Tool Bridge | SDK Tool Bridge | Checkpoint Cursor | Worker Ownership Mode | Recovery Audit | Registry/Checkpoint Policy | Recovery Retry | Retry Scheduler | Durable Loader | Descriptor Lifecycle | Loader Handoff | Child Executor Gate | Child Executor Dispatch | Child Executor Dispatcher | Child Result Handoff | Child Retry Audit | Subagent Lane Detail |",
-            "| --- | --- | ---: | ---: | ---: | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+            "| Step | Status | Checks | Failed | Missing Payloads | Approval Replay Coverage | Approval Lifecycle Recovery | Approved Tool Bridge | SDK Tool Bridge | Checkpoint Cursor | Worker Ownership Mode | Recovery Audit | Registry/Checkpoint Policy | Recovery Retry | Retry Scheduler | Durable Loader | Descriptor Lifecycle | Loader Handoff | Child Executor Gate | Child Executor Dispatch | Child Executor Dispatcher | Child Result Handoff | Child Retry Audit | Child Sandbox Binding | Subagent Lane Detail |",
+            "| --- | --- | ---: | ---: | ---: | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
         ])
         for step, runtime_summary in summary_rows:
             approval_coverage = runtime_summary.get("approval_replay_coverage") or {}
@@ -3285,6 +3355,10 @@ def _render_summary(report: dict[str, Any]) -> str:
             if not isinstance(child_executor_retry_audit_coverage, dict):
                 child_executor_retry_audit_coverage = {}
             child_executor_retry_audit_label = "yes" if _is_child_executor_dispatch_result_retry_audit_coverage_aligned(child_executor_retry_audit_coverage) else "no"
+            child_executor_sandbox_binding_coverage = runtime_summary.get("child_executor_sandbox_backend_binding_coverage") or {}
+            if not isinstance(child_executor_sandbox_binding_coverage, dict):
+                child_executor_sandbox_binding_coverage = {}
+            child_executor_sandbox_binding_label = "yes" if _coerce_truthy_flag(child_executor_sandbox_binding_coverage.get("binding_smoke")) else "no"
             subagent_detail_coverage = runtime_summary.get("subagent_lane_query_detail_coverage") or {}
             if not isinstance(subagent_detail_coverage, dict):
                 subagent_detail_coverage = {}
@@ -3295,7 +3369,7 @@ def _render_summary(report: dict[str, Any]) -> str:
                 f"{_format_markdown_table_cell(runtime_summary.get('check_count', 0))} | "
                 f"{_format_markdown_table_cell(runtime_summary.get('failed_check_count', 0))} | "
                 f"{_format_markdown_table_cell(runtime_summary.get('missing_payload_count', 0))} | "
-                f"{coverage_label} | {lifecycle_label} | {approved_tool_label} | {sdk_tool_label} | {checkpoint_cursor_label} | {worker_ownership_label} | {recovery_audit_label} | {registry_checkpoint_label} | {recovery_retry_label} | {retry_scheduler_label} | {durable_loader_label} | {lifecycle_descriptor_label} | {handoff_label} | {child_executor_gate_label} | {child_executor_dispatch_label} | {child_executor_dispatcher_label} | {child_executor_result_handoff_label} | {child_executor_retry_audit_label} | {subagent_detail_label} |"
+                f"{coverage_label} | {lifecycle_label} | {approved_tool_label} | {sdk_tool_label} | {checkpoint_cursor_label} | {worker_ownership_label} | {recovery_audit_label} | {registry_checkpoint_label} | {recovery_retry_label} | {retry_scheduler_label} | {durable_loader_label} | {lifecycle_descriptor_label} | {handoff_label} | {child_executor_gate_label} | {child_executor_dispatch_label} | {child_executor_dispatcher_label} | {child_executor_result_handoff_label} | {child_executor_retry_audit_label} | {child_executor_sandbox_binding_label} | {subagent_detail_label} |"
             )
     schema_rows = [
         (step, step.get("runtime_contract_artifact_schema") or {})

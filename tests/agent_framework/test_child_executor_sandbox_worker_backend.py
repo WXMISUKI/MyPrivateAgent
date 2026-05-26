@@ -5,6 +5,7 @@ from backend.agent_framework.child_executor_backends import (
     build_child_executor_sandbox_worker_backend_entry,
 )
 from backend.agent_framework.child_executor_sandbox_worker_backend import (
+    build_child_executor_sandbox_backend_binding_contract,
     build_sandbox_dispatch_attempt_envelope,
     build_sandbox_worker_backend_adapter_contract,
     validate_sandbox_dispatch_attempt,
@@ -120,6 +121,75 @@ class ChildExecutorSandboxWorkerBackendTests(unittest.TestCase):
         self.assertTrue(backend["adapter_contract_ready"])
         self.assertEqual(registry["ready_backend_count"], 1)
 
+    def test_sandbox_backend_binding_blocks_default_missing_explicit_binding(self):
+        entry = build_child_executor_sandbox_worker_backend_entry(
+            backend_id="sandbox_worker",
+            label="Sandbox worker",
+            adapter_contract=_ready_adapter_contract(),
+        )
+
+        binding = build_child_executor_sandbox_backend_binding_contract(
+            backend_id="sandbox_worker",
+            backend_registry_entry=entry,
+            adapter_contract=entry["adapter_contract"],
+            dispatcher_backend_adapters={"sandbox_worker": lambda _payload: {}},
+        )
+
+        self.assertEqual(binding["overall_status"], "blocked")
+        self.assertFalse(binding["ready"])
+        self.assertIn("explicit_binding", binding["missing_sections"])
+        self.assertFalse(binding["will_dispatch"])
+
+    def test_sandbox_backend_binding_blocks_ready_adapter_without_callable_dispatcher_adapter(self):
+        entry = build_child_executor_sandbox_worker_backend_entry(
+            backend_id="sandbox_worker",
+            label="Sandbox worker",
+            adapter_contract=_ready_adapter_contract(),
+        )
+
+        binding = build_child_executor_sandbox_backend_binding_contract(
+            backend_id="sandbox_worker",
+            backend_registry_entry=entry,
+            adapter_contract=entry["adapter_contract"],
+            dispatcher_backend_adapters={},
+            explicit_binding={
+                "ready": True,
+                "binding_status": "ready",
+                "binding_source": "test.explicit_opt_in",
+            },
+        )
+
+        self.assertEqual(binding["overall_status"], "blocked")
+        self.assertFalse(binding["dispatcher_binding_ready"])
+        self.assertIn("dispatcher_backend_adapter", binding["missing_sections"])
+        self.assertTrue(binding["attempt_envelope_supported"])
+
+    def test_sandbox_backend_binding_ready_for_explicit_callable_binding(self):
+        entry = build_child_executor_sandbox_worker_backend_entry(
+            backend_id="sandbox_worker",
+            label="Sandbox worker",
+            adapter_contract=_ready_adapter_contract(),
+        )
+
+        binding = build_child_executor_sandbox_backend_binding_contract(
+            backend_id="sandbox_worker",
+            backend_registry_entry=entry,
+            adapter_contract=entry["adapter_contract"],
+            dispatcher_backend_adapters={"sandbox_worker": lambda _payload: {}},
+            explicit_binding={
+                "ready": True,
+                "binding_status": "ready",
+                "binding_source": "test.explicit_opt_in",
+            },
+        )
+
+        self.assertEqual(binding["overall_status"], "ready")
+        self.assertTrue(binding["ready"])
+        self.assertTrue(binding["dispatcher_binding_ready"])
+        self.assertTrue(binding["attempt_envelope_supported"])
+        self.assertTrue(binding["audit_idempotency_ready"])
+        self.assertFalse(binding["will_dispatch"])
+
     def test_dispatch_contract_blocks_sandbox_backend_with_missing_guard_evidence(self):
         backend_evidence = {
             "backend_id": "sandbox_worker",
@@ -144,6 +214,7 @@ class ChildExecutorSandboxWorkerBackendTests(unittest.TestCase):
         self.assertTrue(contract["sandbox_backend_selected"])
         self.assertFalse(contract["sandbox_backend_ready"])
         self.assertIn("sandbox_guard_ready", contract["blockers"])
+        self.assertIn("sandbox_backend_binding_ready", contract["blockers"])
         self.assertIn("sandbox_guard_missing:network_policy", contract["blockers"])
 
     def test_dispatch_contract_nests_attempt_handoff_evidence(self):
@@ -156,10 +227,14 @@ class ChildExecutorSandboxWorkerBackendTests(unittest.TestCase):
         contract = build_child_executor_dispatch_contract(
             gate=_ready_gate_for_backend(entry),
             backend_registry=build_child_executor_backend_registry_contract(extra_backends=[entry]),
+            dispatcher_backend_adapters={"sandbox_worker": lambda _payload: {}},
         )
 
         handoff = contract["child_executor_dispatch_attempt_handoff"]
+        binding = contract["child_executor_sandbox_backend_binding"]
         self.assertEqual(contract["overall_status"], "ready")
+        self.assertEqual(binding["overall_status"], "ready")
+        self.assertTrue(contract["sandbox_backend_binding_ready"])
         self.assertEqual(handoff["overall_status"], "ready")
         self.assertTrue(handoff["attempt_envelope_supported"])
         self.assertTrue(handoff["attempt_validation_ready"])

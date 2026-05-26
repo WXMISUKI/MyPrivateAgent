@@ -450,6 +450,23 @@ def _build_complete_profile():
                     "backend_invocation_count": 1,
                     "default_worker_enabled": False,
                 },
+                "child_executor_sandbox_backend_binding_coverage": {
+                    "binding_smoke": True,
+                    "contract_version": "phase-ii-child-executor-sandbox-backend-binding-v1",
+                    "default_status": "blocked",
+                    "default_missing_sections": ["explicit_binding"],
+                    "missing_callable_status": "blocked",
+                    "missing_callable_missing_sections": ["dispatcher_backend_adapter"],
+                    "ready_status": "ready",
+                    "ready_dispatcher_binding_ready": True,
+                    "ready_attempt_envelope_supported": True,
+                    "ready_audit_idempotency_ready": True,
+                    "ready_will_dispatch": False,
+                    "dispatch_contract_binding_status": "ready",
+                    "dispatch_contract_binding_ready": True,
+                    "dispatch_contract_ready": True,
+                    "dispatch_contract_will_dispatch": False,
+                },
                 "subagent_lane_query_detail_coverage": {
                     "detail_smoke": True,
                     "contract_version": "phase-ii-subagent-lane-query-detail-v1",
@@ -499,6 +516,10 @@ def _build_complete_profile():
                     "child_executor_dispatch_coverage.opt_in_attempt_validation_ready",
                     "child_executor_dispatcher_coverage",
                     "child_executor_dispatcher_coverage.dispatcher_smoke",
+                    "child_executor_sandbox_backend_binding_coverage",
+                    "child_executor_sandbox_backend_binding_coverage.binding_smoke",
+                    "child_executor_sandbox_backend_binding_coverage.ready_status",
+                    "child_executor_sandbox_backend_binding_coverage.missing_callable_status",
                     "child_executor_sandbox_backend_coverage",
                     "child_executor_sandbox_backend_coverage.sandbox_backend_smoke",
                     "subagent_lane_query_detail_coverage",
@@ -894,6 +915,22 @@ class RuntimeContractSnapshotServiceTests(unittest.TestCase):
             by_name["runtime_contract_gate"]["stable_fields"],
         )
         self.assertIn(
+            "runtime_contract_summary.child_executor_sandbox_backend_binding_coverage",
+            by_name["runtime_contract_gate"]["stable_fields"],
+        )
+        self.assertIn(
+            "runtime_contract_summary.child_executor_sandbox_backend_binding_coverage.binding_smoke",
+            by_name["runtime_contract_gate"]["stable_fields"],
+        )
+        self.assertIn(
+            "runtime_contract_summary.child_executor_sandbox_backend_binding_coverage.ready_status",
+            by_name["runtime_contract_gate"]["stable_fields"],
+        )
+        self.assertIn(
+            "runtime_contract_summary.child_executor_sandbox_backend_binding_coverage.missing_callable_status",
+            by_name["runtime_contract_gate"]["stable_fields"],
+        )
+        self.assertIn(
             "runtime_contract_summary.child_executor_sandbox_backend_coverage",
             by_name["runtime_contract_gate"]["stable_fields"],
         )
@@ -965,7 +1002,7 @@ class RuntimeContractSnapshotServiceTests(unittest.TestCase):
         by_name = {item["contract_name"]: item for item in snapshot["contracts"]}
         self.assertEqual(snapshot["overall_status"], "degraded")
         self.assertEqual(snapshot["missing_contract_count"], 1)
-        self.assertEqual(snapshot["missing_field_count"], 83)
+        self.assertEqual(snapshot["missing_field_count"], 87)
         self.assertEqual(by_name["skill_contract"]["status"], "missing")
         self.assertEqual(
             by_name["command_contract"]["missing_fields"],
@@ -1043,6 +1080,10 @@ class RuntimeContractSnapshotServiceTests(unittest.TestCase):
                 "runtime_contract_summary.child_executor_dispatch_result_retry_audit_coverage.retry_audit_smoke",
                 "runtime_contract_summary.child_executor_dispatch_result_retry_audit_coverage.retryable_retry_policy_status",
                 "runtime_contract_summary.child_executor_dispatch_result_retry_audit_coverage.missing_idempotency_status",
+                "runtime_contract_summary.child_executor_sandbox_backend_binding_coverage",
+                "runtime_contract_summary.child_executor_sandbox_backend_binding_coverage.binding_smoke",
+                "runtime_contract_summary.child_executor_sandbox_backend_binding_coverage.ready_status",
+                "runtime_contract_summary.child_executor_sandbox_backend_binding_coverage.missing_callable_status",
                 "runtime_contract_summary.child_executor_sandbox_backend_coverage",
                 "runtime_contract_summary.child_executor_sandbox_backend_coverage.sandbox_backend_smoke",
                 "runtime_contract_summary.subagent_lane_query_detail_coverage",

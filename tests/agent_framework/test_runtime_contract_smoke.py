@@ -919,6 +919,7 @@ class RuntimeContractSmokeTests(unittest.TestCase):
         self.assertIn("durable_recovery_loader", checks_by_name)
         self.assertIn("child_executor_promotion_gate", checks_by_name)
         self.assertIn("child_executor_dispatch_contract", checks_by_name)
+        self.assertIn("child_executor_sandbox_backend_binding", checks_by_name)
         self.assertIn("child_executor_dispatcher", checks_by_name)
         self.assertIn("subagent_lane_query_detail", checks_by_name)
         for check_name in (
@@ -932,6 +933,7 @@ class RuntimeContractSmokeTests(unittest.TestCase):
             "durable_recovery_loader",
             "child_executor_promotion_gate",
             "child_executor_dispatch_contract",
+            "child_executor_sandbox_backend_binding",
             "child_executor_dispatcher",
             "runtime_surface_run_recovery",
             "approval_lifecycle_recovery_alignment",

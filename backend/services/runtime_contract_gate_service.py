@@ -70,6 +70,10 @@ RUNTIME_CONTRACT_SUMMARY_REQUIRED_FIELDS = (
     "child_executor_dispatch_result_retry_audit_coverage.retry_audit_smoke",
     "child_executor_dispatch_result_retry_audit_coverage.retryable_retry_policy_status",
     "child_executor_dispatch_result_retry_audit_coverage.missing_idempotency_status",
+    "child_executor_sandbox_backend_binding_coverage",
+    "child_executor_sandbox_backend_binding_coverage.binding_smoke",
+    "child_executor_sandbox_backend_binding_coverage.ready_status",
+    "child_executor_sandbox_backend_binding_coverage.missing_callable_status",
     "child_executor_sandbox_backend_coverage",
     "child_executor_sandbox_backend_coverage.sandbox_backend_smoke",
     "subagent_lane_query_detail_coverage",
@@ -315,6 +319,13 @@ class RuntimeContractGateService:
             child_executor_dispatch_result_retry_audit_coverage = fallback[
                 "child_executor_dispatch_result_retry_audit_coverage"
             ]
+        child_executor_sandbox_backend_binding_coverage = summary.get(
+            "child_executor_sandbox_backend_binding_coverage"
+        )
+        if not isinstance(child_executor_sandbox_backend_binding_coverage, Mapping):
+            child_executor_sandbox_backend_binding_coverage = fallback[
+                "child_executor_sandbox_backend_binding_coverage"
+            ]
         child_executor_sandbox_backend_coverage = summary.get("child_executor_sandbox_backend_coverage")
         if not isinstance(child_executor_sandbox_backend_coverage, Mapping):
             child_executor_sandbox_backend_coverage = fallback["child_executor_sandbox_backend_coverage"]
@@ -409,6 +420,11 @@ class RuntimeContractGateService:
             "child_executor_dispatch_result_retry_audit_coverage": (
                 self._normalize_child_executor_dispatch_result_retry_audit_coverage(
                     child_executor_dispatch_result_retry_audit_coverage
+                )
+            ),
+            "child_executor_sandbox_backend_binding_coverage": (
+                self._normalize_child_executor_sandbox_backend_binding_coverage(
+                    child_executor_sandbox_backend_binding_coverage
                 )
             ),
             "child_executor_sandbox_backend_coverage": self._normalize_child_executor_sandbox_backend_coverage(
@@ -511,6 +527,15 @@ class RuntimeContractGateService:
             ),
             {},
         )
+        child_executor_sandbox_backend_binding_check = next(
+            (
+                check
+                for check in checks
+                if str(check.get("name") or "").strip()
+                == "child_executor_sandbox_backend_binding"
+            ),
+            {},
+        )
         child_executor_sandbox_backend_check = next(
             (check for check in checks if str(check.get("name") or "").strip() == "child_executor_sandbox_backend"),
             {},
@@ -586,6 +611,11 @@ class RuntimeContractGateService:
                     child_executor_dispatch_result_retry_audit_check
                 )
             ),
+            "child_executor_sandbox_backend_binding_coverage": (
+                self._build_child_executor_sandbox_backend_binding_coverage(
+                    child_executor_sandbox_backend_binding_check
+                )
+            ),
             "child_executor_sandbox_backend_coverage": self._build_child_executor_sandbox_backend_coverage(
                 child_executor_sandbox_backend_check
             ),
@@ -627,6 +657,9 @@ class RuntimeContractGateService:
             ),
             "child_executor_dispatch_result_retry_audit_coverage": (
                 self._build_child_executor_dispatch_result_retry_audit_coverage({})
+            ),
+            "child_executor_sandbox_backend_binding_coverage": (
+                self._build_child_executor_sandbox_backend_binding_coverage({})
             ),
             "child_executor_sandbox_backend_coverage": self._build_child_executor_sandbox_backend_coverage({}),
             "subagent_lane_query_detail_coverage": self._build_subagent_lane_query_detail_coverage({}),
@@ -1681,6 +1714,24 @@ class RuntimeContractGateService:
                 "missing_idempotency_retry_scheduled"
             ),
             "default_status": str(raw_check.get("default_status") or ""),
+            "default_missing_sections": self._normalize_string_list(
+                raw_check.get("default_missing_sections")
+            ),
+            "missing_callable_status": str(raw_check.get("missing_callable_status") or ""),
+            "missing_callable_missing_sections": self._normalize_string_list(
+                raw_check.get("missing_callable_missing_sections")
+            ),
+            "ready_status": str(raw_check.get("ready_status") or ""),
+            "ready_dispatcher_binding_ready": raw_check.get("ready_dispatcher_binding_ready"),
+            "ready_attempt_envelope_supported": raw_check.get("ready_attempt_envelope_supported"),
+            "ready_audit_idempotency_ready": raw_check.get("ready_audit_idempotency_ready"),
+            "ready_will_dispatch": raw_check.get("ready_will_dispatch"),
+            "dispatch_contract_binding_status": str(
+                raw_check.get("dispatch_contract_binding_status") or ""
+            ),
+            "dispatch_contract_binding_ready": raw_check.get("dispatch_contract_binding_ready"),
+            "dispatch_contract_ready": raw_check.get("dispatch_contract_ready"),
+            "dispatch_contract_will_dispatch": raw_check.get("dispatch_contract_will_dispatch"),
             "default_eligible": raw_check.get("default_eligible"),
             "default_will_execute": raw_check.get("default_will_execute"),
             "production_gate_contract_version": str(raw_check.get("production_gate_contract_version") or ""),
@@ -5878,6 +5929,105 @@ class RuntimeContractGateService:
             ) or 0,
             "default_worker_enabled": check.get("default_worker_enabled"),
         })
+
+    def _build_child_executor_sandbox_backend_binding_coverage(
+        self,
+        check: Mapping[str, Any],
+    ) -> Dict[str, Any]:
+        return self._normalize_child_executor_sandbox_backend_binding_coverage({
+            "binding_smoke": bool(check.get("ok")) if check else False,
+            "contract_version": str(check.get("contract_version") or ""),
+            "default_status": str(check.get("default_status") or ""),
+            "default_missing_sections": self._normalize_string_list(
+                check.get("default_missing_sections")
+            ),
+            "missing_callable_status": str(check.get("missing_callable_status") or ""),
+            "missing_callable_missing_sections": self._normalize_string_list(
+                check.get("missing_callable_missing_sections")
+            ),
+            "ready_status": str(check.get("ready_status") or ""),
+            "ready_dispatcher_binding_ready": check.get("ready_dispatcher_binding_ready"),
+            "ready_attempt_envelope_supported": check.get("ready_attempt_envelope_supported"),
+            "ready_audit_idempotency_ready": check.get("ready_audit_idempotency_ready"),
+            "ready_will_dispatch": check.get("ready_will_dispatch"),
+            "dispatch_contract_binding_status": str(
+                check.get("dispatch_contract_binding_status") or ""
+            ),
+            "dispatch_contract_binding_ready": check.get("dispatch_contract_binding_ready"),
+            "dispatch_contract_ready": check.get("dispatch_contract_ready"),
+            "dispatch_contract_will_dispatch": check.get("dispatch_contract_will_dispatch"),
+        })
+
+    def _normalize_child_executor_sandbox_backend_binding_coverage(
+        self,
+        coverage: Mapping[str, Any],
+    ) -> Dict[str, Any]:
+        contract_version = str(coverage.get("contract_version") or "")
+        default_status = str(coverage.get("default_status") or "")
+        default_missing_sections = self._normalize_string_list(
+            coverage.get("default_missing_sections")
+        )
+        missing_callable_status = str(coverage.get("missing_callable_status") or "")
+        missing_callable_missing_sections = self._normalize_string_list(
+            coverage.get("missing_callable_missing_sections")
+        )
+        ready_status = str(coverage.get("ready_status") or "")
+        ready_dispatcher_binding_ready = self._coerce_truthy_flag(
+            coverage.get("ready_dispatcher_binding_ready")
+        )
+        ready_attempt_envelope_supported = self._coerce_truthy_flag(
+            coverage.get("ready_attempt_envelope_supported")
+        )
+        ready_audit_idempotency_ready = self._coerce_truthy_flag(
+            coverage.get("ready_audit_idempotency_ready")
+        )
+        ready_will_dispatch = self._coerce_truthy_flag(coverage.get("ready_will_dispatch"))
+        dispatch_contract_binding_status = str(
+            coverage.get("dispatch_contract_binding_status") or ""
+        )
+        dispatch_contract_binding_ready = self._coerce_truthy_flag(
+            coverage.get("dispatch_contract_binding_ready")
+        )
+        dispatch_contract_ready = self._coerce_truthy_flag(
+            coverage.get("dispatch_contract_ready")
+        )
+        dispatch_contract_will_dispatch = self._coerce_truthy_flag(
+            coverage.get("dispatch_contract_will_dispatch")
+        )
+        binding_smoke = (
+            self._coerce_truthy_flag(coverage.get("binding_smoke"))
+            and contract_version == "phase-ii-child-executor-sandbox-backend-binding-v1"
+            and default_status == "blocked"
+            and "explicit_binding" in default_missing_sections
+            and missing_callable_status == "blocked"
+            and "dispatcher_backend_adapter" in missing_callable_missing_sections
+            and ready_status == "ready"
+            and ready_dispatcher_binding_ready
+            and ready_attempt_envelope_supported
+            and ready_audit_idempotency_ready
+            and not ready_will_dispatch
+            and dispatch_contract_binding_status == "ready"
+            and dispatch_contract_binding_ready
+            and dispatch_contract_ready
+            and not dispatch_contract_will_dispatch
+        )
+        return {
+            "binding_smoke": binding_smoke,
+            "contract_version": contract_version,
+            "default_status": default_status,
+            "default_missing_sections": default_missing_sections,
+            "missing_callable_status": missing_callable_status,
+            "missing_callable_missing_sections": missing_callable_missing_sections,
+            "ready_status": ready_status,
+            "ready_dispatcher_binding_ready": ready_dispatcher_binding_ready,
+            "ready_attempt_envelope_supported": ready_attempt_envelope_supported,
+            "ready_audit_idempotency_ready": ready_audit_idempotency_ready,
+            "ready_will_dispatch": ready_will_dispatch,
+            "dispatch_contract_binding_status": dispatch_contract_binding_status,
+            "dispatch_contract_binding_ready": dispatch_contract_binding_ready,
+            "dispatch_contract_ready": dispatch_contract_ready,
+            "dispatch_contract_will_dispatch": dispatch_contract_will_dispatch,
+        }
 
     def _normalize_child_executor_sandbox_backend_coverage(
         self,

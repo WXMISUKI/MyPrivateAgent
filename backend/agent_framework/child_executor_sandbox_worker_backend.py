@@ -9,6 +9,9 @@ from typing import Any, Dict, Mapping
 CHILD_EXECUTOR_SANDBOX_WORKER_BACKEND_CONTRACT_VERSION = (
     "phase-ii-child-executor-sandbox-worker-backend-v1"
 )
+CHILD_EXECUTOR_SANDBOX_BACKEND_BINDING_CONTRACT_VERSION = (
+    "phase-ii-child-executor-sandbox-backend-binding-v1"
+)
 
 REQUIRED_SANDBOX_GUARDS = (
     "isolation",
@@ -141,6 +144,156 @@ def build_sandbox_worker_backend_adapter_contract(
         "audit_ready": "audit_recording" in present_guards,
         "idempotency_ready": "idempotency_key" in present_guards,
         "dispatch_ready_candidate": ready,
+    }
+
+
+def build_child_executor_sandbox_backend_binding_contract(
+    *,
+    backend_id: str,
+    backend_registry_entry: Mapping[str, Any] | None = None,
+    adapter_contract: Mapping[str, Any] | None = None,
+    dispatcher_backend_adapters: Mapping[str, Any] | None = None,
+    explicit_binding: Mapping[str, Any] | None = None,
+) -> Dict[str, Any]:
+    """Describe whether a sandbox backend adapter is bound to the dispatcher.
+
+    The binding contract is pure evidence. It inspects supplied metadata and
+    callability, but never invokes the adapter.
+    """
+
+    normalized_backend_id = _normalize_text(backend_id)
+    registry_entry = dict(backend_registry_entry or {})
+    adapter = dict(adapter_contract or registry_entry.get("adapter_contract") or {})
+    explicit = dict(explicit_binding or {})
+    dispatcher_adapters = dict(dispatcher_backend_adapters or {})
+    explicit_binding_present = bool(explicit.get("ready")) or bool(
+        _normalize_text(explicit.get("binding_status"))
+    )
+    explicit_binding_ready = bool(explicit.get("ready")) and (
+        _normalize_text(explicit.get("binding_status")) in {"", "ready"}
+    )
+    adapter_kind = _normalize_text(
+        registry_entry.get("adapter_kind") or adapter.get("adapter_kind")
+    )
+    sandbox_backend_selected = adapter_kind == "sandbox_worker"
+    adapter_contract_ready = bool(
+        adapter.get("adapter_contract_ready")
+        if "adapter_contract_ready" in adapter
+        else registry_entry.get("adapter_contract_ready")
+    )
+    sandbox_guard_ready = bool(
+        adapter.get("sandbox_guard_ready")
+        if "sandbox_guard_ready" in adapter
+        else registry_entry.get("sandbox_guard_ready")
+    )
+    audit_ready = bool(
+        adapter.get("audit_ready")
+        if "audit_ready" in adapter
+        else registry_entry.get("audit_ready")
+    )
+    idempotency_ready = bool(
+        adapter.get("idempotency_ready")
+        if "idempotency_ready" in adapter
+        else registry_entry.get("idempotency_ready")
+    )
+    callable_adapter = callable(dispatcher_adapters.get(normalized_backend_id))
+    dry_run_attempt: Dict[str, Any] = {}
+    validation = {
+        "valid": False,
+        "error_code": "sandbox_backend_not_selected",
+        "missing_fields": list(REQUIRED_SANDBOX_ATTEMPT_FIELDS),
+    }
+    if normalized_backend_id and sandbox_backend_selected:
+        dry_run_attempt = build_sandbox_dispatch_attempt_envelope(
+            attempt_id="binding-dry-run-attempt",
+            backend_id=normalized_backend_id,
+            child_run_id="binding-dry-run-child",
+            status="dry_run",
+            will_dispatch=False,
+            sandbox_ref="sandbox://binding-dry-run-attempt",
+            output_ref="artifact://binding-dry-run-child/output",
+            audit_ref="trace://binding-dry-run-attempt",
+        )
+        validation = validate_sandbox_dispatch_attempt(dry_run_attempt)
+
+    attempt_envelope_supported = bool(validation.get("valid"))
+    audit_idempotency_ready = audit_ready and idempotency_ready
+    missing_sections: list[str] = []
+    if not explicit_binding_present:
+        missing_sections.append("explicit_binding")
+    elif not explicit_binding_ready:
+        missing_sections.append("explicit_binding_ready")
+    if not normalized_backend_id:
+        missing_sections.append("backend_id")
+    if not registry_entry:
+        missing_sections.append("backend_registry_entry")
+    if not sandbox_backend_selected:
+        missing_sections.append("sandbox_backend_selected")
+    if not adapter_contract_ready:
+        missing_sections.append("adapter_contract_ready")
+    if not sandbox_guard_ready:
+        missing_sections.append("sandbox_guard_ready")
+    if not audit_ready:
+        missing_sections.append("audit_ready")
+    if not idempotency_ready:
+        missing_sections.append("idempotency_ready")
+    if not callable_adapter:
+        missing_sections.append("dispatcher_backend_adapter")
+    if not attempt_envelope_supported:
+        missing_sections.append("attempt_envelope_supported")
+    for item in (
+        registry_entry.get("missing_guard_blockers")
+        or adapter.get("missing_guard_blockers")
+        or []
+    ):
+        value = _normalize_text(item)
+        if value:
+            missing_sections.append(value)
+
+    missing_sections = list(dict.fromkeys(missing_sections))
+    ready = not missing_sections
+    return {
+        "contract_version": CHILD_EXECUTOR_SANDBOX_BACKEND_BINDING_CONTRACT_VERSION,
+        "overall_status": "ready" if ready else "blocked",
+        "ready": ready,
+        "backend_id": normalized_backend_id,
+        "adapter_kind": adapter_kind,
+        "adapter_contract_status": "ready" if adapter_contract_ready else "blocked",
+        "adapter_contract_ready": adapter_contract_ready,
+        "sandbox_backend_selected": sandbox_backend_selected,
+        "sandbox_guard_ready": sandbox_guard_ready,
+        "audit_ready": audit_ready,
+        "idempotency_ready": idempotency_ready,
+        "audit_idempotency_ready": audit_idempotency_ready,
+        "binding_status": "ready" if ready else "blocked",
+        "explicit_binding_present": explicit_binding_present,
+        "explicit_binding_ready": explicit_binding_ready,
+        "explicit_binding_source": _normalize_text(explicit.get("binding_source")),
+        "dispatcher_binding_ready": callable_adapter,
+        "dispatcher_adapter_callable": callable_adapter,
+        "attempt_envelope_supported": attempt_envelope_supported,
+        "attempt_validation_error_code": _normalize_text(validation.get("error_code")),
+        "attempt_validation_missing_fields": [
+            _normalize_text(item)
+            for item in (validation.get("missing_fields") or [])
+            if _normalize_text(item)
+        ],
+        "dry_run_attempt_status": _normalize_text(dry_run_attempt.get("status")),
+        "will_dispatch": False,
+        "production_dispatch_authorized": False,
+        "missing_sections": missing_sections,
+        "blocked_reason": "" if ready else (missing_sections[0] if missing_sections else "blocked"),
+        "next_allowed_action": (
+            "record_dispatcher_backend_binding"
+            if ready
+            else "complete_sandbox_backend_dispatcher_binding"
+        ),
+        "non_goals": [
+            "invoke_backend_adapter",
+            "start_child_executor_worker",
+            "enable_dispatcher_by_default",
+            "schedule_retry",
+        ],
     }
 
 

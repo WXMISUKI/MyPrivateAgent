@@ -1597,8 +1597,8 @@ class QualityGateReportTests(unittest.TestCase):
         })
 
         self.assertIn("## Runtime Contract Summary", summary)
-        self.assertIn("| Step | Status | Checks | Failed | Missing Payloads | Approval Replay Coverage | Approval Lifecycle Recovery | Approved Tool Bridge | SDK Tool Bridge | Checkpoint Cursor | Worker Ownership Mode | Recovery Audit | Registry/Checkpoint Policy | Recovery Retry | Retry Scheduler | Durable Loader | Descriptor Lifecycle | Loader Handoff | Child Executor Gate | Child Executor Dispatch | Child Executor Dispatcher | Child Result Handoff | Child Retry Audit | Subagent Lane Detail |", summary)
-        self.assertIn("| Quality gate smoke | healthy | 2 | 0 | 0 | yes | yes | yes | no | no | yes | no | no | no | no | no | no | no | no | yes | no | no | no | yes |", summary)
+        self.assertIn("| Step | Status | Checks | Failed | Missing Payloads | Approval Replay Coverage | Approval Lifecycle Recovery | Approved Tool Bridge | SDK Tool Bridge | Checkpoint Cursor | Worker Ownership Mode | Recovery Audit | Registry/Checkpoint Policy | Recovery Retry | Retry Scheduler | Durable Loader | Descriptor Lifecycle | Loader Handoff | Child Executor Gate | Child Executor Dispatch | Child Executor Dispatcher | Child Result Handoff | Child Retry Audit | Child Sandbox Binding | Subagent Lane Detail |", summary)
+        self.assertIn("| Quality gate smoke | healthy | 2 | 0 | 0 | yes | yes | yes | no | no | yes | no | no | no | no | no | no | no | no | yes | no | no | no | no | yes |", summary)
 
     def test_render_summary_fails_closed_when_approval_lifecycle_recovery_evidence_disagrees(self):
         summary = _render_summary({
@@ -2038,7 +2038,7 @@ class QualityGateReportTests(unittest.TestCase):
             ],
         })
 
-        self.assertIn("| Quality gate smoke | healthy | 1 | 0 | 0 | yes | no | yes | no | no | yes | no | no | no | no | no | no | no | no | yes | no | no | no | yes |", summary)
+        self.assertIn("| Quality gate smoke | healthy | 1 | 0 | 0 | yes | no | yes | no | no | yes | no | no | no | no | no | no | no | no | yes | no | no | no | no | yes |", summary)
 
     def test_runtime_contract_summary_defaults_child_executor_promotion_gate_coverage_for_legacy_reports(self):
         from backend.scripts.quality_gate_report import _build_runtime_contract_summary

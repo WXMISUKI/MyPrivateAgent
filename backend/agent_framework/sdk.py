@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Callable, Dict, Iterable
+from typing import Any, Callable, Dict, Iterable, Mapping
 from uuid import uuid4
 
 from .artifacts import ArtifactStore
@@ -15,6 +15,9 @@ from .child_executor_backends import (
 from .child_executor_dispatcher import (
     build_child_executor_dispatch_attempt_handoff_contract,
     build_child_executor_dispatcher_contract,
+)
+from .child_executor_sandbox_worker_backend import (
+    build_child_executor_sandbox_backend_binding_contract,
 )
 from .continuation_registry import EmbeddedContinuationRegistry, get_embedded_continuation_registry
 from .continuations import (
@@ -1031,6 +1034,7 @@ def build_child_executor_dispatch_contract(
     *,
     gate: Dict[str, Any],
     backend_registry: Dict[str, Any] | None = None,
+    dispatcher_backend_adapters: Mapping[str, Any] | None = None,
 ) -> Dict[str, Any]:
     normalized_gate = dict(gate or {})
     normalized_preflight = dict(normalized_gate.get("preflight") or {})
@@ -1114,6 +1118,17 @@ def build_child_executor_dispatch_contract(
             and sandbox_idempotency_ready
         )
     )
+    sandbox_backend_binding = build_child_executor_sandbox_backend_binding_contract(
+        backend_id=backend_id,
+        backend_registry_entry=backend_evidence or backend_lookup,
+        adapter_contract=dict((backend_evidence or backend_lookup).get("adapter_contract") or {}),
+        dispatcher_backend_adapters=dispatcher_backend_adapters or {},
+        explicit_binding=explicit_binding_evidence,
+    )
+    sandbox_backend_binding_ready = (
+        not sandbox_backend_selected
+        or bool(sandbox_backend_binding.get("ready"))
+    )
     dispatch_mode = str(
         backend_evidence.get("dispatch_mode")
         or backend_lookup.get("dispatch_mode")
@@ -1126,6 +1141,7 @@ def build_child_executor_dispatch_contract(
         and prerequisites_ready
         and backend_dispatch_ready
         and sandbox_backend_ready
+        and sandbox_backend_binding_ready
         and explicit_binding_ready
     )
     blockers = []
@@ -1148,6 +1164,8 @@ def build_child_executor_dispatch_contract(
             blockers.append("sandbox_audit_ready")
         if not sandbox_idempotency_ready:
             blockers.append("sandbox_idempotency_ready")
+        if not sandbox_backend_binding_ready:
+            blockers.append("sandbox_backend_binding_ready")
         for item in (
             backend_evidence.get("missing_guard_blockers")
             or backend_lookup.get("missing_guard_blockers")
@@ -1180,6 +1198,7 @@ def build_child_executor_dispatch_contract(
         ).strip(),
         "sandbox_backend_selected": sandbox_backend_selected,
         "sandbox_backend_ready": sandbox_backend_ready,
+        "sandbox_backend_binding_ready": sandbox_backend_binding_ready,
         "sandbox_adapter_ready": sandbox_adapter_ready,
         "sandbox_guard_ready": sandbox_guard_ready,
         "sandbox_audit_ready": sandbox_audit_ready,
@@ -1193,11 +1212,13 @@ def build_child_executor_dispatch_contract(
             "child_executor_promotion_gate",
             "child_executor_execution_prerequisites",
             "child_executor_sandbox_worker_backend",
+            "child_executor_sandbox_backend_binding",
         ],
         "evidence": {
             "backend_registry": registry,
             "backend": backend_evidence or backend_lookup,
             "explicit_executor_binding": explicit_binding_evidence,
+            "child_executor_sandbox_backend_binding": sandbox_backend_binding,
             "promotion_gate": {
                 "gate_status": str(normalized_gate.get("gate_status") or "").strip(),
                 "allowed": gate_allowed,
@@ -1225,6 +1246,8 @@ def build_child_executor_dispatch_contract(
             "sandbox_or_queue_execution",
         ],
     }
+    dispatch_contract["child_executor_sandbox_backend_binding"] = sandbox_backend_binding
+    dispatch_contract["sandbox_backend_binding"] = sandbox_backend_binding
     attempt_handoff = build_child_executor_dispatch_attempt_handoff_contract(
         dispatch_contract=dispatch_contract
     )
