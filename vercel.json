@@ -2,6 +2,9 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "cd frontend-vue && npm install && npm run build",
   "outputDirectory": "frontend-vue/dist",
+  "env": {
+    "PYO3_USE_ABI3_FORWARD_COMPATIBILITY": "1"
+  },
   "functions": {
     "api/index.py": {
       "runtime": "@vercel/python@4.3.0",
