@@ -458,6 +458,48 @@ def _build_complete_profile():
                     "bound_scheduler_bound": True,
                     "bound_will_schedule_retry": False,
                 },
+                "child_executor_dispatch_retry_scheduler_binding_gate_coverage": {
+                    "binding_smoke": True,
+                    "contract_version": "phase-ii-child-executor-dispatch-retry-scheduler-binding-gate-v1",
+                    "default_status": "blocked",
+                    "default_handoff_ready": True,
+                    "default_binding_ready": False,
+                    "default_missing_sections": ["scheduler_binding_decision"],
+                    "default_will_schedule_retry": False,
+                    "ready_status": "ready",
+                    "ready_binding_ready": True,
+                    "ready_binding_source": "runtime_config.child_dispatch_retry_scheduler",
+                    "ready_will_schedule_retry": False,
+                    "production_blocked_status": "blocked",
+                    "production_blocked_sections": ["production_scheduler_gate"],
+                    "missing_audit_idempotency_status": "blocked",
+                    "missing_audit_idempotency_sections": ["idempotency_dedupe", "audit_timeline"],
+                    "missing_worker_attempts_status": "blocked",
+                    "missing_worker_attempts_sections": ["worker_ownership", "bounded_attempts"],
+                },
+                "child_executor_dispatch_retry_scheduler_execution_authorization_coverage": {
+                    "authorization_smoke": True,
+                    "contract_version": "phase-ii-child-executor-dispatch-retry-scheduler-execution-authorization-v1",
+                    "default_status": "blocked",
+                    "default_binding_gate_ready": True,
+                    "default_authorization_ready": False,
+                    "default_missing_sections": ["execution_authorization_request"],
+                    "default_will_schedule_retry": False,
+                    "default_retry_scheduled": False,
+                    "ready_status": "ready",
+                    "ready_authorization_ready": True,
+                    "ready_authorization_source": "runtime_config.child_dispatch_retry_scheduler_execution",
+                    "ready_will_schedule_retry": False,
+                    "ready_retry_scheduled": False,
+                    "production_blocked_status": "blocked",
+                    "production_blocked_sections": ["production_scheduler_gate"],
+                    "missing_durable_status": "blocked",
+                    "missing_durable_sections": ["durable_schedule_state"],
+                    "missing_audit_idempotency_status": "blocked",
+                    "missing_audit_idempotency_sections": ["idempotency_dedupe", "audit_timeline"],
+                    "missing_worker_attempts_status": "blocked",
+                    "missing_worker_attempts_sections": ["worker_ownership", "bounded_attempts"],
+                },
                 "child_executor_sandbox_backend_coverage": {
                     "sandbox_backend_smoke": True,
                     "contract_version": "phase-ii-child-executor-sandbox-worker-backend-v1",
@@ -999,6 +1041,38 @@ class RuntimeContractSnapshotServiceTests(unittest.TestCase):
             by_name["runtime_contract_gate"]["stable_fields"],
         )
         self.assertIn(
+            "runtime_contract_summary.child_executor_dispatch_retry_scheduler_binding_gate_coverage",
+            by_name["runtime_contract_gate"]["stable_fields"],
+        )
+        self.assertIn(
+            "runtime_contract_summary.child_executor_dispatch_retry_scheduler_binding_gate_coverage.binding_smoke",
+            by_name["runtime_contract_gate"]["stable_fields"],
+        )
+        self.assertIn(
+            "runtime_contract_summary.child_executor_dispatch_retry_scheduler_binding_gate_coverage.default_status",
+            by_name["runtime_contract_gate"]["stable_fields"],
+        )
+        self.assertIn(
+            "runtime_contract_summary.child_executor_dispatch_retry_scheduler_binding_gate_coverage.ready_status",
+            by_name["runtime_contract_gate"]["stable_fields"],
+        )
+        self.assertIn(
+            "runtime_contract_summary.child_executor_dispatch_retry_scheduler_execution_authorization_coverage",
+            by_name["runtime_contract_gate"]["stable_fields"],
+        )
+        self.assertIn(
+            "runtime_contract_summary.child_executor_dispatch_retry_scheduler_execution_authorization_coverage.authorization_smoke",
+            by_name["runtime_contract_gate"]["stable_fields"],
+        )
+        self.assertIn(
+            "runtime_contract_summary.child_executor_dispatch_retry_scheduler_execution_authorization_coverage.default_status",
+            by_name["runtime_contract_gate"]["stable_fields"],
+        )
+        self.assertIn(
+            "runtime_contract_summary.child_executor_dispatch_retry_scheduler_execution_authorization_coverage.ready_status",
+            by_name["runtime_contract_gate"]["stable_fields"],
+        )
+        self.assertIn(
             "runtime_contract_summary.child_executor_sandbox_backend_binding_coverage",
             by_name["runtime_contract_gate"]["stable_fields"],
         )
@@ -1102,7 +1176,7 @@ class RuntimeContractSnapshotServiceTests(unittest.TestCase):
         by_name = {item["contract_name"]: item for item in snapshot["contracts"]}
         self.assertEqual(snapshot["overall_status"], "degraded")
         self.assertEqual(snapshot["missing_contract_count"], 1)
-        self.assertEqual(snapshot["missing_field_count"], 99)
+        self.assertEqual(snapshot["missing_field_count"], 107)
         self.assertEqual(by_name["skill_contract"]["status"], "missing")
         self.assertEqual(
             by_name["command_contract"]["missing_fields"],
@@ -1188,6 +1262,14 @@ class RuntimeContractSnapshotServiceTests(unittest.TestCase):
                 "runtime_contract_summary.child_executor_dispatch_retry_scheduler_handoff_coverage.handoff_smoke",
                 "runtime_contract_summary.child_executor_dispatch_retry_scheduler_handoff_coverage.default_status",
                 "runtime_contract_summary.child_executor_dispatch_retry_scheduler_handoff_coverage.bound_status",
+                "runtime_contract_summary.child_executor_dispatch_retry_scheduler_binding_gate_coverage",
+                "runtime_contract_summary.child_executor_dispatch_retry_scheduler_binding_gate_coverage.binding_smoke",
+                "runtime_contract_summary.child_executor_dispatch_retry_scheduler_binding_gate_coverage.default_status",
+                "runtime_contract_summary.child_executor_dispatch_retry_scheduler_binding_gate_coverage.ready_status",
+                "runtime_contract_summary.child_executor_dispatch_retry_scheduler_execution_authorization_coverage",
+                "runtime_contract_summary.child_executor_dispatch_retry_scheduler_execution_authorization_coverage.authorization_smoke",
+                "runtime_contract_summary.child_executor_dispatch_retry_scheduler_execution_authorization_coverage.default_status",
+                "runtime_contract_summary.child_executor_dispatch_retry_scheduler_execution_authorization_coverage.ready_status",
                 "runtime_contract_summary.child_executor_sandbox_backend_binding_coverage",
                 "runtime_contract_summary.child_executor_sandbox_backend_binding_coverage.binding_smoke",
                 "runtime_contract_summary.child_executor_sandbox_backend_binding_coverage.ready_status",

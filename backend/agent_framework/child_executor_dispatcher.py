@@ -27,6 +27,12 @@ CHILD_EXECUTOR_DISPATCH_RESULT_RETRY_AUDIT_POLICY_CONTRACT_VERSION = (
 CHILD_EXECUTOR_DISPATCH_RETRY_SCHEDULER_HANDOFF_CONTRACT_VERSION = (
     "phase-ii-child-executor-dispatch-retry-scheduler-handoff-v1"
 )
+CHILD_EXECUTOR_DISPATCH_RETRY_SCHEDULER_BINDING_GATE_CONTRACT_VERSION = (
+    "phase-ii-child-executor-dispatch-retry-scheduler-binding-gate-v1"
+)
+CHILD_EXECUTOR_DISPATCH_RETRY_SCHEDULER_EXECUTION_AUTHORIZATION_CONTRACT_VERSION = (
+    "phase-ii-child-executor-dispatch-retry-scheduler-execution-authorization-v1"
+)
 
 
 def _utc_now() -> str:
@@ -467,7 +473,7 @@ def build_child_executor_dispatch_retry_scheduler_handoff_contract(
     missing_sections = list(dict.fromkeys(missing_sections))
     ready = not missing_sections
 
-    return {
+    handoff = {
         "contract_version": CHILD_EXECUTOR_DISPATCH_RETRY_SCHEDULER_HANDOFF_CONTRACT_VERSION,
         "overall_status": "ready" if ready else "blocked",
         "ready": ready,
@@ -512,6 +518,295 @@ def build_child_executor_dispatch_retry_scheduler_handoff_contract(
             "start_retry_scheduler_loop",
             "start_child_executor_worker",
             "merge_child_result_into_parent",
+        ],
+    }
+    handoff["retry_scheduler_binding_gate"] = (
+        build_child_executor_dispatch_retry_scheduler_binding_gate_contract(
+            handoff_contract=handoff,
+        )
+    )
+    return handoff
+
+
+def build_child_executor_dispatch_retry_scheduler_binding_gate_contract(
+    *,
+    handoff_contract: Mapping[str, Any] | None = None,
+    retry_scheduler_contract: Mapping[str, Any] | None = None,
+    production_scheduler_gate: Mapping[str, Any] | None = None,
+    scheduler_binding_requested: bool = False,
+    binding_source: str = "",
+    idempotency_dedupe_ready: bool = False,
+    audit_timeline_ready: bool = False,
+    worker_ownership_ready: bool = False,
+    bounded_attempts_ready: bool = False,
+) -> Dict[str, Any]:
+    """Describe whether a child dispatch retry handoff has scheduler binding evidence.
+
+    Binding readiness is still evidence only. This helper never schedules retry
+    work and never starts a retry loop.
+    """
+
+    handoff = dict(handoff_contract or {})
+    scheduler = dict(retry_scheduler_contract or {})
+    production_gate = dict(
+        production_scheduler_gate
+        or scheduler.get("production_scheduler_gate")
+        or {}
+    )
+    handoff_ready = (
+        bool(handoff.get("retry_scheduler_handoff_ready"))
+        or bool(handoff.get("ready"))
+        or _normalize_text(handoff.get("overall_status")) == "ready"
+    )
+    retryable_result_detected = bool(handoff.get("retryable_result_detected"))
+    retry_policy_status = _normalize_text(handoff.get("retry_policy_status"))
+    scheduler_contract_status = _normalize_text(
+        scheduler.get("overall_status")
+        or scheduler.get("status")
+        or scheduler.get("default_status")
+    )
+    scheduler_contract_ready = (
+        bool(scheduler.get("ready"))
+        or bool(scheduler.get("scheduler_ready"))
+        or bool(scheduler.get("enabled"))
+        or scheduler_contract_status in {"ready", "enabled", "executed"}
+    )
+    production_scheduler_gate_status = _normalize_text(
+        production_gate.get("overall_status") or production_gate.get("status")
+    )
+    production_scheduler_gate_ready = (
+        bool(production_gate.get("ready"))
+        or production_scheduler_gate_status == "ready"
+    )
+    binding_source_value = _normalize_text(binding_source)
+    binding_decision_ready = bool(scheduler_binding_requested) and bool(binding_source_value)
+
+    missing_sections: list[str] = []
+    if not handoff:
+        missing_sections.append("retry_scheduler_handoff")
+    if not handoff_ready:
+        missing_sections.append("retry_scheduler_handoff_ready")
+    if not retryable_result_detected:
+        missing_sections.append("retryable_policy")
+    if not binding_decision_ready:
+        missing_sections.append("scheduler_binding_decision")
+    if not scheduler_contract_ready:
+        missing_sections.append("retry_scheduler_contract")
+    if not production_scheduler_gate_ready:
+        missing_sections.append("production_scheduler_gate")
+    if not idempotency_dedupe_ready:
+        missing_sections.append("idempotency_dedupe")
+    if not audit_timeline_ready:
+        missing_sections.append("audit_timeline")
+    if not worker_ownership_ready:
+        missing_sections.append("worker_ownership")
+    if not bounded_attempts_ready:
+        missing_sections.append("bounded_attempts")
+    missing_sections = list(dict.fromkeys(missing_sections))
+    ready = not missing_sections
+
+    gate = {
+        "contract_version": (
+            CHILD_EXECUTOR_DISPATCH_RETRY_SCHEDULER_BINDING_GATE_CONTRACT_VERSION
+        ),
+        "overall_status": "ready" if ready else "blocked",
+        "ready": ready,
+        "scheduler_binding_ready": ready,
+        "scheduler_binding_requested": bool(scheduler_binding_requested),
+        "binding_source": binding_source_value,
+        "handoff_ready": handoff_ready,
+        "retryable_result_detected": retryable_result_detected,
+        "retry_policy_status": retry_policy_status,
+        "scheduler_contract_ready": scheduler_contract_ready,
+        "scheduler_contract_status": scheduler_contract_status,
+        "production_scheduler_gate_status": production_scheduler_gate_status,
+        "production_scheduler_gate_ready": production_scheduler_gate_ready,
+        "idempotency_dedupe_ready": bool(idempotency_dedupe_ready),
+        "audit_timeline_ready": bool(audit_timeline_ready),
+        "worker_ownership_ready": bool(worker_ownership_ready),
+        "bounded_attempts_ready": bool(bounded_attempts_ready),
+        "will_schedule_retry": False,
+        "retry_scheduled": False,
+        "missing_sections": missing_sections,
+        "blocked_reason": "" if ready else (missing_sections[0] if missing_sections else "blocked"),
+        "next_allowed_action": (
+            "record_explicit_retry_scheduler_binding_decision"
+            if not ready
+            else "handoff_to_future_retry_scheduler_executor_boundary"
+        ),
+        "evidence": {
+            "handoff": {
+                "contract_version": _normalize_text(handoff.get("contract_version")),
+                "overall_status": _normalize_text(handoff.get("overall_status")),
+                "retry_policy_status": retry_policy_status,
+                "will_schedule_retry": bool(handoff.get("will_schedule_retry")),
+            },
+            "retry_scheduler": {
+                "contract_version": _normalize_text(scheduler.get("contract_version")),
+                "status": scheduler_contract_status,
+                "ready": scheduler_contract_ready,
+            },
+            "production_scheduler_gate": {
+                "contract_version": _normalize_text(production_gate.get("contract_version")),
+                "status": production_scheduler_gate_status,
+                "ready": production_scheduler_gate_ready,
+            },
+        },
+        "non_goals": [
+            "schedule_child_executor_retry",
+            "execute_retry",
+            "start_retry_scheduler_loop",
+            "start_child_executor_worker",
+            "merge_child_result_into_parent",
+            "enable_production_automatic_retry",
+        ],
+    }
+    gate["retry_scheduler_execution_authorization"] = (
+        build_child_executor_dispatch_retry_scheduler_execution_authorization_contract(
+            retry_scheduler_binding_gate=gate,
+        )
+    )
+    return gate
+
+
+def build_child_executor_dispatch_retry_scheduler_execution_authorization_contract(
+    *,
+    retry_scheduler_binding_gate: Mapping[str, Any] | None = None,
+    retry_scheduler_contract: Mapping[str, Any] | None = None,
+    production_scheduler_gate: Mapping[str, Any] | None = None,
+    explicit_authorization_requested: bool = False,
+    authorization_source: str = "",
+    durable_schedule_ready: bool = False,
+    idempotency_dedupe_ready: bool = False,
+    audit_timeline_ready: bool = False,
+    worker_ownership_ready: bool = False,
+    bounded_attempts_ready: bool = False,
+) -> Dict[str, Any]:
+    """Dry-run a future retry scheduler execution authorization decision.
+
+    This helper only reports readiness evidence. It never writes retry schedule
+    state, invokes a scheduler, or starts a worker.
+    """
+
+    binding_gate = dict(retry_scheduler_binding_gate or {})
+    scheduler = dict(retry_scheduler_contract or {})
+    production_gate = dict(
+        production_scheduler_gate
+        or scheduler.get("production_scheduler_gate")
+        or binding_gate.get("evidence", {}).get("production_scheduler_gate")
+        or {}
+    )
+    binding_gate_status = _normalize_text(
+        binding_gate.get("overall_status") or binding_gate.get("status")
+    )
+    binding_gate_ready = (
+        bool(binding_gate.get("execution_authorization_ready"))
+        or bool(binding_gate.get("scheduler_binding_ready"))
+        or bool(binding_gate.get("ready"))
+        or binding_gate_status == "ready"
+    )
+    scheduler_contract_status = _normalize_text(
+        scheduler.get("overall_status")
+        or scheduler.get("status")
+        or scheduler.get("default_status")
+    )
+    scheduler_contract_ready = (
+        bool(scheduler.get("ready"))
+        or bool(scheduler.get("scheduler_ready"))
+        or bool(scheduler.get("enabled"))
+        or scheduler_contract_status in {"ready", "enabled", "executed"}
+    )
+    production_scheduler_gate_status = _normalize_text(
+        production_gate.get("overall_status") or production_gate.get("status")
+    )
+    production_scheduler_gate_ready = (
+        bool(production_gate.get("ready"))
+        or production_scheduler_gate_status == "ready"
+    )
+    authorization_source_value = _normalize_text(authorization_source)
+    explicit_authorization_ready = bool(explicit_authorization_requested) and bool(
+        authorization_source_value
+    )
+
+    missing_sections: list[str] = []
+    if not binding_gate:
+        missing_sections.append("retry_scheduler_binding_gate")
+    if not binding_gate_ready:
+        missing_sections.append("retry_scheduler_binding_gate_ready")
+    if not explicit_authorization_ready:
+        missing_sections.append("execution_authorization_request")
+    if not scheduler_contract_ready:
+        missing_sections.append("retry_scheduler_contract")
+    if not production_scheduler_gate_ready:
+        missing_sections.append("production_scheduler_gate")
+    if not durable_schedule_ready:
+        missing_sections.append("durable_schedule_state")
+    if not idempotency_dedupe_ready:
+        missing_sections.append("idempotency_dedupe")
+    if not audit_timeline_ready:
+        missing_sections.append("audit_timeline")
+    if not worker_ownership_ready:
+        missing_sections.append("worker_ownership")
+    if not bounded_attempts_ready:
+        missing_sections.append("bounded_attempts")
+    missing_sections = list(dict.fromkeys(missing_sections))
+    ready = not missing_sections
+
+    return {
+        "contract_version": (
+            CHILD_EXECUTOR_DISPATCH_RETRY_SCHEDULER_EXECUTION_AUTHORIZATION_CONTRACT_VERSION
+        ),
+        "overall_status": "ready" if ready else "blocked",
+        "ready": ready,
+        "execution_authorization_ready": ready,
+        "binding_gate_ready": binding_gate_ready,
+        "binding_gate_status": binding_gate_status,
+        "explicit_authorization_requested": bool(explicit_authorization_requested),
+        "authorization_source": authorization_source_value,
+        "scheduler_contract_ready": scheduler_contract_ready,
+        "scheduler_contract_status": scheduler_contract_status,
+        "production_scheduler_gate_status": production_scheduler_gate_status,
+        "production_scheduler_gate_ready": production_scheduler_gate_ready,
+        "durable_schedule_ready": bool(durable_schedule_ready),
+        "idempotency_dedupe_ready": bool(idempotency_dedupe_ready),
+        "audit_timeline_ready": bool(audit_timeline_ready),
+        "worker_ownership_ready": bool(worker_ownership_ready),
+        "bounded_attempts_ready": bool(bounded_attempts_ready),
+        "will_schedule_retry": False,
+        "retry_scheduled": False,
+        "missing_sections": missing_sections,
+        "blocked_reason": "" if ready else (missing_sections[0] if missing_sections else "blocked"),
+        "next_allowed_action": (
+            "record_explicit_retry_scheduler_execution_authorization"
+            if not ready
+            else "handoff_to_future_retry_scheduler_execution_boundary"
+        ),
+        "evidence": {
+            "binding_gate": {
+                "contract_version": _normalize_text(binding_gate.get("contract_version")),
+                "overall_status": binding_gate_status,
+                "ready": binding_gate_ready,
+                "will_schedule_retry": bool(binding_gate.get("will_schedule_retry")),
+            },
+            "retry_scheduler": {
+                "contract_version": _normalize_text(scheduler.get("contract_version")),
+                "status": scheduler_contract_status,
+                "ready": scheduler_contract_ready,
+            },
+            "production_scheduler_gate": {
+                "contract_version": _normalize_text(production_gate.get("contract_version")),
+                "status": production_scheduler_gate_status,
+                "ready": production_scheduler_gate_ready,
+            },
+        },
+        "non_goals": [
+            "schedule_child_executor_retry",
+            "write_retry_schedule_state",
+            "execute_retry",
+            "start_retry_scheduler_loop",
+            "start_child_executor_worker",
+            "merge_child_result_into_parent",
+            "enable_production_automatic_retry",
         ],
     }
 

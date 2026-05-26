@@ -4,12 +4,16 @@ from backend.agent_framework.child_executor_dispatcher import (
     CHILD_EXECUTOR_DISPATCH_ATTEMPT_HANDOFF_CONTRACT_VERSION,
     CHILD_EXECUTOR_DISPATCH_RESULT_HANDOFF_CONTRACT_VERSION,
     CHILD_EXECUTOR_DISPATCH_RESULT_RETRY_AUDIT_POLICY_CONTRACT_VERSION,
+    CHILD_EXECUTOR_DISPATCH_RETRY_SCHEDULER_BINDING_GATE_CONTRACT_VERSION,
+    CHILD_EXECUTOR_DISPATCH_RETRY_SCHEDULER_EXECUTION_AUTHORIZATION_CONTRACT_VERSION,
     CHILD_EXECUTOR_DISPATCH_RETRY_SCHEDULER_HANDOFF_CONTRACT_VERSION,
     CHILD_EXECUTOR_DISPATCHER_CONTRACT_VERSION,
     ChildExecutorDispatcher,
     build_child_executor_dispatch_attempt_handoff_contract,
     build_child_executor_dispatch_result_handoff_contract,
     build_child_executor_dispatch_result_retry_audit_policy_contract,
+    build_child_executor_dispatch_retry_scheduler_binding_gate_contract,
+    build_child_executor_dispatch_retry_scheduler_execution_authorization_contract,
     build_child_executor_dispatch_retry_scheduler_handoff_contract,
     build_child_executor_dispatcher_contract,
 )
@@ -426,6 +430,14 @@ class ChildExecutorDispatcherTests(unittest.TestCase):
         self.assertTrue(scheduler_handoff["audit_evidence_ready"])
         self.assertIn("scheduler_binding", scheduler_handoff["missing_sections"])
         self.assertFalse(scheduler_handoff["will_schedule_retry"])
+        binding_gate = scheduler_handoff["retry_scheduler_binding_gate"]
+        self.assertEqual(
+            binding_gate["contract_version"],
+            CHILD_EXECUTOR_DISPATCH_RETRY_SCHEDULER_BINDING_GATE_CONTRACT_VERSION,
+        )
+        self.assertEqual(binding_gate["overall_status"], "blocked")
+        self.assertIn("scheduler_binding_decision", binding_gate["missing_sections"])
+        self.assertFalse(binding_gate["will_schedule_retry"])
 
     def test_dispatch_result_retry_audit_policy_requires_idempotency_for_retryable_failure(self):
         policy = build_child_executor_dispatch_result_retry_audit_policy_contract(
@@ -518,6 +530,304 @@ class ChildExecutorDispatcherTests(unittest.TestCase):
         self.assertTrue(handoff["retryable_result_detected"])
         self.assertEqual(handoff["missing_sections"], [])
         self.assertFalse(handoff["will_schedule_retry"])
+
+    def test_dispatch_retry_scheduler_binding_gate_defaults_blocked(self):
+        policy = build_child_executor_dispatch_result_retry_audit_policy_contract(
+            result_handoff={
+                "overall_status": "blocked",
+                "ready": False,
+                "dispatch_status": "dispatched",
+                "backend_result_status": "failed",
+                "backend_result_error_code": "sandbox_timeout",
+                "retryable": True,
+                "audit_evidence_present": True,
+                "idempotency_key": "child-dispatch:attempt-1",
+            }
+        )
+        handoff = build_child_executor_dispatch_retry_scheduler_handoff_contract(
+            retry_audit_policy=policy,
+            scheduler_bound=True,
+        )
+
+        gate = build_child_executor_dispatch_retry_scheduler_binding_gate_contract(
+            handoff_contract=handoff
+        )
+
+        self.assertEqual(gate["overall_status"], "blocked")
+        self.assertTrue(gate["handoff_ready"])
+        self.assertIn("scheduler_binding_decision", gate["missing_sections"])
+        self.assertIn("production_scheduler_gate", gate["missing_sections"])
+        self.assertFalse(gate["will_schedule_retry"])
+        execution_authorization = gate["retry_scheduler_execution_authorization"]
+        self.assertEqual(
+            execution_authorization["contract_version"],
+            CHILD_EXECUTOR_DISPATCH_RETRY_SCHEDULER_EXECUTION_AUTHORIZATION_CONTRACT_VERSION,
+        )
+        self.assertEqual(execution_authorization["overall_status"], "blocked")
+        self.assertIn(
+            "execution_authorization_request",
+            execution_authorization["missing_sections"],
+        )
+        self.assertFalse(execution_authorization["will_schedule_retry"])
+
+    def test_dispatch_retry_scheduler_binding_gate_can_be_ready_but_never_schedules(self):
+        policy = build_child_executor_dispatch_result_retry_audit_policy_contract(
+            result_handoff={
+                "overall_status": "blocked",
+                "ready": False,
+                "dispatch_status": "dispatched",
+                "backend_result_status": "failed",
+                "backend_result_error_code": "sandbox_timeout",
+                "retryable": True,
+                "audit_evidence_present": True,
+                "idempotency_key": "child-dispatch:attempt-1",
+            }
+        )
+        handoff = build_child_executor_dispatch_retry_scheduler_handoff_contract(
+            retry_audit_policy=policy,
+            scheduler_bound=True,
+        )
+
+        gate = build_child_executor_dispatch_retry_scheduler_binding_gate_contract(
+            handoff_contract=handoff,
+            retry_scheduler_contract={"overall_status": "ready", "ready": True},
+            production_scheduler_gate={"overall_status": "ready", "ready": True},
+            scheduler_binding_requested=True,
+            binding_source="runtime_config.child_dispatch_retry_scheduler",
+            idempotency_dedupe_ready=True,
+            audit_timeline_ready=True,
+            worker_ownership_ready=True,
+            bounded_attempts_ready=True,
+        )
+
+        self.assertEqual(gate["overall_status"], "ready")
+        self.assertTrue(gate["scheduler_binding_ready"])
+        self.assertEqual(
+            gate["binding_source"],
+            "runtime_config.child_dispatch_retry_scheduler",
+        )
+        self.assertEqual(gate["missing_sections"], [])
+        self.assertFalse(gate["will_schedule_retry"])
+
+    def test_dispatch_retry_scheduler_binding_gate_blocks_production_scheduler_gate(self):
+        handoff = {
+            "overall_status": "ready",
+            "retry_scheduler_handoff_ready": True,
+            "retryable_result_detected": True,
+            "retry_policy_status": "retryable",
+            "will_schedule_retry": False,
+        }
+
+        gate = build_child_executor_dispatch_retry_scheduler_binding_gate_contract(
+            handoff_contract=handoff,
+            retry_scheduler_contract={"overall_status": "ready", "ready": True},
+            production_scheduler_gate={"overall_status": "blocked"},
+            scheduler_binding_requested=True,
+            binding_source="runtime_config.child_dispatch_retry_scheduler",
+            idempotency_dedupe_ready=True,
+            audit_timeline_ready=True,
+            worker_ownership_ready=True,
+            bounded_attempts_ready=True,
+        )
+
+        self.assertEqual(gate["overall_status"], "blocked")
+        self.assertIn("production_scheduler_gate", gate["missing_sections"])
+        self.assertFalse(gate["will_schedule_retry"])
+
+    def test_dispatch_retry_scheduler_binding_gate_blocks_missing_audit_and_idempotency(self):
+        handoff = {
+            "overall_status": "ready",
+            "retry_scheduler_handoff_ready": True,
+            "retryable_result_detected": True,
+            "retry_policy_status": "retryable",
+            "will_schedule_retry": False,
+        }
+
+        gate = build_child_executor_dispatch_retry_scheduler_binding_gate_contract(
+            handoff_contract=handoff,
+            retry_scheduler_contract={"overall_status": "ready", "ready": True},
+            production_scheduler_gate={"overall_status": "ready", "ready": True},
+            scheduler_binding_requested=True,
+            binding_source="runtime_config.child_dispatch_retry_scheduler",
+            worker_ownership_ready=True,
+            bounded_attempts_ready=True,
+        )
+
+        self.assertEqual(gate["overall_status"], "blocked")
+        self.assertIn("idempotency_dedupe", gate["missing_sections"])
+        self.assertIn("audit_timeline", gate["missing_sections"])
+        self.assertFalse(gate["will_schedule_retry"])
+
+    def test_dispatch_retry_scheduler_binding_gate_blocks_missing_worker_and_bounded_attempts(self):
+        handoff = {
+            "overall_status": "ready",
+            "retry_scheduler_handoff_ready": True,
+            "retryable_result_detected": True,
+            "retry_policy_status": "retryable",
+            "will_schedule_retry": False,
+        }
+
+        gate = build_child_executor_dispatch_retry_scheduler_binding_gate_contract(
+            handoff_contract=handoff,
+            retry_scheduler_contract={"overall_status": "ready", "ready": True},
+            production_scheduler_gate={"overall_status": "ready", "ready": True},
+            scheduler_binding_requested=True,
+            binding_source="runtime_config.child_dispatch_retry_scheduler",
+            idempotency_dedupe_ready=True,
+            audit_timeline_ready=True,
+        )
+
+        self.assertEqual(gate["overall_status"], "blocked")
+        self.assertIn("worker_ownership", gate["missing_sections"])
+        self.assertIn("bounded_attempts", gate["missing_sections"])
+        self.assertFalse(gate["will_schedule_retry"])
+
+    def test_dispatch_retry_scheduler_execution_authorization_defaults_blocked(self):
+        gate = {
+            "overall_status": "ready",
+            "ready": True,
+            "scheduler_binding_ready": True,
+            "will_schedule_retry": False,
+        }
+
+        authorization = build_child_executor_dispatch_retry_scheduler_execution_authorization_contract(
+            retry_scheduler_binding_gate=gate
+        )
+
+        self.assertEqual(authorization["overall_status"], "blocked")
+        self.assertTrue(authorization["binding_gate_ready"])
+        self.assertIn("execution_authorization_request", authorization["missing_sections"])
+        self.assertIn("durable_schedule_state", authorization["missing_sections"])
+        self.assertFalse(authorization["will_schedule_retry"])
+        self.assertFalse(authorization["retry_scheduled"])
+
+    def test_dispatch_retry_scheduler_execution_authorization_can_be_ready_but_never_schedules(self):
+        gate = {
+            "overall_status": "ready",
+            "ready": True,
+            "scheduler_binding_ready": True,
+            "will_schedule_retry": False,
+        }
+
+        authorization = build_child_executor_dispatch_retry_scheduler_execution_authorization_contract(
+            retry_scheduler_binding_gate=gate,
+            retry_scheduler_contract={"overall_status": "ready", "ready": True},
+            production_scheduler_gate={"overall_status": "ready", "ready": True},
+            explicit_authorization_requested=True,
+            authorization_source="runtime_config.child_dispatch_retry_scheduler_execution",
+            durable_schedule_ready=True,
+            idempotency_dedupe_ready=True,
+            audit_timeline_ready=True,
+            worker_ownership_ready=True,
+            bounded_attempts_ready=True,
+        )
+
+        self.assertEqual(authorization["overall_status"], "ready")
+        self.assertTrue(authorization["execution_authorization_ready"])
+        self.assertEqual(
+            authorization["authorization_source"],
+            "runtime_config.child_dispatch_retry_scheduler_execution",
+        )
+        self.assertEqual(authorization["missing_sections"], [])
+        self.assertFalse(authorization["will_schedule_retry"])
+        self.assertFalse(authorization["retry_scheduled"])
+
+    def test_dispatch_retry_scheduler_execution_authorization_blocks_production_scheduler_gate(self):
+        gate = {
+            "overall_status": "ready",
+            "ready": True,
+            "scheduler_binding_ready": True,
+            "will_schedule_retry": False,
+        }
+
+        authorization = build_child_executor_dispatch_retry_scheduler_execution_authorization_contract(
+            retry_scheduler_binding_gate=gate,
+            retry_scheduler_contract={"overall_status": "ready", "ready": True},
+            production_scheduler_gate={"overall_status": "blocked"},
+            explicit_authorization_requested=True,
+            authorization_source="runtime_config.child_dispatch_retry_scheduler_execution",
+            durable_schedule_ready=True,
+            idempotency_dedupe_ready=True,
+            audit_timeline_ready=True,
+            worker_ownership_ready=True,
+            bounded_attempts_ready=True,
+        )
+
+        self.assertEqual(authorization["overall_status"], "blocked")
+        self.assertIn("production_scheduler_gate", authorization["missing_sections"])
+        self.assertFalse(authorization["will_schedule_retry"])
+
+    def test_dispatch_retry_scheduler_execution_authorization_blocks_missing_durable_schedule(self):
+        gate = {
+            "overall_status": "ready",
+            "ready": True,
+            "scheduler_binding_ready": True,
+            "will_schedule_retry": False,
+        }
+
+        authorization = build_child_executor_dispatch_retry_scheduler_execution_authorization_contract(
+            retry_scheduler_binding_gate=gate,
+            retry_scheduler_contract={"overall_status": "ready", "ready": True},
+            production_scheduler_gate={"overall_status": "ready", "ready": True},
+            explicit_authorization_requested=True,
+            authorization_source="runtime_config.child_dispatch_retry_scheduler_execution",
+            idempotency_dedupe_ready=True,
+            audit_timeline_ready=True,
+            worker_ownership_ready=True,
+            bounded_attempts_ready=True,
+        )
+
+        self.assertEqual(authorization["overall_status"], "blocked")
+        self.assertIn("durable_schedule_state", authorization["missing_sections"])
+        self.assertFalse(authorization["retry_scheduled"])
+
+    def test_dispatch_retry_scheduler_execution_authorization_blocks_missing_audit_and_idempotency(self):
+        gate = {
+            "overall_status": "ready",
+            "ready": True,
+            "scheduler_binding_ready": True,
+            "will_schedule_retry": False,
+        }
+
+        authorization = build_child_executor_dispatch_retry_scheduler_execution_authorization_contract(
+            retry_scheduler_binding_gate=gate,
+            retry_scheduler_contract={"overall_status": "ready", "ready": True},
+            production_scheduler_gate={"overall_status": "ready", "ready": True},
+            explicit_authorization_requested=True,
+            authorization_source="runtime_config.child_dispatch_retry_scheduler_execution",
+            durable_schedule_ready=True,
+            worker_ownership_ready=True,
+            bounded_attempts_ready=True,
+        )
+
+        self.assertEqual(authorization["overall_status"], "blocked")
+        self.assertIn("idempotency_dedupe", authorization["missing_sections"])
+        self.assertIn("audit_timeline", authorization["missing_sections"])
+        self.assertFalse(authorization["will_schedule_retry"])
+
+    def test_dispatch_retry_scheduler_execution_authorization_blocks_missing_worker_and_bounded_attempts(self):
+        gate = {
+            "overall_status": "ready",
+            "ready": True,
+            "scheduler_binding_ready": True,
+            "will_schedule_retry": False,
+        }
+
+        authorization = build_child_executor_dispatch_retry_scheduler_execution_authorization_contract(
+            retry_scheduler_binding_gate=gate,
+            retry_scheduler_contract={"overall_status": "ready", "ready": True},
+            production_scheduler_gate={"overall_status": "ready", "ready": True},
+            explicit_authorization_requested=True,
+            authorization_source="runtime_config.child_dispatch_retry_scheduler_execution",
+            durable_schedule_ready=True,
+            idempotency_dedupe_ready=True,
+            audit_timeline_ready=True,
+        )
+
+        self.assertEqual(authorization["overall_status"], "blocked")
+        self.assertIn("worker_ownership", authorization["missing_sections"])
+        self.assertIn("bounded_attempts", authorization["missing_sections"])
+        self.assertFalse(authorization["will_schedule_retry"])
 
 
 if __name__ == "__main__":

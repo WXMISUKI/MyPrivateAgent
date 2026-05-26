@@ -1093,7 +1093,56 @@ II-1 第一刀当前未做：
 - mapper payload 只能保留源事件身份和关键摘要，不应把完整事件体复制进 timeline。
 - 当前 `overall_status = design_ready`，后续通道接线完成后才能提升状态。
 
-## 12. Contract Snapshot
+## 12. Child Executor Dispatch Retry Scheduler Binding Gate
+
+主要来源：
+
+- `backend/agent_framework/child_executor_dispatcher.py`
+- `backend/scripts/runtime_contract_smoke.py`
+- `backend/scripts/quality_gate_report.py`
+- `backend/services/runtime_contract_gate_service.py`
+- `backend/services/runtime_contract_snapshot_service.py`
+
+当前状态：
+
+- `child_executor_dispatch_retry_scheduler_binding_gate` 已作为只读 binding gate 暴露，承接 dispatch retry scheduler handoff evidence 与显式 scheduler binding decision。
+- 默认无显式 binding decision 时保持 `overall_status = blocked`，并在 `missing_sections` 中报告 `scheduler_binding_decision`。
+- 即使 handoff evidence、scheduler contract、production scheduler gate、idempotency/dedupe、audit timeline、worker ownership 与 bounded attempts 都齐备，也只允许报告 `ready`，仍保持 `will_schedule_retry = false`。
+- Runtime smoke、Quality Gate summary、Runtime Contract Gate、health trace normalization 与 Snapshot 已纳入 `child_executor_dispatch_retry_scheduler_binding_gate_coverage`。
+
+维护约束：
+
+- 该 gate 只能表达是否具备把 retryable dispatch result 交给 retry scheduler 的机器可读前置证据，不得实际调度 retry。
+- `ready` 不等于 production scheduling authorization；生产调度仍需后续显式 change 接线。
+- 新增 binding source、scheduler gate 字段或执行语义前，必须同步 OpenSpec、runtime smoke、Quality Gate summary、Runtime Contract Gate 和 Snapshot。
+- 缺失 handoff、audit/idempotency、worker ownership、bounded attempts 或 production scheduler gate evidence 时必须 fail closed。
+
+## 13. Child Executor Dispatch Retry Scheduler Execution Authorization Dry-Run
+
+主要来源：
+
+- `backend/agent_framework/child_executor_dispatcher.py`
+- `backend/scripts/runtime_contract_smoke.py`
+- `backend/scripts/quality_gate_report.py`
+- `backend/services/runtime_contract_gate_service.py`
+- `backend/services/runtime_contract_snapshot_service.py`
+
+当前状态：
+
+- `child_executor_dispatch_retry_scheduler_execution_authorization` 已作为只读 dry-run gate 暴露在 retry scheduler binding gate 下，用于说明 binding gate evidence 是否足以进入未来 scheduler execution authorization review。
+- 默认没有显式 execution authorization request 时保持 `overall_status = blocked`，并在 `missing_sections` 中报告 `execution_authorization_request`。
+- 只有 binding gate、显式授权来源、scheduler contract、production scheduler gate、durable schedule state、idempotency/dedupe、audit timeline、worker ownership 与 bounded attempts 都齐备时，dry-run 才可报告 `ready`。
+- 即使 dry-run 报告 `ready`，仍固定 `will_schedule_retry = false` 与 `retry_scheduled = false`，不写 schedule state、不启动 worker、不默认启用 retry scheduler。
+- Runtime smoke、Quality Gate summary、Runtime Contract Gate、health trace normalization 与 Snapshot 已纳入 `child_executor_dispatch_retry_scheduler_execution_authorization_coverage`。
+
+维护约束：
+
+- 不得从 binding gate ready 自动推导 production scheduler execution authorization。
+- 缺失 production scheduler gate、durable schedule state、idempotency/dedupe、audit timeline、worker ownership 或 bounded attempts evidence 时必须 fail closed。
+- 新增实际 scheduler execution、durable schedule writer 或 worker retry loop 前，必须另开显式 OpenSpec change，并同步 runtime smoke、Quality Gate summary、Runtime Contract Gate、health trace normalization 与 Snapshot。
+- `ready` 只代表授权审查 evidence dry-run ready，不代表 retry 已调度、worker 已启动或默认 scheduler 已启用。
+
+## 14. Contract Snapshot
 
 主要来源：
 

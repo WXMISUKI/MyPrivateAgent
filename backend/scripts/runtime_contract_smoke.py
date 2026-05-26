@@ -34,6 +34,8 @@ try:
         build_child_executor_dispatch_attempt_handoff_contract,
         build_child_executor_dispatch_result_handoff_contract,
         build_child_executor_dispatch_result_retry_audit_policy_contract,
+        build_child_executor_dispatch_retry_scheduler_binding_gate_contract,
+        build_child_executor_dispatch_retry_scheduler_execution_authorization_contract,
         build_child_executor_dispatch_retry_scheduler_handoff_contract,
     )
     from agent_framework.child_executor_backends import (
@@ -84,6 +86,8 @@ except ModuleNotFoundError:  # pragma: no cover - package import compatibility
         build_child_executor_dispatch_attempt_handoff_contract,
         build_child_executor_dispatch_result_handoff_contract,
         build_child_executor_dispatch_result_retry_audit_policy_contract,
+        build_child_executor_dispatch_retry_scheduler_binding_gate_contract,
+        build_child_executor_dispatch_retry_scheduler_execution_authorization_contract,
         build_child_executor_dispatch_retry_scheduler_handoff_contract,
     )
     from backend.agent_framework.child_executor_backends import (
@@ -313,6 +317,24 @@ def main() -> int:
             {
                 "name": "child_executor_dispatch_retry_scheduler_handoff",
                 **child_executor_dispatch_retry_scheduler_handoff_result,
+            }
+        )
+        child_executor_dispatch_retry_scheduler_binding_gate_result = (
+            _run_child_executor_dispatch_retry_scheduler_binding_gate_contract_check()
+        )
+        checks.append(
+            {
+                "name": "child_executor_dispatch_retry_scheduler_binding_gate",
+                **child_executor_dispatch_retry_scheduler_binding_gate_result,
+            }
+        )
+        child_executor_dispatch_retry_scheduler_execution_authorization_result = (
+            _run_child_executor_dispatch_retry_scheduler_execution_authorization_contract_check()
+        )
+        checks.append(
+            {
+                "name": "child_executor_dispatch_retry_scheduler_execution_authorization",
+                **child_executor_dispatch_retry_scheduler_execution_authorization_result,
             }
         )
         child_executor_sandbox_backend_binding_result = (
@@ -3444,6 +3466,348 @@ def _run_child_executor_dispatch_retry_scheduler_handoff_contract_check() -> dic
         "bound_scheduler_bound": bool(bound_handoff.get("scheduler_bound")),
         "bound_will_schedule_retry": bool(bound_handoff.get("will_schedule_retry")),
         "failure_reason": "" if ok else "child_executor_dispatch_retry_scheduler_handoff_incomplete",
+    }
+
+
+def _run_child_executor_dispatch_retry_scheduler_binding_gate_contract_check() -> dict:
+    retryable_policy = build_child_executor_dispatch_result_retry_audit_policy_contract(
+        result_handoff={
+            "overall_status": "blocked",
+            "ready": False,
+            "dispatch_status": "dispatched",
+            "backend_result_status": "failed",
+            "backend_result_error_code": "sandbox_timeout",
+            "retryable": True,
+            "audit_evidence_present": True,
+            "idempotency_key": "child-dispatch:retryable",
+            "missing_sections": ["backend_result"],
+        }
+    )
+    ready_handoff = build_child_executor_dispatch_retry_scheduler_handoff_contract(
+        retry_audit_policy=retryable_policy,
+        scheduler_bound=True,
+    )
+    default_gate = build_child_executor_dispatch_retry_scheduler_binding_gate_contract(
+        handoff_contract=ready_handoff
+    )
+    ready_gate = build_child_executor_dispatch_retry_scheduler_binding_gate_contract(
+        handoff_contract=ready_handoff,
+        retry_scheduler_contract={"overall_status": "ready", "ready": True},
+        production_scheduler_gate={"overall_status": "ready", "ready": True},
+        scheduler_binding_requested=True,
+        binding_source="runtime_config.child_dispatch_retry_scheduler",
+        idempotency_dedupe_ready=True,
+        audit_timeline_ready=True,
+        worker_ownership_ready=True,
+        bounded_attempts_ready=True,
+    )
+    production_blocked_gate = build_child_executor_dispatch_retry_scheduler_binding_gate_contract(
+        handoff_contract=ready_handoff,
+        retry_scheduler_contract={"overall_status": "ready", "ready": True},
+        production_scheduler_gate={
+            "overall_status": "blocked",
+            "missing_sections": ["durable_scheduling_state"],
+        },
+        scheduler_binding_requested=True,
+        binding_source="runtime_config.child_dispatch_retry_scheduler",
+        idempotency_dedupe_ready=True,
+        audit_timeline_ready=True,
+        worker_ownership_ready=True,
+        bounded_attempts_ready=True,
+    )
+    missing_audit_idempotency_gate = build_child_executor_dispatch_retry_scheduler_binding_gate_contract(
+        handoff_contract=ready_handoff,
+        retry_scheduler_contract={"overall_status": "ready", "ready": True},
+        production_scheduler_gate={"overall_status": "ready", "ready": True},
+        scheduler_binding_requested=True,
+        binding_source="runtime_config.child_dispatch_retry_scheduler",
+        worker_ownership_ready=True,
+        bounded_attempts_ready=True,
+    )
+    missing_worker_attempts_gate = build_child_executor_dispatch_retry_scheduler_binding_gate_contract(
+        handoff_contract=ready_handoff,
+        retry_scheduler_contract={"overall_status": "ready", "ready": True},
+        production_scheduler_gate={"overall_status": "ready", "ready": True},
+        scheduler_binding_requested=True,
+        binding_source="runtime_config.child_dispatch_retry_scheduler",
+        idempotency_dedupe_ready=True,
+        audit_timeline_ready=True,
+    )
+    default_ok = (
+        str(default_gate.get("overall_status") or "").strip() == "blocked"
+        and bool(default_gate.get("handoff_ready"))
+        and "scheduler_binding_decision"
+        in [str(item) for item in (default_gate.get("missing_sections") or [])]
+        and not bool(default_gate.get("will_schedule_retry"))
+    )
+    ready_ok = (
+        str(ready_gate.get("overall_status") or "").strip() == "ready"
+        and bool(ready_gate.get("scheduler_binding_ready"))
+        and str(ready_gate.get("binding_source") or "").strip()
+        == "runtime_config.child_dispatch_retry_scheduler"
+        and not bool(ready_gate.get("will_schedule_retry"))
+    )
+    production_blocked_ok = (
+        str(production_blocked_gate.get("overall_status") or "").strip() == "blocked"
+        and "production_scheduler_gate"
+        in [str(item) for item in (production_blocked_gate.get("missing_sections") or [])]
+        and not bool(production_blocked_gate.get("will_schedule_retry"))
+    )
+    missing_audit_idempotency_ok = (
+        str(missing_audit_idempotency_gate.get("overall_status") or "").strip()
+        == "blocked"
+        and "idempotency_dedupe"
+        in [str(item) for item in (missing_audit_idempotency_gate.get("missing_sections") or [])]
+        and "audit_timeline"
+        in [str(item) for item in (missing_audit_idempotency_gate.get("missing_sections") or [])]
+        and not bool(missing_audit_idempotency_gate.get("will_schedule_retry"))
+    )
+    missing_worker_attempts_ok = (
+        str(missing_worker_attempts_gate.get("overall_status") or "").strip()
+        == "blocked"
+        and "worker_ownership"
+        in [str(item) for item in (missing_worker_attempts_gate.get("missing_sections") or [])]
+        and "bounded_attempts"
+        in [str(item) for item in (missing_worker_attempts_gate.get("missing_sections") or [])]
+        and not bool(missing_worker_attempts_gate.get("will_schedule_retry"))
+    )
+    ok = (
+        default_ok
+        and ready_ok
+        and production_blocked_ok
+        and missing_audit_idempotency_ok
+        and missing_worker_attempts_ok
+    )
+    return {
+        "ok": ok,
+        "contract_version": str(default_gate.get("contract_version") or ""),
+        "default_status": str(default_gate.get("overall_status") or ""),
+        "default_handoff_ready": bool(default_gate.get("handoff_ready")),
+        "default_binding_ready": bool(default_gate.get("scheduler_binding_ready")),
+        "default_missing_sections": [
+            str(item) for item in (default_gate.get("missing_sections") or [])
+        ],
+        "default_will_schedule_retry": bool(default_gate.get("will_schedule_retry")),
+        "ready_status": str(ready_gate.get("overall_status") or ""),
+        "ready_binding_ready": bool(ready_gate.get("scheduler_binding_ready")),
+        "ready_binding_source": str(ready_gate.get("binding_source") or ""),
+        "ready_will_schedule_retry": bool(ready_gate.get("will_schedule_retry")),
+        "production_blocked_status": str(production_blocked_gate.get("overall_status") or ""),
+        "production_blocked_sections": [
+            str(item) for item in (production_blocked_gate.get("missing_sections") or [])
+        ],
+        "missing_audit_idempotency_status": str(
+            missing_audit_idempotency_gate.get("overall_status") or ""
+        ),
+        "missing_audit_idempotency_sections": [
+            str(item)
+            for item in (missing_audit_idempotency_gate.get("missing_sections") or [])
+        ],
+        "missing_worker_attempts_status": str(
+            missing_worker_attempts_gate.get("overall_status") or ""
+        ),
+        "missing_worker_attempts_sections": [
+            str(item)
+            for item in (missing_worker_attempts_gate.get("missing_sections") or [])
+        ],
+        "failure_reason": "" if ok else "child_executor_dispatch_retry_scheduler_binding_gate_incomplete",
+    }
+
+
+def _run_child_executor_dispatch_retry_scheduler_execution_authorization_contract_check() -> dict:
+    binding_gate = {
+        "overall_status": "ready",
+        "ready": True,
+        "scheduler_binding_ready": True,
+        "will_schedule_retry": False,
+    }
+    default_authorization = (
+        build_child_executor_dispatch_retry_scheduler_execution_authorization_contract(
+            retry_scheduler_binding_gate=binding_gate
+        )
+    )
+    ready_authorization = (
+        build_child_executor_dispatch_retry_scheduler_execution_authorization_contract(
+            retry_scheduler_binding_gate=binding_gate,
+            retry_scheduler_contract={"overall_status": "ready", "ready": True},
+            production_scheduler_gate={"overall_status": "ready", "ready": True},
+            explicit_authorization_requested=True,
+            authorization_source="runtime_config.child_dispatch_retry_scheduler_execution",
+            durable_schedule_ready=True,
+            idempotency_dedupe_ready=True,
+            audit_timeline_ready=True,
+            worker_ownership_ready=True,
+            bounded_attempts_ready=True,
+        )
+    )
+    production_blocked_authorization = (
+        build_child_executor_dispatch_retry_scheduler_execution_authorization_contract(
+            retry_scheduler_binding_gate=binding_gate,
+            retry_scheduler_contract={"overall_status": "ready", "ready": True},
+            production_scheduler_gate={"overall_status": "blocked"},
+            explicit_authorization_requested=True,
+            authorization_source="runtime_config.child_dispatch_retry_scheduler_execution",
+            durable_schedule_ready=True,
+            idempotency_dedupe_ready=True,
+            audit_timeline_ready=True,
+            worker_ownership_ready=True,
+            bounded_attempts_ready=True,
+        )
+    )
+    missing_durable_authorization = (
+        build_child_executor_dispatch_retry_scheduler_execution_authorization_contract(
+            retry_scheduler_binding_gate=binding_gate,
+            retry_scheduler_contract={"overall_status": "ready", "ready": True},
+            production_scheduler_gate={"overall_status": "ready", "ready": True},
+            explicit_authorization_requested=True,
+            authorization_source="runtime_config.child_dispatch_retry_scheduler_execution",
+            idempotency_dedupe_ready=True,
+            audit_timeline_ready=True,
+            worker_ownership_ready=True,
+            bounded_attempts_ready=True,
+        )
+    )
+    missing_audit_idempotency_authorization = (
+        build_child_executor_dispatch_retry_scheduler_execution_authorization_contract(
+            retry_scheduler_binding_gate=binding_gate,
+            retry_scheduler_contract={"overall_status": "ready", "ready": True},
+            production_scheduler_gate={"overall_status": "ready", "ready": True},
+            explicit_authorization_requested=True,
+            authorization_source="runtime_config.child_dispatch_retry_scheduler_execution",
+            durable_schedule_ready=True,
+            worker_ownership_ready=True,
+            bounded_attempts_ready=True,
+        )
+    )
+    missing_worker_attempts_authorization = (
+        build_child_executor_dispatch_retry_scheduler_execution_authorization_contract(
+            retry_scheduler_binding_gate=binding_gate,
+            retry_scheduler_contract={"overall_status": "ready", "ready": True},
+            production_scheduler_gate={"overall_status": "ready", "ready": True},
+            explicit_authorization_requested=True,
+            authorization_source="runtime_config.child_dispatch_retry_scheduler_execution",
+            durable_schedule_ready=True,
+            idempotency_dedupe_ready=True,
+            audit_timeline_ready=True,
+        )
+    )
+    default_sections = [
+        str(item) for item in (default_authorization.get("missing_sections") or [])
+    ]
+    production_blocked_sections = [
+        str(item)
+        for item in (production_blocked_authorization.get("missing_sections") or [])
+    ]
+    missing_durable_sections = [
+        str(item)
+        for item in (missing_durable_authorization.get("missing_sections") or [])
+    ]
+    missing_audit_idempotency_sections = [
+        str(item)
+        for item in (
+            missing_audit_idempotency_authorization.get("missing_sections") or []
+        )
+    ]
+    missing_worker_attempts_sections = [
+        str(item)
+        for item in (missing_worker_attempts_authorization.get("missing_sections") or [])
+    ]
+    default_ok = (
+        str(default_authorization.get("overall_status") or "").strip() == "blocked"
+        and bool(default_authorization.get("binding_gate_ready"))
+        and "execution_authorization_request" in default_sections
+        and not bool(default_authorization.get("will_schedule_retry"))
+        and not bool(default_authorization.get("retry_scheduled"))
+    )
+    ready_ok = (
+        str(ready_authorization.get("overall_status") or "").strip() == "ready"
+        and bool(ready_authorization.get("execution_authorization_ready"))
+        and str(ready_authorization.get("authorization_source") or "").strip()
+        == "runtime_config.child_dispatch_retry_scheduler_execution"
+        and not bool(ready_authorization.get("will_schedule_retry"))
+        and not bool(ready_authorization.get("retry_scheduled"))
+    )
+    production_blocked_ok = (
+        str(production_blocked_authorization.get("overall_status") or "").strip()
+        == "blocked"
+        and "production_scheduler_gate" in production_blocked_sections
+        and not bool(production_blocked_authorization.get("will_schedule_retry"))
+    )
+    missing_durable_ok = (
+        str(missing_durable_authorization.get("overall_status") or "").strip()
+        == "blocked"
+        and "durable_schedule_state" in missing_durable_sections
+        and not bool(missing_durable_authorization.get("retry_scheduled"))
+    )
+    missing_audit_idempotency_ok = (
+        str(
+            missing_audit_idempotency_authorization.get("overall_status") or ""
+        ).strip()
+        == "blocked"
+        and "idempotency_dedupe" in missing_audit_idempotency_sections
+        and "audit_timeline" in missing_audit_idempotency_sections
+        and not bool(
+            missing_audit_idempotency_authorization.get("will_schedule_retry")
+        )
+    )
+    missing_worker_attempts_ok = (
+        str(missing_worker_attempts_authorization.get("overall_status") or "").strip()
+        == "blocked"
+        and "worker_ownership" in missing_worker_attempts_sections
+        and "bounded_attempts" in missing_worker_attempts_sections
+        and not bool(missing_worker_attempts_authorization.get("will_schedule_retry"))
+    )
+    ok = (
+        default_ok
+        and ready_ok
+        and production_blocked_ok
+        and missing_durable_ok
+        and missing_audit_idempotency_ok
+        and missing_worker_attempts_ok
+    )
+    return {
+        "ok": ok,
+        "contract_version": str(default_authorization.get("contract_version") or ""),
+        "default_status": str(default_authorization.get("overall_status") or ""),
+        "default_binding_gate_ready": bool(default_authorization.get("binding_gate_ready")),
+        "default_authorization_ready": bool(
+            default_authorization.get("execution_authorization_ready")
+        ),
+        "default_missing_sections": default_sections,
+        "default_will_schedule_retry": bool(
+            default_authorization.get("will_schedule_retry")
+        ),
+        "default_retry_scheduled": bool(default_authorization.get("retry_scheduled")),
+        "ready_status": str(ready_authorization.get("overall_status") or ""),
+        "ready_authorization_ready": bool(
+            ready_authorization.get("execution_authorization_ready")
+        ),
+        "ready_authorization_source": str(
+            ready_authorization.get("authorization_source") or ""
+        ),
+        "ready_will_schedule_retry": bool(ready_authorization.get("will_schedule_retry")),
+        "ready_retry_scheduled": bool(ready_authorization.get("retry_scheduled")),
+        "production_blocked_status": str(
+            production_blocked_authorization.get("overall_status") or ""
+        ),
+        "production_blocked_sections": production_blocked_sections,
+        "missing_durable_status": str(
+            missing_durable_authorization.get("overall_status") or ""
+        ),
+        "missing_durable_sections": missing_durable_sections,
+        "missing_audit_idempotency_status": str(
+            missing_audit_idempotency_authorization.get("overall_status") or ""
+        ),
+        "missing_audit_idempotency_sections": missing_audit_idempotency_sections,
+        "missing_worker_attempts_status": str(
+            missing_worker_attempts_authorization.get("overall_status") or ""
+        ),
+        "missing_worker_attempts_sections": missing_worker_attempts_sections,
+        "failure_reason": (
+            ""
+            if ok
+            else "child_executor_dispatch_retry_scheduler_execution_authorization_incomplete"
+        ),
     }
 
 

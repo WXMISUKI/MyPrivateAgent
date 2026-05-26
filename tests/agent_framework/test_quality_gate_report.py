@@ -2257,6 +2257,151 @@ class QualityGateReportTests(unittest.TestCase):
         self.assertFalse(coverage["handoff_smoke"])
         self.assertTrue(coverage["bound_will_schedule_retry"])
 
+    def test_runtime_contract_summary_derives_child_executor_retry_scheduler_binding_gate_coverage(self):
+        from backend.scripts.quality_gate_report import _build_runtime_contract_summary
+
+        summary = _build_runtime_contract_summary([
+            {
+                "name": "child_executor_dispatch_retry_scheduler_binding_gate",
+                "ok": True,
+                "contract_version": "phase-ii-child-executor-dispatch-retry-scheduler-binding-gate-v1",
+                "default_status": "blocked",
+                "default_handoff_ready": True,
+                "default_binding_ready": False,
+                "default_missing_sections": ["scheduler_binding_decision"],
+                "default_will_schedule_retry": False,
+                "ready_status": "ready",
+                "ready_binding_ready": True,
+                "ready_binding_source": "runtime_config.child_dispatch_retry_scheduler",
+                "ready_will_schedule_retry": False,
+                "production_blocked_status": "blocked",
+                "production_blocked_sections": ["production_scheduler_gate"],
+                "missing_audit_idempotency_status": "blocked",
+                "missing_audit_idempotency_sections": ["idempotency_dedupe", "audit_timeline"],
+                "missing_worker_attempts_status": "blocked",
+                "missing_worker_attempts_sections": ["worker_ownership", "bounded_attempts"],
+            },
+        ])
+
+        coverage = summary["child_executor_dispatch_retry_scheduler_binding_gate_coverage"]
+        self.assertTrue(coverage["binding_smoke"])
+        self.assertEqual(
+            coverage["contract_version"],
+            "phase-ii-child-executor-dispatch-retry-scheduler-binding-gate-v1",
+        )
+        self.assertEqual(coverage["default_status"], "blocked")
+        self.assertEqual(coverage["ready_status"], "ready")
+        self.assertFalse(coverage["ready_will_schedule_retry"])
+
+    def test_runtime_contract_summary_fails_closed_when_child_executor_retry_scheduler_binding_gate_evidence_disagrees(self):
+        from backend.scripts.quality_gate_report import _build_runtime_contract_summary
+
+        summary = _build_runtime_contract_summary([
+            {
+                "name": "child_executor_dispatch_retry_scheduler_binding_gate",
+                "ok": True,
+                "contract_version": "phase-ii-child-executor-dispatch-retry-scheduler-binding-gate-v1",
+                "default_status": "blocked",
+                "default_handoff_ready": True,
+                "default_binding_ready": False,
+                "default_missing_sections": ["scheduler_binding_decision"],
+                "default_will_schedule_retry": False,
+                "ready_status": "ready",
+                "ready_binding_ready": True,
+                "ready_binding_source": "runtime_config.child_dispatch_retry_scheduler",
+                "ready_will_schedule_retry": True,
+                "production_blocked_status": "blocked",
+                "production_blocked_sections": ["production_scheduler_gate"],
+                "missing_audit_idempotency_status": "blocked",
+                "missing_audit_idempotency_sections": ["idempotency_dedupe", "audit_timeline"],
+                "missing_worker_attempts_status": "blocked",
+                "missing_worker_attempts_sections": ["worker_ownership", "bounded_attempts"],
+            },
+        ])
+
+        coverage = summary["child_executor_dispatch_retry_scheduler_binding_gate_coverage"]
+        self.assertFalse(coverage["binding_smoke"])
+        self.assertTrue(coverage["ready_will_schedule_retry"])
+
+    def test_runtime_contract_summary_derives_child_executor_retry_scheduler_execution_authorization_coverage(self):
+        from backend.scripts.quality_gate_report import _build_runtime_contract_summary
+
+        summary = _build_runtime_contract_summary([
+            {
+                "name": "child_executor_dispatch_retry_scheduler_execution_authorization",
+                "ok": True,
+                "contract_version": "phase-ii-child-executor-dispatch-retry-scheduler-execution-authorization-v1",
+                "default_status": "blocked",
+                "default_binding_gate_ready": True,
+                "default_authorization_ready": False,
+                "default_missing_sections": ["execution_authorization_request"],
+                "default_will_schedule_retry": False,
+                "default_retry_scheduled": False,
+                "ready_status": "ready",
+                "ready_authorization_ready": True,
+                "ready_authorization_source": "runtime_config.child_dispatch_retry_scheduler_execution",
+                "ready_will_schedule_retry": False,
+                "ready_retry_scheduled": False,
+                "production_blocked_status": "blocked",
+                "production_blocked_sections": ["production_scheduler_gate"],
+                "missing_durable_status": "blocked",
+                "missing_durable_sections": ["durable_schedule_state"],
+                "missing_audit_idempotency_status": "blocked",
+                "missing_audit_idempotency_sections": ["idempotency_dedupe", "audit_timeline"],
+                "missing_worker_attempts_status": "blocked",
+                "missing_worker_attempts_sections": ["worker_ownership", "bounded_attempts"],
+            },
+        ])
+
+        coverage = summary[
+            "child_executor_dispatch_retry_scheduler_execution_authorization_coverage"
+        ]
+        self.assertTrue(coverage["authorization_smoke"])
+        self.assertEqual(
+            coverage["contract_version"],
+            "phase-ii-child-executor-dispatch-retry-scheduler-execution-authorization-v1",
+        )
+        self.assertEqual(coverage["default_status"], "blocked")
+        self.assertEqual(coverage["ready_status"], "ready")
+        self.assertFalse(coverage["ready_will_schedule_retry"])
+        self.assertFalse(coverage["ready_retry_scheduled"])
+
+    def test_runtime_contract_summary_fails_closed_when_child_executor_retry_scheduler_execution_authorization_evidence_disagrees(self):
+        from backend.scripts.quality_gate_report import _build_runtime_contract_summary
+
+        summary = _build_runtime_contract_summary([
+            {
+                "name": "child_executor_dispatch_retry_scheduler_execution_authorization",
+                "ok": True,
+                "contract_version": "phase-ii-child-executor-dispatch-retry-scheduler-execution-authorization-v1",
+                "default_status": "blocked",
+                "default_binding_gate_ready": True,
+                "default_authorization_ready": False,
+                "default_missing_sections": ["execution_authorization_request"],
+                "default_will_schedule_retry": False,
+                "default_retry_scheduled": False,
+                "ready_status": "ready",
+                "ready_authorization_ready": True,
+                "ready_authorization_source": "runtime_config.child_dispatch_retry_scheduler_execution",
+                "ready_will_schedule_retry": True,
+                "ready_retry_scheduled": False,
+                "production_blocked_status": "blocked",
+                "production_blocked_sections": ["production_scheduler_gate"],
+                "missing_durable_status": "blocked",
+                "missing_durable_sections": ["durable_schedule_state"],
+                "missing_audit_idempotency_status": "blocked",
+                "missing_audit_idempotency_sections": ["idempotency_dedupe", "audit_timeline"],
+                "missing_worker_attempts_status": "blocked",
+                "missing_worker_attempts_sections": ["worker_ownership", "bounded_attempts"],
+            },
+        ])
+
+        coverage = summary[
+            "child_executor_dispatch_retry_scheduler_execution_authorization_coverage"
+        ]
+        self.assertFalse(coverage["authorization_smoke"])
+        self.assertTrue(coverage["ready_will_schedule_retry"])
+
     def test_runtime_contract_summary_derives_child_executor_sandbox_backend_coverage(self):
         from backend.scripts.quality_gate_report import _build_runtime_contract_summary
 

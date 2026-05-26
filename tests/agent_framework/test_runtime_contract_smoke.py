@@ -824,6 +824,68 @@ class RuntimeContractSmokeTests(unittest.TestCase):
         self.assertTrue(result["bound_handoff_ready"])
         self.assertFalse(result["bound_will_schedule_retry"])
 
+    def test_child_executor_dispatch_retry_scheduler_binding_gate_check_keeps_scheduling_blocked(self):
+        result = runtime_contract_smoke._run_child_executor_dispatch_retry_scheduler_binding_gate_contract_check()
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(
+            result["contract_version"],
+            "phase-ii-child-executor-dispatch-retry-scheduler-binding-gate-v1",
+        )
+        self.assertEqual(result["default_status"], "blocked")
+        self.assertTrue(result["default_handoff_ready"])
+        self.assertFalse(result["default_binding_ready"])
+        self.assertIn("scheduler_binding_decision", result["default_missing_sections"])
+        self.assertFalse(result["default_will_schedule_retry"])
+        self.assertEqual(result["ready_status"], "ready")
+        self.assertTrue(result["ready_binding_ready"])
+        self.assertEqual(
+            result["ready_binding_source"],
+            "runtime_config.child_dispatch_retry_scheduler",
+        )
+        self.assertFalse(result["ready_will_schedule_retry"])
+        self.assertEqual(result["production_blocked_status"], "blocked")
+        self.assertIn("production_scheduler_gate", result["production_blocked_sections"])
+        self.assertEqual(result["missing_audit_idempotency_status"], "blocked")
+        self.assertIn("idempotency_dedupe", result["missing_audit_idempotency_sections"])
+        self.assertIn("audit_timeline", result["missing_audit_idempotency_sections"])
+        self.assertEqual(result["missing_worker_attempts_status"], "blocked")
+        self.assertIn("worker_ownership", result["missing_worker_attempts_sections"])
+        self.assertIn("bounded_attempts", result["missing_worker_attempts_sections"])
+
+    def test_child_executor_dispatch_retry_scheduler_execution_authorization_check_keeps_scheduling_blocked(self):
+        result = runtime_contract_smoke._run_child_executor_dispatch_retry_scheduler_execution_authorization_contract_check()
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(
+            result["contract_version"],
+            "phase-ii-child-executor-dispatch-retry-scheduler-execution-authorization-v1",
+        )
+        self.assertEqual(result["default_status"], "blocked")
+        self.assertTrue(result["default_binding_gate_ready"])
+        self.assertFalse(result["default_authorization_ready"])
+        self.assertIn("execution_authorization_request", result["default_missing_sections"])
+        self.assertFalse(result["default_will_schedule_retry"])
+        self.assertFalse(result["default_retry_scheduled"])
+        self.assertEqual(result["ready_status"], "ready")
+        self.assertTrue(result["ready_authorization_ready"])
+        self.assertEqual(
+            result["ready_authorization_source"],
+            "runtime_config.child_dispatch_retry_scheduler_execution",
+        )
+        self.assertFalse(result["ready_will_schedule_retry"])
+        self.assertFalse(result["ready_retry_scheduled"])
+        self.assertEqual(result["production_blocked_status"], "blocked")
+        self.assertIn("production_scheduler_gate", result["production_blocked_sections"])
+        self.assertEqual(result["missing_durable_status"], "blocked")
+        self.assertIn("durable_schedule_state", result["missing_durable_sections"])
+        self.assertEqual(result["missing_audit_idempotency_status"], "blocked")
+        self.assertIn("idempotency_dedupe", result["missing_audit_idempotency_sections"])
+        self.assertIn("audit_timeline", result["missing_audit_idempotency_sections"])
+        self.assertEqual(result["missing_worker_attempts_status"], "blocked")
+        self.assertIn("worker_ownership", result["missing_worker_attempts_sections"])
+        self.assertIn("bounded_attempts", result["missing_worker_attempts_sections"])
+
     def test_child_executor_sandbox_backend_check_covers_adapter_gate_paths(self):
         result = runtime_contract_smoke._run_child_executor_sandbox_backend_contract_check()
 

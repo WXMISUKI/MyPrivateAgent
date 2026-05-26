@@ -70,6 +70,8 @@ from .child_executor_dispatcher import (
     build_child_executor_dispatch_attempt_handoff_contract,
     build_child_executor_dispatch_result_handoff_contract,
     build_child_executor_dispatch_result_retry_audit_policy_contract,
+    build_child_executor_dispatch_retry_scheduler_binding_gate_contract,
+    build_child_executor_dispatch_retry_scheduler_execution_authorization_contract,
     build_child_executor_dispatch_retry_scheduler_handoff_contract,
 )
 from .recovery_retry_scheduler import (
@@ -161,6 +163,8 @@ __all__ = [
     "build_child_executor_dispatch_attempt_handoff_contract",
     "build_child_executor_dispatch_result_handoff_contract",
     "build_child_executor_dispatch_result_retry_audit_policy_contract",
+    "build_child_executor_dispatch_retry_scheduler_binding_gate_contract",
+    "build_child_executor_dispatch_retry_scheduler_execution_authorization_contract",
     "build_child_executor_dispatch_retry_scheduler_handoff_contract",
     "build_child_result_merge_handoff_contract",
     "build_durable_workspace_production_recovery_gate_contract",

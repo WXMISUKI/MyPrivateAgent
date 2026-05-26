@@ -2196,6 +2196,151 @@ class RuntimeContractGateServiceTests(unittest.TestCase):
         self.assertEqual(coverage["bound_status"], "ready")
         self.assertFalse(coverage["bound_will_schedule_retry"])
 
+    def test_build_runtime_contract_derives_child_executor_retry_scheduler_binding_gate_coverage_from_checks(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            report_path = Path(tmp_dir) / "quality-gate-report.json"
+            report_path.write_text(
+                json.dumps(
+                    {
+                        "generated_at": "2026-05-25T00:00:00Z",
+                        "steps": [
+                            {
+                                "name": "Quality gate smoke",
+                                "contract_checks": [
+                                    {
+                                        "name": "child_executor_dispatch_retry_scheduler_binding_gate",
+                                        "ok": True,
+                                        "contract_version": (
+                                            "phase-ii-child-executor-dispatch-retry-scheduler-binding-gate-v1"
+                                        ),
+                                        "default_status": "blocked",
+                                        "default_handoff_ready": True,
+                                        "default_binding_ready": False,
+                                        "default_missing_sections": ["scheduler_binding_decision"],
+                                        "default_will_schedule_retry": False,
+                                        "ready_status": "ready",
+                                        "ready_binding_ready": True,
+                                        "ready_binding_source": (
+                                            "runtime_config.child_dispatch_retry_scheduler"
+                                        ),
+                                        "ready_will_schedule_retry": False,
+                                        "production_blocked_status": "blocked",
+                                        "production_blocked_sections": ["production_scheduler_gate"],
+                                        "missing_audit_idempotency_status": "blocked",
+                                        "missing_audit_idempotency_sections": [
+                                            "idempotency_dedupe",
+                                            "audit_timeline",
+                                        ],
+                                        "missing_worker_attempts_status": "blocked",
+                                        "missing_worker_attempts_sections": [
+                                            "worker_ownership",
+                                            "bounded_attempts",
+                                        ],
+                                    },
+                                ],
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            contract = RuntimeContractGateService(report_path=report_path).build_runtime_contract()
+
+        coverage = contract["runtime_contract_summary"][
+            "child_executor_dispatch_retry_scheduler_binding_gate_coverage"
+        ]
+        self.assertTrue(coverage["binding_smoke"])
+        self.assertEqual(
+            coverage["contract_version"],
+            "phase-ii-child-executor-dispatch-retry-scheduler-binding-gate-v1",
+        )
+        self.assertEqual(coverage["default_status"], "blocked")
+        self.assertFalse(coverage["default_binding_ready"])
+        self.assertIn("scheduler_binding_decision", coverage["default_missing_sections"])
+        self.assertEqual(coverage["ready_status"], "ready")
+        self.assertEqual(
+            coverage["ready_binding_source"],
+            "runtime_config.child_dispatch_retry_scheduler",
+        )
+        self.assertFalse(coverage["ready_will_schedule_retry"])
+
+    def test_build_runtime_contract_derives_child_executor_retry_scheduler_execution_authorization_coverage_from_checks(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            report_path = Path(tmp_dir) / "quality-gate-report.json"
+            report_path.write_text(
+                json.dumps(
+                    {
+                        "generated_at": "2026-05-26T00:00:00Z",
+                        "steps": [
+                            {
+                                "name": "Quality gate smoke",
+                                "contract_checks": [
+                                    {
+                                        "name": "child_executor_dispatch_retry_scheduler_execution_authorization",
+                                        "ok": True,
+                                        "contract_version": (
+                                            "phase-ii-child-executor-dispatch-retry-scheduler-execution-authorization-v1"
+                                        ),
+                                        "default_status": "blocked",
+                                        "default_binding_gate_ready": True,
+                                        "default_authorization_ready": False,
+                                        "default_missing_sections": [
+                                            "execution_authorization_request"
+                                        ],
+                                        "default_will_schedule_retry": False,
+                                        "default_retry_scheduled": False,
+                                        "ready_status": "ready",
+                                        "ready_authorization_ready": True,
+                                        "ready_authorization_source": (
+                                            "runtime_config.child_dispatch_retry_scheduler_execution"
+                                        ),
+                                        "ready_will_schedule_retry": False,
+                                        "ready_retry_scheduled": False,
+                                        "production_blocked_status": "blocked",
+                                        "production_blocked_sections": ["production_scheduler_gate"],
+                                        "missing_durable_status": "blocked",
+                                        "missing_durable_sections": ["durable_schedule_state"],
+                                        "missing_audit_idempotency_status": "blocked",
+                                        "missing_audit_idempotency_sections": [
+                                            "idempotency_dedupe",
+                                            "audit_timeline",
+                                        ],
+                                        "missing_worker_attempts_status": "blocked",
+                                        "missing_worker_attempts_sections": [
+                                            "worker_ownership",
+                                            "bounded_attempts",
+                                        ],
+                                    },
+                                ],
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            contract = RuntimeContractGateService(report_path=report_path).build_runtime_contract()
+
+        coverage = contract["runtime_contract_summary"][
+            "child_executor_dispatch_retry_scheduler_execution_authorization_coverage"
+        ]
+        self.assertTrue(coverage["authorization_smoke"])
+        self.assertEqual(
+            coverage["contract_version"],
+            "phase-ii-child-executor-dispatch-retry-scheduler-execution-authorization-v1",
+        )
+        self.assertEqual(coverage["default_status"], "blocked")
+        self.assertTrue(coverage["default_binding_gate_ready"])
+        self.assertIn("execution_authorization_request", coverage["default_missing_sections"])
+        self.assertEqual(coverage["ready_status"], "ready")
+        self.assertEqual(
+            coverage["ready_authorization_source"],
+            "runtime_config.child_dispatch_retry_scheduler_execution",
+        )
+        self.assertFalse(coverage["ready_will_schedule_retry"])
+        self.assertFalse(coverage["ready_retry_scheduled"])
+
     def test_build_runtime_contract_derives_child_executor_sandbox_backend_coverage_from_checks(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
             report_path = Path(tmp_dir) / "quality-gate-report.json"
