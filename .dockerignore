@@ -6,10 +6,7 @@
 .tmp
 .myagent
 backend/pytest-cache-files-1x_nnsdg/
-backend\pytest-cache-files-1x_nnsdg
-backend\pytest-cache-files-1x_nnsdg\*
 backend/pytest-cache-files-*
-backend\pytest-cache-files-*
 __pycache__
 node_modules
 frontend-vue
