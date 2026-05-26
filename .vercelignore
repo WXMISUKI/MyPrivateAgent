@@ -13,5 +13,7 @@
 /问题记录
 /scripts/docker
 /node_modules
+/frontend-vue/node_modules
+/frontend-vue/dist
 /err_log.txt
 /Dockerfile

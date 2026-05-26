@@ -8,11 +8,13 @@
   "functions": {
     "api/index.py": {
       "runtime": "@vercel/python@4.3.0",
-      "maxDuration": 60
+      "maxDuration": 60,
+      "excludeFiles": "{frontend-vue/**,docs/**,examples/**,skill_store/**,tests/**,openspec/**,.git/**,.github/**,.codex/**,.docker/**,.myagent/**,.pytest_cache/**,.tmp/**,问题记录/**}"
     },
     "api/[...path].py": {
       "runtime": "@vercel/python@4.3.0",
-      "maxDuration": 60
+      "maxDuration": 60,
+      "excludeFiles": "{frontend-vue/**,docs/**,examples/**,skill_store/**,tests/**,openspec/**,.git/**,.github/**,.codex/**,.docker/**,.myagent/**,.pytest_cache/**,.tmp/**,问题记录/**}"
     }
   },
   "rewrites": [
