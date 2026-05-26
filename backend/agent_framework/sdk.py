@@ -424,6 +424,61 @@ def _select_first_evidence(*candidates: tuple[Any, str]) -> tuple[bool, str | No
     return False, None, None
 
 
+def _is_truthy_opt_in(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "y", "on", "ready", "enabled"}
+    return bool(value)
+
+
+def _build_child_executor_explicit_binding_evidence(
+    *,
+    payload: Dict[str, Any] | None = None,
+    worker_runtime_backend: str = "",
+) -> Dict[str, Any]:
+    normalized_payload = dict(payload or {})
+    metadata = dict(normalized_payload.get("metadata") or {})
+    opt_in_present, source_path, raw_value = _select_first_evidence(
+        (normalized_payload.get("explicit_executor_binding_opt_in"), "payload.explicit_executor_binding_opt_in"),
+        (metadata.get("explicit_executor_binding_opt_in"), "metadata.explicit_executor_binding_opt_in"),
+        (normalized_payload.get("executor_binding_opt_in"), "payload.executor_binding_opt_in"),
+        (metadata.get("executor_binding_opt_in"), "metadata.executor_binding_opt_in"),
+    )
+    ready = opt_in_present and _is_truthy_opt_in(raw_value)
+    selected_backend = str(
+        worker_runtime_backend
+        or normalized_payload.get("worker_runtime_backend")
+        or metadata.get("worker_runtime_backend")
+        or normalized_payload.get("execution_backend")
+        or metadata.get("execution_backend")
+        or ""
+    ).strip()
+    backend_evidence = resolve_child_executor_backend(selected_backend)
+    adapter_kind = str(backend_evidence.get("adapter_kind") or "").strip()
+    missing_requirements = [] if ready else ["explicit_executor_binding_opt_in"]
+    return {
+        "contract_version": "phase-ii-child-executor-explicit-binding-v1",
+        "binding_status": "ready" if ready else "blocked",
+        "ready": ready,
+        "binding_source": str(source_path or ""),
+        "raw_opt_in_present": opt_in_present,
+        "selected_backend": selected_backend,
+        "backend_id": str(backend_evidence.get("backend_id") or selected_backend),
+        "adapter_kind": adapter_kind,
+        "missing_requirements": missing_requirements,
+        "blockers": list(missing_requirements),
+        "will_execute": False,
+        "will_dispatch": False,
+        "non_goals": [
+            "default_worker_enablement",
+            "worker_process_start",
+            "queue_or_sandbox_runtime_start",
+            "remote_executor_invocation",
+        ],
+    }
+
+
 def _build_child_executor_requirement_checks(
     *,
     payload: Dict[str, Any] | None = None,
@@ -523,6 +578,22 @@ def _build_child_executor_requirement_checks(
             else "worker runtime backend not selected"
         ),
     })
+    explicit_binding = _build_child_executor_explicit_binding_evidence(
+        payload=normalized_payload,
+        worker_runtime_backend=str(backend_value or ""),
+    )
+    checks.append({
+        "requirement": "explicit_executor_binding_opt_in",
+        "satisfied": bool(explicit_binding.get("ready")),
+        "source_path": str(explicit_binding.get("binding_source") or ""),
+        "evidence": explicit_binding,
+        "blockers": list(explicit_binding.get("blockers") or []),
+        "summary": (
+            f"explicit executor binding opt-in provided via {explicit_binding.get('binding_source')}"
+            if explicit_binding.get("ready") and explicit_binding.get("binding_source")
+            else "explicit executor binding opt-in not provided"
+        ),
+    })
     return checks
 
 
@@ -581,6 +652,7 @@ def build_child_executor_preflight_contract(
             "child_context_budget_defined",
             "child_result_merge_semantics_defined",
             "worker_runtime_backend_selected",
+            "explicit_executor_binding_opt_in",
         ],
         "non_goals": [
             "real_child_executor_dispatch",
@@ -674,6 +746,19 @@ def build_child_executor_execution_prerequisites_contract(
         if isinstance(backend_evidence, dict)
         else {}
     )
+    explicit_binding_check = next(
+        (
+            item
+            for item in requirement_checks
+            if str(item.get("requirement") or "").strip() == "explicit_executor_binding_opt_in"
+        ),
+        {},
+    )
+    explicit_binding_evidence = (
+        dict(explicit_binding_check.get("evidence") or {})
+        if isinstance(explicit_binding_check, dict)
+        else {}
+    )
     backend_dispatch_ready = bool(backend_registry_evidence.get("dispatch_ready"))
     if not backend_dispatch_ready:
         missing_requirements.append("worker_backend_dispatch_ready")
@@ -725,6 +810,7 @@ def build_child_executor_execution_prerequisites_contract(
                 or "keep_relationship_only"
             ).strip()
         ),
+        "explicit_executor_binding": explicit_binding_evidence,
     }
 
 
@@ -752,6 +838,21 @@ def build_child_executor_dispatch_contract(
         {},
     )
     backend_evidence = dict(worker_backend_requirement.get("evidence") or {})
+    explicit_binding_requirement = next(
+        (
+            dict(item)
+            for item in (prerequisites.get("requirements") or [])
+            if isinstance(item, dict)
+            and str(item.get("requirement") or "").strip() == "explicit_executor_binding_opt_in"
+        ),
+        {},
+    )
+    explicit_binding_evidence = dict(
+        explicit_binding_requirement.get("evidence")
+        or prerequisites.get("explicit_executor_binding")
+        or {}
+    )
+    explicit_binding_ready = bool(explicit_binding_evidence.get("ready"))
     backend_id = str(
         backend_evidence.get("backend_id")
         or normalized_preflight.get("worker_runtime_backend")
@@ -807,7 +908,13 @@ def build_child_executor_dispatch_contract(
     ).strip()
     gate_allowed = bool(normalized_gate.get("allowed"))
     prerequisites_ready = bool(prerequisites.get("ready"))
-    dispatch_ready = gate_allowed and prerequisites_ready and backend_dispatch_ready and sandbox_backend_ready
+    dispatch_ready = (
+        gate_allowed
+        and prerequisites_ready
+        and backend_dispatch_ready
+        and sandbox_backend_ready
+        and explicit_binding_ready
+    )
     blockers = []
     if not gate_allowed:
         blockers.append("promotion_gate_allowed")
@@ -817,6 +924,8 @@ def build_child_executor_dispatch_contract(
             blockers.append(value)
     if not backend_dispatch_ready:
         blockers.append("worker_backend_dispatch_ready")
+    if not explicit_binding_ready:
+        blockers.append("explicit_executor_binding_opt_in")
     if sandbox_backend_selected:
         if not sandbox_adapter_ready:
             blockers.append("sandbox_adapter_contract_ready")
@@ -849,6 +958,13 @@ def build_child_executor_dispatch_contract(
         "backend_status": backend_status,
         "backend_dispatch_ready": backend_dispatch_ready,
         "backend_adapter_kind": backend_adapter_kind,
+        "explicit_executor_binding_ready": explicit_binding_ready,
+        "explicit_executor_binding_status": str(
+            explicit_binding_evidence.get("binding_status") or ""
+        ).strip(),
+        "explicit_executor_binding_source": str(
+            explicit_binding_evidence.get("binding_source") or ""
+        ).strip(),
         "sandbox_backend_selected": sandbox_backend_selected,
         "sandbox_backend_ready": sandbox_backend_ready,
         "sandbox_adapter_ready": sandbox_adapter_ready,
@@ -868,6 +984,7 @@ def build_child_executor_dispatch_contract(
         "evidence": {
             "backend_registry": registry,
             "backend": backend_evidence or backend_lookup,
+            "explicit_executor_binding": explicit_binding_evidence,
             "promotion_gate": {
                 "gate_status": str(normalized_gate.get("gate_status") or "").strip(),
                 "allowed": gate_allowed,
@@ -1268,9 +1385,14 @@ def build_child_executor_execution_contract(
     bound = str(normalized_binding.get("binding_status") or "").strip() == "bound"
     executor_path = str(normalized_binding.get("executor_path") or "").strip()
     binding_id = str(normalized_binding.get("binding_id") or "").strip()
-    executable = bound and executor_path == "embedded_sdk_worker_candidate"
-    execution_status = "executed" if executable else "blocked"
     preflight = dict((((normalized_binding.get("route") or {}).get("gate") or {}).get("preflight") or {}))
+    prerequisites = dict(
+        (((normalized_binding.get("route") or {}).get("gate") or {}).get("child_executor_execution_prerequisites") or {})
+    )
+    explicit_binding = dict(prerequisites.get("explicit_executor_binding") or {})
+    explicit_binding_ready = bool(explicit_binding.get("ready"))
+    executable = bound and executor_path == "embedded_sdk_worker_candidate" and explicit_binding_ready
+    execution_status = "executed" if executable else "blocked"
     input_preview = str(preflight.get("input_preview") or "").strip()
     agent_name = str(preflight.get("agent_name") or "").strip()
     merge_strategy = str(preflight.get("merge_strategy") or "").strip()
@@ -1365,7 +1487,16 @@ def build_child_executor_execution_contract(
         "output_text": output_text,
         "output_payload": output_payload,
         "output_envelope": output_envelope,
-        "execution_reason": "" if executable else str(normalized_binding.get("binding_reason") or "child_executor_binding_blocked").strip(),
+        "explicit_executor_binding": explicit_binding,
+        "execution_reason": (
+            ""
+            if executable
+            else (
+                "explicit_executor_binding_opt_in_missing"
+                if bound and executor_path == "embedded_sdk_worker_candidate" and not explicit_binding_ready
+                else str(normalized_binding.get("binding_reason") or "child_executor_binding_blocked").strip()
+            )
+        ),
         "recommended_action": (
             "replace_noop_worker_with_real_executor"
             if executable

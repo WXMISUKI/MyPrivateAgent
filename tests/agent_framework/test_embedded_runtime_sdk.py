@@ -277,7 +277,8 @@ class EmbeddedAgentRuntimeSDKTests(unittest.TestCase):
             contract["delegate_preflight"]["promotion_requirements"],
         )
         self.assertIn("child_context_budget_defined", contract["delegate_preflight"]["missing_requirements"])
-        self.assertEqual(len(contract["delegate_preflight"]["requirement_checks"]), 4)
+        self.assertIn("explicit_executor_binding_opt_in", contract["delegate_preflight"]["missing_requirements"])
+        self.assertEqual(len(contract["delegate_preflight"]["requirement_checks"]), 5)
 
     def test_sdk_event_payload_validator_reports_missing_required_payload_fields(self):
         validation = validate_embedded_sdk_event_payloads([
@@ -1048,6 +1049,7 @@ class EmbeddedAgentRuntimeSDKTests(unittest.TestCase):
                 "metadata": {
                     "scheduler_policy": {"timeout_seconds": 45},
                     "worker_runtime_backend": "embedded_sdk_worker",
+                    "explicit_executor_binding_opt_in": True,
                 },
             },
             parent_run_id=parent["run"]["run_id"],
@@ -1146,6 +1148,7 @@ class EmbeddedAgentRuntimeSDKTests(unittest.TestCase):
                 "metadata": {
                     "scheduler_policy": {"timeout_seconds": 45},
                     "worker_runtime_backend": "embedded_sdk_worker",
+                    "explicit_executor_binding_opt_in": True,
                 },
             },
             parent_run_id=parent["run"]["run_id"],
@@ -1198,6 +1201,7 @@ class EmbeddedAgentRuntimeSDKTests(unittest.TestCase):
                 "metadata": {
                     "scheduler_policy": {"timeout_seconds": 45},
                     "worker_runtime_backend": "embedded_sdk_worker",
+                    "explicit_executor_binding_opt_in": True,
                 },
             },
             parent_run_id=parent["run"]["run_id"],
@@ -1233,6 +1237,7 @@ class EmbeddedAgentRuntimeSDKTests(unittest.TestCase):
                 "metadata": {
                     "scheduler_policy": {"timeout_seconds": 45},
                     "worker_runtime_backend": "embedded_sdk_worker",
+                    "explicit_executor_binding_opt_in": True,
                 },
             },
             parent_run_id=parent["run"]["run_id"],
@@ -1276,6 +1281,7 @@ class EmbeddedAgentRuntimeSDKTests(unittest.TestCase):
                     "agent_name": "risk_reviewer",
                     "scheduler_policy": {"timeout_seconds": 45},
                     "worker_runtime_backend": "embedded_sdk_worker",
+                    "explicit_executor_binding_opt_in": True,
                 },
             },
             parent_run_id=parent["run"]["run_id"],
@@ -1321,6 +1327,7 @@ class EmbeddedAgentRuntimeSDKTests(unittest.TestCase):
                     "agent_name": "risk_reviewer",
                     "scheduler_policy": {"timeout_seconds": 45},
                     "worker_runtime_backend": "embedded_sdk_worker",
+                    "explicit_executor_binding_opt_in": True,
                 },
             },
             parent_run_id=parent["run"]["run_id"],
@@ -1357,6 +1364,42 @@ class EmbeddedAgentRuntimeSDKTests(unittest.TestCase):
         execution_events = [event for event in parent_events if event["status_kind"] == "child_executor_executed"]
         self.assertEqual(execution_events[-1]["child_executor_execution"]["execution_status"], "executed")
 
+    def test_execute_bound_child_executor_requires_explicit_executor_binding_opt_in(self):
+        sdk = EmbeddedAgentRuntimeSDK()
+        parent = sdk.create_run({
+            "conversation_id": 42,
+            "user_id": 7,
+            "model_name": "doubao",
+            "run_kind": "chat",
+            "metadata": {"agent_name": "fraud_assistant"},
+        })
+
+        binding = sdk.bind_child_executor_routing(
+            {
+                "input": "复核交易风险",
+                "merge_strategy": "append_summary",
+                "metadata": {
+                    "agent_name": "risk_reviewer",
+                    "scheduler_policy": {"timeout_seconds": 45},
+                    "worker_runtime_backend": "embedded_sdk_worker",
+                    "explicit_executor_binding_opt_in": False,
+                },
+            },
+            parent_run_id=parent["run"]["run_id"],
+        )
+        execution = sdk.execute_bound_child_executor(
+            binding,
+            parent_run_id=parent["run"]["run_id"],
+        )
+
+        prerequisites = binding["route"]["gate"]["child_executor_execution_prerequisites"]
+        self.assertIn("explicit_executor_binding_opt_in", prerequisites["missing_requirements"])
+        self.assertEqual(binding["binding_status"], "blocked")
+        self.assertEqual(execution["execution_status"], "blocked")
+        self.assertFalse(execution["will_execute"])
+        self.assertEqual(execution["execution_reason"], "child_executor_preflight_blocked")
+        self.assertFalse(execution["explicit_executor_binding"]["ready"])
+
     def test_merge_child_executor_output_reports_blocked_and_merged_status(self):
         sdk = EmbeddedAgentRuntimeSDK()
         parent = sdk.create_run({
@@ -1390,6 +1433,7 @@ class EmbeddedAgentRuntimeSDKTests(unittest.TestCase):
                         "agent_name": "risk_reviewer",
                         "scheduler_policy": {"timeout_seconds": 45},
                         "worker_runtime_backend": "embedded_sdk_worker",
+                    "explicit_executor_binding_opt_in": True,
                     },
                 },
                 parent_run_id=parent["run"]["run_id"],
@@ -1429,6 +1473,7 @@ class EmbeddedAgentRuntimeSDKTests(unittest.TestCase):
                         "agent_name": "risk_reviewer",
                         "scheduler_policy": {"timeout_seconds": 45},
                         "worker_runtime_backend": "embedded_sdk_worker",
+                    "explicit_executor_binding_opt_in": True,
                     },
                 },
                 parent_run_id=parent["run"]["run_id"],
@@ -1464,6 +1509,7 @@ class EmbeddedAgentRuntimeSDKTests(unittest.TestCase):
                         "agent_name": "planner_agent",
                         "scheduler_policy": {"timeout_seconds": 45},
                         "worker_runtime_backend": "embedded_sdk_worker",
+                    "explicit_executor_binding_opt_in": True,
                     },
                 },
                 parent_run_id=parent["run"]["run_id"],
@@ -1497,6 +1543,7 @@ class EmbeddedAgentRuntimeSDKTests(unittest.TestCase):
                         "agent_name": "analysis_agent",
                         "scheduler_policy": {"timeout_seconds": 45},
                         "worker_runtime_backend": "embedded_sdk_worker",
+                    "explicit_executor_binding_opt_in": True,
                     },
                 },
                 parent_run_id=parent["run"]["run_id"],
@@ -1529,6 +1576,7 @@ class EmbeddedAgentRuntimeSDKTests(unittest.TestCase):
                             "agent_name": "risk_reviewer",
                             "scheduler_policy": {"timeout_seconds": 45},
                             "worker_runtime_backend": "embedded_sdk_worker",
+                    "explicit_executor_binding_opt_in": True,
                         },
                     },
                     parent_run_id=parent["run"]["run_id"],
@@ -1571,6 +1619,7 @@ class EmbeddedAgentRuntimeSDKTests(unittest.TestCase):
                             "agent_name": "risk_reviewer",
                             "scheduler_policy": {"timeout_seconds": 45},
                             "worker_runtime_backend": "embedded_sdk_worker",
+                    "explicit_executor_binding_opt_in": True,
                         },
                     },
                     parent_run_id=parent["run"]["run_id"],
@@ -1614,6 +1663,7 @@ class EmbeddedAgentRuntimeSDKTests(unittest.TestCase):
                             "agent_name": "risk_reviewer",
                             "scheduler_policy": {"timeout_seconds": 45},
                             "worker_runtime_backend": "embedded_sdk_worker",
+                    "explicit_executor_binding_opt_in": True,
                         },
                     },
                     parent_run_id=parent["run"]["run_id"],
@@ -1674,6 +1724,7 @@ class EmbeddedAgentRuntimeSDKTests(unittest.TestCase):
                             "agent_name": "risk_reviewer",
                             "scheduler_policy": {"timeout_seconds": 45},
                             "worker_runtime_backend": "embedded_sdk_worker",
+                    "explicit_executor_binding_opt_in": True,
                         },
                     },
                     parent_run_id=parent["run"]["run_id"],
@@ -1692,6 +1743,7 @@ class EmbeddedAgentRuntimeSDKTests(unittest.TestCase):
                             "agent_name": "planning_agent",
                             "scheduler_policy": {"timeout_seconds": 45},
                             "worker_runtime_backend": "embedded_sdk_worker",
+                    "explicit_executor_binding_opt_in": True,
                         },
                     },
                     parent_run_id=parent["run"]["run_id"],
@@ -1710,6 +1762,7 @@ class EmbeddedAgentRuntimeSDKTests(unittest.TestCase):
                             "agent_name": "analysis_agent",
                             "scheduler_policy": {"timeout_seconds": 45},
                             "worker_runtime_backend": "embedded_sdk_worker",
+                    "explicit_executor_binding_opt_in": True,
                         },
                     },
                     parent_run_id=parent["run"]["run_id"],
@@ -1747,6 +1800,7 @@ class EmbeddedAgentRuntimeSDKTests(unittest.TestCase):
                 "agent_name": "risk_reviewer",
                 "scheduler_policy": {"timeout_seconds": 45},
                 "worker_runtime_backend": "embedded_sdk_worker",
+                    "explicit_executor_binding_opt_in": True,
             },
         })
 
