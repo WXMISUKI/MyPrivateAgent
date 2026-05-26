@@ -13,7 +13,6 @@ tests
 问题记录
 scripts/docker
 node_modules
-frontend-vue/node_modules
 backend/__pycache__
 backend/pytest-cache-files-1x_nnsdg
 err_log.txt
