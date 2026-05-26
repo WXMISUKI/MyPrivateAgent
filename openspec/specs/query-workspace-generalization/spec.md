@@ -116,3 +116,31 @@
   - 下一步实现会同时触碰 detail/history/workspace 多层能力
 - **THEN** 团队 SHALL 继续停留在规格/架构层
 - **AND** 不得默认恢复新的 channel 实现
+
+### Requirement: Query Workspace Generalization MUST Use Promotion Records
+
+The system SHALL use channel promotion records as the gate between high-level query workspace generalization and channel-specific implementation.
+
+#### Scenario: Generalization stays at boundary layer
+
+- **WHEN** Phase I high-level truth sources are stable
+- **AND** a channel lacks a promotion record for the desired implementation layer
+- **THEN** the team MUST continue with specification, architecture, or readiness-check work
+- **AND** it MUST NOT resume channel-specific implementation by default
+
+#### Scenario: Implementation resumes from the shallowest eligible layer
+
+- **WHEN** a promotion record allows channel-specific implementation
+- **THEN** the implementation MUST begin at the recorded target layer
+- **AND** it MUST preserve explicit non-goals for deeper layers
+- **AND** it MUST NOT expand from recent summary into detail, history, or workspace in the same change unless the record explicitly allows each layer
+
+### Requirement: external_adapter Recent Summary MUST Not Promote Workspace
+
+The query workspace generalization layer MUST treat `external_adapter_recent_summary` as a shallow pilot and not as a query workspace promotion.
+
+#### Scenario: external_adapter stays below query detail
+
+- **WHEN** external adapter recent summary is recorded
+- **THEN** query workspace generalization MUST continue to classify `external_adapter` below `query_detail`
+- **AND** it MUST require a separate OpenSpec change before external adapter query detail, query history, or query workspace can be implemented

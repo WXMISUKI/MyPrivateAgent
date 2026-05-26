@@ -32,6 +32,7 @@ try:
     from services.runtime_surface_builders import (
         EmbeddedRuntimeContractBundleBuilder,
         ChannelPromotionGateBuilder,
+        ExternalAdapterRecentSummaryBuilder,
         MainChatGovernanceOverviewBuilder,
         MainChatQueryReadModelBuilder,
         RuntimeSurfaceProfileAssembler,
@@ -66,6 +67,7 @@ except ModuleNotFoundError:  # pragma: no cover - package import compatibility
     from backend.services.runtime_surface_builders import (
         EmbeddedRuntimeContractBundleBuilder,
         ChannelPromotionGateBuilder,
+        ExternalAdapterRecentSummaryBuilder,
         MainChatGovernanceOverviewBuilder,
         MainChatQueryReadModelBuilder,
         RuntimeSurfaceProfileAssembler,
@@ -232,6 +234,21 @@ class RuntimeSurfaceService:
             item_id=item_id,
         )
 
+    def get_external_adapter_recent_summary(
+        self,
+        *,
+        db: Any = None,
+        conversation_id: int | None = None,
+        plan_id: int | None = None,
+        item_id: int | None = None,
+    ) -> Dict[str, Any]:
+        return self._build_external_adapter_recent_summary_contract(
+            db=db,
+            conversation_id=conversation_id,
+            plan_id=plan_id,
+            item_id=item_id,
+        )
+
     def get_subagent_lane_query_detail_readiness(
         self,
         *,
@@ -279,12 +296,18 @@ class RuntimeSurfaceService:
             plan_id=plan_id,
             item_id=item_id,
         )
+        external_summary = self._build_external_adapter_recent_summary_contract(
+            db=db,
+            conversation_id=conversation_id,
+            plan_id=plan_id,
+            item_id=item_id,
+        )
         subagent_readiness = SubagentLaneQueryDetailReadinessBuilder.build_readiness_from_summary(subagent_summary)
         return ChannelPromotionGateBuilder.build_contract(
             subagent_lane_readiness=subagent_readiness,
             external_adapter_readiness={
                 "readiness_status": "candidate",
-                "recent_summary_status": "unavailable",
+                "recent_summary_status": str(external_summary.get("recording_state") or "unavailable"),
                 "ready_for_detail": False,
                 "blocking_reasons": ["detail_not_generalized"],
             },
@@ -1058,6 +1081,30 @@ class RuntimeSurfaceService:
         scheduler_service = SchedulerService(db)
         events = scheduler_service.filter_run_trace(target, source="query_control", limit=200)
         return SubagentLaneRecentSummaryBuilder.build_summary_from_events(
+            events=events,
+        )
+
+    def _build_external_adapter_recent_summary_contract(
+        self,
+        *,
+        db: Any,
+        conversation_id: int | None,
+        plan_id: int | None,
+        item_id: int | None,
+    ) -> Dict[str, Any]:
+        summary = ExternalAdapterRecentSummaryBuilder.build_summary_contract()
+        if db is None:
+            summary["reason"] = "db_unavailable"
+            return summary
+
+        target = self._resolve_runtime_target(db=db, conversation_id=conversation_id, plan_id=plan_id, item_id=item_id)
+        if target is None:
+            summary["reason"] = "runtime_target_unresolved"
+            return summary
+
+        scheduler_service = SchedulerService(db)
+        events = scheduler_service.filter_run_trace(target, source="query_control", limit=200)
+        return ExternalAdapterRecentSummaryBuilder.build_summary_from_events(
             events=events,
         )
 

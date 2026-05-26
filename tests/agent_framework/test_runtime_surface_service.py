@@ -1318,6 +1318,121 @@ class RuntimeSurfaceServiceTests(unittest.TestCase):
     @patch("backend.services.runtime_surface_service.get_tool_runtime_service")
     @patch("backend.services.runtime_surface_service.get_runtime_contract_gate_service")
     @patch("backend.services.runtime_surface_service.get_self_improvement_ledger_service")
+    def test_external_adapter_recent_summary_feeds_promotion_gate(
+        self,
+        _mock_ledger,
+        _mock_contract_gate,
+        _mock_tool_runtime,
+        _mock_skill_runtime,
+        _mock_mcp_runtime,
+        _mock_agent_hook,
+        _mock_subagent_runtime,
+        _mock_agent_memory,
+        _mock_capability,
+        mock_config_service,
+        _mock_model_router,
+        _mock_workspace_store,
+        mock_scheduler_cls,
+    ):
+        mock_config_service.return_value.get_effective_config.return_value = {
+            "auth_mode": "demo_guest",
+            "default_model": "doubao",
+            "enabled_providers": [],
+            "failover_thresholds": {"medium": 0.2, "high": 0.4},
+        }
+        mock_config_service.return_value.load_overrides.return_value = {}
+        mock_config_service.return_value.get_config_layers.return_value = {
+            "defaults": {},
+            "overrides": {},
+            "effective": mock_config_service.return_value.get_effective_config.return_value,
+            "editable_keys": [],
+        }
+        mock_scheduler_cls.return_value.filter_run_trace.return_value = [
+            {
+                "timestamp": "2026-05-18T10:00:00Z",
+                "summary": "External adapter assembled request",
+                "detail": "",
+                "payload": {
+                    "channel": "external_adapter",
+                    "stage": "context_assembly",
+                    "query_id": "external-run-1",
+                },
+            },
+            {
+                "timestamp": "2026-05-18T10:01:00Z",
+                "summary": "External adapter returned output",
+                "detail": "",
+                "payload": {
+                    "channel": "external_adapter",
+                    "stage": "final_output",
+                    "query_id": "external-run-1",
+                },
+            },
+        ]
+
+        class _FakeItem:
+            id = 23
+            plan_id = 10
+            status = "in_progress"
+
+        class _FakePlan:
+            id = 10
+            active_item_id = 23
+            items = [_FakeItem()]
+
+        class _FakeQuery:
+            def filter(self, *_args, **_kwargs):
+                return self
+
+            def order_by(self, *_args, **_kwargs):
+                return self
+
+            def first(self):
+                return _FakePlan()
+
+        class _FakeDb:
+            def query(self, *_args, **_kwargs):
+                return _FakeQuery()
+
+        service = RuntimeSurfaceService()
+        summary = service.get_external_adapter_recent_summary(
+            db=_FakeDb(),
+            conversation_id=321,
+        )
+
+        self.assertEqual(summary["contract_version"], "phase-i-external-adapter-recent-summary-v1")
+        self.assertEqual(summary["recording_state"], "recorded")
+        self.assertEqual(summary["total_items"], 1)
+        self.assertEqual(summary["latest_query_id"], "external-run-1")
+        self.assertEqual(summary["latest_stage"], "final_output")
+        self.assertEqual(summary["latest_summary"], "External adapter returned output")
+        self.assertEqual(summary["items"][0]["recording_state"], "recorded")
+        self.assertNotIn("history_items", summary)
+        self.assertNotIn("recent_events", summary)
+
+        gate = service.get_channel_promotion_gate(db=_FakeDb(), conversation_id=321)
+        external = gate["channels_by_id"]["external_adapter"]
+        self.assertEqual(external["evidence"]["recent_summary_status"], "recorded")
+        self.assertFalse(external["evidence"]["ready_for_detail"])
+        self.assertIn("query_detail", external["blocked_layers"])
+
+        unavailable = service.get_external_adapter_recent_summary(db=None, conversation_id=321)
+        self.assertEqual(unavailable["recording_state"], "unavailable")
+        self.assertEqual(unavailable["reason"], "db_unavailable")
+
+    @patch("backend.services.runtime_surface_service.SchedulerService")
+    @patch("backend.services.runtime_surface_service.get_embedded_workspace_store")
+    @patch("backend.services.runtime_surface_service.get_model_router")
+    @patch("backend.services.runtime_surface_service.get_runtime_surface_config_service")
+    @patch("backend.services.runtime_surface_service.get_capability_profile_service")
+    @patch("backend.services.runtime_surface_service.get_agent_memory_service")
+    @patch("backend.services.runtime_surface_service.get_subagent_runtime_service")
+    @patch("backend.services.runtime_surface_service.get_agent_hook_service")
+    @patch("backend.services.runtime_surface_service.get_mcp_runtime_service")
+    @patch("backend.services.runtime_surface_service.get_skill_runtime_service")
+    @patch("backend.services.runtime_surface_service.get_tool_runtime_service")
+    @patch("backend.services.runtime_surface_service.get_runtime_contract_gate_service")
+    @patch("backend.services.runtime_surface_service.get_self_improvement_ledger_service")
     @patch("backend.services.runtime_surface_service.get_query_control_plane_service")
     def test_runtime_profile_surfaces_backend_governance_run_state(
         self,

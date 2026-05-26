@@ -540,8 +540,9 @@ Runtime Surface 的当前聚合入口是：
 当前正式判断：
 
 - `main_chat` 是唯一完整实现了四层能力的 channel，应作为当前 canonical baseline。
-- `subagent_lane` 与 `external_adapter` 当前只通过了 `recent summary` readiness 判断。
-- 在 dedicated detail contract 稳定前，这两个 channel 都不应进入：
+- `subagent_lane` 已具备 recent summary 与 dedicated query detail evidence，但仍不得默认推进到 `query history / query workspace`。
+- `external_adapter` 当前只作为 `recent summary` candidate；在真实 recent summary evidence 落地前，不得推进到 `query detail / query history / query workspace`。
+- 在 promotion record 显式允许前，非 `main_chat` channel 都不应进入：
   - `query detail`
   - `query history`
   - `query workspace`
@@ -551,6 +552,12 @@ Runtime Surface 的当前聚合入口是：
 - Query 能力推广必须按层推进，不能直接复制某个 channel 的产品壳。
 - `recent summary` 是多 channel 最先允许推广的层；`query history / query workspace` 默认应最后评估。
 - 如果某个 channel 还需要前端从通用 timeline 本地重建 query 模型，就说明它还不具备进入更深层 query 能力的资格。
+- 恢复任何 channel 级实现前，必须先有 promotion record：至少记录 `channel / current_layer / target_layer / readiness_evidence / blockers / decision / next_allowed_action / non_goals`。
+- 当前 promotion decisions：
+  - `main_chat`: `query_workspace` baseline；后续工作必须证明是在做边界澄清或明确价值增强，而不是默认继续深挖局部体验。
+  - `subagent_lane`: 允许停在已记录的 detail 能力；history/workspace 必须另开 promotion decision，且不得复制 `main_chat` 壳。
+  - `external_adapter`: `recent_summary` candidate，默认 `spec_only`；除非 resume decision 明确批准，否则下一步仍是 readiness / promotion record，而不是对称实现。
+- `recent summary` 当前继续保持 channel-specific builder，但共享字段口径固定为 `query_id / latest_stage / latest_summary / latest_timestamp / recording_state`；`latest_snapshot_id / last_success_stage / last_warning_stage` 只作为可选字段，不要求提前抽通用 assembler。
 - 当前若讨论“哪些能力能从 `main_chat` 提升为通用模式”，优先以 `openspec/specs/query-workspace-generalization/spec.md` 为真源，而不是重新从局部 UI 或 change log 推断。
 
 #### P3：`artifact` vs `snapshot_ref`
@@ -1061,6 +1068,7 @@ II-1 第一刀当前未做：
 - 若后续扩展 `subagent_lane recent summary` 或其他 channel 的 query 只读模型，也应优先复用 shared interpretation facade，而不是为每个 channel 再发明一套独立前端解释逻辑。
 - `main_chat_query_history` 当前是 `main_chat` 专用 read model；非 `main_chat` channel 若要扩展历史能力，应另行立项，不得默认复用当前治理面板语义。
 - `subagent_lane_recent_summary` 当前已作为轻量试点 contract 暴露于 `/api/runtime-profile/subagent-lane-recent-summary`；其职责仅限 `recent summary` 候选验证，不得越级承担 detail/history/workspace 语义。
+- `external_adapter_recent_summary` 当前已作为第二个非 `main_chat` 轻量试点 contract 暴露于 `/api/runtime-profile/external-adapter-recent-summary`；它只读取 Query Control trace 中 `channel = external_adapter` 的 compact lifecycle evidence，并输出共享 recent summary 字段集合，不从 framework-specific payload 推导 query 身份，也不表示 external adapter 已具备 query detail/history/workspace。
 - `subagent_lane_query_detail_readiness` 当前作为后端门禁 contract 暴露于 `/api/runtime-profile/subagent-lane-query-detail-readiness`；它只回答 `subagent_lane` 是否具备进入 dedicated query detail contract 的前置条件，不返回 `recent_events / history_items / workspace` 状态。
 - `channel_promotion_gate` 当前作为后端推广门禁 contract 暴露于 `/api/runtime-profile/channel-promotion-gate`；它统一汇总 `main_chat / subagent_lane / external_adapter` 的层级、阻断层和证据，供 Runtime Surface、治理诊断与 spec 收口直接消费。
 - 恢复任何新的 channel 级实现前，必须先有 implementation resume decision：记录 channel、当前层级、目标层级、readiness evidence、blockers、decision、next allowed action 与 explicit non-goals。若缺少该记录，或目标会越级触碰 detail/history/workspace 多层能力，应继续停留在规格/架构层。

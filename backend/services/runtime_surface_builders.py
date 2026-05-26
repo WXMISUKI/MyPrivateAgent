@@ -676,6 +676,12 @@ class RuntimeSurfaceProfileAssembler:
             item_id=item_id,
             query_id=query_id,
         )
+        external_adapter_recent_summary = service._build_external_adapter_recent_summary_contract(
+            db=db,
+            conversation_id=conversation_id,
+            plan_id=plan_id,
+            item_id=item_id,
+        )
         channel_promotion_gate = service.get_channel_promotion_gate(
             db=db,
             conversation_id=conversation_id,
@@ -718,6 +724,7 @@ class RuntimeSurfaceProfileAssembler:
             "run_recovery": run_recovery,
             "main_chat_trace_overview": main_chat_trace_overview,
             "main_chat_query_detail": main_chat_query_detail,
+            "external_adapter_recent_summary": external_adapter_recent_summary,
             "channel_promotion_gate": channel_promotion_gate,
             "tool_runtime": service.tool_runtime_service.build_runtime_contract(),
             "mcp_runtime": service.mcp_runtime_service.build_runtime_contract(),
@@ -1094,6 +1101,67 @@ class SubagentLaneRecentSummaryBuilder:
         latest = dict(items[0] if items else {})
         summary["recording_state"] = "recorded"
         summary["items"] = items[:5]
+        summary["total_items"] = len(items)
+        summary["latest_query_id"] = str(latest.get("query_id") or "").strip()
+        summary["latest_stage"] = str(latest.get("latest_stage") or "").strip()
+        summary["latest_summary"] = str(latest.get("latest_summary") or "").strip()
+        summary["latest_timestamp"] = str(latest.get("latest_timestamp") or "").strip()
+        return summary
+
+
+class ExternalAdapterRecentSummaryBuilder:
+    """Assemble external_adapter recent summary read model contracts."""
+
+    @staticmethod
+    def build_summary_contract() -> Dict[str, Any]:
+        return {
+            "contract_version": "phase-i-external-adapter-recent-summary-v1",
+            "connected": False,
+            "recording_state": "unavailable",
+            "items": [],
+            "latest_query_id": "",
+            "latest_stage": "",
+            "latest_summary": "",
+            "latest_timestamp": "",
+            "total_items": 0,
+            "reason": "",
+        }
+
+    @staticmethod
+    def filter_external_adapter_events(events: Any) -> list[dict[str, Any]]:
+        external_events: list[dict[str, Any]] = []
+        for entry in events or []:
+            payload = entry.get("payload") if isinstance(entry, dict) else {}
+            if not isinstance(payload, dict):
+                continue
+            if str(payload.get("channel") or "").strip() != "external_adapter":
+                continue
+            external_events.append(dict(entry))
+        return external_events
+
+    @classmethod
+    def build_summary_from_events(
+        cls,
+        *,
+        events: list[dict[str, Any]] | None,
+    ) -> Dict[str, Any]:
+        summary = cls.build_summary_contract()
+        external_events = cls.filter_external_adapter_events(events)
+        summary["connected"] = True
+        if not external_events:
+            summary["recording_state"] = "no_records"
+            summary["reason"] = "no_external_adapter_query_control_trace"
+            return summary
+
+        items = MainChatQueryReadModelBuilder.summarize_query_control_channel_queries(external_events)
+        latest = dict(items[0] if items else {})
+        normalized_items = []
+        for item in items[:5]:
+            normalized = dict(item)
+            normalized["recording_state"] = "recorded"
+            normalized_items.append(normalized)
+        summary["recording_state"] = "recorded"
+        summary["items"] = normalized_items
         summary["total_items"] = len(items)
         summary["latest_query_id"] = str(latest.get("query_id") or "").strip()
         summary["latest_stage"] = str(latest.get("latest_stage") or "").strip()

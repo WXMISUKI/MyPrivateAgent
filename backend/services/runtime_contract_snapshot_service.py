@@ -231,6 +231,21 @@ class RuntimeContractSnapshotService:
             ),
         ),
         ContractSnapshotSpec(
+            contract_name="external_adapter_recent_summary",
+            required_fields=(
+                "contract_version",
+                "connected",
+                "recording_state",
+                "items",
+                "latest_query_id",
+                "latest_stage",
+                "latest_summary",
+                "latest_timestamp",
+                "total_items",
+                "reason",
+            ),
+        ),
+        ContractSnapshotSpec(
             contract_name="channel_promotion_gate",
             required_fields=(
                 "contract_version",

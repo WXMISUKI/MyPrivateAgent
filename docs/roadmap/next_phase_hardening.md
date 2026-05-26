@@ -477,15 +477,17 @@ Governance Timeline 前端继续瘦身仍有价值，但不应继续作为最高
   - `subagent_lane` 已通过 `recent summary` readiness 判断
   - `external_adapter` 已通过 `recent summary` readiness 判断
   - `pilot-subagent-lane-recent-summary` 第一刀已完成
+  - promotion record 已固化为恢复 channel 实现前的前置 gate，记录字段包括 channel、current layer、target layer、readiness evidence、blockers、decision、next allowed action 和 non-goals
 - 进行中：
-  - 仍需决定是否真的要继续做 `external_adapter recent summary` 对称试点
+  - 当前 decision 已记录为：`external_adapter` 仍是 `recent_summary` candidate，但默认 `spec_only`，不立即做对称实现
 - 未开始：
-  - 通用 promotion gate checklist 模板
+  - 将 promotion record 扩展成运行时可观测 payload 的必要性评估
 
 下一步动作：
 
-- 把“默认不立即推进 `external_adapter` 试点”写成更稳定的 gate 结论。
-- 为未来新 channel 补一份可复用的 readiness checklist 模板。
+- 未来新增 channel 或恢复 channel 实现时，先补 promotion record，再决定是否进入代码实现。
+- `subagent_lane` 不得直接推进到 history/workspace；若要推进，必须另开 promotion decision。
+- `external_adapter recent summary` 仍不是默认下一刀，除非出现明确对称验证需求并记录 resume decision。
 
 是否继续优化：
 
@@ -515,15 +517,18 @@ Governance Timeline 前端继续瘦身仍有价值，但不应继续作为最高
 
 - 已完成：
   - `main_chat` 与 `subagent_lane` 的最小 recent summary 形态都已有事实样本
+  - shared recent summary 字段集合已固定为 `query_id / latest_stage / latest_summary / latest_timestamp / recording_state`
+  - `external_adapter_recent_summary` 已作为第二个轻量样本落地，但仍只停留在 recent summary 层
 - 进行中：
   - 已给出当前推荐结论：先不抽通用 assembler / service，先写死共享字段集合
 - 未开始：
-  - 在 `external_adapter recent summary` 真实实现后复评是否抽象
+  - 在第三个非 `main_chat` channel 真实进入 recent summary 后复评是否抽象
 
 下一步动作：
 
 - 继续保持 channel-specific builder，但把共享字段集合固定成稳定口径。
-- 只有在 `external_adapter recent summary` 或第三个 channel 真正落地后，再复评是否值得抽象成通用 assembler。
+- 只有在第三个 channel 真正落地、或当前多个 builder 已经出现明显重复且维护成本上升后，再复评是否值得抽象成通用 assembler。
+- 当前 promotion record 不要求 generic assembler；它只要求实现 slice 不再临时发明 recent summary 主字段。
 
 是否继续优化：
 
@@ -564,6 +569,7 @@ Governance Timeline 前端继续瘦身仍有价值，但不应继续作为最高
   - 何时应该继续停留在规格和架构层
 - 当前 exit gate 口径：只有当高层真源稳定、channel promotion gate 已记录正式决策、recent summary 抽象判断明确、下一步实现从该 channel 当前允许的最浅层开始，并且本次 change 明确列出不会越级推进的非目标时，才允许恢复新的 channel 级实现。
 - 若 promotion record 缺失、目标层级摇摆，或下一步会同时触碰 detail/history/workspace 多层能力，则继续停留在规格/架构层。
+- 当前默认下一刀不再是新的 channel 功能实现，而是先执行 promotion record discipline；完成后再重新判断是否恢复 `external_adapter recent summary` 或继续停留在边界收口。
 
 是否继续优化：
 

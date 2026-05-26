@@ -1388,6 +1388,22 @@ def get_subagent_lane_recent_summary(
     )
 
 
+@router.get("/runtime-profile/external-adapter-recent-summary")
+def get_external_adapter_recent_summary(
+    conversation_id: int | None = None,
+    plan_id: int | None = None,
+    item_id: int | None = None,
+    db: Session = Depends(get_db),
+):
+    """返回 external_adapter recent summary 试点合同。"""
+    return get_runtime_surface_service().get_external_adapter_recent_summary(
+        db=db,
+        conversation_id=conversation_id,
+        plan_id=plan_id,
+        item_id=item_id,
+    )
+
+
 @router.get("/runtime-profile/subagent-lane-query-detail-readiness")
 def get_subagent_lane_query_detail_readiness(
     conversation_id: int | None = None,

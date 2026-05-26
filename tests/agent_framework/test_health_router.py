@@ -78,6 +78,9 @@ class _StubRuntimeSurfaceService:
     def get_subagent_lane_recent_summary(self, **_kwargs):
         return dict(self.profile.get("subagent_lane_recent_summary") or {})
 
+    def get_external_adapter_recent_summary(self, **_kwargs):
+        return dict(self.profile.get("external_adapter_recent_summary") or {})
+
     def get_channel_promotion_gate(self, **_kwargs):
         return dict(self.profile.get("channel_promotion_gate") or {})
 
@@ -585,6 +588,46 @@ class HealthRouterTests(unittest.TestCase):
         self.assertNotIn("recent_events", response.json())
         self.assertNotIn("history_items", response.json())
         mock_factory.return_value.get_subagent_lane_query_detail_readiness.assert_called_once_with(
+            db=unittest.mock.ANY,
+            conversation_id=321,
+            plan_id=None,
+            item_id=None,
+        )
+
+    @patch("backend.routers.health.get_runtime_surface_service")
+    def test_external_adapter_recent_summary_endpoint_returns_trial_read_model(self, mock_factory):
+        mock_factory.return_value.get_external_adapter_recent_summary.return_value = {
+            "contract_version": "phase-i-external-adapter-recent-summary-v1",
+            "recording_state": "recorded",
+            "items": [
+                {
+                    "query_id": "external-run-1",
+                    "latest_stage": "final_output",
+                    "latest_summary": "External adapter returned output",
+                    "latest_timestamp": "2026-05-18T10:01:00Z",
+                    "recording_state": "recorded",
+                }
+            ],
+            "latest_query_id": "external-run-1",
+            "latest_stage": "final_output",
+            "latest_summary": "External adapter returned output",
+            "latest_timestamp": "2026-05-18T10:01:00Z",
+            "total_items": 1,
+        }
+
+        app = create_app(
+            config=AgentServerConfig(
+                bootstrap=AgentServerBootstrapConfig(load_environment=False, init_database=False),
+                ui=AgentServerUIConfig(enabled=False, mode="disabled"),
+            )
+        )
+        client = TestClient(app)
+
+        response = client.get("/api/runtime-profile/external-adapter-recent-summary?conversation_id=321")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["recording_state"], "recorded")
+        self.assertEqual(response.json()["items"][0]["query_id"], "external-run-1")
+        mock_factory.return_value.get_external_adapter_recent_summary.assert_called_once_with(
             db=unittest.mock.ANY,
             conversation_id=321,
             plan_id=None,

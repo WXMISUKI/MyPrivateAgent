@@ -232,6 +232,10 @@ def _build_complete_profile():
                     "memory_posture": "memory_preview",
                     "durable_posture": "durable_ready",
                     "degraded_posture": "durable_degraded",
+                    "production_recovery_worker_ownership_gate_status": "blocked",
+                    "production_recovery_worker_ownership_missing_sections": [
+                        "vendor_lock_semantics",
+                    ],
                 },
                 "worker_ownership_store_mode_coverage": {
                     "mode_smoke": True,
@@ -460,6 +464,26 @@ def _build_complete_profile():
             "event_count": 1,
             "reason": "",
         },
+        "external_adapter_recent_summary": {
+            "contract_version": "phase-i-external-adapter-recent-summary-v1",
+            "connected": True,
+            "recording_state": "recorded",
+            "items": [
+                {
+                    "query_id": "external-run-1",
+                    "latest_stage": "final_output",
+                    "latest_summary": "External adapter returned output",
+                    "latest_timestamp": "2026-05-18T10:01:00Z",
+                    "recording_state": "recorded",
+                }
+            ],
+            "latest_query_id": "external-run-1",
+            "latest_stage": "final_output",
+            "latest_summary": "External adapter returned output",
+            "latest_timestamp": "2026-05-18T10:01:00Z",
+            "total_items": 1,
+            "reason": "",
+        },
         "channel_promotion_gate": {
             "contract_version": "phase-h-channel-promotion-gate-v1",
             "overall_status": "guarded",
@@ -608,7 +632,7 @@ class RuntimeContractSnapshotServiceTests(unittest.TestCase):
 
         self.assertEqual(snapshot["contract_version"], "phase-c-runtime-contract-snapshot-v1")
         self.assertEqual(snapshot["overall_status"], "healthy")
-        self.assertEqual(snapshot["contract_count"], 12)
+        self.assertEqual(snapshot["contract_count"], 13)
         self.assertEqual(snapshot["missing_contract_count"], 0)
         self.assertEqual(snapshot["missing_field_count"], 0)
         self.assertEqual(len(snapshot["fingerprint"]), 64)
@@ -757,6 +781,9 @@ class RuntimeContractSnapshotServiceTests(unittest.TestCase):
         self.assertIn("read_model_layer", by_name["main_chat_query_detail"]["stable_fields"])
         self.assertIn("source_channel", by_name["main_chat_query_detail"]["stable_fields"])
         self.assertIn("identity_kind", by_name["main_chat_query_detail"]["stable_fields"])
+        self.assertIn("external_adapter_recent_summary", by_name)
+        self.assertIn("recording_state", by_name["external_adapter_recent_summary"]["stable_fields"])
+        self.assertIn("latest_query_id", by_name["external_adapter_recent_summary"]["stable_fields"])
         self.assertIn("channel_promotion_gate", by_name)
         self.assertIn("channels_by_id", by_name["channel_promotion_gate"]["stable_fields"])
         self.assertIn("channels_by_id.main_chat", by_name["channel_promotion_gate"]["stable_fields"])
@@ -778,6 +805,7 @@ class RuntimeContractSnapshotServiceTests(unittest.TestCase):
         del profile["runtime_contract_gate"]["runtime_contract_summary"]
         del profile["runtime_contract_gate"]["runtime_contract_artifact_schema"]
         del profile["main_chat_query_detail"]["source_channel"]
+        del profile["external_adapter_recent_summary"]["recording_state"]
         del profile["channel_promotion_gate"]["channels_by_id"]["external_adapter"]
         del profile["self_improvement_ledger"]["quality_controls"]
         del profile["self_improvement_ledger"]["health_summary"]
@@ -788,7 +816,7 @@ class RuntimeContractSnapshotServiceTests(unittest.TestCase):
         by_name = {item["contract_name"]: item for item in snapshot["contracts"]}
         self.assertEqual(snapshot["overall_status"], "degraded")
         self.assertEqual(snapshot["missing_contract_count"], 1)
-        self.assertEqual(snapshot["missing_field_count"], 58)
+        self.assertEqual(snapshot["missing_field_count"], 62)
         self.assertEqual(by_name["skill_contract"]["status"], "missing")
         self.assertEqual(
             by_name["command_contract"]["missing_fields"],
@@ -820,8 +848,11 @@ class RuntimeContractSnapshotServiceTests(unittest.TestCase):
                 "runtime_contract_summary.checkpoint_resume_cursor_coverage.cursor_smoke",
                 "runtime_contract_summary.embedded_sdk_persistence_coverage",
                 "runtime_contract_summary.embedded_sdk_persistence_coverage.persistence_smoke",
+                "runtime_contract_summary.embedded_sdk_persistence_coverage.production_recovery_worker_ownership_gate_status",
+                "runtime_contract_summary.embedded_sdk_persistence_coverage.production_recovery_worker_ownership_missing_sections",
                 "runtime_contract_summary.worker_ownership_store_mode_coverage",
                 "runtime_contract_summary.worker_ownership_store_mode_coverage.mode_smoke",
+                "runtime_contract_summary.worker_ownership_store_mode_coverage.enablement_config_factory_binding_smoke",
                 "runtime_contract_summary.recovery_retry_evidence_coverage",
                 "runtime_contract_summary.recovery_retry_evidence_coverage.retry_smoke",
                 "runtime_contract_summary.recovery_retry_scheduler_coverage",
@@ -856,6 +887,10 @@ class RuntimeContractSnapshotServiceTests(unittest.TestCase):
         self.assertEqual(
             by_name["main_chat_query_detail"]["missing_fields"],
             ["source_channel"],
+        )
+        self.assertEqual(
+            by_name["external_adapter_recent_summary"]["missing_fields"],
+            ["recording_state"],
         )
         self.assertEqual(by_name["self_improvement_ledger"]["missing_fields"], ["quality_controls", "health_summary"])
         self.assertEqual(by_name["query_control_plane"]["missing_fields"], ["required_trace_events"])
