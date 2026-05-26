@@ -5,11 +5,13 @@
 .myagent
 .pytest_cache
 .tmp
+.docker
 docs
 examples
 skill_store
 tests
 问题记录
+scripts/docker
 node_modules
 frontend-vue/node_modules
 backend/__pycache__
