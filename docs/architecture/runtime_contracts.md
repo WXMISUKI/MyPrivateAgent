@@ -26,6 +26,7 @@ Runtime Surface 的当前聚合入口是：
 
 - `runtime_core`
 - `governance_overview`
+- `domain_agent_registry`
 - `tool_runtime`
 - `mcp_runtime`
 - `adapter_health`
@@ -40,6 +41,8 @@ Runtime Surface 的当前聚合入口是：
 - `query_control_plane`
 - `contract_snapshot`
 - `config_layers`
+
+`domain_agent_registry` 由 `backend/services/domain_agent_registry_service.py` 构建，只读扫描 `backend/domain_agents/*/agent.yaml` 或 `agent.yml`。它用于暴露垂域 agent 身份、角色、能力和治理边界，不导入垂域代码，不自动注册工具、Skill、MCP 或 RAG，也不参与 chat 执行路由。
 
 当前运行时作用域契约补充：
 

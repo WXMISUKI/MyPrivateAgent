@@ -31,7 +31,7 @@ backend/domain_agents/<agent_id>/
   tests/
 ```
 
-当前 `backend/domain_agents/` 是建议固定的垂域代码组织约定，自动 discovery / agent catalog 尚未作为运行时事实落地。新增自动发现或 `/api/agents/{agent_id}/chat` 包装接口前，必须先开 OpenSpec change。
+当前 `backend/domain_agents/` 已具备只读 discovery：`DomainAgentRegistryService` 会读取 `agent.yaml` / `agent.yml`，并通过 Runtime Surface 的 `domain_agent_registry` 暴露垂域 agent 资产。该 registry 只负责登记和观测，不导入垂域代码，不自动注册 Tool / Skill / MCP / RAG，也不参与执行路由。新增启停、自动注册或 `/api/agents/{agent_id}/chat` 包装接口前，必须先开 OpenSpec change。
 
 当前业务前端统一入口：
 

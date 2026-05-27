@@ -69,7 +69,9 @@ backend/domain_agents/
     tests/
 ```
 
-当前代码还没有自动扫描 `backend/domain_agents/` 的通用 loader。因此这套目录是从现在开始建议固定的项目约定：垂域实现先落在这里，实际注册仍通过现有 Tool / Skill / MCP / Policy 服务接入。后续若要实现自动发现、启停和 agent catalog，应另开 OpenSpec change。
+当前代码已经提供只读 `DomainAgentRegistryService`，会扫描 `backend/domain_agents/*/agent.yaml` 或 `agent.yml` 并在 Runtime Surface 的 `domain_agent_registry` 中暴露 agent 身份、角色、能力和治理边界。这个 registry 只登记资产，不导入垂域代码，不自动注册 Tool / Skill / MCP / RAG，也不改变主 chat 执行路径。
+
+因此垂域实现仍通过现有 Tool / Skill / MCP / Policy 服务接入；`agent.yaml` 是资产目录和治理可见性的真源。后续若要实现启停、编辑、自动注册或独立 agent catalog API，应另开 OpenSpec change。
 
 ## 3. agent.yaml 建议格式
 
@@ -354,7 +356,7 @@ GET /api/health
 GET /api/doctor
 ```
 
-业务产品前端可以只接 `POST /api/chat`。治理台、运维台、内部调试台再接这些只读接口。
+业务产品前端可以只接 `POST /api/chat`。治理台、运维台、内部调试台再接这些只读接口。其中 `GET /api/runtime-profile` 的 `domain_agent_registry` 字段是当前垂域 agent 资产列表的统一只读来源。
 
 ## 6. 未来可选包装接口
 
@@ -369,7 +371,7 @@ GET  /api/agents/{agent_id}/capabilities
 
 但这些接口当前不是已实现事实。新增前必须开 OpenSpec change，至少说明：
 
-- agent catalog 来源。
+- agent catalog 来源，默认应复用 `domain_agent_registry`。
 - `agent_id` 到 prompt / skill / tool / MCP / policy 的解析规则。
 - 与现有 `/api/chat` 的关系。
 - 是否仍复用 `ChatRequest`。
@@ -386,6 +388,7 @@ GET  /api/agents/{agent_id}/capabilities
 - [ ] 写 `agent.yaml` 和 `README.md`。
 - [ ] 明确默认 role 和可选 role。
 - [ ] 明确工具、MCP、skill、RAG、审批范围。
+- [ ] 确认 `GET /api/runtime-profile` 中的 `domain_agent_registry` 能看到该 agent。
 
 实现中：
 
@@ -456,4 +459,3 @@ backend/domain_agents/ecommerce_support/
 - 不要让 MCP tool call 接口替代 agent loop。
 - 不要把订单号、警情编号等业务字段硬塞进 `execution_context` 未定义字段。
 - 不要让外部框架原生 payload 成为前端主 contract。
-

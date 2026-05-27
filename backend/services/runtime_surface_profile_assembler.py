@@ -127,6 +127,7 @@ class RuntimeSurfaceProfileAssembler:
             "main_chat_query_detail": main_chat_query_detail,
             "external_adapter_recent_summary": external_adapter_recent_summary,
             "channel_promotion_gate": channel_promotion_gate,
+            "domain_agent_registry": service.domain_agent_registry_service.build_runtime_contract(),
             "tool_runtime": service.tool_runtime_service.build_runtime_contract(),
             "mcp_runtime": service.mcp_runtime_service.build_runtime_contract(),
             "adapter_health": service.tool_runtime_service.build_adapter_health_contract(),

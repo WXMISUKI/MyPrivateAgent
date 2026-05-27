@@ -1,0 +1,34 @@
+id: ecommerce_support
+name: Ecommerce Support Agent
+version: 0.1.0
+description: Domain agent for order lookup, logistics diagnosis, refund policy, and after-sales workflows.
+roles:
+  - id: after_sales_specialist
+    name: After Sales Specialist
+    default: true
+  - id: logistics_specialist
+    name: Logistics Specialist
+runtime:
+  default_model: default
+  enable_query_control_timeline: true
+  response_mode: stream
+capabilities:
+  tools:
+    - order.lookup
+    - logistics.trace
+    - refund.create_request
+  skills:
+    - refund_policy
+    - logistics_diagnosis
+  mcp_servers:
+    - ecommerce_order_mcp
+  rag_sources:
+    - refund_policy_docs
+    - logistics_faq
+governance:
+  approval_required:
+    - refund.create_request
+    - order.modify_address
+  audit_tags:
+    - ecommerce
+    - after_sales

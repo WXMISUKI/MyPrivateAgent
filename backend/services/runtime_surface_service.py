@@ -23,6 +23,7 @@ try:
     from services.agent_hook_service import get_agent_hook_service
     from services.capability_profile_service import get_capability_profile_service
     from services.command_registry_service import get_command_registry_service
+    from services.domain_agent_registry_service import get_domain_agent_registry_service
     from services.mcp_runtime_service import get_mcp_runtime_service
     from services.query_control_plane_service import get_query_control_plane_service
     from services.runtime_contract_snapshot_service import get_runtime_contract_snapshot_service
@@ -60,6 +61,7 @@ except ModuleNotFoundError:  # pragma: no cover - package import compatibility
     from backend.services.agent_hook_service import get_agent_hook_service
     from backend.services.capability_profile_service import get_capability_profile_service
     from backend.services.command_registry_service import get_command_registry_service
+    from backend.services.domain_agent_registry_service import get_domain_agent_registry_service
     from backend.services.mcp_runtime_service import get_mcp_runtime_service
     from backend.services.query_control_plane_service import get_query_control_plane_service
     from backend.services.runtime_contract_snapshot_service import get_runtime_contract_snapshot_service
@@ -102,6 +104,7 @@ class RuntimeSurfaceService:
         self.agent_hook_service = get_agent_hook_service()
         self.subagent_runtime_service = get_subagent_runtime_service()
         self.command_registry_service = get_command_registry_service()
+        self.domain_agent_registry_service = get_domain_agent_registry_service()
         self.tool_runtime_service = get_tool_runtime_service()
         self.mcp_runtime_service = get_mcp_runtime_service()
         self.query_control_plane_service = get_query_control_plane_service()

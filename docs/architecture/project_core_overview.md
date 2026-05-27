@@ -40,7 +40,7 @@ Capability Layer
   - ToolRuntimeService
   - SkillRuntimeService
   - MCP Runtime
-  - Memory / Command / Adapter registry
+  - Memory / Command / Domain Agent / Adapter registry
   |
   v
 Runtime Core
@@ -56,6 +56,7 @@ Runtime Core
 - 高风险工具必须进入 policy / approval / audit 链路。
 - 新增外部框架 adapter 必须先定义 adapter boundary、promotion gate 和非目标。
 - 新增垂域智能体应优先放在垂域目录，通过注册点接入 Tool / Skill / MCP / RAG / Policy。
+- `backend/domain_agents/*/agent.yaml` 会通过只读 registry 进入 Runtime Surface 的 `domain_agent_registry`，用于资产盘点和治理可见性。
 
 ## 3. 当前主执行链
 

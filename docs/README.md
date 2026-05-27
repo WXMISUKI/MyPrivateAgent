@@ -12,7 +12,7 @@
 - [../openspec/config.yaml](../openspec/config.yaml)：OpenSpec 默认上下文与规格规则，约束 proposal / tasks / archive 输出如何贴合本项目
 - [../openspec/README.md](../openspec/README.md)：OpenSpec 在本仓库中的实际使用说明，包含何时开 change、目录结构、样板和与 Spec Kit 的分工
 - [architecture/project_core_overview.md](./architecture/project_core_overview.md)：项目核心总览，面向维护者、垂域智能体开发者和外部前端接入方，说明核心分层、主执行链和当前统一 API
-- [guides/domain_agent_development_guide.md](./guides/domain_agent_development_guide.md)：垂域智能体开发指南，说明 agent 目录、Prompt/Tool/Skill/MCP/RAG/Policy 放置方式和前端统一对接协议
+- [guides/domain_agent_development_guide.md](./guides/domain_agent_development_guide.md)：垂域智能体开发指南，说明 agent 目录、`agent.yaml` 只读登记、Prompt/Tool/Skill/MCP/RAG/Policy 放置方式和前端统一对接协议
 - [../openspec/specs/query-workspace-generalization/spec.md](../openspec/specs/query-workspace-generalization/spec.md)：Query Workspace 通用化主规格，定义哪些 query 能力可以从 `main_chat` 提升为通用模式
 - [../openspec/specs/channel-promotion-gate/spec.md](../openspec/specs/channel-promotion-gate/spec.md)：Channel Promotion Gate 主规格，定义 channel 从 readiness 到 recent summary / detail / history / workspace 的逐层推广门槛
 - [architecture/current_architecture.md](./architecture/current_architecture.md)：当前架构事实入口，说明 Runtime Core、Capability、Governance、Delivery 四层结构和当前已收口能力
