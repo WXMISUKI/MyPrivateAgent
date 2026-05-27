@@ -1,8 +1,7 @@
 # unified-capability-runtime Specification
 
-## Purpose
-Defines the provider-neutral capability runtime registry for AI capabilities such as ASR, TTS, OCR, multimodal inference, and video generation. The registry lets MyPrivateAgent discover, health-check, and invoke local or external providers without binding frontend or agent code to provider-specific runtime environments.
-## Requirements
+## MODIFIED Requirements
+
 ### Requirement: Capability Registry Contract
 The backend SHALL expose a provider-neutral capability registry for AI capabilities.
 
@@ -56,12 +55,7 @@ The backend SHALL expose a short synchronous invocation endpoint for registered 
 - **THEN** the backend delegates the payload to the configured external provider invoke endpoint
 - **AND** returns the provider-neutral response envelope.
 
-### Requirement: Frontend Capability API Wrapper
-The frontend SHALL provide a provider-neutral capability API wrapper.
-
-#### Scenario: Frontend calls capability runtime
-- **WHEN** frontend code calls `capabilityApi.list()`, `capabilityApi.get(id)`, `capabilityApi.health(id)`, `capabilityApi.heartbeat()`, or `capabilityApi.invoke(id, payload)`
-- **THEN** requests go through the existing API base and auth interceptor.
+## ADDED Requirements
 
 ### Requirement: Capability Provider Heartbeat
 The backend SHALL expose a live heartbeat surface for external capability providers.

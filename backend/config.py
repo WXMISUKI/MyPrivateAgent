@@ -147,3 +147,8 @@ EDGE_TTS_DEFAULT_VOICE = os.getenv("EDGE_TTS_DEFAULT_VOICE", "zh-CN-XiaoxiaoNeur
 EDGE_TTS_RATE = os.getenv("EDGE_TTS_RATE", "+0%").strip() or "+0%"
 EDGE_TTS_VOLUME = os.getenv("EDGE_TTS_VOLUME", "+0%").strip() or "+0%"
 EDGE_TTS_PITCH = os.getenv("EDGE_TTS_PITCH", "+0Hz").strip() or "+0Hz"
+
+# External capability provider configuration.
+ENABLE_EXTERNAL_VOICE_CAPABILITY_PROVIDER = _env_flag("ENABLE_EXTERNAL_VOICE_CAPABILITY_PROVIDER", "false")
+VOICE_CAPABILITY_PROVIDER_BASE_URL = os.getenv("VOICE_CAPABILITY_PROVIDER_BASE_URL", "http://127.0.0.1:8010").strip()
+VOICE_CAPABILITY_PROVIDER_TIMEOUT_SECONDS = float(os.getenv("VOICE_CAPABILITY_PROVIDER_TIMEOUT_SECONDS", "5"))

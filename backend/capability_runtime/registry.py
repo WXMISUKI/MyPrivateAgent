@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from .contracts import CapabilityDefinition
 from .providers.voice_provider import build_voice_capabilities
+from .providers.voice_http_provider import build_http_voice_capabilities
 
 
 class CapabilityRegistry:
@@ -24,4 +25,23 @@ class CapabilityRegistry:
 
 
 def get_default_capability_registry() -> CapabilityRegistry:
+    try:
+        from config import (
+            ENABLE_EXTERNAL_VOICE_CAPABILITY_PROVIDER,
+            VOICE_CAPABILITY_PROVIDER_BASE_URL,
+            VOICE_CAPABILITY_PROVIDER_TIMEOUT_SECONDS,
+        )
+    except ModuleNotFoundError:
+        from backend.config import (
+            ENABLE_EXTERNAL_VOICE_CAPABILITY_PROVIDER,
+            VOICE_CAPABILITY_PROVIDER_BASE_URL,
+            VOICE_CAPABILITY_PROVIDER_TIMEOUT_SECONDS,
+        )
+    if ENABLE_EXTERNAL_VOICE_CAPABILITY_PROVIDER and VOICE_CAPABILITY_PROVIDER_BASE_URL:
+        return CapabilityRegistry(
+            build_http_voice_capabilities(
+                base_url=VOICE_CAPABILITY_PROVIDER_BASE_URL,
+                timeout_seconds=VOICE_CAPABILITY_PROVIDER_TIMEOUT_SECONDS,
+            )
+        )
     return CapabilityRegistry()

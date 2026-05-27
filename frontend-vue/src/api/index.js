@@ -234,6 +234,10 @@ export const capabilityApi = {
     return api.get(`/capabilities/${encodeURIComponent(capabilityId)}/health`)
   },
 
+  heartbeat() {
+    return api.get('/capabilities/heartbeat')
+  },
+
   invoke(capabilityId, payload = {}) {
     return api.post(`/capabilities/${encodeURIComponent(capabilityId)}/invoke`, payload)
   }

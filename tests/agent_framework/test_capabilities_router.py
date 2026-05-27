@@ -32,6 +32,14 @@ class CapabilitiesRouterTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["capability_id"], "voice.tts.edge")
 
+    def test_heartbeat_endpoint(self):
+        response = self.client.get("/api/capabilities/heartbeat")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["contract_version"], "capability-runtime-v1")
+        self.assertTrue(payload["providers"])
+
     def test_unknown_capability_endpoint_returns_404(self):
         response = self.client.post("/api/capabilities/unknown/invoke", json={})
 

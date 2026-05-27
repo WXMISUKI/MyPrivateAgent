@@ -34,6 +34,11 @@ def list_capabilities() -> dict[str, Any]:
     return get_capability_runtime_service().list_capabilities()
 
 
+@router.get("/capabilities/heartbeat")
+def get_capability_provider_heartbeat() -> dict[str, Any]:
+    return get_capability_runtime_service().get_provider_heartbeat()
+
+
 @router.get("/capabilities/{capability_id}")
 def get_capability(capability_id: str):
     try:

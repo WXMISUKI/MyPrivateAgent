@@ -76,6 +76,42 @@ backend/routers/capabilities.py
 }
 ```
 
+### `GET /api/capabilities/heartbeat`
+实时探测外部能力服务。该接口用于治理台、前端或运维面板展示“当前有哪些能力可调用、对应服务是否在线”。
+
+返回内容包含 provider 级别状态和每个 capability 的健康状态：
+
+```json
+{
+  "contract_version": "capability-runtime-v1",
+  "providers": [
+    {
+      "provider_id": "unifiedTTSandASR",
+      "base_url": "http://127.0.0.1:8010",
+      "transport": "http",
+      "status": "ok",
+      "capabilities": [
+        {
+          "capability_id": "voice.tts.edge",
+          "status": "ready"
+        }
+      ]
+    }
+  ]
+}
+```
+
+## 对接 unifiedTTSandASR
+`.env` 中启用外部语音能力服务：
+
+```env
+ENABLE_EXTERNAL_VOICE_CAPABILITY_PROVIDER=true
+VOICE_CAPABILITY_PROVIDER_BASE_URL=http://127.0.0.1:8010
+VOICE_CAPABILITY_PROVIDER_TIMEOUT_SECONDS=5
+```
+
+启用后，`voice.tts.edge` 和 `voice.asr.vosk` 会以 `transport=http` 注册，并通过 `unifiedTTSandASR` 的 `/api/capabilities/*` 实时查询状态和执行调用。
+
 ## 前端调用
 ```js
 import { capabilityApi } from '@/api'

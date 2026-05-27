@@ -9,6 +9,8 @@ from typing import Any, Callable
 CONTRACT_VERSION = "capability-runtime-v1"
 
 CapabilityInvoker = Callable[[dict[str, Any]], Any]
+CapabilityHealthChecker = Callable[[], dict[str, Any]]
+CapabilityHeartbeatChecker = Callable[[], dict[str, Any]]
 
 
 @dataclass(frozen=True)
@@ -24,6 +26,8 @@ class CapabilityDefinition:
     endpoint: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
     invoker: CapabilityInvoker | None = field(default=None, repr=False, compare=False)
+    health_checker: CapabilityHealthChecker | None = field(default=None, repr=False, compare=False)
+    heartbeat_checker: CapabilityHeartbeatChecker | None = field(default=None, repr=False, compare=False)
 
     def to_contract(self, *, status: str = "unknown", reason: str = "") -> dict[str, Any]:
         payload = {
