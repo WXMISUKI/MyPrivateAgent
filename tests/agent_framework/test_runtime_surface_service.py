@@ -12,12 +12,20 @@ from backend.agent_framework.persistence import (
     build_embedded_workspace_state_contract,
 )
 from backend.agent_framework.sdk import EmbeddedAgentRuntimeSDK
+import backend.services.runtime_surface_service as runtime_surface_service_module
 from backend.models import Base
 from backend.services.runtime_surface_builders import ProviderCatalogBuilder, RuntimeRecoveryContractBuilder
+from backend.services.runtime_surface_profile_assembler import RuntimeSurfaceProfileAssembler
 from backend.services.runtime_surface_service import RuntimeSurfaceService
 
 
 class RuntimeSurfaceServiceTests(unittest.TestCase):
+    def test_runtime_surface_service_uses_dedicated_profile_assembler(self):
+        self.assertIs(
+            runtime_surface_service_module.RuntimeSurfaceProfileAssembler,
+            RuntimeSurfaceProfileAssembler,
+        )
+
     def test_provider_catalog_builder_keeps_model_provider_resolution_isolated(self):
         catalog = ProviderCatalogBuilder.build_catalog(
             all_models=[

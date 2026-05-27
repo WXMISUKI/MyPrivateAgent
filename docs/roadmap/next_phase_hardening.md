@@ -915,16 +915,17 @@ Governance Timeline 前端继续瘦身仍有价值，但不应继续作为最高
 
 当前状态：
 
-- 未开始
+- 进行中
 
 当前进度：
 
 - 已完成：
   - query detail / history / subagent summary 等 dedicated contract 已开始出现
+  - `RuntimeSurfaceProfileAssembler` 已从 `runtime_surface_builders.py` 移入专用 `runtime_surface_profile_assembler.py`，`RuntimeSurfaceService.get_runtime_profile()` 继续作为稳定入口，对外 profile shape 不变。
 - 进行中：
-  - 无
-- 未开始：
   - 正式 builder / assembler 拆分
+- 未开始：
+  - 更深的 concern-specific builder 拆分与测试收口
 
 下一步动作：
 

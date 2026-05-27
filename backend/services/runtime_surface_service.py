@@ -35,12 +35,12 @@ try:
         ExternalAdapterRecentSummaryBuilder,
         MainChatGovernanceOverviewBuilder,
         MainChatQueryReadModelBuilder,
-        RuntimeSurfaceProfileAssembler,
         RuntimeRecoveryContractBuilder,
         SubagentLaneQueryDetailBuilder,
         SubagentLaneQueryDetailReadinessBuilder,
         SubagentLaneRecentSummaryBuilder,
     )
+    from services.runtime_surface_profile_assembler import RuntimeSurfaceProfileAssembler
     from services.skill_runtime_service import get_skill_runtime_service
     from services.subagent_service import get_subagent_runtime_service
     from services.tool_runtime_service import get_tool_runtime_service
@@ -70,12 +70,12 @@ except ModuleNotFoundError:  # pragma: no cover - package import compatibility
         ExternalAdapterRecentSummaryBuilder,
         MainChatGovernanceOverviewBuilder,
         MainChatQueryReadModelBuilder,
-        RuntimeSurfaceProfileAssembler,
         RuntimeRecoveryContractBuilder,
         SubagentLaneQueryDetailBuilder,
         SubagentLaneQueryDetailReadinessBuilder,
         SubagentLaneRecentSummaryBuilder,
     )
+    from backend.services.runtime_surface_profile_assembler import RuntimeSurfaceProfileAssembler
     from backend.services.skill_runtime_service import get_skill_runtime_service
     from backend.services.subagent_service import get_subagent_runtime_service
     from backend.services.tool_runtime_service import get_tool_runtime_service

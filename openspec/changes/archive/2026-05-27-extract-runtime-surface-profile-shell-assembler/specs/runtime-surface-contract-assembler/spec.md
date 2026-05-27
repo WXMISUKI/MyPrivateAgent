@@ -1,8 +1,5 @@
-# runtime-surface-contract-assembler Specification
+## MODIFIED Requirements
 
-## Purpose
-Define how Runtime Surface assembles contract sections into a stable profile for frontend and governance consumers.
-## Requirements
 ### Requirement: Runtime Surface profile assembly MUST remain contract-stable
 The system MUST keep `RuntimeSurfaceService.get_runtime_profile()` externally stable while allowing its internal assembly logic to be refactored into dedicated assembler or builder boundaries. The top-level profile shell assembler SHALL live behind a dedicated module boundary once extracted, while preserving compatibility for existing internal imports during the transition.
 
@@ -21,20 +18,3 @@ The system MUST keep `RuntimeSurfaceService.get_runtime_profile()` externally st
 - **THEN** `RuntimeSurfaceService.get_runtime_profile()` MUST delegate through the dedicated assembler module
 - **AND** compatibility imports MAY remain for existing backend callers
 - **AND** the extracted module MUST NOT introduce new public payload fields by itself
-
-### Requirement: Runtime Surface profile assembly MUST be decomposable by concern
-The system MUST separate runtime profile assembly concerns so model/provider aggregation, governance read models, recovery contracts, and child executor summaries can evolve independently.
-
-#### Scenario: Concern isolation
-- **WHEN** the runtime profile is assembled
-- **THEN** model/provider aggregation MUST remain separable from governance read model assembly
-- **AND** recovery-related contracts MUST remain separable from query/read model contracts
-- **AND** child executor summary assembly MUST remain separable from main profile composition
-
-### Requirement: Refactored runtime profile assembly MUST remain testable
-The system MUST keep the runtime profile assembly path covered by focused tests after the assembler boundary is introduced.
-
-#### Scenario: Contract regression protection
-- **WHEN** the assembler boundary changes the internal implementation
-- **THEN** focused backend tests MUST continue to assert the same runtime profile contract fields
-- **AND** contract snapshot guards MUST continue to pass without widening the public surface unexpectedly
