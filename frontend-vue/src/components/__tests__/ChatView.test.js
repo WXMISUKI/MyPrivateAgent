@@ -65,19 +65,39 @@ function installSpeechRecognitionMock() {
   return instances
 }
 
-function installManagedAsrMocks() {
+function installManagedAsrMocks({ withAudioWorklet = false } = {}) {
   const tracks = [{ stop: vi.fn() }]
   const source = { connect: vi.fn(), disconnect: vi.fn() }
   const processor = { connect: vi.fn(), disconnect: vi.fn(), onaudioprocess: null }
+  const workletNode = {
+    port: {
+      onmessage: null
+    },
+    connect: vi.fn(),
+    disconnect: vi.fn()
+  }
   const audioContext = {
     sampleRate: 48000,
+    destination: {},
     createMediaStreamSource: vi.fn(() => source),
     createScriptProcessor: vi.fn(() => processor),
     close: vi.fn().mockResolvedValue()
   }
+  if (withAudioWorklet) {
+    audioContext.audioWorklet = {
+      addModule: vi.fn().mockResolvedValue()
+    }
+  }
   class AudioContextMock {
     constructor() {
       Object.assign(this, audioContext)
+    }
+  }
+  class AudioWorkletNodeMock {
+    constructor(context, name) {
+      this.context = context
+      this.name = name
+      Object.assign(this, workletNode)
     }
   }
   const sockets = []
@@ -102,6 +122,11 @@ function installManagedAsrMocks() {
     writable: true,
     value: AudioContextMock
   })
+  Object.defineProperty(window, 'AudioWorkletNode', {
+    configurable: true,
+    writable: true,
+    value: withAudioWorklet ? AudioWorkletNodeMock : undefined
+  })
   Object.defineProperty(navigator, 'mediaDevices', {
     configurable: true,
     value: {
@@ -110,7 +135,7 @@ function installManagedAsrMocks() {
       })
     }
   })
-  return { sockets, tracks, processor, audioContext }
+  return { sockets, tracks, processor, workletNode, audioContext }
 }
 
 function buildSpeechResult(transcript, isFinal) {
@@ -131,6 +156,7 @@ describe('ChatView', () => {
     delete window.webkitSpeechRecognition
     delete window.WebSocket
     delete window.AudioContext
+    delete window.AudioWorkletNode
   })
 
   it('renders health alert banner when failover alert level is high', async () => {
@@ -292,6 +318,24 @@ describe('ChatView', () => {
     sockets[0].onmessage({ data: JSON.stringify({ ok: true, text: '查询天气', partial: false }) })
     await flushPromises()
     expect(wrapper.find('textarea').element.value).toBe('请帮我 查询天气')
+  })
+
+  it('uses AudioWorklet for managed realtime ASR when the browser supports it', async () => {
+    capabilityHealthMock.mockResolvedValue({ data: { status: 'ready' } })
+    const { sockets, workletNode, audioContext } = installManagedAsrMocks({ withAudioWorklet: true })
+    const wrapper = mountChatView()
+
+    await flushPromises()
+    await wrapper.find('.voice-input-btn').trigger('click')
+    await flushPromises()
+    sockets[0].onopen()
+    await flushPromises()
+
+    expect(audioContext.audioWorklet.addModule).toHaveBeenCalled()
+    expect(audioContext.createScriptProcessor).not.toHaveBeenCalled()
+
+    workletNode.port.onmessage({ data: { type: 'pcm', audio: new ArrayBuffer(4) } })
+    expect(sockets[0].send).toHaveBeenCalledWith(expect.any(ArrayBuffer))
   })
 
   it('writes interim and final speech transcripts into the textarea', async () => {

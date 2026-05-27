@@ -193,6 +193,10 @@ const plannerStore = usePlannerStore()
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
 
+const MANAGED_ASR_TARGET_SAMPLE_RATE = 16000
+const MANAGED_ASR_WORKLET_NAME = 'managed-asr-processor'
+const managedAsrWorkletUrl = new URL('../audio/managed-asr-processor.js', import.meta.url).href
+
 const messagesContainer = ref(null)
 const textareaRef = ref(null)
 const inputMessage = ref('')
@@ -497,6 +501,14 @@ function supportsManagedRealtimeAsr() {
   )
 }
 
+function supportsManagedAsrAudioWorklet(audioContext) {
+  return Boolean(
+    audioContext?.audioWorklet?.addModule &&
+    typeof window !== 'undefined' &&
+    window.AudioWorkletNode
+  )
+}
+
 function refreshVoiceInputSupport() {
   voiceInputSupported.value = Boolean(supportsManagedRealtimeAsr() || resolveSpeechRecognitionConstructor())
 }
@@ -665,20 +677,45 @@ async function startManagedRealtimeAsr() {
     const AudioContextCtor = resolveAudioContextConstructor()
     managedAsrAudioContext = new AudioContextCtor()
     managedAsrSource = managedAsrAudioContext.createMediaStreamSource(managedAsrStream)
-    managedAsrProcessor = managedAsrAudioContext.createScriptProcessor(4096, 1, 1)
-    managedAsrProcessor.onaudioprocess = (event) => {
-      if (!managedAsrSocket || managedAsrSocket.readyState !== WebSocket.OPEN) return
-      const input = event.inputBuffer.getChannelData(0)
-      managedAsrSocket.send(floatToPcm16(downsampleTo16k(input, managedAsrAudioContext.sampleRate)))
-    }
-    managedAsrSource.connect(managedAsrProcessor)
-    managedAsrProcessor.connect(managedAsrAudioContext.destination)
+    await attachManagedAsrAudioPipeline()
     return true
   } catch (error) {
     voiceInputError.value = error?.name === 'NotAllowedError' ? '麦克风权限未开启' : '实时语音输入暂时不可用'
     stopManagedRealtimeAsr()
     return false
   }
+}
+
+async function attachManagedAsrAudioPipeline() {
+  if (supportsManagedAsrAudioWorklet(managedAsrAudioContext)) {
+    await managedAsrAudioContext.audioWorklet.addModule(managedAsrWorkletUrl)
+    managedAsrProcessor = new window.AudioWorkletNode(
+      managedAsrAudioContext,
+      MANAGED_ASR_WORKLET_NAME,
+      {
+        processorOptions: {
+          targetSampleRate: MANAGED_ASR_TARGET_SAMPLE_RATE
+        }
+      }
+    )
+    managedAsrProcessor.port.onmessage = (event) => {
+      const audio = event.data?.audio
+      if (!audio || !managedAsrSocket || managedAsrSocket.readyState !== WebSocket.OPEN) return
+      managedAsrSocket.send(audio)
+    }
+    managedAsrSource.connect(managedAsrProcessor)
+    managedAsrProcessor.connect(managedAsrAudioContext.destination)
+    return
+  }
+
+  managedAsrProcessor = managedAsrAudioContext.createScriptProcessor(4096, 1, 1)
+  managedAsrProcessor.onaudioprocess = (event) => {
+    if (!managedAsrSocket || managedAsrSocket.readyState !== WebSocket.OPEN) return
+    const input = event.inputBuffer.getChannelData(0)
+    managedAsrSocket.send(floatToPcm16(downsampleTo16k(input, managedAsrAudioContext.sampleRate)))
+  }
+  managedAsrSource.connect(managedAsrProcessor)
+  managedAsrProcessor.connect(managedAsrAudioContext.destination)
 }
 
 function handleManagedAsrMessage(event) {
@@ -705,6 +742,9 @@ function handleManagedAsrMessage(event) {
 
 function stopManagedRealtimeAsr() {
   if (managedAsrProcessor) {
+    if (managedAsrProcessor.port) {
+      managedAsrProcessor.port.onmessage = null
+    }
     managedAsrProcessor.disconnect()
     managedAsrProcessor = null
   }
