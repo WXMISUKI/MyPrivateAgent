@@ -19,7 +19,8 @@ export default defineConfig(({ mode }) => ({
     proxy: {
       '/api': {
         target: 'http://localhost:8000',
-        changeOrigin: true
+        changeOrigin: true,
+        ws: true
       },
       '/auth': {
         target: 'http://localhost:8000',
