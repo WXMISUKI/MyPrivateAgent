@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from time import perf_counter
 from typing import Any
+from urllib.parse import urljoin, urlparse, urlunparse
 
 from .contracts import CONTRACT_VERSION, CapabilityDefinition
 from .registry import CapabilityRegistry, get_default_capability_registry
@@ -39,6 +40,27 @@ class CapabilityRuntimeService:
         if contract.get("error"):
             health["error"] = contract["error"]
         return health
+
+    def get_stream_proxy_target(self, capability_id: str) -> dict[str, Any]:
+        capability = self.registry.get(capability_id)
+        base_url = str(capability.metadata.get("provider_base_url") or "").strip()
+        stream_path = str(capability.metadata.get("provider_stream_path") or "").strip()
+        if capability.kind != "asr" or not base_url or not stream_path:
+            return {
+                "ok": False,
+                "capability_id": capability.capability_id,
+                "provider": capability.provider,
+                "error": {
+                    "code": "CAPABILITY_STREAM_UNAVAILABLE",
+                    "message": "Capability does not expose an external realtime stream endpoint.",
+                },
+            }
+        return {
+            "ok": True,
+            "capability_id": capability.capability_id,
+            "provider": capability.provider,
+            "url": self._to_websocket_url(urljoin(f"{base_url.rstrip('/')}/", stream_path.lstrip("/"))),
+        }
 
     def invoke(self, capability_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         capability = self.registry.get(capability_id)
@@ -166,6 +188,12 @@ class CapabilityRuntimeService:
     def _is_supported_asr_media_type(media_type: Any) -> bool:
         value = str(media_type or "application/octet-stream").lower().strip()
         return value.startswith("audio/pcm") or value == "application/octet-stream"
+
+    @staticmethod
+    def _to_websocket_url(url: str) -> str:
+        parsed = urlparse(url)
+        scheme = "wss" if parsed.scheme == "https" else "ws"
+        return urlunparse(parsed._replace(scheme=scheme))
 
     @staticmethod
     def _summarize_test_result(capability: CapabilityDefinition, result: dict[str, Any]) -> dict[str, Any]:

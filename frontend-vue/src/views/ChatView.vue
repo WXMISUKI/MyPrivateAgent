@@ -178,7 +178,7 @@ import { useAuthStore } from '../stores/auth'
 import { useSettingsStore } from '../stores/settings'
 import axios from 'axios'
 import { buildApiUrl } from '../config/apiBase'
-import { healthApi } from '../api'
+import { capabilityApi, healthApi } from '../api'
 import { buildRecentSnapshotCommandsHelp } from '../services/governanceSnapshotCommands'
 
 const CommandPalette = defineAsyncComponent(() => import('../components/CommandPalette.vue'))
@@ -211,11 +211,17 @@ const healthUpdatedAt = ref(null)
 const voiceInputSupported = ref(false)
 const isVoiceListening = ref(false)
 const voiceInputError = ref('')
+const voiceInputMode = ref('')
 const speechBaseText = ref('')
 const speechFinalTranscript = ref('')
 const speechInterimTranscript = ref('')
 let healthPollTimer = null
 let speechRecognition = null
+let managedAsrSocket = null
+let managedAsrStream = null
+let managedAsrAudioContext = null
+let managedAsrSource = null
+let managedAsrProcessor = null
 
 const isLoading = computed(() => conversationStore.isLoading)
 const feedbackReasons = computed(() => conversationStore.feedbackReasons || [])
@@ -302,6 +308,7 @@ const voiceInputTitle = computed(() => {
 
 const voiceInputHint = computed(() => {
   if (voiceInputError.value) return voiceInputError.value
+  if (isVoiceListening.value && voiceInputMode.value === 'managed-asr') return '正在实时听写，点击麦克风停止'
   if (isVoiceListening.value) return '正在听写，点击麦克风停止'
   if (!voiceInputSupported.value) return '当前浏览器不支持语音输入'
   return ''
@@ -476,6 +483,33 @@ function resolveSpeechRecognitionConstructor() {
   return window.SpeechRecognition || window.webkitSpeechRecognition || null
 }
 
+function resolveAudioContextConstructor() {
+  if (typeof window === 'undefined') return null
+  return window.AudioContext || window.webkitAudioContext || null
+}
+
+function supportsManagedRealtimeAsr() {
+  return Boolean(
+    typeof window !== 'undefined' &&
+    window.WebSocket &&
+    navigator.mediaDevices?.getUserMedia &&
+    resolveAudioContextConstructor()
+  )
+}
+
+function refreshVoiceInputSupport() {
+  voiceInputSupported.value = Boolean(supportsManagedRealtimeAsr() || resolveSpeechRecognitionConstructor())
+}
+
+function buildManagedAsrWebSocketUrl() {
+  const apiUrl = buildApiUrl('/capabilities/voice.asr.vosk/stream')
+  if (/^https?:\/\//i.test(apiUrl)) {
+    return apiUrl.replace(/^http/i, 'ws')
+  }
+  const origin = window.location.origin.replace(/^http/i, 'ws')
+  return `${origin}${apiUrl.startsWith('/') ? apiUrl : `/${apiUrl}`}`
+}
+
 function appendSpeechText(baseText, finalText, interimText) {
   const base = String(baseText || '').trimEnd()
   const spoken = [String(finalText || '').trim(), String(interimText || '').trim()]
@@ -495,7 +529,15 @@ function updateInputFromSpeech() {
   )
 }
 
-function startVoiceInput() {
+async function startVoiceInput() {
+  if (isLoading.value) return
+  refreshVoiceInputSupport()
+  const managedStarted = await startManagedRealtimeAsr()
+  if (managedStarted) return
+  startBrowserSpeechRecognition()
+}
+
+function startBrowserSpeechRecognition() {
   const Recognition = resolveSpeechRecognitionConstructor()
   if (!Recognition || isLoading.value) {
     voiceInputSupported.value = Boolean(Recognition)
@@ -509,6 +551,7 @@ function startVoiceInput() {
   speechInterimTranscript.value = ''
 
   const recognition = new Recognition()
+  voiceInputMode.value = 'browser-speech'
   recognition.lang = 'zh-CN'
   recognition.continuous = true
   recognition.interimResults = true
@@ -533,12 +576,14 @@ function startVoiceInput() {
   }
   recognition.onerror = (event) => {
     isVoiceListening.value = false
+    voiceInputMode.value = ''
     voiceInputError.value = event?.error === 'not-allowed'
       ? '麦克风权限未开启'
       : '语音输入暂时不可用'
   }
   recognition.onend = () => {
     isVoiceListening.value = false
+    voiceInputMode.value = ''
     speechInterimTranscript.value = ''
     updateInputFromSpeech()
   }
@@ -549,11 +594,13 @@ function startVoiceInput() {
     recognition.start()
   } catch (error) {
     isVoiceListening.value = false
+    voiceInputMode.value = ''
     voiceInputError.value = '语音输入启动失败'
   }
 }
 
 function stopVoiceInput() {
+  stopManagedRealtimeAsr()
   if (!speechRecognition) return
   try {
     speechRecognition.stop()
@@ -561,7 +608,160 @@ function stopVoiceInput() {
     // Browser implementations may throw when recognition is already stopped.
   }
   isVoiceListening.value = false
+  voiceInputMode.value = ''
   speechRecognition = null
+}
+
+async function startManagedRealtimeAsr() {
+  if (!supportsManagedRealtimeAsr()) return false
+  try {
+    const health = await capabilityApi.health('voice.asr.vosk')
+    if (health.data?.status !== 'ready') return false
+  } catch (error) {
+    return false
+  }
+
+  stopVoiceInput()
+  voiceInputError.value = ''
+  voiceInputMode.value = 'managed-asr'
+  isVoiceListening.value = true
+  speechBaseText.value = inputMessage.value
+  speechFinalTranscript.value = ''
+  speechInterimTranscript.value = ''
+
+  try {
+    const socket = new WebSocket(buildManagedAsrWebSocketUrl())
+    managedAsrSocket = socket
+    socket.binaryType = 'arraybuffer'
+    socket.onmessage = handleManagedAsrMessage
+    socket.onerror = () => {
+      voiceInputError.value = '实时语音输入连接异常'
+      stopManagedRealtimeAsr()
+    }
+    socket.onclose = () => {
+      if (voiceInputMode.value === 'managed-asr') {
+        isVoiceListening.value = false
+        voiceInputMode.value = ''
+      }
+    }
+
+    await new Promise((resolve, reject) => {
+      socket.onopen = resolve
+      socket.onerror = reject
+    })
+    socket.onerror = () => {
+      voiceInputError.value = '实时语音输入连接异常'
+      stopManagedRealtimeAsr()
+    }
+
+    managedAsrStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        channelCount: 1,
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true
+      }
+    })
+    const AudioContextCtor = resolveAudioContextConstructor()
+    managedAsrAudioContext = new AudioContextCtor()
+    managedAsrSource = managedAsrAudioContext.createMediaStreamSource(managedAsrStream)
+    managedAsrProcessor = managedAsrAudioContext.createScriptProcessor(4096, 1, 1)
+    managedAsrProcessor.onaudioprocess = (event) => {
+      if (!managedAsrSocket || managedAsrSocket.readyState !== WebSocket.OPEN) return
+      const input = event.inputBuffer.getChannelData(0)
+      managedAsrSocket.send(floatToPcm16(downsampleTo16k(input, managedAsrAudioContext.sampleRate)))
+    }
+    managedAsrSource.connect(managedAsrProcessor)
+    managedAsrProcessor.connect(managedAsrAudioContext.destination)
+    return true
+  } catch (error) {
+    voiceInputError.value = error?.name === 'NotAllowedError' ? '麦克风权限未开启' : '实时语音输入暂时不可用'
+    stopManagedRealtimeAsr()
+    return false
+  }
+}
+
+function handleManagedAsrMessage(event) {
+  let payload = null
+  try {
+    payload = JSON.parse(String(event.data || '{}'))
+  } catch (error) {
+    return
+  }
+  if (!payload.ok) {
+    voiceInputError.value = payload.error?.message || '实时语音输入暂时不可用'
+    stopManagedRealtimeAsr()
+    return
+  }
+  const transcript = String(payload.text || '').trim()
+  if (payload.partial) {
+    speechInterimTranscript.value = transcript
+  } else if (transcript) {
+    speechFinalTranscript.value = `${speechFinalTranscript.value} ${transcript}`.trim()
+    speechInterimTranscript.value = ''
+  }
+  updateInputFromSpeech()
+}
+
+function stopManagedRealtimeAsr() {
+  if (managedAsrProcessor) {
+    managedAsrProcessor.disconnect()
+    managedAsrProcessor = null
+  }
+  if (managedAsrSource) {
+    managedAsrSource.disconnect()
+    managedAsrSource = null
+  }
+  if (managedAsrStream) {
+    managedAsrStream.getTracks().forEach(track => track.stop())
+    managedAsrStream = null
+  }
+  if (managedAsrAudioContext) {
+    managedAsrAudioContext.close()
+    managedAsrAudioContext = null
+  }
+  if (managedAsrSocket) {
+    const socket = managedAsrSocket
+    if (socket.readyState === WebSocket.OPEN) {
+      socket.send('__end__')
+    }
+    socket.close()
+    managedAsrSocket = null
+  }
+  if (voiceInputMode.value === 'managed-asr') {
+    isVoiceListening.value = false
+    voiceInputMode.value = ''
+    speechInterimTranscript.value = ''
+    updateInputFromSpeech()
+  }
+}
+
+function downsampleTo16k(input, inputSampleRate) {
+  const outputSampleRate = 16000
+  if (inputSampleRate === outputSampleRate) return input
+  const ratio = inputSampleRate / outputSampleRate
+  const outputLength = Math.floor(input.length / ratio)
+  const output = new Float32Array(outputLength)
+  for (let i = 0; i < outputLength; i += 1) {
+    const start = Math.floor(i * ratio)
+    const end = Math.min(Math.floor((i + 1) * ratio), input.length)
+    let sum = 0
+    for (let j = start; j < end; j += 1) {
+      sum += input[j]
+    }
+    output[i] = sum / Math.max(1, end - start)
+  }
+  return output
+}
+
+function floatToPcm16(input) {
+  const buffer = new ArrayBuffer(input.length * 2)
+  const view = new DataView(buffer)
+  for (let i = 0; i < input.length; i += 1) {
+    const sample = Math.max(-1, Math.min(1, input[i]))
+    view.setInt16(i * 2, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true)
+  }
+  return buffer
 }
 
 function toggleVoiceInput() {
@@ -1021,7 +1221,7 @@ watch(inputMessage, () => {
 
 onMounted(async () => {
   scrollToBottom()
-  voiceInputSupported.value = Boolean(resolveSpeechRecognitionConstructor())
+  refreshVoiceInputSupport()
 
   document.addEventListener('click', (e) => {
     if (modelSelectorRef.value && !modelSelectorRef.value.contains(e.target)) {

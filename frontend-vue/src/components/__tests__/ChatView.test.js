@@ -2,8 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { mount, flushPromises } from '@vue/test-utils'
 
-const { pushMock } = vi.hoisted(() => ({
-  pushMock: vi.fn()
+const { pushMock, capabilityHealthMock } = vi.hoisted(() => ({
+  pushMock: vi.fn(),
+  capabilityHealthMock: vi.fn()
 }))
 
 vi.mock('vue-router', () => ({
@@ -26,6 +27,9 @@ vi.mock('../../api', () => ({
         }
       }
     })
+  },
+  capabilityApi: {
+    health: capabilityHealthMock
   }
 }))
 
@@ -61,6 +65,54 @@ function installSpeechRecognitionMock() {
   return instances
 }
 
+function installManagedAsrMocks() {
+  const tracks = [{ stop: vi.fn() }]
+  const source = { connect: vi.fn(), disconnect: vi.fn() }
+  const processor = { connect: vi.fn(), disconnect: vi.fn(), onaudioprocess: null }
+  const audioContext = {
+    sampleRate: 48000,
+    createMediaStreamSource: vi.fn(() => source),
+    createScriptProcessor: vi.fn(() => processor),
+    close: vi.fn().mockResolvedValue()
+  }
+  class AudioContextMock {
+    constructor() {
+      Object.assign(this, audioContext)
+    }
+  }
+  const sockets = []
+  class WebSocketMock {
+    static OPEN = 1
+    constructor(url) {
+      this.url = url
+      this.readyState = WebSocketMock.OPEN
+      this.binaryType = ''
+      this.send = vi.fn()
+      this.close = vi.fn()
+      sockets.push(this)
+    }
+  }
+  Object.defineProperty(window, 'WebSocket', {
+    configurable: true,
+    writable: true,
+    value: WebSocketMock
+  })
+  Object.defineProperty(window, 'AudioContext', {
+    configurable: true,
+    writable: true,
+    value: AudioContextMock
+  })
+  Object.defineProperty(navigator, 'mediaDevices', {
+    configurable: true,
+    value: {
+      getUserMedia: vi.fn().mockResolvedValue({
+        getTracks: () => tracks
+      })
+    }
+  })
+  return { sockets, tracks, processor, audioContext }
+}
+
 function buildSpeechResult(transcript, isFinal) {
   return {
     0: { transcript },
@@ -73,8 +125,12 @@ describe('ChatView', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     pushMock.mockReset()
+    capabilityHealthMock.mockReset()
+    capabilityHealthMock.mockResolvedValue({ data: { status: 'unavailable' } })
     delete window.SpeechRecognition
     delete window.webkitSpeechRecognition
+    delete window.WebSocket
+    delete window.AudioContext
   })
 
   it('renders health alert banner when failover alert level is high', async () => {
@@ -211,6 +267,31 @@ describe('ChatView', () => {
     expect(speechInstances[0].interimResults).toBe(true)
     expect(speechInstances[0].start).toHaveBeenCalled()
     expect(wrapper.text()).toContain('正在听写')
+  })
+
+  it('starts managed realtime ASR from the microphone button when ready', async () => {
+    capabilityHealthMock.mockResolvedValue({ data: { status: 'ready' } })
+    const { sockets } = installManagedAsrMocks()
+    const wrapper = mountChatView()
+
+    await flushPromises()
+    await wrapper.find('textarea').setValue('请帮我')
+    await wrapper.find('.voice-input-btn').trigger('click')
+    await flushPromises()
+    sockets[0].onopen()
+    await flushPromises()
+
+    expect(capabilityHealthMock).toHaveBeenCalledWith('voice.asr.vosk')
+    expect(sockets[0].url).toContain('/api/capabilities/voice.asr.vosk/stream')
+    expect(wrapper.text()).toContain('正在实时听写')
+
+    sockets[0].onmessage({ data: JSON.stringify({ ok: true, text: '查询天气', partial: true }) })
+    await flushPromises()
+    expect(wrapper.find('textarea').element.value).toBe('请帮我 查询天气')
+
+    sockets[0].onmessage({ data: JSON.stringify({ ok: true, text: '查询天气', partial: false }) })
+    await flushPromises()
+    expect(wrapper.find('textarea').element.value).toBe('请帮我 查询天气')
   })
 
   it('writes interim and final speech transcripts into the textarea', async () => {

@@ -4,6 +4,7 @@ import unittest
 import httpx
 
 from backend.capability_runtime.clients.http_client import HttpCapabilityClient
+from backend.capability_runtime.providers.voice_provider import build_voice_capabilities
 from backend.capability_runtime.providers.voice_http_provider import build_http_voice_capabilities
 from backend.capability_runtime.registry import CapabilityRegistry
 from backend.capability_runtime.service import CapabilityRuntimeService
@@ -85,6 +86,23 @@ class CapabilityActiveTestTests(unittest.TestCase):
         self.assertFalse(result["ok"])
         self.assertEqual(result["status"], "invalid_input")
         self.assertEqual(result["error"]["code"], "CAPABILITY_TEST_UNSUPPORTED_MEDIA_TYPE")
+
+    def test_asr_stream_target_uses_external_provider_metadata(self):
+        service = self._service(lambda request: _json_response({"status": "ready"}))
+
+        result = service.get_stream_proxy_target("voice.asr.vosk")
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["capability_id"], "voice.asr.vosk")
+        self.assertEqual(result["url"], "ws://voice.test/api/voice/asr/ws")
+
+    def test_asr_stream_target_requires_external_stream_metadata(self):
+        service = CapabilityRuntimeService(CapabilityRegistry(build_voice_capabilities()))
+
+        result = service.get_stream_proxy_target("voice.asr.vosk")
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["error"]["code"], "CAPABILITY_STREAM_UNAVAILABLE")
 
     def test_active_test_returns_structured_error_for_unreachable_provider(self):
         def handler(request):

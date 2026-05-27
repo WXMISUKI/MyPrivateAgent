@@ -151,6 +151,40 @@ ASR 在传入 `audio_base64` 时只接受 `16kHz / mono / PCM s16le` 原始音�
 }
 ```
 
+### `WS /api/capabilities/{capability_id}/stream`
+实时流式能力代理。当前用于 `voice.asr.vosk` 主对话麦克风输入。
+
+前端只连接 MyPrivateAgent：
+
+```text
+WS /api/capabilities/voice.asr.vosk/stream
+```
+
+MyPrivateAgent 根据 capability metadata 中的 `provider_base_url` 和 `provider_stream_path` 转发到外部 provider，例如：
+
+```text
+ws://127.0.0.1:8010/api/voice/asr/ws
+```
+
+客户端发送内容：
+
+- 二进制帧：`16kHz / mono / PCM s16le` 音频 chunk。
+- 文本帧：`__end__` 表示结束当前识别。
+
+服务端返回 provider 的识别消息：
+
+```json
+{
+  "ok": true,
+  "provider": "vosk_server",
+  "language": "zh-cn",
+  "text": "实时识别文本",
+  "partial": true
+}
+```
+
+主聊天输入框会把 `partial=true` 作为临时文本，把 `partial=false` 的 `text` 合并进最终输入内容。用户发送消息时仍然走原有 `/api/chat` 流程。
+
 ## 对接 unifiedTTSandASR
 `.env` 中启用外部语音能力服务：
 
