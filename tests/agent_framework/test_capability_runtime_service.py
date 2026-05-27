@@ -1,11 +1,15 @@
 import unittest
+from unittest.mock import patch
 
+from backend.capability_runtime.providers.voice_provider import build_voice_capabilities
+from backend.capability_runtime.registry import CapabilityRegistry
 from backend.capability_runtime.service import CapabilityRuntimeService
+from backend.voice_runtime.service import VoiceRuntimeSettings
 
 
 class CapabilityRuntimeServiceTests(unittest.TestCase):
     def setUp(self):
-        self.service = CapabilityRuntimeService()
+        self.service = CapabilityRuntimeService(CapabilityRegistry(build_voice_capabilities()))
 
     def test_registry_lists_voice_capabilities(self):
         payload = self.service.list_capabilities()
@@ -44,7 +48,11 @@ class CapabilityRuntimeServiceTests(unittest.TestCase):
             self.service.get_capability("unknown")
 
     def test_disabled_voice_invocation_returns_structured_error(self):
-        result = self.service.invoke("voice.tts.edge", {"text": "hello"})
+        with patch(
+            "backend.voice_runtime.service.VoiceRuntimeSettings.from_config",
+            return_value=VoiceRuntimeSettings(enabled=False),
+        ):
+            result = self.service.invoke("voice.tts.edge", {"text": "hello"})
 
         self.assertFalse(result["ok"])
         self.assertEqual(result["capability_id"], "voice.tts.edge")

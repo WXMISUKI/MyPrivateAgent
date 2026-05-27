@@ -64,3 +64,14 @@ def invoke_capability(capability_id: str, payload: dict[str, Any]):
     if result.get("ok"):
         return result
     return JSONResponse(status_code=503, content=result)
+
+
+@router.post("/capabilities/{capability_id}/test")
+def test_capability(capability_id: str, payload: dict[str, Any] | None = None):
+    try:
+        result = get_capability_runtime_service().test_capability(capability_id, payload or {})
+    except LookupError:
+        return _not_found(capability_id)
+    if result.get("ok"):
+        return result
+    return JSONResponse(status_code=503, content=result)

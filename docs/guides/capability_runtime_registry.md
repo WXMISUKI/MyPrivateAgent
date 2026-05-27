@@ -76,6 +76,44 @@ backend/routers/capabilities.py
 }
 ```
 
+### `POST /api/capabilities/{capability_id}/test`
+由 MyPrivateAgent 控制面发起的主动能力测试。它用于设置页和运维验收，不替代业务调用链。
+
+请求：
+
+```json
+{
+  "payload": {},
+  "mode": "default"
+}
+```
+
+TTS 默认测试会补入一段短文本，调用 provider 的 invoke 接口，并只把音频摘要返回给控制面：
+
+```json
+{
+  "ok": true,
+  "capability_id": "voice.tts.edge",
+  "status": "ok",
+  "latency_ms": 123,
+  "result_summary": {
+    "media_type": "audio/mpeg",
+    "audio_base64_length": 1024
+  }
+}
+```
+
+ASR 在未传入 `audio_base64` 时只做 readiness 检查，避免把“服务在线”误判成“真实识别成功”：
+
+```json
+{
+  "ok": true,
+  "capability_id": "voice.asr.vosk",
+  "status": "ready",
+  "mode": "health_only"
+}
+```
+
 ### `GET /api/capabilities/heartbeat`
 实时探测外部能力服务。该接口用于治理台、前端或运维面板展示“当前有哪些能力可调用、对应服务是否在线”。
 
@@ -120,7 +158,10 @@ const list = await capabilityApi.list()
 const tts = await capabilityApi.get('voice.tts.edge')
 const health = await capabilityApi.health('voice.tts.edge')
 const result = await capabilityApi.invoke('voice.tts.edge', { text: '您好' })
+const test = await capabilityApi.test('voice.tts.edge')
 ```
+
+设置页“模型与 Provider”区域提供“能力 Provider 测试”面板，统一展示 `/api/capabilities`、`/api/capabilities/heartbeat` 和主动测试结果。TTS 测试成功后可直接播放返回音频；ASR 默认展示 health-only 结果，如需真实识别可上传已经符合 provider 要求的音频载荷。实时录音、PCM 下采样和 WebSocket 验收仍由 `unifiedTTSandASR/static/index.html` 作为服务自身调试台承担。
 
 ## 后续服务化规则
 新增 OCR、多模态、视频生成时优先按以下顺序：

@@ -1,0 +1,90 @@
+import json
+import unittest
+
+import httpx
+
+from backend.capability_runtime.clients.http_client import HttpCapabilityClient
+from backend.capability_runtime.providers.voice_http_provider import build_http_voice_capabilities
+from backend.capability_runtime.registry import CapabilityRegistry
+from backend.capability_runtime.service import CapabilityRuntimeService
+
+
+def _json_response(payload, status_code=200):
+    return httpx.Response(
+        status_code,
+        headers={"content-type": "application/json"},
+        content=json.dumps(payload).encode("utf-8"),
+    )
+
+
+class CapabilityActiveTestTests(unittest.TestCase):
+    def test_tts_active_test_invokes_provider_and_summarizes_audio(self):
+        def handler(request):
+            self.assertEqual(request.url.path, "/api/capabilities/voice.tts.edge/invoke")
+            payload = json.loads(request.content.decode("utf-8"))
+            self.assertTrue(payload["text"])
+            return _json_response(
+                {
+                    "ok": True,
+                    "capability_id": "voice.tts.edge",
+                    "provider": "edge_tts",
+                    "result": {"media_type": "audio/mpeg", "audio_base64": "QUJDRA=="},
+                }
+            )
+
+        service = self._service(handler)
+
+        result = service.test_capability("voice.tts.edge", {})
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["result_summary"]["media_type"], "audio/mpeg")
+        self.assertEqual(result["result_summary"]["audio_base64_length"], 8)
+        self.assertEqual(result["result_summary"]["audio_base64"], "QUJDRA==")
+        self.assertGreaterEqual(result["latency_ms"], 0)
+
+    def test_asr_active_test_without_audio_uses_health_only(self):
+        def handler(request):
+            self.assertEqual(request.url.path, "/api/capabilities/voice.asr.vosk/health")
+            return _json_response(
+                {
+                    "capability_id": "voice.asr.vosk",
+                    "provider": "vosk_server",
+                    "transport": "http",
+                    "status": "ready",
+                    "reason": "",
+                }
+            )
+
+        service = self._service(handler)
+
+        result = service.test_capability("voice.asr.vosk", {})
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["mode"], "health_only")
+        self.assertEqual(result["status"], "ready")
+        self.assertNotIn("text", result.get("result_summary", {}))
+
+    def test_active_test_returns_structured_error_for_unreachable_provider(self):
+        def handler(request):
+            raise httpx.ConnectError("connect failed", request=request)
+
+        service = self._service(handler)
+
+        result = service.test_capability("voice.tts.edge", {})
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["error"]["code"], "CAPABILITY_PROVIDER_UNREACHABLE")
+
+    def _service(self, handler):
+        client = HttpCapabilityClient(
+            base_url="http://voice.test",
+            transport=httpx.MockTransport(handler),
+        )
+        return CapabilityRuntimeService(
+            CapabilityRegistry(build_http_voice_capabilities(base_url="http://voice.test", client=client))
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()

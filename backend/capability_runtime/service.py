@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from time import perf_counter
 from typing import Any
 
 from .contracts import CONTRACT_VERSION, CapabilityDefinition
@@ -75,6 +76,63 @@ class CapabilityRuntimeService:
             },
         }
 
+    def test_capability(self, capability_id: str, request: dict[str, Any] | None = None) -> dict[str, Any]:
+        capability = self.registry.get(capability_id)
+        request_payload = dict(request or {})
+        payload = dict(request_payload.get("payload") or {})
+        mode = str(request_payload.get("mode") or "default").strip() or "default"
+        started_at = perf_counter()
+
+        if capability.kind == "asr" and not str(payload.get("audio_base64") or "").strip():
+            health = self.get_capability_health(capability_id)
+            latency_ms = round((perf_counter() - started_at) * 1000)
+            ok = health.get("status") == "ready"
+            result = {
+                "ok": ok,
+                "capability_id": capability_id,
+                "provider": capability.provider,
+                "status": health.get("status") or "unknown",
+                "mode": "health_only",
+                "latency_ms": latency_ms,
+                "result_summary": {
+                    "health_status": health.get("status") or "unknown",
+                    "reason": health.get("reason") or "",
+                },
+            }
+            if health.get("error"):
+                result["error"] = health["error"]
+            return result
+
+        if capability.kind == "tts":
+            payload.setdefault("text", "您好，这是 MyPrivateAgent 的语音能力测试。")
+
+        invocation = self.invoke(capability_id, payload)
+        latency_ms = round((perf_counter() - started_at) * 1000)
+        if not invocation.get("ok"):
+            return {
+                "ok": False,
+                "capability_id": capability_id,
+                "provider": capability.provider,
+                "status": "error",
+                "mode": mode,
+                "latency_ms": latency_ms,
+                "error": invocation.get("error") or {
+                    "code": "CAPABILITY_TEST_FAILED",
+                    "message": "Capability test failed.",
+                },
+            }
+
+        summary = self._summarize_test_result(capability, invocation.get("result") or {})
+        return {
+            "ok": True,
+            "capability_id": capability_id,
+            "provider": invocation.get("provider") or capability.provider,
+            "status": "ok",
+            "mode": mode,
+            "latency_ms": latency_ms,
+            "result_summary": summary,
+        }
+
     def _capability_contract(self, capability: CapabilityDefinition) -> dict[str, Any]:
         health = self._resolve_health(capability)
         contract = capability.to_contract(
@@ -84,6 +142,24 @@ class CapabilityRuntimeService:
         if health.get("error"):
             contract["error"] = health["error"]
         return contract
+
+    @staticmethod
+    def _summarize_test_result(capability: CapabilityDefinition, result: dict[str, Any]) -> dict[str, Any]:
+        if capability.kind == "tts":
+            audio_base64 = str(result.get("audio_base64") or "")
+            return {
+                "media_type": str(result.get("media_type") or ""),
+                "audio_base64_length": len(audio_base64),
+                "audio_base64": audio_base64,
+            }
+        if capability.kind == "asr":
+            nested = result.get("result") if isinstance(result.get("result"), dict) else result
+            return {
+                "text": str(nested.get("text") or ""),
+                "language": str(nested.get("language") or ""),
+                "partial": bool(nested.get("partial")),
+            }
+        return result
 
     def _resolve_status(self, capability: CapabilityDefinition) -> tuple[str, str]:
         health = self._resolve_health(capability)

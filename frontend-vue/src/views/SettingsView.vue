@@ -196,6 +196,7 @@
         </section>
 
         <ProviderConfigPanel />
+        <CapabilityProviderDiagnosticsPanel />
 
         <div class="tab-footer">
           <button @click="saveSettings" class="save-btn">保存设置</button>
@@ -225,6 +226,7 @@ import McpManagementPanel from '../components/McpManagementPanel.vue'
 import CapabilityGapSummaryPanel from '../components/CapabilityGapSummaryPanel.vue'
 import RuntimeSurfacePanel from '../components/RuntimeSurfacePanel.vue'
 import ProviderConfigPanel from '../components/ProviderConfigPanel.vue'
+import CapabilityProviderDiagnosticsPanel from '../components/CapabilityProviderDiagnosticsPanel.vue'
 import { healthApi, providerApi, runtimeSurfaceApi } from '../api'
 
 const emit = defineEmits(['close', 'theme-changed'])
