@@ -28,6 +28,7 @@ try:
     from services.runtime_contract_snapshot_service import get_runtime_contract_snapshot_service
     from services.runtime_contract_gate_service import get_runtime_contract_gate_service
     from services.self_improvement_ledger_service import get_self_improvement_ledger_service
+    from services.governance_overview_run_state_builder import GovernanceOverviewRunStateBuilder
     from services.runtime_core_contract_builder import RuntimeCoreContractBuilder
     from services.runtime_surface_config_service import get_runtime_surface_config_service
     from services.runtime_surface_builders import (
@@ -64,6 +65,7 @@ except ModuleNotFoundError:  # pragma: no cover - package import compatibility
     from backend.services.runtime_contract_snapshot_service import get_runtime_contract_snapshot_service
     from backend.services.runtime_contract_gate_service import get_runtime_contract_gate_service
     from backend.services.self_improvement_ledger_service import get_self_improvement_ledger_service
+    from backend.services.governance_overview_run_state_builder import GovernanceOverviewRunStateBuilder
     from backend.services.runtime_core_contract_builder import RuntimeCoreContractBuilder
     from backend.services.runtime_surface_config_service import get_runtime_surface_config_service
     from backend.services.runtime_surface_builders import (
@@ -719,19 +721,7 @@ class RuntimeSurfaceService:
         )
         return {
             "contract_version": "phase-a-governance-overview-v1",
-            "run": {
-                "runtime_core": True,
-                "run_id": str(scope.get("run_id") or "").strip(),
-                "parent_run_id": str(scope.get("parent_run_id") or "").strip(),
-                "child_run_id": str(scope.get("child_run_id") or "").strip(),
-                "child_display_id": str(scope.get("child_display_id") or scope.get("child_run_id") or "").strip(),
-                "scheduler_run_id": str(scope.get("scheduler_run_id") or "").strip(),
-                "run_kind": str(scope.get("run_kind") or "contract").strip() or "contract",
-                "status": str(scope.get("status") or "not_started").strip() or "not_started",
-                "trace_count": int(scope.get("trace_count") or 0),
-                "latest_trace_event": dict(scope.get("latest_trace_event") or {}) or None,
-                **self._build_child_merge_state_contract(scope),
-            },
+            "run": GovernanceOverviewRunStateBuilder.build_run_state(runtime_scope=scope),
             "run_recovery": {
                 "contract_version": str(recovery.get("contract_version") or "").strip(),
                 "available": bool(recovery.get("available")),

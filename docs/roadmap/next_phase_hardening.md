@@ -1231,7 +1231,8 @@ Governance Timeline 前端继续瘦身仍有价值，但不应继续作为最高
 建议拆分：
 
 - `RuntimeProfileAssembler`：已作为 `get_runtime_profile()` 的主组装入口落地。
-- `RuntimeCoreContractBuilder`
+- `RuntimeCoreContractBuilder`：已承接 `runtime_core` shell、scoped overlay 与 child merge evidence。
+- `GovernanceOverviewRunStateBuilder`：已先承接 `governance_overview.run` 的 run-state assembly，作为完整 `GovernanceOverviewContractBuilder` 前的安全拆分点。
 - `GovernanceOverviewContractBuilder`
 - `ProviderCatalogBuilder`：已承接模型过滤、provider 汇总和 `provider_resolution` 组装，并有 focused 单测守护。
 

@@ -14,6 +14,7 @@ from backend.agent_framework.persistence import (
 from backend.agent_framework.sdk import EmbeddedAgentRuntimeSDK
 import backend.services.runtime_surface_service as runtime_surface_service_module
 from backend.models import Base
+from backend.services.governance_overview_run_state_builder import GovernanceOverviewRunStateBuilder
 from backend.services.runtime_core_contract_builder import RuntimeCoreContractBuilder
 from backend.services.runtime_surface_builders import ProviderCatalogBuilder, RuntimeRecoveryContractBuilder
 from backend.services.runtime_surface_profile_context import RuntimeSurfaceProfileContextAssembler
@@ -172,6 +173,70 @@ class RuntimeSurfaceServiceTests(unittest.TestCase):
         self.assertEqual(
             RuntimeSurfaceService()._build_runtime_core_contract(runtime_scope={"run_id": "run-1"})["run_id"],
             "run-1",
+        )
+
+    def test_governance_overview_run_state_builder_builds_default_run(self):
+        run = GovernanceOverviewRunStateBuilder.build_run_state()
+
+        self.assertTrue(run["runtime_core"])
+        self.assertEqual(run["run_id"], "")
+        self.assertEqual(run["run_kind"], "contract")
+        self.assertEqual(run["status"], "not_started")
+        self.assertEqual(run["trace_count"], 0)
+        self.assertIsNone(run["latest_trace_event"])
+        self.assertEqual(run["child_merge_entities"], [])
+        self.assertEqual(run["child_merge_section_counts"], {})
+
+    def test_governance_overview_run_state_builder_preserves_scope_and_child_merge(self):
+        run = GovernanceOverviewRunStateBuilder.build_run_state(
+            runtime_scope={
+                "run_id": " run-1 ",
+                "parent_run_id": " parent-run-1 ",
+                "child_run_id": " child-run-1 ",
+                "scheduler_run_id": " scheduler-run-1 ",
+                "run_kind": " scheduler ",
+                "status": " running ",
+                "trace_count": 2,
+                "latest_trace_event": {"summary": "调度执行中"},
+                "child_merge_intent": " risk_review ",
+                "child_merge_entities": ["交易", "风险"],
+                "child_merge_entity_count": 2,
+                "child_merge_focus_count": 3,
+                "child_merge_action_count": 1,
+                "child_merge_primary_entities": ["交易"],
+                "child_merge_conclusion": " 建议复核 ",
+                "child_merge_section_source": " merged_sections ",
+                "child_merge_section_ids": ["merged_entities"],
+                "child_merge_section_counts": {"merged_entities": 2},
+            }
+        )
+
+        self.assertEqual(run["run_id"], "run-1")
+        self.assertEqual(run["parent_run_id"], "parent-run-1")
+        self.assertEqual(run["child_run_id"], "child-run-1")
+        self.assertEqual(run["child_display_id"], "child-run-1")
+        self.assertEqual(run["scheduler_run_id"], "scheduler-run-1")
+        self.assertEqual(run["run_kind"], "scheduler")
+        self.assertEqual(run["status"], "running")
+        self.assertEqual(run["trace_count"], 2)
+        self.assertEqual(run["latest_trace_event"], {"summary": "调度执行中"})
+        self.assertEqual(run["child_merge_intent"], "risk_review")
+        self.assertEqual(run["child_merge_entities"], ["交易", "风险"])
+        self.assertEqual(run["child_merge_entity_count"], 2)
+        self.assertEqual(run["child_merge_focus_count"], 3)
+        self.assertEqual(run["child_merge_action_count"], 1)
+        self.assertEqual(run["child_merge_primary_entities"], ["交易"])
+        self.assertEqual(run["child_merge_conclusion"], "建议复核")
+        self.assertEqual(run["child_merge_section_source"], "merged_sections")
+        self.assertEqual(run["child_merge_section_ids"], ["merged_entities"])
+        self.assertEqual(run["child_merge_section_counts"], {"merged_entities": 2})
+
+    def test_governance_overview_contract_uses_run_state_builder(self):
+        self.assertIs(
+            RuntimeSurfaceService._build_governance_overview_contract.__globals__[
+                "GovernanceOverviewRunStateBuilder"
+            ],
+            GovernanceOverviewRunStateBuilder,
         )
 
     def test_provider_catalog_builder_keeps_model_provider_resolution_isolated(self):
