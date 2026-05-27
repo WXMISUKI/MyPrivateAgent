@@ -25,6 +25,8 @@ capabilities:
   rag_sources:
     - refund_policy_docs
     - logistics_faq
+  graph_sources:
+    - ecommerce_order_graph
 governance:
   approval_required:
     - refund.create_request

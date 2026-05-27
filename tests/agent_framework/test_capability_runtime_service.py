@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import patch
 
 from backend.capability_runtime.providers.voice_provider import build_voice_capabilities
-from backend.capability_runtime.registry import CapabilityRegistry
+from backend.capability_runtime.registry import CapabilityRegistry, get_default_capability_registry
 from backend.capability_runtime.service import CapabilityRuntimeService
 from backend.voice_runtime.service import VoiceRuntimeSettings
 
@@ -57,6 +57,27 @@ class CapabilityRuntimeServiceTests(unittest.TestCase):
         self.assertFalse(result["ok"])
         self.assertEqual(result["capability_id"], "voice.tts.edge")
         self.assertEqual(result["error"]["code"], "VOICE_RUNTIME_DISABLED")
+
+    def test_default_registry_omits_knowledge_capabilities_when_unconfigured(self):
+        with patch("backend.config.ENABLE_KNOWLEDGE_CAPABILITY_PROVIDER", False):
+            registry = get_default_capability_registry()
+
+        capability_ids = {capability.capability_id for capability in registry.list()}
+
+        self.assertNotIn("knowledge.rag.retrieve", capability_ids)
+        self.assertNotIn("knowledge.graph.query", capability_ids)
+
+    def test_default_registry_adds_knowledge_capabilities_when_configured(self):
+        with patch("backend.config.ENABLE_KNOWLEDGE_CAPABILITY_PROVIDER", True), patch(
+            "backend.config.KNOWLEDGE_CAPABILITY_PROVIDER_BASE_URL",
+            "http://knowledge.test",
+        ):
+            registry = get_default_capability_registry()
+
+        capability_ids = {capability.capability_id for capability in registry.list()}
+
+        self.assertIn("knowledge.rag.retrieve", capability_ids)
+        self.assertIn("knowledge.graph.query", capability_ids)
 
 
 if __name__ == "__main__":

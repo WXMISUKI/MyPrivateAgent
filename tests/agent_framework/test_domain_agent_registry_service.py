@@ -14,6 +14,22 @@ class _StaticContractService:
     def build_runtime_contract(self, *args, **kwargs):
         return dict(self._contract)
 
+    def build_rag_source_registry_contract(self):
+        return {
+            "contract_version": "rag-source-registry-v1",
+            "status": "empty",
+            "total_entries": 0,
+            "entries": [],
+        }
+
+    def build_knowledge_graph_registry_contract(self):
+        return {
+            "contract_version": "knowledge-graph-registry-v1",
+            "status": "empty",
+            "total_entries": 0,
+            "entries": [],
+        }
+
 
 class _RuntimeFactoryStub:
     def build_runtime_contract(self):
@@ -126,6 +142,8 @@ class DomainAgentRegistryServiceTests(unittest.TestCase):
                         - ecommerce_order_mcp
                       rag_sources:
                         - refund_policy_docs
+                      graph_sources:
+                        - ecommerce_order_graph
                     governance:
                       approval_required:
                         - refund.create_request
@@ -146,9 +164,21 @@ class DomainAgentRegistryServiceTests(unittest.TestCase):
             self.assertEqual(agent["status"], "ready")
             self.assertEqual(agent["roles"][0]["id"], "after_sales_specialist")
             self.assertEqual(agent["capabilities"]["tools"], ["order.lookup"])
+            self.assertEqual(agent["capabilities"]["rag_sources"], ["refund_policy_docs"])
+            self.assertEqual(agent["capabilities"]["graph_sources"], ["ecommerce_order_graph"])
             self.assertEqual(agent["governance"]["approval_required"], ["refund.create_request"])
             self.assertEqual(agent["agent_dir"], str(agent_dir))
             self.assertEqual(agent["manifest_path"], str(agent_dir / "agent.yaml"))
+
+            rag_registry = DomainAgentRegistryService(root).build_rag_source_registry_contract()
+            graph_registry = DomainAgentRegistryService(root).build_knowledge_graph_registry_contract()
+
+            self.assertEqual(rag_registry["status"], "ready")
+            self.assertEqual(rag_registry["entries"][0]["source_id"], "refund_policy_docs")
+            self.assertEqual(rag_registry["entries"][0]["agent_id"], "ecommerce_support")
+            self.assertEqual(graph_registry["status"], "ready")
+            self.assertEqual(graph_registry["entries"][0]["graph_id"], "ecommerce_order_graph")
+            self.assertEqual(graph_registry["entries"][0]["agent_id"], "ecommerce_support")
 
     def test_invalid_manifest_reports_missing_required_field(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -170,21 +200,35 @@ class DomainAgentRegistryServiceTests(unittest.TestCase):
 
     def test_empty_directory_returns_stable_empty_contract(self):
         with tempfile.TemporaryDirectory() as temp_dir:
-            contract = DomainAgentRegistryService(Path(temp_dir)).build_runtime_contract()
+            service = DomainAgentRegistryService(Path(temp_dir))
+            contract = service.build_runtime_contract()
+            rag_registry = service.build_rag_source_registry_contract()
+            graph_registry = service.build_knowledge_graph_registry_contract()
 
             self.assertEqual(contract["contract_version"], "domain-agent-registry-v1")
             self.assertEqual(contract["status"], "empty")
             self.assertEqual(contract["total_agents"], 0)
             self.assertEqual(contract["agents"], [])
             self.assertEqual(contract["errors"], [])
+            self.assertEqual(rag_registry["status"], "empty")
+            self.assertEqual(rag_registry["total_entries"], 0)
+            self.assertEqual(graph_registry["status"], "empty")
+            self.assertEqual(graph_registry["total_entries"], 0)
 
     def test_runtime_surface_profile_exposes_domain_agent_registry(self):
         profile = RuntimeSurfaceProfileAssembler.assemble(_RuntimeSurfaceStub())
 
         self.assertIn("domain_agent_registry", profile)
+        self.assertIn("rag_source_registry", profile)
+        self.assertIn("knowledge_graph_registry", profile)
         self.assertEqual(
             profile["domain_agent_registry"]["contract_version"],
             "domain-agent-registry-v1",
+        )
+        self.assertEqual(profile["rag_source_registry"]["contract_version"], "rag-source-registry-v1")
+        self.assertEqual(
+            profile["knowledge_graph_registry"]["contract_version"],
+            "knowledge-graph-registry-v1",
         )
 
 

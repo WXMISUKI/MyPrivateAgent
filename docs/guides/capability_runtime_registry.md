@@ -1,17 +1,19 @@
 # 统一能力运行时注册中心
 
 ## 定位
-`capability_runtime` 是 MyPrivateAgent 面向 OCR、ASR、TTS、多模态、视频生成等 AI 能力的统一注册和调用层。它不替代具体模型或工具服务，而是把不同运行环境的能力收口到统一合同里，供前端、垂域智能体、ToolRuntime、MCP、治理台共同使用。
+`capability_runtime` 是 MyPrivateAgent 面向 OCR、ASR、TTS、RAG、知识图谱、多模态、视频生成等 AI 能力的统一注册和调用层。它不替代具体模型或工具服务，而是把不同运行环境的能力收口到统一合同里，供前端、垂域智能体、ToolRuntime、MCP、治理台共同使用。
 
 ## 当前实现
-当前最小切片已注册现有语音能力：
+当前最小切片已注册现有语音能力，并可按配置接入外部知识能力：
 
 ```text
 voice.tts.edge
 voice.asr.vosk
+knowledge.rag.retrieve
+knowledge.graph.query
 ```
 
-它们仍由 `backend/voice_runtime/` 执行。后续可以平滑迁移为独立 HTTP/MCP 服务，外部调用方不需要改能力接口。
+语音能力默认仍由 `backend/voice_runtime/` 执行，也可以迁移为独立 HTTP 服务。知识能力只通过外部 `unifiedKnowledgeProvider` 接入，主项目不内置向量库、图数据库、Embedding、OCR、文档解析或重排依赖。
 
 ## 目录
 ```text
@@ -21,6 +23,8 @@ backend/capability_runtime/
   service.py
   providers/
     voice_provider.py
+    voice_http_provider.py
+    knowledge_http_provider.py
 backend/routers/capabilities.py
 ```
 
@@ -59,7 +63,7 @@ backend/routers/capabilities.py
 - `error`
 
 ### `POST /api/capabilities/{capability_id}/invoke`
-短任务同步调用。当前用于 TTS、短音频 ASR 这类小输入。大文件 OCR、视频生成、批处理任务后续应走 jobs/artifacts。
+短任务同步调用。当前用于 TTS、短音频 ASR、RAG 检索和图谱查询这类小输入。大文件 OCR、视频生成、批处理、文档导入和增量索引应走外部 provider 自己的 jobs/artifacts，不进入 MyPrivateAgent 主后端。
 
 不可用时返回统一错误：
 
@@ -195,6 +199,18 @@ VOICE_CAPABILITY_PROVIDER_TIMEOUT_SECONDS=5
 ```
 
 启用后，`voice.tts.edge` 和 `voice.asr.vosk` 会以 `transport=http` 注册，并通过 `unifiedTTSandASR` 的 `/api/capabilities/*` 实时查询状态和执行调用。
+
+## 对接 unifiedKnowledgeProvider
+
+`.env` 中启用外部知识能力服务：
+
+```env
+ENABLE_KNOWLEDGE_CAPABILITY_PROVIDER=true
+KNOWLEDGE_CAPABILITY_PROVIDER_BASE_URL=http://127.0.0.1:8020
+KNOWLEDGE_CAPABILITY_PROVIDER_TIMEOUT_SECONDS=5
+```
+
+启用后，`knowledge.rag.retrieve` 和 `knowledge.graph.query` 会以 `transport=http` 注册。MyPrivateAgent 通过 provider 的 `/health` 读取健康状态，通过 `/api/rag/retrieve` 和 `/api/graph/query` 执行调用。具体外部项目开发规范见 [external_rag_provider_development.md](./external_rag_provider_development.md)。
 
 ## 前端调用
 ```js

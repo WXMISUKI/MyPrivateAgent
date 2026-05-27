@@ -108,6 +108,8 @@ capabilities:
   rag_sources:
     - refund_policy_docs
     - logistics_faq
+  graph_sources:
+    - ecommerce_order_graph
 
 governance:
   approval_required:
@@ -122,7 +124,7 @@ governance:
 
 - `id`：前端请求中的 `execution_context.agent_id`。
 - `roles.id`：前端请求中的 `execution_context.agent_role`。
-- `capabilities`：该 agent 允许使用的能力清单。
+- `capabilities`：该 agent 允许使用的能力清单，其中 `rag_sources` 和 `graph_sources` 会进入 Runtime Surface 的只读知识 registry。
 - `governance.approval_required`：必须进入审批链路的高风险动作。
 
 ## 4. 垂域开发步骤
@@ -224,13 +226,21 @@ mcp/servers.yaml
 - `backend/services/mcp_adapter_service.py`
 - `GET /api/mcp/catalog`
 
-### Step 6：接入 RAG
+### Step 6：接入 RAG 与知识图谱
 
 RAG 不建议直接塞进主 chat router。推荐放在：
 
 ```text
 rag/sources.yaml
 rag/retrieval_policy.md
+```
+
+如果业务需要实体、关系、路径或 ontology 约束，推荐额外声明知识图谱：
+
+```yaml
+capabilities:
+  graph_sources:
+    - ecommerce_order_graph
 ```
 
 RAG 返回必须包含：
@@ -242,6 +252,8 @@ RAG 返回必须包含：
 - 可选 citation / url / document id
 
 如果 RAG 结果会影响高风险动作，应让工具或 policy 再做一次权限判断。
+
+知识图谱返回必须包含 `graph_id / entities / relations / paths / evidence`。RAG 与知识图谱都应由外部 Knowledge Provider 管理，MyPrivateAgent 只保存 `agent.yaml` 绑定、capability 注册、health、invoke 和审计证据。外部项目开发规范见 [external_rag_provider_development.md](./external_rag_provider_development.md)。
 
 ### Step 7：定义审批和风险策略
 
@@ -396,7 +408,8 @@ GET  /api/agents/{agent_id}/capabilities
 - [ ] 高风险工具有审批策略。
 - [ ] Skill 有触发条件、domain、agent_roles。
 - [ ] MCP server 有稳定 id 和健康检查。
-- [ ] RAG 返回 source / snippet / confidence。
+- [ ] RAG 返回 source / snippet / confidence / citation。
+- [ ] 知识图谱声明 graph source，并返回 entity / relation / path / evidence。
 - [ ] 前端只调用统一 chat API，不绕过 agent loop。
 
 验证时：

@@ -57,6 +57,24 @@ class DomainAgentRegistryService:
             "errors": errors,
         }
 
+    def build_rag_source_registry_contract(self) -> Dict[str, Any]:
+        return _build_knowledge_source_registry(
+            self.build_runtime_contract(),
+            registry_key="rag_source_registry",
+            capability_key="rag_sources",
+            entry_key="source_id",
+            contract_version="rag-source-registry-v1",
+        )
+
+    def build_knowledge_graph_registry_contract(self) -> Dict[str, Any]:
+        return _build_knowledge_source_registry(
+            self.build_runtime_contract(),
+            registry_key="knowledge_graph_registry",
+            capability_key="graph_sources",
+            entry_key="graph_id",
+            contract_version="knowledge-graph-registry-v1",
+        )
+
     def _iter_manifest_paths(self) -> Iterable[Path]:
         root = self.root_path
         if not root.exists() or not root.is_dir():
@@ -152,6 +170,41 @@ def _normalize_capabilities(value: Any) -> Dict[str, List[str]]:
         "skills": _normalize_string_list(mapping.get("skills")),
         "mcp_servers": _normalize_string_list(mapping.get("mcp_servers")),
         "rag_sources": _normalize_string_list(mapping.get("rag_sources")),
+        "graph_sources": _normalize_string_list(mapping.get("graph_sources")),
+    }
+
+
+def _build_knowledge_source_registry(
+    domain_contract: Mapping[str, Any],
+    *,
+    registry_key: str,
+    capability_key: str,
+    entry_key: str,
+    contract_version: str,
+) -> Dict[str, Any]:
+    entries: List[Dict[str, Any]] = []
+    agents = domain_contract.get("agents") if isinstance(domain_contract, Mapping) else []
+    if isinstance(agents, list):
+        for agent in agents:
+            if not isinstance(agent, Mapping) or agent.get("status") != "ready":
+                continue
+            capabilities = _normalize_mapping(agent.get("capabilities"))
+            for source_id in _normalize_string_list(capabilities.get(capability_key)):
+                entries.append(
+                    {
+                        entry_key: source_id,
+                        "agent_id": _clean_string(agent.get("id")),
+                        "agent_name": _clean_string(agent.get("name")),
+                        "manifest_path": _clean_string(agent.get("manifest_path")),
+                    }
+                )
+    entries.sort(key=lambda item: (str(item.get(entry_key) or ""), str(item.get("agent_id") or "")))
+    return {
+        "contract_version": contract_version,
+        "registry_key": registry_key,
+        "status": "ready" if entries else "empty",
+        "total_entries": len(entries),
+        "entries": entries,
     }
 
 

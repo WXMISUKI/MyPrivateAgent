@@ -10,7 +10,7 @@
 2. 编写 `agent.yaml`，固定 `agent_id`、角色、能力和治理边界。
 3. 定义垂域工具与 ToolSpec。
 4. 注册到 tool runtime 或 command registry。
-5. 需要知识/记忆时接入 skill / memory contract。
+5. 需要知识/记忆时接入 skill / memory contract；需要 RAG 或知识图谱时声明 `rag_sources` / `graph_sources` 并对接外部 Knowledge Provider。
 6. 需要外部系统时优先接入 MCP runtime。
 7. 需要审批时接入 policy / approval seam。
 8. 需要治理回放时写入 run trace 或 governance timeline。
@@ -31,7 +31,7 @@ backend/domain_agents/<agent_id>/
   tests/
 ```
 
-当前 `backend/domain_agents/` 已具备只读 discovery：`DomainAgentRegistryService` 会读取 `agent.yaml` / `agent.yml`，并通过 Runtime Surface 的 `domain_agent_registry` 暴露垂域 agent 资产。该 registry 只负责登记和观测，不导入垂域代码，不自动注册 Tool / Skill / MCP / RAG，也不参与执行路由。新增启停、自动注册或 `/api/agents/{agent_id}/chat` 包装接口前，必须先开 OpenSpec change。
+当前 `backend/domain_agents/` 已具备只读 discovery：`DomainAgentRegistryService` 会读取 `agent.yaml` / `agent.yml`，并通过 Runtime Surface 的 `domain_agent_registry` 暴露垂域 agent 资产。`rag_source_registry` 和 `knowledge_graph_registry` 会从 manifest 的 `rag_sources` / `graph_sources` 派生，只负责登记和观测，不导入垂域代码，不自动注册 Tool / Skill / MCP / RAG，不创建索引或图谱，也不参与执行路由。新增启停、自动注册或 `/api/agents/{agent_id}/chat` 包装接口前，必须先开 OpenSpec change。
 
 当前业务前端统一入口：
 
@@ -97,6 +97,21 @@ POST /api/chat
 - skill definition 可被 Runtime Surface 展示。
 - memory entry 有来源、用途和生命周期说明。
 - 注入上下文时必须可追踪，避免隐式污染 prompt。
+
+## 4.1 新增 RAG / 知识图谱能力
+
+主要 seam：
+
+- `backend/capability_runtime/providers/knowledge_http_provider.py`
+- `backend/services/domain_agent_registry_service.py`
+- `docs/guides/external_rag_provider_development.md`
+
+最低要求：
+
+- 外部 provider 暴露 `/health`、`/api/rag/retrieve`、`/api/graph/query`。
+- RAG 结果必须包含 `citation`。
+- 图谱结果必须包含 `graph_id / entities / relations / paths / evidence`。
+- MyPrivateAgent 主后端不引入向量库、图数据库、Embedding、OCR、文档解析或重排依赖。
 
 ## 5. 新增外部 Framework Adapter
 
