@@ -8,6 +8,7 @@
 - 新增 read model / governance summary / query detail / timeline filter
 - 跨 `Runtime Core / Capability / Governance / Delivery` 两层以上的变更
 - 吸收外部参考项目后的正式设计输入
+- 外部 Agent 框架接入、framework adapter 边界、promotion gate 和生命周期映射
 
 它**不**替代：
 
@@ -51,6 +52,7 @@ openspec/
 
 当前 canonical specs：
 
+- `openspec/specs/agent-runtime-control-plane-positioning/spec.md`
 - `openspec/specs/query-run-read-model/spec.md`
 - `openspec/specs/query-workspace-generalization/spec.md`
 - `openspec/specs/channel-promotion-gate/spec.md`
@@ -91,6 +93,21 @@ openspec/
 - `fix-stuff`
 - `phase-h-work`
 - `tmp-change`
+
+### 4.3 当前推荐节奏
+
+涉及 runtime contract、read model、治理语义、外部框架 adapter 的工作，默认按以下顺序推进：
+
+1. 规格：创建或更新 OpenSpec change，写清收口对象、非目标、adapter/promotion 边界和验证方式。
+2. 实现：只推进一个最小可验证切片，避免同时改多个 contract 层。
+3. 归档：同步 canonical spec、architecture docs、roadmap 后归档 change。
+4. git 提交：在验证结果和归档位置明确后提交。
+
+外部框架规则：
+
+- LangGraph、OpenAI Agents SDK、Qwen-Agent、CrewAI、DeerFlow、Agno 等成熟框架是 execution adapter 候选，不是项目替代方案。
+- 任何框架接入都必须先映射到本地 Runtime Core、ToolRuntime、Query Control、Runtime Contract Gate 和 Governance contract。
+- 不允许把 framework-native raw payload 作为前端治理台的主 contract。
 
 ## 5. proposal / design / tasks 最小要求
 
@@ -157,6 +174,7 @@ openspec/
 
 当前建议：
 
+- 如果讨论项目定位或外部框架是否替代本项目，先读 `agent-runtime-control-plane-positioning` canonical spec。
 - 如果某条能力还在“从无到有”阶段，优先参考前两份样板
 - 如果某条能力已经做深、开始接近阶段完成线，优先参考第三份样板，先收口通用边界再决定是否继续扩
 - 如果高层边界已经写清、准备做某个 channel 的第一步推广试点，优先参考第四份样板

@@ -2,6 +2,19 @@
 
 > 本文记录当前运行时契约入口。契约字段以代码为准，本文只记录稳定边界和维护约束。
 
+## 0. 项目定位与外部框架边界
+
+MyPrivateAgent 的正式定位是企业级 `Agent Runtime Control Plane`，不是 LangGraph、CrewAI、Qwen-Agent、OpenAI Agents SDK、DeerFlow、Agno 等外部 Agent 框架的替代实现。
+
+外部框架在本项目中的位置是可插拔执行引擎或 adapter candidate：
+
+- 它们可以提供 agent workflow、handoff、多 agent 协作、tool execution、tracing、planning 等执行层能力。
+- 它们不能直接替代本项目的 Runtime Core、Tool Runtime、Query Control、Runtime Contract Gate、Governance Timeline、审计、权限和业务系统集成语义。
+- 任何外部框架接入都必须通过 framework adapter 把原生事件、工具、run、失败、审批和 handoff 映射为本地稳定 contract。
+- 前端治理台和 Runtime Surface 优先消费本地 runtime/governance contract，不直接依赖 framework-native raw payload。
+
+后续若新增或推广外部框架 adapter，必须先通过 OpenSpec 记录 adapter 边界、生命周期映射、promotion gate、非目标与验证方式；默认不得直接进入主 chat 执行链。
+
 ## 1. Contract 聚合入口
 
 Runtime Surface 的当前聚合入口是：

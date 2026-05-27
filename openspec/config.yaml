@@ -2,7 +2,11 @@ schema: spec-driven
 
 context: |
   Project: MyPrivateAgent
-  Positioning: 企业内部通用智能体底座，不是单一聊天 Demo，不直接绑定某个外部框架产品壳。
+  Positioning: 企业级 Agent Runtime Control Plane，不是单一聊天 Demo，也不是 LangGraph/CrewAI/Qwen-Agent/OpenAI Agents SDK/DeerFlow 等外部框架的替代实现。
+  External framework rule:
+    - Mature agent frameworks are execution engines, lifecycle references, or adapter candidates.
+    - Local Runtime Core, ToolRuntime, Query Control, Runtime Contract Gate, Governance Timeline, permission, audit, and business integration contracts remain the truth source.
+    - New framework integrations must go through an OpenSpec adapter proposal and promotion gate before touching default main chat execution.
   Architecture truth sources:
     - docs/architecture/current_architecture.md
     - docs/architecture/runtime_contracts.md
@@ -14,7 +18,9 @@ context: |
     - Prefer backend read model / contract convergence over frontend local derivation.
     - Do not optimize local UI repeatedly after a phase completion line is reached.
     - External references are inputs, not blueprints.
+    - External frameworks are adapter candidates, not project positioning.
     - When changing contracts, update docs and focused tests together.
+    - Runtime/framework changes follow specification -> implementation -> archive -> git submission.
   Current phase bias:
     - Highest priority is Runtime Core and Query/Run Read Model convergence.
     - main_chat UI micro-optimizations are not top priority unless they unblock read model or contract clarity.

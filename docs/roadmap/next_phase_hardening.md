@@ -6,6 +6,13 @@
 
 当前底座已经完成第一轮收口，不建议再大范围重写。基于 `D:\AI\AIcode\claude-code`、`D:\AI\AIcode\learn-claude-code`、`D:\AI\AIcode\self-improving-agent` 的本地参考阅读，下一阶段需要从治理台展示回到 Agent Runtime 主干。
 
+项目正式定位已经收口为企业级 `Agent Runtime Control Plane`：
+
+- 不再把 MyPrivateAgent 定义为某个外部 Agent 框架的替代实现。
+- LangGraph、OpenAI Agents SDK、Qwen-Agent、CrewAI、DeerFlow、Agno 等成熟框架后续只能作为 execution adapter、lifecycle mapping、tool/handoff/tracing 参考进入项目。
+- 本项目继续保有 Runtime Core、ToolRuntime、Query Control、Runtime Contract Gate、Governance Timeline、审计、权限和业务系统集成的稳定控制面职责。
+- 任何外部框架接入默认先走 OpenSpec adapter proposal 与 promotion gate，不直接进入主 chat 执行链。
+
 下一阶段应优先做三件事：
 
 1. Self-Improvement Ledger 从能力契约推进到健康摘要。
@@ -1275,8 +1282,17 @@ Governance Timeline 前端继续瘦身仍有价值，但不应继续作为最高
 
 ## 8. 推荐执行顺序
 
-1. 完成文档入口产品化。
-2. 深化 Embedded SDK 持久化与恢复能力。
-3. 拆 Governance Timeline。
-4. 拆 Runtime Surface contract assembler。
-5. 准备第二个 external framework adapter 模板。
+当前推荐按“规格 -> 实现 -> 归档 -> git 提交”的节奏推进：
+
+1. 规格：先确认是否影响 runtime contract、read model、治理语义或 framework adapter；命中则创建 OpenSpec change，并写清 adapter 边界、promotion gate、非目标和验证方式。
+2. 实现：一次只推进一个最小可验证切片，优先保持 Runtime Core、ToolRuntime、Query Control 和 Governance contract 稳定。
+3. 归档：实现完成后同步 canonical spec、architecture docs、roadmap，再把 change 归档到 `openspec/changes/archive/`。
+4. git 提交：在验证结果、归档位置和后续项明确后再提交。
+
+下一批优先级：
+
+1. 完成文档入口产品化，并把 `agent-runtime-control-plane-positioning` 作为项目定位入口。
+2. 准备 framework adapter authoring checklist / promotion gate，而不是直接接入第二个框架。
+3. 深化 Embedded SDK 持久化与恢复能力。
+4. 拆 Governance Timeline。
+5. 拆 Runtime Surface contract assembler。
