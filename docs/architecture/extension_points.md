@@ -6,18 +6,47 @@
 
 推荐接入顺序：
 
-1. 定义垂域工具与 ToolSpec。
-2. 注册到 tool runtime 或 command registry。
-3. 需要知识/记忆时接入 skill / memory contract。
-4. 需要审批时接入 policy / approval seam。
-5. 需要治理回放时写入 run trace 或 governance timeline。
-6. 业务项目通过 service API 或 embedded SDK 接入。
+1. 在 `backend/domain_agents/<agent_id>/` 下建立垂域目录。
+2. 编写 `agent.yaml`，固定 `agent_id`、角色、能力和治理边界。
+3. 定义垂域工具与 ToolSpec。
+4. 注册到 tool runtime 或 command registry。
+5. 需要知识/记忆时接入 skill / memory contract。
+6. 需要外部系统时优先接入 MCP runtime。
+7. 需要审批时接入 policy / approval seam。
+8. 需要治理回放时写入 run trace 或 governance timeline。
+9. 业务项目通过 service API 或 embedded SDK 接入。
+
+推荐目录：
+
+```text
+backend/domain_agents/<agent_id>/
+  agent.yaml
+  README.md
+  prompts/
+  tools/
+  skills/
+  mcp/
+  rag/
+  policies/
+  tests/
+```
+
+当前 `backend/domain_agents/` 是建议固定的垂域代码组织约定，自动 discovery / agent catalog 尚未作为运行时事实落地。新增自动发现或 `/api/agents/{agent_id}/chat` 包装接口前，必须先开 OpenSpec change。
+
+当前业务前端统一入口：
+
+```http
+POST /api/chat
+```
+
+请求中使用白名单 `execution_context.agent_id` 与 `execution_context.agent_role` 表达垂域智能体身份。业务参数不应塞入未定义 execution context 字段，应通过用户问题、ToolSpec、MCP 或未来正式 request schema 承载。
 
 不推荐：
 
 - 直接改 `chat_service.py` 堆业务分支。
 - 直接在前端治理台写领域规则。
 - 绕过 Runtime Core 自己维护一套 run 状态。
+- 绕过 agent loop 让业务前端直接决定工具调用。
 
 ## 2. 新增工具能力
 
