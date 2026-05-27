@@ -1937,6 +1937,7 @@ class RuntimeSurfaceServiceTests(unittest.TestCase):
                             "agent_name": "risk_reviewer",
                             "scheduler_policy": {"timeout_seconds": 45},
                             "worker_runtime_backend": "embedded_sdk_worker",
+                            "explicit_executor_binding_opt_in": True,
                         },
                     },
                     parent_run_id=parent["run"]["run_id"],
@@ -2166,6 +2167,7 @@ class RuntimeSurfaceServiceTests(unittest.TestCase):
                             "agent_name": "risk_reviewer",
                             "scheduler_policy": {"timeout_seconds": 45},
                             "worker_runtime_backend": "embedded_sdk_worker",
+                            "explicit_executor_binding_opt_in": True,
                         },
                     },
                     parent_run_id=parent["run"]["run_id"],
@@ -2474,6 +2476,18 @@ class RuntimeSurfaceServiceTests(unittest.TestCase):
             "workspace_backend_not_durable",
         )
         self.assertEqual(validation["validation_status"], "passed")
+
+    def test_embedded_runtime_bootstrap_recovery_validation_handles_malformed_contract(self):
+        service = RuntimeSurfaceService()
+        service.runtime_factory = unittest.mock.Mock()
+        service.runtime_factory.build_runtime_contract.return_value = unittest.mock.Mock()
+
+        validation = service._validate_embedded_runtime_bootstrap_recovery(unittest.mock.Mock())
+
+        self.assertEqual(validation["contract_version"], "phase-ii-embedded-runtime-bootstrap-validation-v1")
+        self.assertEqual(validation["validation_status"], "failed")
+        self.assertEqual(validation["failure_reason"], "malformed_runtime_factory_contract")
+        self.assertFalse(validation["actual_recoverable"])
 
     def test_embedded_runtime_bootstrap_recovery_validation_matches_strict_sql_mode_contract(self):
         service = RuntimeSurfaceService()

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import tempfile
+from collections.abc import Mapping
 from typing import Any, Dict, List
 
 from sqlalchemy import create_engine
@@ -112,11 +113,12 @@ class RuntimeSurfaceService:
         self.contract_snapshot_service = get_runtime_contract_snapshot_service()
         self.contract_gate_service = get_runtime_contract_gate_service()
         self.self_improvement_ledger_service = get_self_improvement_ledger_service()
-        self._sync_embedded_runtime_bootstrap_config()
+        effective_config = self._sync_embedded_runtime_bootstrap_config()
         self.embedded_workspace_store = get_embedded_workspace_store()
         self.continuation_registry = get_embedded_continuation_registry()
         self.runtime_factory = self._configure_embedded_runtime_factory(
-            get_default_embedded_runtime_factory()
+            get_default_embedded_runtime_factory(),
+            effective_config=effective_config,
         )
 
     def _list_all_models(self) -> List[Dict[str, Any]]:
@@ -124,15 +126,23 @@ class RuntimeSurfaceService:
         models.sort(key=lambda item: (not bool(item.get("is_default")), item.get("provider", ""), item.get("display_name", item.get("name", ""))))
         return models
 
-    def _sync_embedded_runtime_bootstrap_config(self) -> None:
+    def _sync_embedded_runtime_bootstrap_config(self) -> Dict[str, Any]:
         effective = self.config_service.get_effective_config()
         requested_mode = str(effective.get("embedded_workspace_store_mode") or "").strip().lower()
         if requested_mode:
             set_embedded_workspace_store_mode(requested_mode)
+        return effective
 
-    def _configure_embedded_runtime_factory(self, runtime_factory: Any) -> Any:
-        effective = self.config_service.get_effective_config()
+    def _configure_embedded_runtime_factory(
+        self,
+        runtime_factory: Any,
+        *,
+        effective_config: Dict[str, Any] | None = None,
+    ) -> Any:
+        effective = dict(effective_config or {})
         config = effective.get("worker_ownership_production_enablement_config")
+        if not isinstance(config, dict):
+            return runtime_factory
         configure = getattr(
             runtime_factory,
             "configure_worker_ownership_production_enablement_config",
@@ -349,11 +359,12 @@ class RuntimeSurfaceService:
             raise ValueError("embedded runtime bootstrap 更新至少需要提供 embedded_workspace_store_mode")
         previous_contract = self.get_embedded_runtime_bootstrap()
         self.config_service.update_overrides(update_payload)
-        self._sync_embedded_runtime_bootstrap_config()
+        effective_config = self._sync_embedded_runtime_bootstrap_config()
         self.embedded_workspace_store = get_embedded_workspace_store()
         self.continuation_registry = get_embedded_continuation_registry()
         self.runtime_factory = self._configure_embedded_runtime_factory(
-            get_default_embedded_runtime_factory()
+            get_default_embedded_runtime_factory(),
+            effective_config=effective_config,
         )
         contract = self.get_embedded_runtime_bootstrap()
         requested_workspace_mode = str(update_payload.get("embedded_workspace_store_mode") or "").strip()
@@ -370,7 +381,10 @@ class RuntimeSurfaceService:
         return contract
 
     def _validate_embedded_runtime_bootstrap_recovery(self, contract: Dict[str, Any] | None = None) -> Dict[str, Any]:
-        normalized_contract = dict(contract or self.runtime_factory.build_runtime_contract())
+        contract_source = contract if isinstance(contract, Mapping) else self.runtime_factory.build_runtime_contract()
+        if not isinstance(contract_source, Mapping):
+            return self._build_malformed_bootstrap_validation_contract()
+        normalized_contract = dict(contract_source)
         profile = dict(normalized_contract.get("default_runtime_profile") or {})
         requested_mode = str(profile.get("embedded_workspace_store_mode") or "").strip().lower() or "memory_only"
         expected = dict(normalized_contract.get("default_recovery_expectation") or {})
@@ -435,6 +449,28 @@ class RuntimeSurfaceService:
             if engine is not None:
                 Base.metadata.drop_all(bind=engine)
                 engine.dispose()
+
+    def _build_malformed_bootstrap_validation_contract(self) -> Dict[str, Any]:
+        return {
+            "contract_version": "phase-ii-embedded-runtime-bootstrap-validation-v1",
+            "expected_recoverable": False,
+            "actual_recoverable": False,
+            "expected_cross_process_block_reason": "malformed_runtime_factory_contract",
+            "tool_recovery_reason": "malformed_runtime_factory_contract",
+            "loop_recovery_reason": "malformed_runtime_factory_contract",
+            "recovery_capabilities": {
+                "recovery_mode": "unavailable",
+                "requires_durable_workspace": False,
+                "requires_registry_bindings": False,
+            },
+            "recovery_entrypoints": [],
+            "workspace_backend_kind": "",
+            "workspace_backend_mode": "",
+            "persistence_posture": "",
+            "persistence_interface": {},
+            "validation_status": "failed",
+            "failure_reason": "malformed_runtime_factory_contract",
+        }
 
     def _run_embedded_runtime_bootstrap_validation(
         self,
