@@ -32,22 +32,53 @@ vi.mock('../../api', () => ({
 import ChatView from '../../views/ChatView.vue'
 import { useSettingsStore } from '../../stores/settings'
 
+function mountChatView() {
+  return mount(ChatView, {
+    global: {
+      stubs: {
+        CommandPalette: true,
+        MessageList: true,
+        PlannerPanel: true
+      }
+    }
+  })
+}
+
+function installSpeechRecognitionMock() {
+  const instances = []
+  class SpeechRecognitionMock {
+    constructor() {
+      this.lang = ''
+      this.continuous = false
+      this.interimResults = false
+      this.start = vi.fn()
+      this.stop = vi.fn()
+      this.abort = vi.fn()
+      instances.push(this)
+    }
+  }
+  window.SpeechRecognition = SpeechRecognitionMock
+  return instances
+}
+
+function buildSpeechResult(transcript, isFinal) {
+  return {
+    0: { transcript },
+    isFinal,
+    length: 1
+  }
+}
+
 describe('ChatView', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     pushMock.mockReset()
+    delete window.SpeechRecognition
+    delete window.webkitSpeechRecognition
   })
 
   it('renders health alert banner when failover alert level is high', async () => {
-    const wrapper = mount(ChatView, {
-      global: {
-        stubs: {
-          CommandPalette: true,
-          MessageList: true,
-          PlannerPanel: true
-        }
-      }
-    })
+    const wrapper = mountChatView()
 
     await flushPromises()
     expect(wrapper.text()).toContain('Provider Failover 高风险')
@@ -57,15 +88,7 @@ describe('ChatView', () => {
     const settingsStore = useSettingsStore()
     settingsStore.setMuteHealthAlerts(true)
 
-    const wrapper = mount(ChatView, {
-      global: {
-        stubs: {
-          CommandPalette: true,
-          MessageList: true,
-          PlannerPanel: true
-        }
-      }
-    })
+    const wrapper = mountChatView()
 
     await flushPromises()
     expect(wrapper.text()).not.toContain('Provider Failover 高风险')
@@ -73,15 +96,7 @@ describe('ChatView', () => {
 
   it('toggles runtime trace expert switch through settings store', async () => {
     const settingsStore = useSettingsStore()
-    const wrapper = mount(ChatView, {
-      global: {
-        stubs: {
-          CommandPalette: true,
-          MessageList: true,
-          PlannerPanel: true
-        }
-      }
-    })
+    const wrapper = mountChatView()
 
     await flushPromises()
     const toggle = wrapper.find('.runtime-trace-toggle input')
@@ -94,15 +109,7 @@ describe('ChatView', () => {
   })
 
   it('routes doctor governance slash command to governance doctor panel', async () => {
-    const wrapper = mount(ChatView, {
-      global: {
-        stubs: {
-          CommandPalette: true,
-          MessageList: true,
-          PlannerPanel: true
-        }
-      }
-    })
+    const wrapper = mountChatView()
 
     await flushPromises()
     await wrapper.find('textarea').setValue('/doctor governance')
@@ -112,15 +119,7 @@ describe('ChatView', () => {
   })
 
   it('routes doctor governance warning slash command to doctor warning view', async () => {
-    const wrapper = mount(ChatView, {
-      global: {
-        stubs: {
-          CommandPalette: true,
-          MessageList: true,
-          PlannerPanel: true
-        }
-      }
-    })
+    const wrapper = mountChatView()
 
     await flushPromises()
     await wrapper.find('textarea').setValue('/doctor governance warning')
@@ -130,15 +129,7 @@ describe('ChatView', () => {
   })
 
   it('routes permissions warning slash command to governance warning view', async () => {
-    const wrapper = mount(ChatView, {
-      global: {
-        stubs: {
-          CommandPalette: true,
-          MessageList: true,
-          PlannerPanel: true
-        }
-      }
-    })
+    const wrapper = mountChatView()
 
     await flushPromises()
     await wrapper.find('textarea').setValue('/permissions warning')
@@ -148,15 +139,7 @@ describe('ChatView', () => {
   })
 
   it('routes gaps slash command to governance domain view by default', async () => {
-    const wrapper = mount(ChatView, {
-      global: {
-        stubs: {
-          CommandPalette: true,
-          MessageList: true,
-          PlannerPanel: true
-        }
-      }
-    })
+    const wrapper = mountChatView()
 
     await flushPromises()
     await wrapper.find('textarea').setValue('/gaps')
@@ -166,15 +149,7 @@ describe('ChatView', () => {
   })
 
   it('routes snapshot slash command to governance snapshot view', async () => {
-    const wrapper = mount(ChatView, {
-      global: {
-        stubs: {
-          CommandPalette: true,
-          MessageList: true,
-          PlannerPanel: true
-        }
-      }
-    })
+    const wrapper = mountChatView()
 
     await flushPromises()
     await wrapper.find('textarea').setValue('/snapshot MCP-REF-1')
@@ -184,15 +159,7 @@ describe('ChatView', () => {
   })
 
   it('routes mcp snapshot slash command to domain-scoped governance snapshot view', async () => {
-    const wrapper = mount(ChatView, {
-      global: {
-        stubs: {
-          CommandPalette: true,
-          MessageList: true,
-          PlannerPanel: true
-        }
-      }
-    })
+    const wrapper = mountChatView()
 
     await flushPromises()
     await wrapper.find('textarea').setValue('/mcp snapshot MCP-REF-1')
@@ -216,15 +183,7 @@ describe('ChatView', () => {
       }
     ]))
 
-    const wrapper = mount(ChatView, {
-      global: {
-        stubs: {
-          CommandPalette: true,
-          MessageList: true,
-          PlannerPanel: true
-        }
-      }
-    })
+    const wrapper = mountChatView()
 
     await flushPromises()
     await wrapper.find('textarea').setValue('/help')
@@ -236,5 +195,66 @@ describe('ChatView', () => {
     expect(wrapper.find('textarea').element.value).toContain('摘要 status=ok')
 
     localStorage.removeItem('governance_recent_snapshot_commands')
+  })
+
+  it('starts browser speech recognition from the microphone button', async () => {
+    const speechInstances = installSpeechRecognitionMock()
+    const wrapper = mountChatView()
+
+    await flushPromises()
+    const voiceButton = wrapper.find('.voice-input-btn')
+    await voiceButton.trigger('click')
+
+    expect(speechInstances).toHaveLength(1)
+    expect(speechInstances[0].lang).toBe('zh-CN')
+    expect(speechInstances[0].continuous).toBe(true)
+    expect(speechInstances[0].interimResults).toBe(true)
+    expect(speechInstances[0].start).toHaveBeenCalled()
+    expect(wrapper.text()).toContain('正在听写')
+  })
+
+  it('writes interim and final speech transcripts into the textarea', async () => {
+    const speechInstances = installSpeechRecognitionMock()
+    const wrapper = mountChatView()
+
+    await flushPromises()
+    await wrapper.find('textarea').setValue('请帮我')
+    await wrapper.find('.voice-input-btn').trigger('click')
+
+    speechInstances[0].onresult({
+      resultIndex: 0,
+      results: [buildSpeechResult('查询天气', false)]
+    })
+    await flushPromises()
+    expect(wrapper.find('textarea').element.value).toBe('请帮我 查询天气')
+
+    speechInstances[0].onresult({
+      resultIndex: 0,
+      results: [buildSpeechResult('查询天气', true)]
+    })
+    await flushPromises()
+    expect(wrapper.find('textarea').element.value).toBe('请帮我 查询天气')
+  })
+
+  it('stops active speech recognition when clicking the microphone button again', async () => {
+    const speechInstances = installSpeechRecognitionMock()
+    const wrapper = mountChatView()
+
+    await flushPromises()
+    await wrapper.find('.voice-input-btn').trigger('click')
+    await wrapper.find('.voice-input-btn').trigger('click')
+
+    expect(speechInstances[0].stop).toHaveBeenCalled()
+  })
+
+  it('disables voice input when speech recognition is unsupported', async () => {
+    const wrapper = mountChatView()
+
+    await flushPromises()
+    const voiceButton = wrapper.find('.voice-input-btn')
+
+    expect(voiceButton.attributes('disabled')).toBeDefined()
+    await wrapper.find('textarea').setValue('手动输入仍可使用')
+    expect(wrapper.find('textarea').element.value).toBe('手动输入仍可使用')
   })
 })

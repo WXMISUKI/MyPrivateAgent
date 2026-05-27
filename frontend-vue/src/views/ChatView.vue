@@ -92,6 +92,17 @@
               :disabled="isLoading"
             ></textarea>
             <button
+              class="voice-input-btn"
+              :class="{ listening: isVoiceListening }"
+              type="button"
+              :disabled="!voiceInputSupported || (isLoading && !isVoiceListening)"
+              :title="voiceInputTitle"
+              :aria-label="voiceInputTitle"
+              @click="toggleVoiceInput"
+            >
+              <span>{{ isVoiceListening ? '■' : '🎙' }}</span>
+            </button>
+            <button
               class="send-btn"
               @click="handleSend"
               :disabled="!inputMessage.trim() || isLoading"
@@ -103,6 +114,9 @@
             <span>Enter 发送</span>
             <span>Shift + Enter 换行</span>
             <span>/ 快捷命令</span>
+            <span v-if="voiceInputHint">
+              {{ voiceInputHint }}
+            </span>
             <span v-if="settingsStore.enableMainChatRuntimeTrace">
               已附加 main_chat runtime trace 上下文
             </span>
@@ -194,7 +208,14 @@ const modelDropdownOpen = ref(false)
 const modelSelectorRef = ref(null)
 const healthFailover = ref(null)
 const healthUpdatedAt = ref(null)
+const voiceInputSupported = ref(false)
+const isVoiceListening = ref(false)
+const voiceInputError = ref('')
+const speechBaseText = ref('')
+const speechFinalTranscript = ref('')
+const speechInterimTranscript = ref('')
 let healthPollTimer = null
+let speechRecognition = null
 
 const isLoading = computed(() => conversationStore.isLoading)
 const feedbackReasons = computed(() => conversationStore.feedbackReasons || [])
@@ -271,6 +292,18 @@ const healthAlertLevel = computed(() => {
 const healthAlertText = computed(() => {
   if (healthAlertLevel.value === 'high') return '系统告警：Provider Failover 高风险，请优先检查上游模型服务稳定性。'
   if (healthAlertLevel.value === 'medium') return '系统提醒：Provider Failover 中风险，建议关注近期路由切换。'
+  return ''
+})
+
+const voiceInputTitle = computed(() => {
+  if (!voiceInputSupported.value) return '当前浏览器不支持语音输入'
+  return isVoiceListening.value ? '停止语音输入' : '开始语音输入'
+})
+
+const voiceInputHint = computed(() => {
+  if (voiceInputError.value) return voiceInputError.value
+  if (isVoiceListening.value) return '正在听写，点击麦克风停止'
+  if (!voiceInputSupported.value) return '当前浏览器不支持语音输入'
   return ''
 })
 
@@ -436,6 +469,107 @@ function handleKeyDown(e) {
       showCommandPalette.value = true
     }
   }
+}
+
+function resolveSpeechRecognitionConstructor() {
+  if (typeof window === 'undefined') return null
+  return window.SpeechRecognition || window.webkitSpeechRecognition || null
+}
+
+function appendSpeechText(baseText, finalText, interimText) {
+  const base = String(baseText || '').trimEnd()
+  const spoken = [String(finalText || '').trim(), String(interimText || '').trim()]
+    .filter(Boolean)
+    .join(' ')
+    .trim()
+  if (!base) return spoken
+  if (!spoken) return base
+  return `${base} ${spoken}`
+}
+
+function updateInputFromSpeech() {
+  inputMessage.value = appendSpeechText(
+    speechBaseText.value,
+    speechFinalTranscript.value,
+    speechInterimTranscript.value
+  )
+}
+
+function startVoiceInput() {
+  const Recognition = resolveSpeechRecognitionConstructor()
+  if (!Recognition || isLoading.value) {
+    voiceInputSupported.value = Boolean(Recognition)
+    return
+  }
+
+  stopVoiceInput()
+  voiceInputError.value = ''
+  speechBaseText.value = inputMessage.value
+  speechFinalTranscript.value = ''
+  speechInterimTranscript.value = ''
+
+  const recognition = new Recognition()
+  recognition.lang = 'zh-CN'
+  recognition.continuous = true
+  recognition.interimResults = true
+  recognition.onresult = (event) => {
+    let finalChunk = ''
+    let interimChunk = ''
+    for (let index = event.resultIndex || 0; index < event.results.length; index += 1) {
+      const result = event.results[index]
+      const transcript = String(result?.[0]?.transcript || '').trim()
+      if (!transcript) continue
+      if (result.isFinal) {
+        finalChunk = `${finalChunk} ${transcript}`.trim()
+      } else {
+        interimChunk = `${interimChunk} ${transcript}`.trim()
+      }
+    }
+    if (finalChunk) {
+      speechFinalTranscript.value = `${speechFinalTranscript.value} ${finalChunk}`.trim()
+    }
+    speechInterimTranscript.value = interimChunk
+    updateInputFromSpeech()
+  }
+  recognition.onerror = (event) => {
+    isVoiceListening.value = false
+    voiceInputError.value = event?.error === 'not-allowed'
+      ? '麦克风权限未开启'
+      : '语音输入暂时不可用'
+  }
+  recognition.onend = () => {
+    isVoiceListening.value = false
+    speechInterimTranscript.value = ''
+    updateInputFromSpeech()
+  }
+
+  speechRecognition = recognition
+  isVoiceListening.value = true
+  try {
+    recognition.start()
+  } catch (error) {
+    isVoiceListening.value = false
+    voiceInputError.value = '语音输入启动失败'
+  }
+}
+
+function stopVoiceInput() {
+  if (!speechRecognition) return
+  try {
+    speechRecognition.stop()
+  } catch (error) {
+    // Browser implementations may throw when recognition is already stopped.
+  }
+  isVoiceListening.value = false
+  speechRecognition = null
+}
+
+function toggleVoiceInput() {
+  if (isVoiceListening.value) {
+    stopVoiceInput()
+    return
+  }
+  startVoiceInput()
 }
 
 function normalizeCommandExecution(request) {
@@ -834,6 +968,7 @@ async function handleSendMessage(content) {
 
 async function handleSend(e) {
   if (!inputMessage.value.trim() || isLoading.value) return
+  stopVoiceInput()
 
   if (inputMessage.value.trim().startsWith('/')) {
     const parsed = parseCommand(inputMessage.value.trim())
@@ -886,6 +1021,7 @@ watch(inputMessage, () => {
 
 onMounted(async () => {
   scrollToBottom()
+  voiceInputSupported.value = Boolean(resolveSpeechRecognitionConstructor())
 
   document.addEventListener('click', (e) => {
     if (modelSelectorRef.value && !modelSelectorRef.value.contains(e.target)) {
@@ -938,6 +1074,7 @@ watch(inputMessage, (value) => {
 })
 
 onUnmounted(() => {
+  stopVoiceInput()
   if (healthPollTimer) {
     clearInterval(healthPollTimer)
     healthPollTimer = null
@@ -1206,13 +1343,12 @@ onUnmounted(() => {
   opacity: 0.6;
 }
 
+.voice-input-btn,
 .send-btn {
   width: 40px;
   height: 40px;
   border: none;
   border-radius: var(--radius-md);
-  background: var(--primary);
-  color: white;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1222,15 +1358,45 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
+.voice-input-btn {
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-primary);
+  font-size: 1rem;
+}
+
+.voice-input-btn.listening {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.send-btn {
+  background: var(--primary);
+  color: white;
+  font-size: 1.2rem;
+}
+
+.voice-input-btn:hover:not(:disabled),
 .send-btn:hover:not(:disabled) {
-  background: var(--primary-hover);
   transform: scale(1.05);
 }
 
+.send-btn:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+
+.voice-input-btn:hover:not(:disabled) {
+  color: var(--text-primary);
+  border-color: var(--primary);
+}
+
+.voice-input-btn:active:not(:disabled),
 .send-btn:active:not(:disabled) {
   transform: scale(0.95);
 }
 
+.voice-input-btn:disabled,
 .send-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
