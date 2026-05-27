@@ -134,3 +134,16 @@ ENABLE_LANGGRAPH_RUNTIME_EXECUTION = _env_flag("ENABLE_LANGGRAPH_RUNTIME_EXECUTI
 ENABLE_LANGGRAPH_EXTERNAL_PILOT = _env_flag("ENABLE_LANGGRAPH_EXTERNAL_PILOT", "false")
 LANGGRAPH_RUNTIME_ENDPOINT = os.getenv("LANGGRAPH_RUNTIME_ENDPOINT", "").strip()
 LANGGRAPH_ASSISTANT_ID = os.getenv("LANGGRAPH_ASSISTANT_ID", "").strip()
+
+# Optional voice runtime configuration.
+ENABLE_VOICE_RUNTIME = _env_flag("ENABLE_VOICE_RUNTIME", "false")
+VOICE_ASR_PROVIDER = os.getenv("VOICE_ASR_PROVIDER", "vosk_server").strip() or "vosk_server"
+VOICE_TTS_PROVIDER = os.getenv("VOICE_TTS_PROVIDER", "edge_tts").strip() or "edge_tts"
+VOSK_MODE = os.getenv("VOSK_MODE", "server").strip() or "server"
+VOSK_SERVER_URL = os.getenv("VOSK_SERVER_URL", "ws://127.0.0.1:2700").strip()
+VOSK_LANGUAGE = os.getenv("VOSK_LANGUAGE", "zh-cn").strip() or "zh-cn"
+VOSK_SAMPLE_RATE = int(os.getenv("VOSK_SAMPLE_RATE", "16000"))
+EDGE_TTS_DEFAULT_VOICE = os.getenv("EDGE_TTS_DEFAULT_VOICE", "zh-CN-XiaoxiaoNeural").strip() or "zh-CN-XiaoxiaoNeural"
+EDGE_TTS_RATE = os.getenv("EDGE_TTS_RATE", "+0%").strip() or "+0%"
+EDGE_TTS_VOLUME = os.getenv("EDGE_TTS_VOLUME", "+0%").strip() or "+0%"
+EDGE_TTS_PITCH = os.getenv("EDGE_TTS_PITCH", "+0Hz").strip() or "+0Hz"

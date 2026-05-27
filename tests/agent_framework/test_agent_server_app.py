@@ -39,7 +39,7 @@ from backend.agent_server.router_registry import get_api_router_registrations, g
 class AgentServerAppTests(unittest.TestCase):
     def test_router_registry_returns_expected_count(self):
         routers = tuple(get_api_routers())
-        self.assertEqual(len(routers), 10)
+        self.assertEqual(len(routers), 11)
 
     def test_router_registry_can_filter_by_group(self):
         registrations = get_api_router_registrations(route_groups=("admin",))
@@ -48,7 +48,7 @@ class AgentServerAppTests(unittest.TestCase):
     def test_router_registry_exposes_supported_groups(self):
         self.assertEqual(
             get_route_group_names(),
-            ("auth", "core", "skills", "mcp", "planner", "learning", "permissions", "admin"),
+            ("auth", "core", "skills", "mcp", "planner", "learning", "permissions", "admin", "voice"),
         )
 
     def test_create_app_registers_core_routes(self):

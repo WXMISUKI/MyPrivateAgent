@@ -202,6 +202,25 @@ export const providerApi = {
   }
 }
 
+export const voiceApi = {
+  getCapabilities() {
+    return api.get('/voice/capabilities')
+  },
+
+  synthesizeSpeech(payload) {
+    return api.post('/voice/tts', payload, { responseType: 'blob' })
+  },
+
+  transcribeAudio(file, params = {}) {
+    const formData = new FormData()
+    formData.append('file', file)
+    return api.post('/voice/asr', formData, {
+      params,
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  }
+}
+
 export const mcpApi = {
   listServers() {
     return api.get('/mcp/servers')
