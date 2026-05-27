@@ -23,196 +23,42 @@
     <p v-else-if="!currentPlan" class="empty-hint">当前会话尚未建立计划上下文，暂时没有可展示的治理时间线。</p>
 
     <template v-else-if="focusItem">
-      <div class="summary-grid">
-        <div class="summary-card">
-          <span class="summary-label">当前计划</span>
-          <strong
-            class="plan-objective-label"
-            :title="currentPlanObjectiveLabel"
-            :aria-label="`当前计划 ${currentPlanObjectiveLabel}`"
-          >
-            {{ currentPlanObjectiveLabel }}
-          </strong>
-        </div>
-        <div class="summary-card">
-          <span class="summary-label">聚焦步骤</span>
-          <strong
-            class="focus-step-label"
-            :title="focusItemTitleLabel"
-            :aria-label="`聚焦步骤 ${focusItemTitleLabel}`"
-          >
-            {{ focusItemTitleLabel }}
-          </strong>
-        </div>
-        <div class="summary-card">
-          <span class="summary-label">审计事件</span>
-          <strong
-            class="audit-count-label"
-            :title="String(auditCount)"
-            :aria-label="`审计事件 ${auditCount}`"
-          >
-            {{ auditCount }}
-          </strong>
-        </div>
-        <div class="summary-card">
-          <span class="summary-label">运行 Trace</span>
-          <strong
-            class="trace-count-label"
-            :title="String(traceCount)"
-            :aria-label="`运行 Trace ${traceCount}`"
-          >
-            {{ traceCount }}
-          </strong>
-        </div>
-        <div v-if="currentRunOverview" class="summary-card">
-          <span class="summary-label">当前执行实例</span>
-          <strong>{{ currentRunOverview.id }}</strong>
-          <span class="muted">{{ currentRunOverview.summary }}</span>
-          <span class="muted">{{ currentRunOverview.notice }}</span>
-        </div>
-        <div class="summary-card">
-          <span class="summary-label">待处理审批</span>
-          <strong>{{ approvalOverview.pendingLabel }}</strong>
-          <span class="muted">{{ approvalOverview.primaryDetail }}</span>
-          <span class="muted">{{ approvalOverview.secondaryDetail }}</span>
-        </div>
-        <div class="summary-card">
-          <span class="summary-label">当前筛选</span>
-          <strong
-            class="filter-focus-label"
-            :title="activeFilter"
-            :aria-label="`当前筛选 ${activeFilterLabel}`"
-          >
-            {{ activeFilterLabel }}
-          </strong>
-        </div>
-        <div class="summary-card">
-          <span class="summary-label">风险模式</span>
-          <strong
-            class="severity-focus-label"
-            :title="activeSeverity"
-            :aria-label="`风险模式 ${activeSeverityLabel}`"
-          >
-            {{ activeSeverityLabel }}
-          </strong>
-        </div>
-        <div v-if="activeFrameworkAdapterErrorTypeLabel" class="summary-card summary-card-dismissible">
-          <span class="summary-label">错误类型</span>
-          <strong
-            class="framework-error-type-focus-label"
-            :title="activeFrameworkAdapterErrorType"
-            :aria-label="`错误类型 ${activeFrameworkAdapterErrorTypeLabel}`"
-          >
-            {{ activeFrameworkAdapterErrorTypeLabel }}
-          </strong>
-          <button
-            type="button"
-            class="payload-toggle-btn compact-dismiss-btn"
-            :title="activeFrameworkAdapterErrorType"
-            :aria-label="activeFrameworkAdapterErrorTypeClearLabel"
-            @click="clearFrameworkAdapterErrorTypeFilter"
-          >
-            清除错误类型
-          </button>
-        </div>
-        <div v-if="activeDedupeKey" class="summary-card summary-card-dismissible">
-          <span class="summary-label">幂等键聚焦</span>
-          <strong
-            class="dedupe-focus-preview"
-            :title="activeDedupeKey"
-            :aria-label="`幂等键聚焦 ${activeDedupeKey}`"
-          >
-            {{ activeDedupeKeyPreview }}
-          </strong>
-          <span
-            class="muted dedupe-focus-match-count"
-            :aria-label="activeDedupeKeyMatchAriaLabel"
-          >
-            {{ activeDedupeKeyMatchLabel }}
-          </span>
-          <button
-            type="button"
-            class="payload-toggle-btn compact-dismiss-btn"
-            :title="activeDedupeKey"
-            :aria-label="activeDedupeKeyCopyLabel"
-            @click="copyActiveDedupeKey"
-          >
-            {{ copiedActiveDedupeKey ? '已复制当前幂等键' : '复制当前幂等键' }}
-          </button>
-          <button
-            type="button"
-            class="payload-toggle-btn compact-dismiss-btn"
-            :title="activeDedupeKey"
-            :aria-label="activeDedupeKeyClearLabel"
-            @click="clearDedupeKeyFilter"
-          >
-            清除幂等键
-          </button>
-        </div>
-        <div v-if="activeQueryId" class="summary-card summary-card-dismissible">
-          <span class="summary-label">Query 聚焦</span>
-          <strong
-            class="dedupe-focus-preview"
-            :title="activeQueryId"
-            :aria-label="`Query 聚焦 ${activeQueryId}`"
-          >
-            {{ activeQueryId }}
-          </strong>
-          <button
-            type="button"
-            class="payload-toggle-btn compact-dismiss-btn"
-            :title="activeQueryId"
-            :aria-label="`清除 Query ${activeQueryId}`"
-            @click="clearQueryIdFilter"
-          >
-            清除 Query
-          </button>
-        </div>
-        <div v-if="activeQueryStage" class="summary-card summary-card-dismissible">
-          <span class="summary-label">阶段聚焦</span>
-          <strong
-            class="dedupe-focus-preview"
-            :title="activeQueryStage"
-            :aria-label="`阶段聚焦 ${activeQueryStage}`"
-          >
-            {{ activeQueryStage }}
-          </strong>
-          <button
-            type="button"
-            class="payload-toggle-btn compact-dismiss-btn"
-            :title="activeQueryStage"
-            :aria-label="`清除阶段 ${activeQueryStage}`"
-            @click="clearQueryStageFilter"
-          >
-            清除阶段
-          </button>
-        </div>
-        <div v-if="currentQueryOverview" class="summary-card">
-          <span class="summary-label">Query 摘要</span>
-          <strong>{{ currentQueryOverview.latestStage || '-' }}</strong>
-          <span class="muted">
-            {{ `阶段 ${currentQueryOverview.stageCount} · 告警 ${currentQueryOverview.warningCount}` }}
-          </span>
-          <span class="muted">{{ currentQueryOverview.latestSnapshotId || currentQueryOverview.latestSummary || '无最近摘要' }}</span>
-        </div>
-        <div v-if="activeFilter === 'main_chat'" class="summary-card main-chat-history-summary-card">
-          <span class="summary-label">Main Chat Query History</span>
-          <strong>{{ mainChatQueryHistory.totalItems || 0 }}</strong>
-          <span class="muted">
-            {{ mainChatQueryHistory.recordingState === 'recorded' ? `page ${mainChatQueryHistory.page} · size ${mainChatQueryHistory.pageSize}` : (mainChatQueryHistory.reason || '暂无 history') }}
-          </span>
-        </div>
-        <div class="summary-card">
-          <span class="summary-label">治理快照</span>
-          <strong>{{ currentSnapshotId }}</strong>
-          <span class="muted">{{ currentSnapshotGeneratedAt ? formatSnapshotTime(currentSnapshotGeneratedAt) : '等待后端引用' }}</span>
-        </div>
-        <div class="summary-card">
-          <span class="summary-label">快照聚焦</span>
-          <strong>{{ activeSnapshotLabel }}</strong>
-          <span class="muted">{{ activeSnapshotNotice }}</span>
-        </div>
-      </div>
+      <GovernanceTimelineFocusSummaryGrid
+        :current-plan-objective-label="currentPlanObjectiveLabel"
+        :focus-item-title-label="focusItemTitleLabel"
+        :audit-count="auditCount"
+        :trace-count="traceCount"
+        :current-run-overview="currentRunOverview"
+        :approval-overview="approvalOverview"
+        :active-filter="activeFilter"
+        :active-filter-label="activeFilterLabel"
+        :active-severity="activeSeverity"
+        :active-severity-label="activeSeverityLabel"
+        :active-framework-adapter-error-type="activeFrameworkAdapterErrorType"
+        :active-framework-adapter-error-type-label="activeFrameworkAdapterErrorTypeLabel"
+        :active-framework-adapter-error-type-clear-label="activeFrameworkAdapterErrorTypeClearLabel"
+        :active-dedupe-key="activeDedupeKey"
+        :active-dedupe-key-preview="activeDedupeKeyPreview"
+        :active-dedupe-key-match-label="activeDedupeKeyMatchLabel"
+        :active-dedupe-key-match-aria-label="activeDedupeKeyMatchAriaLabel"
+        :active-dedupe-key-copy-label="activeDedupeKeyCopyLabel"
+        :active-dedupe-key-clear-label="activeDedupeKeyClearLabel"
+        :copied-active-dedupe-key="copiedActiveDedupeKey"
+        :active-query-id="activeQueryId"
+        :active-query-stage="activeQueryStage"
+        :current-query-overview="currentQueryOverview"
+        :main-chat-query-history="mainChatQueryHistory"
+        :current-snapshot-id="currentSnapshotId"
+        :current-snapshot-generated-at="currentSnapshotGeneratedAt"
+        :active-snapshot-label="activeSnapshotLabel"
+        :active-snapshot-notice="activeSnapshotNotice"
+        :format-snapshot-time="formatSnapshotTime"
+        @clear-framework-adapter-error-type="clearFrameworkAdapterErrorTypeFilter"
+        @copy-active-dedupe-key="copyActiveDedupeKey"
+        @clear-dedupe-key="clearDedupeKeyFilter"
+        @clear-query="clearQueryIdFilter"
+        @clear-stage="clearQueryStageFilter"
+      />
 
       <GovernanceTimelineMainChatWorkspace
         :active-filter="activeFilter"
@@ -439,16 +285,13 @@ import {
   getFrameworkAdapterExternalErrorType,
 } from '../services/frameworkAdapterGovernance'
 import GovernanceRecentSnapshotCommandsCard from './GovernanceRecentSnapshotCommandsCard.vue'
-import GovernanceTimelineEventCard from './GovernanceTimelineEventCard.vue'
-import GovernanceTimelineFilters from './GovernanceTimelineFilters.vue'
+import GovernanceTimelineFocusSummaryGrid from './GovernanceTimelineFocusSummaryGrid.vue'
 import GovernanceTimelineMainChatWorkspace from './GovernanceTimelineMainChatWorkspace.vue'
 import GovernanceTimelineOverviewCards from './GovernanceTimelineOverviewCards.vue'
 import GovernanceTimelineFrameworkAdapterRemediationCard from './GovernanceTimelineFrameworkAdapterRemediationCard.vue'
 import GovernanceTimelineSummaryActionCards from './GovernanceTimelineSummaryActionCards.vue'
 import GovernanceTimelineFrameworkAdapterCards from './GovernanceTimelineFrameworkAdapterCards.vue'
 import GovernanceTimelineEventStream from './GovernanceTimelineEventStream.vue'
-import MainChatQueryHistoryPanel from './MainChatQueryHistoryPanel.vue'
-import MainChatQueryDetailPanel from './MainChatQueryDetailPanel.vue'
 import { useRecentSnapshotCommands } from '../composables/useRecentSnapshotCommands'
 import { useGovernanceTimelineState } from '../composables/useGovernanceTimelineState'
 import { useGovernanceTimelineClipboard } from '../composables/useGovernanceTimelineClipboard'
@@ -1068,41 +911,14 @@ onUnmounted(() => {
   margin: var(--space-sm) 0;
 }
 
-.summary-grid {
-  display: grid;
-  gap: var(--space-md);
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  margin-bottom: var(--space-lg);
-}
-
-.summary-card,
 .panel-card {
   border: 1px solid var(--border-color);
   background: var(--bg-surface);
   border-radius: var(--radius-lg);
 }
 
-.summary-card {
-  padding: var(--space-md);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-}
-
-.summary-card-dismissible {
-  align-items: flex-start;
-}
-
-.compact-dismiss-btn {
-  margin-top: 0.2rem;
-}
-
 .governance-overview-grid {
   margin-bottom: var(--space-lg);
-}
-
-.main-chat-history-summary-card {
-  justify-content: center;
 }
 
 .main-chat-query-workspace {
@@ -1251,14 +1067,6 @@ onUnmounted(() => {
   background: rgba(249, 115, 22, 0.08);
   color: var(--text-secondary);
   font-size: 0.84rem;
-}
-
-
-.summary-label {
-  font-size: 0.8rem;
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 
 .panel-card {

@@ -28,7 +28,7 @@ The system MUST keep snapshot focus, query focus, and stage focus semantics cons
 - **AND** the same focus action MUST yield the same contract interpretation
 
 ### Requirement: Shared governance interpretation is narrow
-The system MUST share only contract interpretation and focus-state derivation between governance views, while keeping local rendering and view state separate.
+The system MUST share only contract interpretation and focus-state derivation between governance views, while keeping local rendering and view state separate. Parent governance panels SHALL keep data loading, route/filter state, and cross-region coordination, while display-only summary regions MAY be extracted into child components when they consume existing contracts without redefining them.
 
 #### Scenario: Shared logic boundary
 - **WHEN** Runtime Surface and Governance Timeline reuse helpers
@@ -36,9 +36,10 @@ The system MUST share only contract interpretation and focus-state derivation be
 - **AND** the views MUST retain independent rendering and local UI state
 
 #### Scenario: Timeline panel slimming
-- **WHEN** Governance Timeline extracts denser UI regions into subcomponents
-- **THEN** the shared interpretation contract MUST remain in shared helpers
-- **AND** the panel MUST keep orchestration, filtering, and route sync at the top level
+- **WHEN** the Governance Timeline splits a visual region into a child component
+- **THEN** the child component SHALL receive interpreted display data through props
+- **AND** it SHALL forward user actions through emits
+- **AND** it SHALL NOT redefine backend contract semantics, route behavior, or query/read model interpretation
 
 ### Requirement: Non-main_chat expansion is explicit
 The system MUST treat any expansion of governance view semantics beyond the current `main_chat`-driven workflow as a separately evaluated decision.

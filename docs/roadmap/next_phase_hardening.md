@@ -875,16 +875,17 @@ Governance Timeline 前端继续瘦身仍有价值，但不应继续作为最高
 
 当前状态：
 
-- 未开始
+- 进行中
 
 当前进度：
 
 - 已完成：
   - filter / event card / main_chat query workspace 第一轮拆分
+  - `GovernanceTimelineFocusSummaryGrid` 已从 `GovernanceTimelinePanel` 抽出，父组件继续保留数据加载、路由过滤、query/stage/dedupe 状态和 clipboard 编排，summary grid 只负责展示与 action emit。
 - 进行中：
-  - 无
-- 未开始：
   - 更细的治理工作区组件拆分与边界稳定
+- 未开始：
+  - 后续 remediation / snapshot command 周边是否继续下沉的判断
 
 下一步动作：
 
