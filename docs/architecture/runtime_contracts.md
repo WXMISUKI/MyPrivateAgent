@@ -180,7 +180,8 @@ Runtime Surface 的当前聚合入口是：
 
 - `backend/agent_framework/runtime.py`
 - `backend/agent_framework/events.py`
-- `backend/services/runtime_surface_service.py::_build_runtime_core_contract`
+- `backend/services/runtime_core_contract_builder.py::RuntimeCoreContractBuilder`
+- `backend/services/runtime_surface_service.py::_build_runtime_core_contract` 兼容 wrapper
 
 核心语义：
 
@@ -1070,7 +1071,7 @@ II-1 第一刀当前未做：
 - `main_chat_query_detail` 当前已在 contract 内显式携带 `read_model_layer / source_channel / identity_kind`，用于让 Runtime Surface 与 Governance Timeline 共享同一份自描述 read model 解释语义。
 - Runtime Surface、Governance Timeline、Query Detail 与 Query History 面板当前已轻量展示 query read model metadata；后续前端扩展这些视图时，应继续消费 shared interpretation 结果，不要直接从原始 payload 重新拼 metadata。
 - `main_chat_query_history` 当前已作为 dedicated history read model 暴露于 `/api/runtime-profile/main-chat-query-history`；其职责是提供分页/长历史摘要，不替代 `recent_queries` 或单 query `main_chat_query_detail`。
-- `RuntimeSurfaceService.get_runtime_profile()` 当前已拆出独立 profile assembler；顶层 profile shell 位于 `backend/services/runtime_surface_profile_assembler.py::RuntimeSurfaceProfileAssembler`，profile request context / runtime scope / recovery target 推导位于 `backend/services/runtime_surface_profile_context.py::RuntimeSurfaceProfileContextAssembler`，模型/提供方聚合已进一步下沉到 `ProviderCatalogBuilder`。后续新增 profile 组装能力时，应优先延续 concern-specific builder 边界，而不是继续把逻辑堆回 service 主方法或 assembler 主流程。
+- `RuntimeSurfaceService.get_runtime_profile()` 当前已拆出独立 profile assembler；顶层 profile shell 位于 `backend/services/runtime_surface_profile_assembler.py::RuntimeSurfaceProfileAssembler`，profile request context / runtime scope / recovery target 推导位于 `backend/services/runtime_surface_profile_context.py::RuntimeSurfaceProfileContextAssembler`，`runtime_core` shell 与 scoped overlay 位于 `backend/services/runtime_core_contract_builder.py::RuntimeCoreContractBuilder`，模型/提供方聚合已进一步下沉到 `ProviderCatalogBuilder`。后续新增 profile 组装能力时，应优先延续 concern-specific builder 边界，而不是继续把逻辑堆回 service 主方法或 assembler 主流程。
 - `GovernanceTimelinePanel` 当前已把 `main_chat` workspace 下沉为独立子组件；后续继续瘦身治理面板时，应优先沿 summary/action/workspace 这种区域边界拆分，而不是重新把所有治理逻辑堆回主面板。
 - `GovernanceTimelinePanel` 当前已把 `main_chat` 的查询历史与查询详情收口为独立 `Main Chat Query Workspace` 子组件；后续继续瘦身时，应优先沿 summary / action / workspace 的边界继续拆分，而不是把工作区逻辑重新堆回主面板。
 - `GovernanceTimelinePanel` 当前已把治理 overview、基础 summary-action、Framework Adapter 专题卡和 remediation 卡下沉为独立子组件；后续若继续拆分，应优先保持 `GovernanceTimelineEventStream` 为主事件流主干，不建议再把事件流拆成更多互相重叠的小卡片。

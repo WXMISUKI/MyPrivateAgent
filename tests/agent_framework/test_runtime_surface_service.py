@@ -14,6 +14,7 @@ from backend.agent_framework.persistence import (
 from backend.agent_framework.sdk import EmbeddedAgentRuntimeSDK
 import backend.services.runtime_surface_service as runtime_surface_service_module
 from backend.models import Base
+from backend.services.runtime_core_contract_builder import RuntimeCoreContractBuilder
 from backend.services.runtime_surface_builders import ProviderCatalogBuilder, RuntimeRecoveryContractBuilder
 from backend.services.runtime_surface_profile_context import RuntimeSurfaceProfileContextAssembler
 from backend.services.runtime_surface_profile_assembler import RuntimeSurfaceProfileAssembler
@@ -97,6 +98,80 @@ class RuntimeSurfaceServiceTests(unittest.TestCase):
                 "RuntimeSurfaceProfileContextAssembler"
             ],
             RuntimeSurfaceProfileContextAssembler,
+        )
+
+    def test_runtime_core_contract_builder_builds_default_contract(self):
+        contract = RuntimeCoreContractBuilder.build_contract()
+
+        self.assertTrue(contract["runtime_core"])
+        self.assertEqual(contract["contract_version"], "phase-a-runtime-core-v1")
+        self.assertEqual(contract["run_id"], "")
+        self.assertEqual(contract["run_kind"], "contract")
+        self.assertEqual(contract["status"], "not_started")
+        self.assertEqual(contract["trace_count"], 0)
+        self.assertIsNone(contract["latest_trace_event"])
+        self.assertEqual(contract["child_merge_entities"], [])
+        self.assertEqual(contract["child_merge_section_counts"], {})
+
+    def test_runtime_core_contract_builder_applies_scope_and_child_display_fallback(self):
+        contract = RuntimeCoreContractBuilder.build_contract(
+            runtime_scope={
+                "run_id": " run-1 ",
+                "parent_run_id": " parent-run-1 ",
+                "child_run_id": " child-run-1 ",
+                "scheduler_run_id": " scheduler-run-1 ",
+                "run_kind": " scheduler ",
+                "status": " running ",
+                "trace_count": 2,
+                "latest_trace_event": {"summary": "调度执行中"},
+            }
+        )
+
+        self.assertEqual(contract["run_id"], "run-1")
+        self.assertEqual(contract["parent_run_id"], "parent-run-1")
+        self.assertEqual(contract["child_run_id"], "child-run-1")
+        self.assertEqual(contract["child_display_id"], "child-run-1")
+        self.assertEqual(contract["scheduler_run_id"], "scheduler-run-1")
+        self.assertEqual(contract["run_kind"], "scheduler")
+        self.assertEqual(contract["status"], "running")
+        self.assertEqual(contract["trace_count"], 2)
+        self.assertEqual(contract["latest_trace_event"], {"summary": "调度执行中"})
+
+    def test_runtime_core_contract_builder_preserves_child_merge_evidence(self):
+        contract = RuntimeCoreContractBuilder.build_contract(
+            runtime_scope={
+                "child_merge_intent": " risk_review ",
+                "child_merge_entities": ["交易", "风险"],
+                "child_merge_entity_count": 2,
+                "child_merge_focus_count": 3,
+                "child_merge_action_count": 1,
+                "child_merge_primary_entities": ["交易"],
+                "child_merge_conclusion": " 建议复核 ",
+                "child_merge_section_source": " merged_sections ",
+                "child_merge_section_ids": ["merged_entities"],
+                "child_merge_section_counts": {"merged_entities": 2},
+            }
+        )
+
+        self.assertEqual(contract["child_merge_intent"], "risk_review")
+        self.assertEqual(contract["child_merge_entities"], ["交易", "风险"])
+        self.assertEqual(contract["child_merge_entity_count"], 2)
+        self.assertEqual(contract["child_merge_focus_count"], 3)
+        self.assertEqual(contract["child_merge_action_count"], 1)
+        self.assertEqual(contract["child_merge_primary_entities"], ["交易"])
+        self.assertEqual(contract["child_merge_conclusion"], "建议复核")
+        self.assertEqual(contract["child_merge_section_source"], "merged_sections")
+        self.assertEqual(contract["child_merge_section_ids"], ["merged_entities"])
+        self.assertEqual(contract["child_merge_section_counts"], {"merged_entities": 2})
+
+    def test_runtime_surface_service_runtime_core_wrapper_uses_builder(self):
+        self.assertIs(
+            RuntimeSurfaceService._build_runtime_core_contract.__globals__["RuntimeCoreContractBuilder"],
+            RuntimeCoreContractBuilder,
+        )
+        self.assertEqual(
+            RuntimeSurfaceService()._build_runtime_core_contract(runtime_scope={"run_id": "run-1"})["run_id"],
+            "run-1",
         )
 
     def test_provider_catalog_builder_keeps_model_provider_resolution_isolated(self):
