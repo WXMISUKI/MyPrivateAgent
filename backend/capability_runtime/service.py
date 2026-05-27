@@ -103,6 +103,25 @@ class CapabilityRuntimeService:
                 result["error"] = health["error"]
             return result
 
+        if capability.kind == "asr" and not self._is_supported_asr_media_type(payload.get("media_type")):
+            latency_ms = round((perf_counter() - started_at) * 1000)
+            return {
+                "ok": False,
+                "capability_id": capability_id,
+                "provider": capability.provider,
+                "status": "invalid_input",
+                "mode": mode,
+                "latency_ms": latency_ms,
+                "error": {
+                    "code": "CAPABILITY_TEST_UNSUPPORTED_MEDIA_TYPE",
+                    "message": (
+                        "ASR active test expects 16kHz mono PCM s16le audio. "
+                        "Transcode compressed formats such as MP3 before invoking this capability."
+                    ),
+                    "media_type": str(payload.get("media_type") or ""),
+                },
+            }
+
         if capability.kind == "tts":
             payload.setdefault("text", "您好，这是 MyPrivateAgent 的语音能力测试。")
 
@@ -142,6 +161,11 @@ class CapabilityRuntimeService:
         if health.get("error"):
             contract["error"] = health["error"]
         return contract
+
+    @staticmethod
+    def _is_supported_asr_media_type(media_type: Any) -> bool:
+        value = str(media_type or "application/octet-stream").lower().strip()
+        return value.startswith("audio/pcm") or value == "application/octet-stream"
 
     @staticmethod
     def _summarize_test_result(capability: CapabilityDefinition, result: dict[str, Any]) -> dict[str, Any]:

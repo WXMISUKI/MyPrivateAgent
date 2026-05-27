@@ -114,6 +114,18 @@ ASR 在未传入 `audio_base64` 时只做 readiness 检查，避免把“服务�
 }
 ```
 
+ASR 在传入 `audio_base64` 时只接受 `16kHz / mono / PCM s16le` 原始音频。`audio/mpeg`、`audio/wav`、`audio/webm` 等压缩或容器格式必须先由调用方或专门音频服务转码，否则控制面会返回：
+
+```json
+{
+  "ok": false,
+  "status": "invalid_input",
+  "error": {
+    "code": "CAPABILITY_TEST_UNSUPPORTED_MEDIA_TYPE"
+  }
+}
+```
+
 ### `GET /api/capabilities/heartbeat`
 实时探测外部能力服务。该接口用于治理台、前端或运维面板展示“当前有哪些能力可调用、对应服务是否在线”。
 

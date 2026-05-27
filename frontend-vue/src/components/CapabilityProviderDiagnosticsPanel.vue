@@ -38,8 +38,8 @@
 
       <div v-if="capability.kind === 'asr'" class="field-row">
         <label>ASR PCM 文件（可选）</label>
-        <input class="field-input" type="file" accept="audio/*,.pcm" @change="event => handleAsrFile(capability.capability_id, event)" />
-        <span class="field-hint">不上传文件时只执行 health-only readiness 测试。</span>
+        <input class="field-input" type="file" accept=".pcm,.raw,application/octet-stream" @change="event => handleAsrFile(capability.capability_id, event)" />
+        <span class="field-hint">仅支持 16kHz / mono / PCM s16le；不上传文件时只执行 health-only readiness 测试。</span>
       </div>
 
       <div class="provider-actions">
@@ -138,10 +138,14 @@ async function buildTestPayload(capability) {
     return {}
   }
   const file = asrFiles[capability.capability_id]
+  const mediaType = resolveAsrMediaType(file)
+  if (!isSupportedAsrMediaType(mediaType)) {
+    throw new Error('ASR 测试仅支持 16kHz / mono / PCM s16le 文件，请先将 MP3/WAV/WebM 转为 raw PCM。')
+  }
   const audioBase64 = await readFileAsBase64(file)
   return {
     audio_base64: audioBase64,
-    media_type: file.type || 'audio/pcm;rate=16000;channels=1;format=s16le',
+    media_type: mediaType,
     language: 'zh-cn'
   }
 }
@@ -150,7 +154,21 @@ function handleAsrFile(capabilityId, event) {
   const file = event.target.files?.[0]
   if (file) {
     asrFiles[capabilityId] = file
+    return
   }
+  delete asrFiles[capabilityId]
+}
+
+function resolveAsrMediaType(file) {
+  if (!file.type || file.name?.toLowerCase().endsWith('.pcm') || file.name?.toLowerCase().endsWith('.raw')) {
+    return 'audio/pcm;rate=16000;channels=1;format=s16le'
+  }
+  return file.type
+}
+
+function isSupportedAsrMediaType(mediaType) {
+  const value = String(mediaType || '').toLowerCase()
+  return value.startsWith('audio/pcm') || value === 'application/octet-stream'
 }
 
 function readFileAsBase64(file) {

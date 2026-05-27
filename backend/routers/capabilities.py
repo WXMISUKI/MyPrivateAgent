@@ -74,4 +74,6 @@ def test_capability(capability_id: str, payload: dict[str, Any] | None = None):
         return _not_found(capability_id)
     if result.get("ok"):
         return result
+    if result.get("error", {}).get("code") == "CAPABILITY_TEST_UNSUPPORTED_MEDIA_TYPE":
+        return JSONResponse(status_code=400, content=result)
     return JSONResponse(status_code=503, content=result)

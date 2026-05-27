@@ -65,6 +65,27 @@ class CapabilityActiveTestTests(unittest.TestCase):
         self.assertEqual(result["status"], "ready")
         self.assertNotIn("text", result.get("result_summary", {}))
 
+    def test_asr_active_test_rejects_compressed_audio(self):
+        def handler(request):
+            raise AssertionError("Compressed audio must not be forwarded to the ASR provider")
+
+        service = self._service(handler)
+
+        result = service.test_capability(
+            "voice.asr.vosk",
+            {
+                "payload": {
+                    "audio_base64": "//NkxAAAAANIAAAAAExBTUVVVVURtA7qIGMIwwxCHJg4XpMmT",
+                    "media_type": "audio/mpeg",
+                    "language": "zh-cn",
+                }
+            },
+        )
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["status"], "invalid_input")
+        self.assertEqual(result["error"]["code"], "CAPABILITY_TEST_UNSUPPORTED_MEDIA_TYPE")
+
     def test_active_test_returns_structured_error_for_unreachable_provider(self):
         def handler(request):
             raise httpx.ConnectError("connect failed", request=request)

@@ -68,6 +68,22 @@ class CapabilitiesRouterTests(unittest.TestCase):
         self.assertEqual(payload["mode"], "health_only")
         self.assertEqual(payload["status"], "disabled")
 
+    def test_test_endpoint_rejects_compressed_asr_audio(self):
+        response = self.client.post(
+            "/api/capabilities/voice.asr.vosk/test",
+            json={
+                "payload": {
+                    "audio_base64": "//NkxAAAAANIAAAAAExBTUVVVVURtA7qIGMIwwxCHJg4XpMmT",
+                    "media_type": "audio/mpeg",
+                }
+            },
+        )
+
+        self.assertEqual(response.status_code, 400)
+        payload = response.json()
+        self.assertEqual(payload["capability_id"], "voice.asr.vosk")
+        self.assertEqual(payload["error"]["code"], "CAPABILITY_TEST_UNSUPPORTED_MEDIA_TYPE")
+
     def test_unknown_capability_endpoint_returns_404(self):
         response = self.client.post("/api/capabilities/unknown/invoke", json={})
 
