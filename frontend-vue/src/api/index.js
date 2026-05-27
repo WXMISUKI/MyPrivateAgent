@@ -221,6 +221,24 @@ export const voiceApi = {
   }
 }
 
+export const capabilityApi = {
+  list() {
+    return api.get('/capabilities')
+  },
+
+  get(capabilityId) {
+    return api.get(`/capabilities/${encodeURIComponent(capabilityId)}`)
+  },
+
+  health(capabilityId) {
+    return api.get(`/capabilities/${encodeURIComponent(capabilityId)}/health`)
+  },
+
+  invoke(capabilityId, payload = {}) {
+    return api.post(`/capabilities/${encodeURIComponent(capabilityId)}/invoke`, payload)
+  }
+}
+
 export const mcpApi = {
   listServers() {
     return api.get('/mcp/servers')

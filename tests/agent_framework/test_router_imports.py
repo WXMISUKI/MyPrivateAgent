@@ -9,6 +9,7 @@ class RouterImportTests(unittest.TestCase):
         self.assertTrue(hasattr(module, "conversations"))
         self.assertTrue(hasattr(module, "mcp"))
         self.assertTrue(hasattr(module, "permissions"))
+        self.assertTrue(hasattr(module, "capabilities"))
 
 
 if __name__ == "__main__":
