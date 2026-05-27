@@ -15,6 +15,7 @@ from backend.agent_framework.sdk import EmbeddedAgentRuntimeSDK
 import backend.services.runtime_surface_service as runtime_surface_service_module
 from backend.models import Base
 from backend.services.runtime_surface_builders import ProviderCatalogBuilder, RuntimeRecoveryContractBuilder
+from backend.services.runtime_surface_profile_context import RuntimeSurfaceProfileContextAssembler
 from backend.services.runtime_surface_profile_assembler import RuntimeSurfaceProfileAssembler
 from backend.services.runtime_surface_service import RuntimeSurfaceService
 
@@ -24,6 +25,78 @@ class RuntimeSurfaceServiceTests(unittest.TestCase):
         self.assertIs(
             runtime_surface_service_module.RuntimeSurfaceProfileAssembler,
             RuntimeSurfaceProfileAssembler,
+        )
+
+    def test_runtime_surface_profile_context_prefers_parent_run_for_recovery_target(self):
+        self.assertEqual(
+            RuntimeSurfaceProfileContextAssembler.resolve_recovery_target_run_id(
+                parent_run_id=" parent-run-1 ",
+                runtime_scope={"scheduler_run_id": "scheduler-run-1", "run_id": "run-1"},
+            ),
+            "parent-run-1",
+        )
+
+    def test_runtime_surface_profile_context_falls_back_to_scheduler_then_run(self):
+        self.assertEqual(
+            RuntimeSurfaceProfileContextAssembler.resolve_recovery_target_run_id(
+                runtime_scope={"scheduler_run_id": " scheduler-run-1 ", "run_id": "run-1"},
+            ),
+            "scheduler-run-1",
+        )
+        self.assertEqual(
+            RuntimeSurfaceProfileContextAssembler.resolve_recovery_target_run_id(
+                runtime_scope={"scheduler_run_id": " ", "run_id": " run-1 "},
+            ),
+            "run-1",
+        )
+
+    def test_runtime_surface_profile_context_delegates_runtime_scope_to_service(self):
+        class StubService:
+            def __init__(self):
+                self.calls = []
+
+            def _build_runtime_scope_contract(self, **kwargs):
+                self.calls.append(kwargs)
+                return {"run_id": kwargs["run_id"], "scheduler_run_id": kwargs["scheduler_run_id"]}
+
+        service = StubService()
+        context = RuntimeSurfaceProfileContextAssembler.assemble(
+            service,
+            db="db",
+            conversation_id=11,
+            plan_id=22,
+            item_id=33,
+            query_id="query-1",
+            run_id="run-1",
+            child_run_id="child-run-1",
+            scheduler_run_id="scheduler-run-1",
+        )
+
+        self.assertEqual(context.query_id, "query-1")
+        self.assertEqual(context.runtime_scope["run_id"], "run-1")
+        self.assertEqual(context.recovery_target_run_id, "scheduler-run-1")
+        self.assertEqual(
+            service.calls,
+            [
+                {
+                    "db": "db",
+                    "conversation_id": 11,
+                    "plan_id": 22,
+                    "item_id": 33,
+                    "run_id": "run-1",
+                    "parent_run_id": None,
+                    "child_run_id": "child-run-1",
+                    "scheduler_run_id": "scheduler-run-1",
+                }
+            ],
+        )
+
+    def test_runtime_surface_profile_assembler_uses_context_assembler(self):
+        self.assertIs(
+            RuntimeSurfaceProfileAssembler.__dict__["assemble"].__func__.__globals__[
+                "RuntimeSurfaceProfileContextAssembler"
+            ],
+            RuntimeSurfaceProfileContextAssembler,
         )
 
     def test_provider_catalog_builder_keeps_model_provider_resolution_isolated(self):

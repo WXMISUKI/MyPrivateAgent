@@ -922,15 +922,16 @@ Governance Timeline 前端继续瘦身仍有价值，但不应继续作为最高
 - 已完成：
   - query detail / history / subagent summary 等 dedicated contract 已开始出现
   - `RuntimeSurfaceProfileAssembler` 已从 `runtime_surface_builders.py` 移入专用 `runtime_surface_profile_assembler.py`，`RuntimeSurfaceService.get_runtime_profile()` 继续作为稳定入口，对外 profile shape 不变。
+  - `RuntimeSurfaceProfileContextAssembler` 已承接 profile request context、runtime scope 调用边界和 recovery target 推导，顶层 profile shell 不再内联这些作用域细节。
 - 进行中：
   - 正式 builder / assembler 拆分
 - 未开始：
-  - 更深的 concern-specific builder 拆分与测试收口
+  - governance overview / runtime core 等更深 concern-specific builder 拆分与测试收口
 
 下一步动作：
 
-- 先确定哪些 contract 已经适合拆出独立 builder。
-- 避免 service 继续无限增大，导致后续 AI 和维护者都难以掌握。
+- 继续优先选择低副作用的 contract section 做 builder 拆分，例如 governance overview 或 runtime core shell。
+- 避免触碰 child executor replay、recovery scheduler 等高风险行为面，除非另开 OpenSpec change 并补足 focused smoke。
 
 是否继续优化：
 

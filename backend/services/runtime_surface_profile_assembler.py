@@ -6,8 +6,10 @@ from typing import Any, Dict
 
 try:
     from services.runtime_surface_builders import EmbeddedRuntimeContractBundleBuilder, ProviderCatalogBuilder
+    from services.runtime_surface_profile_context import RuntimeSurfaceProfileContextAssembler
 except ModuleNotFoundError:  # pragma: no cover - package import compatibility
     from backend.services.runtime_surface_builders import EmbeddedRuntimeContractBundleBuilder, ProviderCatalogBuilder
+    from backend.services.runtime_surface_profile_context import RuntimeSurfaceProfileContextAssembler
 
 
 class RuntimeSurfaceProfileAssembler:
@@ -42,21 +44,25 @@ class RuntimeSurfaceProfileAssembler:
         providers = provider_catalog["providers"]
         config_layers = provider_catalog["config_layers"]
 
+        profile_context = RuntimeSurfaceProfileContextAssembler.assemble(
+            service,
+            db=db,
+            conversation_id=conversation_id,
+            plan_id=plan_id,
+            item_id=item_id,
+            query_id=query_id,
+            run_id=run_id,
+            parent_run_id=parent_run_id,
+            child_run_id=child_run_id,
+            scheduler_run_id=scheduler_run_id,
+        )
+        runtime_scope = profile_context.runtime_scope or {}
+
         main_chat_trace_overview = service._build_main_chat_trace_overview_contract(
             db=db,
             conversation_id=conversation_id,
             plan_id=plan_id,
             item_id=item_id,
-        )
-        runtime_scope = service._build_runtime_scope_contract(
-            db=db,
-            conversation_id=conversation_id,
-            plan_id=plan_id,
-            item_id=item_id,
-            run_id=run_id,
-            parent_run_id=parent_run_id,
-            child_run_id=child_run_id,
-            scheduler_run_id=scheduler_run_id,
         )
         main_chat_query_detail = service._build_main_chat_query_detail_contract(
             db=db,
@@ -77,11 +83,7 @@ class RuntimeSurfaceProfileAssembler:
             plan_id=plan_id,
             item_id=item_id,
         )
-        recovery_target_run_id = (
-            str(parent_run_id or "").strip()
-            or str(runtime_scope.get("scheduler_run_id") or "").strip()
-            or str(runtime_scope.get("run_id") or "").strip()
-        )
+        recovery_target_run_id = profile_context.recovery_target_run_id
         run_recovery = (
             service.get_run_recovery(run_id=recovery_target_run_id)
             if recovery_target_run_id
