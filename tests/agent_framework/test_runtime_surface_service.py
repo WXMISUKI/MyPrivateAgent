@@ -1628,6 +1628,7 @@ class RuntimeSurfaceServiceTests(unittest.TestCase):
                             "agent_name": "risk_reviewer",
                             "scheduler_policy": {"timeout_seconds": 45},
                             "worker_runtime_backend": "embedded_sdk_worker",
+                            "explicit_executor_binding_opt_in": True,
                         },
                     },
                     parent_run_id=parent["run"]["run_id"],

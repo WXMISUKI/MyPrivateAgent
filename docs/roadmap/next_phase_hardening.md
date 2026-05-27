@@ -924,6 +924,7 @@ Governance Timeline 前端继续瘦身仍有价值，但不应继续作为最高
   - `RuntimeSurfaceProfileAssembler` 已从 `runtime_surface_builders.py` 移入专用 `runtime_surface_profile_assembler.py`，`RuntimeSurfaceService.get_runtime_profile()` 继续作为稳定入口，对外 profile shape 不变。
   - `RuntimeSurfaceProfileContextAssembler` 已承接 profile request context、runtime scope 调用边界和 recovery target 推导，顶层 profile shell 不再内联这些作用域细节。
   - `RuntimeCoreContractBuilder` 已承接 `runtime_core` 默认 shell、scope overlay、`child_display_id` fallback 与 child merge evidence 组装，`RuntimeSurfaceService._build_runtime_core_contract()` 保持兼容 wrapper。
+  - Runtime Surface governance run-state fixture 已与 child executor explicit opt-in prerequisites 对齐，`risk_review` child merge semantics 不再因 blocked skeleton execution 回退为 `general_analysis`。
 - 进行中：
   - 正式 builder / assembler 拆分
 - 未开始：
