@@ -8,6 +8,8 @@ try:
     from models import User
     from schemas import (
         ConversationCreate,
+        ConversationCompactRequest,
+        ConversationCompactResponse,
         ConversationFeedbackAnalyticsResponse,
         ConversationFeedbackCreate,
         ConversationFeedbackResponse,
@@ -21,6 +23,8 @@ except ModuleNotFoundError:  # pragma: no cover - package import compatibility
     from backend.models import User
     from backend.schemas import (
         ConversationCreate,
+        ConversationCompactRequest,
+        ConversationCompactResponse,
         ConversationFeedbackAnalyticsResponse,
         ConversationFeedbackCreate,
         ConversationFeedbackResponse,
@@ -28,6 +32,10 @@ except ModuleNotFoundError:  # pragma: no cover - package import compatibility
         ConversationWithMessages,
     )
     from backend.services.conversation_service import ConversationService
+try:
+    from services.chat_context_compact_service import ChatContextCompactService
+except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+    from backend.services.chat_context_compact_service import ChatContextCompactService
 
 router = APIRouter(prefix="/api/conversations", tags=["会话"])
 
@@ -133,6 +141,24 @@ def update_conversation(
         conversation=conversation,
         title=title,
         model_name=model_name,
+    )
+
+
+@router.post("/{conversation_id}/compact", response_model=ConversationCompactResponse)
+def compact_conversation(
+    conversation_id: int,
+    compact_request: ConversationCompactRequest,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    """手动压缩会话上下文，保留原始消息。"""
+    service = ConversationService(db)
+    conversation = service.get_owned_conversation(conversation_id, current_user.id)
+    ensure_exists(conversation, "会话不存在")
+    return ChatContextCompactService(db).compact(
+        conversation_id=conversation.id,
+        trigger="manual_api",
+        instructions=compact_request.instructions,
     )
 
 

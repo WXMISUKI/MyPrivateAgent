@@ -26,6 +26,7 @@ try:
         stream_scheduled_orchestrator_events,
         stream_orchestrator_events,
     )
+    from services.chat_context_compact_service import ChatContextCompactService
     from services.runtime_surface_service import get_runtime_surface_service
     from orchestrator import get_orchestrator
 except ModuleNotFoundError:  # pragma: no cover - package import compatibility
@@ -48,6 +49,7 @@ except ModuleNotFoundError:  # pragma: no cover - package import compatibility
         stream_scheduled_orchestrator_events,
         stream_orchestrator_events,
     )
+    from backend.services.chat_context_compact_service import ChatContextCompactService
     from backend.services.runtime_surface_service import get_runtime_surface_service
     from backend.orchestrator import get_orchestrator
 
@@ -79,6 +81,27 @@ def _prepare_chat_context(
     return started_plan_state, execution_context
 
 
+def _is_compact_command(message: str) -> bool:
+    text = str(message or "").strip()
+    return text == "/compact" or text.startswith("/compact ")
+
+
+def _extract_compact_instructions(message: str) -> str | None:
+    text = str(message or "").strip()
+    if not text.startswith("/compact"):
+        return None
+    instructions = text[len("/compact"):].strip()
+    return instructions or None
+
+
+def _build_compact_confirmation(compact_record) -> str:
+    return (
+        "已压缩当前会话上下文。"
+        f"覆盖消息数：{getattr(compact_record, 'message_count', 0)}，"
+        f"摘要：{str(getattr(compact_record, 'summary', '') or '')[:160]}"
+    )
+
+
 # ============ API 路由 ============
 
 @router.get("/models", response_model=list[ModelInfo])
@@ -99,6 +122,25 @@ def chat(
         current_user=current_user,
         db=db,
     )
+    if _is_compact_command(request.message):
+        compact_record = ChatContextCompactService(db).compact(
+            conversation_id=conversation.id,
+            trigger="slash_command",
+            instructions=_extract_compact_instructions(request.message),
+        )
+        confirmation = _build_compact_confirmation(compact_record)
+        saved_message = save_assistant_message(db, conversation.id, confirmation)
+
+        async def compact_generate():
+            yield build_sse_event({"type": "conversation_id", "conversation_id": conversation.id})
+            yield build_sse_event({"type": "content", "content": confirmation})
+            done_event = {"type": "done", "content": confirmation}
+            saved_message_id = getattr(saved_message, "id", None)
+            if saved_message_id is not None:
+                done_event["message_id"] = saved_message_id
+            yield build_sse_event(done_event)
+
+        return StreamingResponse(compact_generate(), media_type="text/event-stream")
 
     # 获取请求中的模型名称（如果有）
     model_name = request.model_name if request.model_name else conversation.model_name
@@ -173,6 +215,12 @@ def chat(
                 )
 
             try:
+                compact_service = ChatContextCompactService(db)
+                durable_summary = compact_service.latest_summary(conversation_id=conversation.id)
+                effective_history_messages = compact_service.messages_after_summary(
+                    conversation_id=conversation.id,
+                    summary=durable_summary,
+                )
                 stream_fn = stream_scheduled_orchestrator_events if execution_context and execution_context.get("scheduler_mode") == "fan_out" else stream_orchestrator_events
                 stream_kwargs = {
                     "orchestrator": orchestrator,
@@ -182,6 +230,8 @@ def chat(
                     "db": db,
                     "user_id": current_user.id,
                     "conversation_id": conversation.id,
+                    "history_messages": effective_history_messages,
+                    "durable_summary": durable_summary,
                 }
                 if stream_fn is stream_scheduled_orchestrator_events:
                     stream_kwargs.update({})
@@ -334,6 +384,15 @@ async def chat_non_stream(
         current_user=current_user,
         db=db,
     )
+    if _is_compact_command(request.message):
+        compact_record = ChatContextCompactService(db).compact(
+            conversation_id=conversation.id,
+            trigger="slash_command",
+            instructions=_extract_compact_instructions(request.message),
+        )
+        confirmation = _build_compact_confirmation(compact_record)
+        save_assistant_message(db, conversation.id, confirmation)
+        return ChatResponse(message=confirmation, conversation_id=conversation.id)
 
     # 使用前端传递的模型名称，如果没传则使用会话中存储的模型
     model_name = request.model_name or conversation.model_name
@@ -357,6 +416,12 @@ async def chat_non_stream(
 
     waiting_approval = False
     try:
+        compact_service = ChatContextCompactService(db)
+        durable_summary = compact_service.latest_summary(conversation_id=conversation.id)
+        effective_history_messages = compact_service.messages_after_summary(
+            conversation_id=conversation.id,
+            summary=durable_summary,
+        )
         if execution_context and execution_context.get("scheduler_mode") == "fan_out":
             ai_response = await collect_scheduled_orchestrator_response(
                 orchestrator=orchestrator,
@@ -366,6 +431,8 @@ async def chat_non_stream(
                 user_message=request.message,
                 model_name=model_name,
                 execution_context=execution_context,
+                history_messages=effective_history_messages,
+                durable_summary=durable_summary,
             )
         else:
             ai_response = await collect_orchestrator_response(
@@ -376,6 +443,8 @@ async def chat_non_stream(
                 db=db,
                 user_id=current_user.id,
                 conversation_id=conversation.id,
+                history_messages=effective_history_messages,
+                durable_summary=durable_summary,
             )
     except RuntimeApprovalRequired as approval:
         ai_response = approval.message

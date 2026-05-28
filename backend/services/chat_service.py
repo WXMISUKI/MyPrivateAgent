@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import json
 import logging
 from datetime import datetime
@@ -1112,6 +1113,18 @@ def _build_capability_blocked_message(
     return "".join(parts)
 
 
+def _orchestrator_accepts_history(orchestrator: Any) -> bool:
+    return _orchestrator_accepts_parameter(orchestrator, "history_messages")
+
+
+def _orchestrator_accepts_parameter(orchestrator: Any, parameter_name: str) -> bool:
+    try:
+        signature = inspect.signature(orchestrator.process_message)
+    except (TypeError, ValueError, AttributeError):
+        return False
+    return parameter_name in signature.parameters
+
+
 async def collect_orchestrator_response(
     *,
     orchestrator: Any,
@@ -1121,6 +1134,8 @@ async def collect_orchestrator_response(
     db: Optional[Session] = None,
     user_id: Optional[int] = None,
     conversation_id: Optional[int] = None,
+    history_messages: Optional[List[Any]] = None,
+    durable_summary: Any = None,
 ) -> str:
     """Collect the final assistant response from the shared orchestrator path."""
     full_content = ""
@@ -1136,11 +1151,17 @@ async def collect_orchestrator_response(
         event=input_received_event,
     )
 
-    async for chunk in orchestrator.process_message(
-        user_message=user_message,
-        selected_model=model_name,
-        execution_context=execution_context,
-    ):
+    process_kwargs = {
+        "user_message": user_message,
+        "selected_model": model_name,
+        "execution_context": execution_context,
+    }
+    if _orchestrator_accepts_history(orchestrator):
+        process_kwargs["history_messages"] = history_messages
+    if _orchestrator_accepts_parameter(orchestrator, "durable_summary"):
+        process_kwargs["durable_summary"] = durable_summary
+
+    async for chunk in orchestrator.process_message(**process_kwargs):
         try:
             parsed = _attach_main_chat_query_control_mapping(json.loads(chunk))
             if isinstance(parsed, dict):
@@ -1181,6 +1202,8 @@ async def stream_orchestrator_events(
     db: Optional[Session] = None,
     user_id: Optional[int] = None,
     conversation_id: Optional[int] = None,
+    history_messages: Optional[List[Any]] = None,
+    durable_summary: Any = None,
 ) -> AsyncGenerator[tuple[str, str], None]:
     """Yield orchestrator chunks together with the accumulated assistant content."""
     actual_content = ""
@@ -1196,11 +1219,17 @@ async def stream_orchestrator_events(
         event=input_received_event,
     )
 
-    async for chunk in orchestrator.process_message(
-        user_message=user_message,
-        selected_model=model_name,
-        execution_context=execution_context,
-    ):
+    process_kwargs = {
+        "user_message": user_message,
+        "selected_model": model_name,
+        "execution_context": execution_context,
+    }
+    if _orchestrator_accepts_history(orchestrator):
+        process_kwargs["history_messages"] = history_messages
+    if _orchestrator_accepts_parameter(orchestrator, "durable_summary"):
+        process_kwargs["durable_summary"] = durable_summary
+
+    async for chunk in orchestrator.process_message(**process_kwargs):
         try:
             parsed = _attach_main_chat_query_control_mapping(json.loads(chunk))
             if isinstance(parsed, dict):
@@ -1240,6 +1269,8 @@ async def collect_scheduled_orchestrator_response(
     user_message: str,
     model_name: str,
     execution_context: Optional[Dict[str, Any]] = None,
+    history_messages: Optional[List[Any]] = None,
+    durable_summary: Any = None,
 ) -> str:
     """Execute a fan-out schedule and return the merged result."""
     merged_output = ""
@@ -1251,6 +1282,8 @@ async def collect_scheduled_orchestrator_response(
         user_message=user_message,
         model_name=model_name,
         execution_context=execution_context,
+        history_messages=history_messages,
+        durable_summary=durable_summary,
     ):
         try:
             parsed = json.loads(chunk)
@@ -1271,6 +1304,8 @@ async def stream_scheduled_orchestrator_events(
     user_message: str,
     model_name: str,
     execution_context: Optional[Dict[str, Any]] = None,
+    history_messages: Optional[List[Any]] = None,
+    durable_summary: Any = None,
 ) -> AsyncGenerator[tuple[str, str], None]:
     """Execute child contexts sequentially and merge their outputs into one final answer."""
     if not execution_context or execution_context.get("scheduler_mode") != "fan_out":
@@ -1282,6 +1317,8 @@ async def stream_scheduled_orchestrator_events(
             db=db,
             user_id=user_id,
             conversation_id=conversation_id,
+            history_messages=history_messages,
+            durable_summary=durable_summary,
         ):
             yield chunk, actual_content
         return

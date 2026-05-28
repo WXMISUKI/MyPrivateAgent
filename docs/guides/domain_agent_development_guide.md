@@ -111,6 +111,13 @@ capabilities:
   graph_sources:
     - ecommerce_order_graph
 
+retrieval:
+  mode: agentic
+  default_top_k: 5
+  require_citations: true
+  graph_usage: relationship_questions_only
+  fallback_policy: refuse_or_clarify_when_no_evidence
+
 governance:
   approval_required:
     - refund.create_request
@@ -125,6 +132,7 @@ governance:
 - `id`：前端请求中的 `execution_context.agent_id`。
 - `roles.id`：前端请求中的 `execution_context.agent_role`。
 - `capabilities`：该 agent 允许使用的能力清单，其中 `rag_sources` 和 `graph_sources` 会进入 Runtime Surface 的只读知识 registry。
+- `retrieval`：该 agent 的知识检索行为策略，描述是否由 agent 按需检索、默认 top_k、是否要求引用、图谱适用场景和无证据时的降级方式。
 - `governance.approval_required`：必须进入审批链路的高风险动作。
 
 ## 4. 垂域开发步骤
@@ -254,6 +262,32 @@ RAG 返回必须包含：
 如果 RAG 结果会影响高风险动作，应让工具或 policy 再做一次权限判断。
 
 知识图谱返回必须包含 `graph_id / entities / relations / paths / evidence`。RAG 与知识图谱都应由外部 Knowledge Provider 管理，MyPrivateAgent 只保存 `agent.yaml` 绑定、capability 注册、health、invoke 和审计证据。外部项目开发规范见 [external_rag_provider_development.md](./external_rag_provider_development.md)。
+
+更完整的外部 provider 设计见 [external_rag_graphrag_provider_design.md](./external_rag_graphrag_provider_design.md)。当前推荐：
+
+- 文档型知识问答、制度问答、产品手册、内部资料检索，优先用 LlamaIndex 作为外部 provider 内部 RAG 编排框架。
+- 实体关系、多跳路径、ontology 约束、关系型证据查询，优先用 Neo4j GraphRAG 作为外部 provider 内部图谱检索实现。
+- 两者都不进入 MyPrivateAgent 主后端；主项目只通过 `knowledge.rag.retrieve` 和 `knowledge.graph.query` 调用 provider。
+
+推荐在 `agent.yaml` 里显式记录检索策略：
+
+```yaml
+retrieval:
+  mode: agentic
+  default_top_k: 5
+  require_citations: true
+  graph_usage: relationship_questions_only
+  fallback_policy: refuse_or_clarify_when_no_evidence
+```
+
+推荐在 `rag/retrieval_policy.md` 里补充自然语言规则：
+
+```text
+- 只有当用户问题需要内部政策、产品资料或历史文档证据时才检索 RAG。
+- 没有 citation 时不得声称来自知识库。
+- 涉及实体关系、路径、归属、依赖时优先查询 graph source。
+- 高风险业务动作必须经过 policy / approval，不因 RAG 命中而自动执行。
+```
 
 ### Step 7：定义审批和风险策略
 

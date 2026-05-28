@@ -4,6 +4,8 @@
 
 外部 Knowledge Provider 是 MyPrivateAgent 的知识能力服务，不是主后端的一部分。它负责 RAG、知识图谱、Embedding、向量库、图数据库、文档解析、OCR、重排和索引生命周期；MyPrivateAgent 只负责注册、调用、健康检查、权限治理、审计证据和垂域绑定。
 
+更完整的 RAG / GraphRAG provider 设计见 [external_rag_graphrag_provider_design.md](./external_rag_graphrag_provider_design.md)。当前推荐：文档型 RAG 的 provider 内部优先参考 LlamaIndex；实体、关系、路径、多跳查询和图增强检索优先参考 Neo4j GraphRAG。二者都只能作为外部 provider 的内部实现依赖，不进入 MyPrivateAgent 主后端。
+
 推荐项目命名：
 
 ```text
@@ -35,13 +37,16 @@ unifiedKnowledgeProvider/
       rag.py
       graph.py
     services/
+      source_catalog.py
       document_loader.py
       chunker.py
       embedding_service.py
       vector_store.py
+      llamaindex_rag_service.py
       retriever.py
       reranker.py
       graph_store.py
+      neo4j_graphrag_service.py
       ontology_registry.py
     providers/
       embeddings/
@@ -58,6 +63,12 @@ unifiedKnowledgeProvider/
 
 主项目不要求外部服务必须使用 FastAPI，但接口合同必须稳定，返回 JSON，并提供健康检查。
 
+实现建议：
+
+- LlamaIndex 负责 provider 内部的文档加载、node parsing、索引、retriever、query engine、rerank/postprocessor 编排。
+- Neo4j GraphRAG 负责 provider 内部的图谱检索、hybrid/vector/fulltext retrieval、Cypher traversal 和图证据规整。
+- provider 对 MyPrivateAgent 只暴露本文定义的 HTTP JSON 合同，不暴露 LlamaIndex、Neo4j driver、GraphRAG retriever 等内部对象。
+
 ## 3. 最小 HTTP API
 
 ```http
@@ -68,6 +79,14 @@ POST /api/rag/retrieve
 GET  /api/graph/schemas
 POST /api/graph/query
 ```
+
+推荐额外提供 provider 侧 source catalog：
+
+```http
+GET /api/catalog
+```
+
+catalog 用于报告 `knowledge_base_id`、`graph_id`、状态、版本、索引新鲜度和 degraded 原因。MyPrivateAgent 的 `agent.yaml` 只声明允许绑定哪些 source，provider catalog 负责说明这些 source 是否真实存在且 ready。
 
 `/health` 用于 MyPrivateAgent 的 capability heartbeat。服务不可用、索引未就绪、图数据库不可达时，应返回机器可读状态，不要只返回自由文本。
 
@@ -202,6 +221,12 @@ capabilities:
     - logistics_faq
   graph_sources:
     - ecommerce_order_graph
+retrieval:
+  mode: agentic
+  default_top_k: 5
+  require_citations: true
+  graph_usage: relationship_questions_only
+  fallback_policy: refuse_or_clarify_when_no_evidence
 ```
 
 MyPrivateAgent 会把这些声明暴露到 Runtime Surface：
@@ -213,7 +238,31 @@ knowledge_graph_registry
 
 v1 registry 是只读治理面，不会自动创建索引、上传文档、编辑 ontology，也不会自动把检索结果注入 `/api/chat`。
 
-## 8. 开发验收清单
+`retrieval` 是垂域 Agent 的行为策略，不是 provider 数据配置。它用于描述该 Agent 何时检索、默认 top_k、是否强制引用、没有证据时如何处理，以及图谱只在什么问题类型下使用。provider 只负责按请求返回证据，不负责决定最终角色话术、拒答策略或审批策略。
+
+## 8. 规格、实现、归档节奏
+
+RAG / GraphRAG 能力按以下节奏推进：
+
+```text
+1. 规格
+   OpenSpec proposal / design / specs / tasks 明确边界。
+
+2. 实现
+   先实现外部 provider 的 health、catalog、RAG retrieve；
+   再实现 graph schemas、graph query；
+   最后再考虑 MyPrivateAgent chat 自动注入。
+
+3. 验证
+   用 provider contract test、RAG smoke、graph smoke、
+   MyPrivateAgent capability heartbeat 做最小验证。
+
+4. 归档
+   实现稳定后归档 OpenSpec change，
+   把最终合同合入 canonical specs/docs。
+```
+
+## 9. 开发验收清单
 
 - [ ] `/health` 可用，并能区分 ready / degraded / unreachable。
 - [ ] `/api/rag/retrieve` 对测试文档返回稳定 `documents[*].citation`。

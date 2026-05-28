@@ -116,6 +116,21 @@ class ConversationFeedbackAnalyticsResponse(BaseModel):
     rollback_candidates: List[FeedbackRollbackCandidate]
 
 
+class ConversationCompactRequest(BaseModel):
+    instructions: Optional[str] = Field(default=None, max_length=2000)
+
+
+class ConversationCompactResponse(BaseModel):
+    id: int
+    conversation_id: int
+    summary: str
+    message_count: int
+    last_message_id: Optional[int] = None
+    trigger: str
+    instructions: Optional[str] = None
+    created_at: datetime
+
+
 # ============ 聊天相关 ============
 class ChatExecutionContextRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")

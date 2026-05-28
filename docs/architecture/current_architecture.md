@@ -153,6 +153,8 @@
 - Runtime Surface 与 Governance Timeline 已通过 `frontend-vue/src/services/governanceViewInterpretation.js` 共享 query/history/snapshot 的治理解释入口，route focus 仍然只是观察态，不是持久对象模型。
 - `query workspace` 的高层通用化边界已单独提升为 canonical spec：`openspec/specs/query-workspace-generalization/spec.md`；当前 `main_chat` 仍是唯一完整 baseline，`subagent_lane / external_adapter` 只停留在 `recent summary` 试点或 readiness 阶段。
 - 当前阶段推荐的工作模式已从“继续扩某个单一 channel 的局部体验”切换为“先收口通用边界，再决定是否继续扩 channel”；也就是说，`main_chat` 更像通用模式基准线，而不是默认继续加功能的主线。
+- Main chat 已具备 `ChatContextPackingService` 输入装配边界：模型请求会在运行时系统层之后注入同一 `conversation_id` 的持久化最近历史，并在历史超出窗口或预算时用确定性早期摘要收口；该能力只影响主聊天模型输入，不改变 Runtime Surface / Governance Timeline payload，也不替代长期记忆检索。
+- Main chat 现在具备 durable compact 边界：`ConversationSummary` 保存手动压缩后的会话摘要、覆盖消息数和最后覆盖消息 id；用户可通过 `/compact` 或会话 compact API 主动生成摘要，后续模型输入优先使用持久化摘要加摘要之后的新消息，原始 `messages` 仍保留用于审计、展示和搜索。
 
 ## 4. 当前仍在路上的能力
 

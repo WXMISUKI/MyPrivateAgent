@@ -53,6 +53,20 @@ class Message(Base):
     conversation = relationship("Conversation", back_populates="messages")
 
 
+class ConversationSummary(Base):
+    """Durable compact summary for a conversation context window."""
+    __tablename__ = "conversation_summaries"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    conversation_id = Column(Integer, ForeignKey("conversations.id"), nullable=False, index=True)
+    summary = Column(Text, nullable=False)
+    message_count = Column(Integer, nullable=False, default=0)
+    last_message_id = Column(Integer, ForeignKey("messages.id"), nullable=True)
+    trigger = Column(String(50), nullable=False, default="manual")
+    instructions = Column(Text, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+
+
 class Skill(Base):
     """Skill模型 - 存储用户导入的Skills"""
     __tablename__ = "skills"

@@ -34,6 +34,7 @@ try:
     from services.subagent_service import get_subagent_runtime_service
     from services.capability_profile_service import get_capability_profile_service
     from services.agent_memory_service import get_agent_memory_service
+    from services.chat_context_packing_service import get_chat_context_packing_service
 except ModuleNotFoundError:  # pragma: no cover - package import compatibility
     from backend.agent_framework import (
         get_artifact_store,
@@ -60,6 +61,7 @@ except ModuleNotFoundError:  # pragma: no cover - package import compatibility
     from backend.services.subagent_service import get_subagent_runtime_service
     from backend.services.capability_profile_service import get_capability_profile_service
     from backend.services.agent_memory_service import get_agent_memory_service
+    from backend.services.chat_context_packing_service import get_chat_context_packing_service
 
 register_default_tools()
 register_langchain_tools()
@@ -139,21 +141,27 @@ class SimplifiedOrchestrator:
         runtime_knowledge: Any,
         runtime_skills: Any,
         subagent_context: Any,
+        history_messages: Optional[list[Any]] = None,
+        durable_summary: Any | None = None,
     ) -> list:
-        messages = [SystemMessage(content=capability_profile.system_prompt)]
+        system_messages = [SystemMessage(content=capability_profile.system_prompt)]
         if not agent_memory.is_empty and agent_memory.system_prompt:
-            messages.append(SystemMessage(content=agent_memory.system_prompt))
+            system_messages.append(SystemMessage(content=agent_memory.system_prompt))
         intent_prompt = self.completion_evaluator.build_synthesis_instruction(user_message)
         if intent_prompt:
-            messages.append(SystemMessage(content=intent_prompt))
+            system_messages.append(SystemMessage(content=intent_prompt))
         if not runtime_knowledge.is_empty:
-            messages.append(SystemMessage(content=runtime_knowledge.system_prompt))
+            system_messages.append(SystemMessage(content=runtime_knowledge.system_prompt))
         if not runtime_skills.is_empty:
-            messages.append(SystemMessage(content=runtime_skills.system_prompt))
+            system_messages.append(SystemMessage(content=runtime_skills.system_prompt))
         if subagent_context is not None:
-            messages.append(SystemMessage(content=self.subagent_runtime_service.build_role_system_prompt(subagent_context)))
-        messages.append(HumanMessage(content=user_message))
-        return messages
+            system_messages.append(SystemMessage(content=self.subagent_runtime_service.build_role_system_prompt(subagent_context)))
+        return get_chat_context_packing_service().pack(
+            system_messages=system_messages,
+            history_messages=history_messages or [],
+            current_user_message=user_message,
+            durable_summary=durable_summary,
+        )
 
     def _process_stream_chunk(
         self,
@@ -194,6 +202,8 @@ class SimplifiedOrchestrator:
         user_message: str,
         selected_model: str = "doubao",
         execution_context: Optional[dict[str, Any]] = None,
+        history_messages: Optional[list[Any]] = None,
+        durable_summary: Any | None = None,
     ) -> AsyncGenerator[str, None]:
         """
         处理用户消息（流式输出）
@@ -360,6 +370,8 @@ class SimplifiedOrchestrator:
         messages = self._build_messages(
             user_message, capability_profile, agent_memory,
             runtime_knowledge, runtime_skills, subagent_context,
+            history_messages=history_messages,
+            durable_summary=durable_summary,
         )
 
         # 8. 运行 Agent 循环

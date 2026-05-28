@@ -14,6 +14,7 @@
 - [architecture/project_core_overview.md](./architecture/project_core_overview.md)：项目核心总览，面向维护者、垂域智能体开发者和外部前端接入方，说明核心分层、主执行链和当前统一 API
 - [guides/domain_agent_development_guide.md](./guides/domain_agent_development_guide.md)：垂域智能体开发指南，说明 agent 目录、`agent.yaml` 只读登记、Prompt/Tool/Skill/MCP/RAG/Policy 放置方式和前端统一对接协议
 - [guides/external_rag_provider_development.md](./guides/external_rag_provider_development.md)：外部 Knowledge Provider / RAG 项目开发规范，说明 RAG、知识图谱、引用证据、健康检查和 MyPrivateAgent 接入环境变量
+- [guides/external_rag_graphrag_provider_design.md](./guides/external_rag_graphrag_provider_design.md)：独立 RAG / GraphRAG Provider 设计指南，说明 LlamaIndex 文档 RAG、Neo4j GraphRAG、source catalog、API 合同和规格到归档节奏
 - [guides/capability_runtime_registry.md](./guides/capability_runtime_registry.md)：统一能力运行时注册中心指南，说明 OCR、ASR、TTS、多模态、视频生成等能力如何统一注册、调用和服务化迁移
 - [guides/voice_runtime_module.md](./guides/voice_runtime_module.md)：Legacy local voice runtime fallback 说明，标记 `backend/voice_runtime/` 和 `/api/voice/*` 仅为兼容层，推荐语音路径是外部 `unifiedTTSandASR`
 - [../openspec/specs/query-workspace-generalization/spec.md](../openspec/specs/query-workspace-generalization/spec.md)：Query Workspace 通用化主规格，定义哪些 query 能力可以从 `main_chat` 提升为通用模式
@@ -36,6 +37,7 @@
 - [architecture/project_core_overview.md](./architecture/project_core_overview.md)：项目核心总览与当前对外 API 入口
 - [guides/domain_agent_development_guide.md](./guides/domain_agent_development_guide.md)：基于本框架开发垂域智能体的标准操作指南
 - [guides/external_rag_provider_development.md](./guides/external_rag_provider_development.md)：外部 Knowledge Provider / RAG 项目标准接入指南
+- [guides/external_rag_graphrag_provider_design.md](./guides/external_rag_graphrag_provider_design.md)：独立知识服务数据面设计指南，推荐 LlamaIndex 与 Neo4j GraphRAG 的适用边界
 - [guides/capability_runtime_registry.md](./guides/capability_runtime_registry.md)：统一 AI 能力注册、health、invoke 与后续独立服务化规则
 - [guides/voice_runtime_module.md](./guides/voice_runtime_module.md)：旧本地语音 fallback 与 `/api/voice/*` 兼容说明
 - [../openspec/specs/query-workspace-generalization/spec.md](../openspec/specs/query-workspace-generalization/spec.md)：高层 query workspace 通用化真源，适合判断是否应继续扩 channel
