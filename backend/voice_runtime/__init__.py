@@ -1,4 +1,4 @@
-"""Optional voice runtime module for ASR and TTS providers."""
+"""Legacy local voice runtime module for ASR and TTS fallback providers."""
 
 from .service import VoiceRuntimeService, VoiceRuntimeSettings, get_voice_runtime_service
 

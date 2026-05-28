@@ -4,7 +4,7 @@
 `capability_runtime` 是 MyPrivateAgent 面向 OCR、ASR、TTS、RAG、知识图谱、多模态、视频生成等 AI 能力的统一注册和调用层。它不替代具体模型或工具服务，而是把不同运行环境的能力收口到统一合同里，供前端、垂域智能体、ToolRuntime、MCP、治理台共同使用。
 
 ## 当前实现
-当前最小切片已注册现有语音能力，并可按配置接入外部知识能力：
+当前能力注册中心已注册语音能力，并可按配置接入外部知识能力：
 
 ```text
 voice.tts.edge
@@ -13,7 +13,7 @@ knowledge.rag.retrieve
 knowledge.graph.query
 ```
 
-语音能力默认仍由 `backend/voice_runtime/` 执行，也可以迁移为独立 HTTP 服务。知识能力只通过外部 `unifiedKnowledgeProvider` 接入，主项目不内置向量库、图数据库、Embedding、OCR、文档解析或重排依赖。
+语音能力的推荐路径是外部 `unifiedTTSandASR` HTTP/WebSocket provider。`backend/voice_runtime/` 仅作为 disabled-by-default 的 legacy local fallback 和旧 `/api/voice/*` 兼容层保留。知识能力只通过外部 `unifiedKnowledgeProvider` 接入，主项目不内置向量库、图数据库、Embedding、OCR、文档解析或重排依赖。
 
 ## 目录
 ```text
@@ -74,7 +74,7 @@ backend/routers/capabilities.py
   "provider": "edge_tts",
   "error": {
     "code": "VOICE_RUNTIME_DISABLED",
-    "message": "Voice runtime is disabled. Set ENABLE_VOICE_RUNTIME=true to enable it.",
+    "message": "Legacy local voice runtime is disabled. Prefer the external unifiedTTSandASR provider with ENABLE_EXTERNAL_VOICE_CAPABILITY_PROVIDER=true; set ENABLE_VOICE_RUNTIME=true only for local fallback compatibility.",
     "provider": "edge_tts"
   }
 }
@@ -198,7 +198,7 @@ VOICE_CAPABILITY_PROVIDER_BASE_URL=http://127.0.0.1:8010
 VOICE_CAPABILITY_PROVIDER_TIMEOUT_SECONDS=5
 ```
 
-启用后，`voice.tts.edge` 和 `voice.asr.vosk` 会以 `transport=http` 注册，并通过 `unifiedTTSandASR` 的 `/api/capabilities/*` 实时查询状态和执行调用。
+启用后，`voice.tts.edge` 和 `voice.asr.vosk` 会以 `transport=http` 注册，并通过 `unifiedTTSandASR` 的 `/api/capabilities/*` 实时查询状态和执行调用。正常开发和生产部署应优先走这个路径。
 
 ## 对接 unifiedKnowledgeProvider
 
@@ -224,6 +224,15 @@ const test = await capabilityApi.test('voice.tts.edge')
 ```
 
 设置页“模型与 Provider”区域提供“能力 Provider 测试”面板，统一展示 `/api/capabilities`、`/api/capabilities/heartbeat` 和主动测试结果。TTS 测试成功后可直接播放返回音频；ASR 默认展示 health-only 结果，如需真实识别可上传已经符合 provider 要求的音频载荷。实时录音、PCM 下采样和 WebSocket 验收仍由 `unifiedTTSandASR/static/index.html` 作为服务自身调试台承担。
+
+## Legacy local voice fallback
+
+`backend/voice_runtime/` 和 `/api/voice/*` 当前只作为兼容层保留：
+
+- 旧调用方仍可访问 `/api/voice/capabilities`、`/api/voice/tts`、`/api/voice/asr`、`/api/voice/asr/ws`。
+- 主聊天麦克风和能力诊断应优先使用 `/api/capabilities/voice.asr.vosk/*`、`/api/capabilities/voice.tts.edge/*`。
+- 主后端不应为了语音能力默认安装 `edge-tts`、Vosk 模型或本地实时识别依赖。
+- 若后续要删除 `/api/voice/*` 或 `backend/voice_runtime/`，必须另开 breaking-change OpenSpec。
 
 ## 后续服务化规则
 新增 OCR、多模态、视频生成时优先按以下顺序：

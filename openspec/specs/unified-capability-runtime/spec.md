@@ -23,6 +23,12 @@ The backend SHALL expose a provider-neutral capability registry for AI capabilit
 - **THEN** `voice.tts.edge` and `voice.asr.vosk` are exposed with `transport=http`
 - **AND** their status is resolved from the configured external provider health endpoints.
 
+#### Scenario: Legacy local voice fallback is explicit
+- **GIVEN** no external voice provider is configured
+- **WHEN** a client requests `GET /api/capabilities`
+- **THEN** local voice capabilities may be exposed as legacy fallback contracts
+- **AND** their metadata indicates `voice_runtime` is a legacy local fallback rather than the recommended production provider.
+
 ### Requirement: Capability Health
 The backend SHALL expose provider-neutral health for each capability.
 

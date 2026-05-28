@@ -1,4 +1,8 @@
-"""Unified voice runtime API."""
+"""Legacy local voice runtime compatibility API.
+
+New voice integrations should use /api/capabilities/voice.* through the
+capability runtime. These routes remain for older callers and local fallback.
+"""
 
 from __future__ import annotations
 

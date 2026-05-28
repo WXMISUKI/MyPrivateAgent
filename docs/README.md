@@ -15,7 +15,7 @@
 - [guides/domain_agent_development_guide.md](./guides/domain_agent_development_guide.md)：垂域智能体开发指南，说明 agent 目录、`agent.yaml` 只读登记、Prompt/Tool/Skill/MCP/RAG/Policy 放置方式和前端统一对接协议
 - [guides/external_rag_provider_development.md](./guides/external_rag_provider_development.md)：外部 Knowledge Provider / RAG 项目开发规范，说明 RAG、知识图谱、引用证据、健康检查和 MyPrivateAgent 接入环境变量
 - [guides/capability_runtime_registry.md](./guides/capability_runtime_registry.md)：统一能力运行时注册中心指南，说明 OCR、ASR、TTS、多模态、视频生成等能力如何统一注册、调用和服务化迁移
-- [guides/voice_runtime_module.md](./guides/voice_runtime_module.md)：统一语音运行时模块指南，说明 Vosk ASR、Edge-TTS、可选依赖、环境变量和前端 `voiceApi` 对接方式
+- [guides/voice_runtime_module.md](./guides/voice_runtime_module.md)：Legacy local voice runtime fallback 说明，标记 `backend/voice_runtime/` 和 `/api/voice/*` 仅为兼容层，推荐语音路径是外部 `unifiedTTSandASR`
 - [../openspec/specs/query-workspace-generalization/spec.md](../openspec/specs/query-workspace-generalization/spec.md)：Query Workspace 通用化主规格，定义哪些 query 能力可以从 `main_chat` 提升为通用模式
 - [../openspec/specs/channel-promotion-gate/spec.md](../openspec/specs/channel-promotion-gate/spec.md)：Channel Promotion Gate 主规格，定义 channel 从 readiness 到 recent summary / detail / history / workspace 的逐层推广门槛
 - [architecture/current_architecture.md](./architecture/current_architecture.md)：当前架构事实入口，说明 Runtime Core、Capability、Governance、Delivery 四层结构和当前已收口能力
@@ -37,7 +37,7 @@
 - [guides/domain_agent_development_guide.md](./guides/domain_agent_development_guide.md)：基于本框架开发垂域智能体的标准操作指南
 - [guides/external_rag_provider_development.md](./guides/external_rag_provider_development.md)：外部 Knowledge Provider / RAG 项目标准接入指南
 - [guides/capability_runtime_registry.md](./guides/capability_runtime_registry.md)：统一 AI 能力注册、health、invoke 与后续独立服务化规则
-- [guides/voice_runtime_module.md](./guides/voice_runtime_module.md)：语音 ASR/TTS 可选模块接入指南
+- [guides/voice_runtime_module.md](./guides/voice_runtime_module.md)：旧本地语音 fallback 与 `/api/voice/*` 兼容说明
 - [../openspec/specs/query-workspace-generalization/spec.md](../openspec/specs/query-workspace-generalization/spec.md)：高层 query workspace 通用化真源，适合判断是否应继续扩 channel
 - [../openspec/specs/channel-promotion-gate/spec.md](../openspec/specs/channel-promotion-gate/spec.md)：channel 推广 gate 真源，适合判断某个 channel 当前最多能推进到哪一层
 - [architecture/current_architecture.md](./architecture/current_architecture.md)：当前通用智能体底座架构事实，推荐作为维护者和垂域接入方的第一入口

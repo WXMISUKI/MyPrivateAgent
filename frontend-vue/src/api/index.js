@@ -202,6 +202,8 @@ export const providerApi = {
   }
 }
 
+// Legacy /api/voice compatibility wrapper. New voice surfaces should prefer
+// capabilityApi with voice.tts.edge and voice.asr.vosk.
 export const voiceApi = {
   getCapabilities() {
     return api.get('/voice/capabilities')

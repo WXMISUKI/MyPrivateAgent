@@ -1,4 +1,4 @@
-"""Bridge existing voice runtime providers into the capability registry."""
+"""Bridge legacy local voice runtime providers into the capability registry."""
 
 from __future__ import annotations
 
@@ -16,8 +16,11 @@ def build_voice_capabilities() -> list[CapabilityDefinition]:
             kind="tts",
             transport="local",
             provider="edge_tts",
-            title="Edge TTS",
-            description="Synthesize short text into speech through the optional Edge-TTS provider.",
+            title="Legacy Local Edge TTS",
+            description=(
+                "Legacy local fallback for short text-to-speech. "
+                "Prefer the external unifiedTTSandASR HTTP provider for normal development and production."
+            ),
             endpoint="/api/voice/tts",
             input_schema={
                 "type": "object",
@@ -37,7 +40,13 @@ def build_voice_capabilities() -> list[CapabilityDefinition]:
                     "audio_base64": {"type": "string"},
                 },
             },
-            metadata={"runtime": "voice_runtime", "result_encoding": "base64"},
+            metadata={
+                "runtime": "voice_runtime",
+                "runtime_role": "legacy_local_fallback",
+                "recommended_provider": "unifiedTTSandASR",
+                "recommended_transport": "http",
+                "result_encoding": "base64",
+            },
             invoker=_invoke_tts,
         ),
         CapabilityDefinition(
@@ -45,8 +54,11 @@ def build_voice_capabilities() -> list[CapabilityDefinition]:
             kind="asr",
             transport="websocket",
             provider="vosk_server",
-            title="Vosk ASR",
-            description="Transcribe audio through the optional Vosk server provider.",
+            title="Legacy Local Vosk ASR",
+            description=(
+                "Legacy local fallback for speech-to-text. "
+                "Prefer the external unifiedTTSandASR HTTP/WebSocket provider for normal development and production."
+            ),
             endpoint="/api/voice/asr",
             input_schema={
                 "type": "object",
@@ -65,7 +77,13 @@ def build_voice_capabilities() -> list[CapabilityDefinition]:
                     "partial": {"type": "boolean"},
                 },
             },
-            metadata={"runtime": "voice_runtime", "input_encoding": "base64"},
+            metadata={
+                "runtime": "voice_runtime",
+                "runtime_role": "legacy_local_fallback",
+                "recommended_provider": "unifiedTTSandASR",
+                "recommended_transport": "http",
+                "input_encoding": "base64",
+            },
             invoker=_invoke_asr,
         ),
     ]

@@ -135,7 +135,8 @@ ENABLE_LANGGRAPH_EXTERNAL_PILOT = _env_flag("ENABLE_LANGGRAPH_EXTERNAL_PILOT", "
 LANGGRAPH_RUNTIME_ENDPOINT = os.getenv("LANGGRAPH_RUNTIME_ENDPOINT", "").strip()
 LANGGRAPH_ASSISTANT_ID = os.getenv("LANGGRAPH_ASSISTANT_ID", "").strip()
 
-# Optional voice runtime configuration.
+# Legacy local voice runtime configuration. Prefer the external unifiedTTSandASR
+# capability provider for normal development and production.
 ENABLE_VOICE_RUNTIME = _env_flag("ENABLE_VOICE_RUNTIME", "false")
 VOICE_ASR_PROVIDER = os.getenv("VOICE_ASR_PROVIDER", "vosk_server").strip() or "vosk_server"
 VOICE_TTS_PROVIDER = os.getenv("VOICE_TTS_PROVIDER", "edge_tts").strip() or "edge_tts"

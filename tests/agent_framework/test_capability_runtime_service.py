@@ -23,6 +23,8 @@ class CapabilityRuntimeServiceTests(unittest.TestCase):
         self.assertEqual(tts["kind"], "tts")
         self.assertEqual(tts["transport"], "local")
         self.assertEqual(tts["provider"], "edge_tts")
+        self.assertEqual(tts["metadata"]["runtime_role"], "legacy_local_fallback")
+        self.assertEqual(tts["metadata"]["recommended_provider"], "unifiedTTSandASR")
         self.assertIn("status", tts)
         self.assertIn("input_schema", tts)
         self.assertIn("output_schema", tts)

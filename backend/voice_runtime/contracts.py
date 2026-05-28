@@ -1,4 +1,4 @@
-"""Provider-neutral voice runtime contracts."""
+"""Contracts for the legacy local voice runtime compatibility layer."""
 
 from __future__ import annotations
 

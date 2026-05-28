@@ -1,4 +1,9 @@
-"""Voice runtime capability and execution service."""
+"""Legacy local voice runtime capability and execution service.
+
+The recommended ASR/TTS path is the external unifiedTTSandASR provider exposed
+through capability_runtime. This package remains as a disabled-by-default local
+fallback and for compatibility with older /api/voice/* callers.
+"""
 
 from __future__ import annotations
 
@@ -69,7 +74,7 @@ class VoiceRuntimeSettings:
 
 
 class VoiceRuntimeService:
-    """Facade for optional voice providers."""
+    """Facade for disabled-by-default legacy local voice providers."""
 
     def __init__(self, settings: VoiceRuntimeSettings | None = None):
         self.settings = settings or VoiceRuntimeSettings.from_config()
@@ -85,6 +90,16 @@ class VoiceRuntimeService:
                 "asr": "/api/voice/asr",
                 "asr_stream": "/api/voice/asr/ws",
                 "tts": "/api/voice/tts",
+            },
+            "runtime_role": "legacy_local_fallback",
+            "recommended_runtime": {
+                "provider": "unifiedTTSandASR",
+                "capabilities": [
+                    "voice.tts.edge",
+                    "voice.asr.vosk",
+                ],
+                "base_path": "/api/capabilities",
+                "enablement": "Set ENABLE_EXTERNAL_VOICE_CAPABILITY_PROVIDER=true.",
             },
         }
 
@@ -146,7 +161,10 @@ class VoiceRuntimeService:
         if find_spec("edge_tts") is None:
             return self._provider_unavailable_audio(
                 "VOICE_PROVIDER_UNAVAILABLE",
-                "edge-tts is not installed. Install backend/voice_runtime/requirements-voice.txt to enable TTS.",
+                (
+                    "Legacy local Edge-TTS dependency is not installed. "
+                    "Prefer running unifiedTTSandASR and enabling ENABLE_EXTERNAL_VOICE_CAPABILITY_PROVIDER=true."
+                ),
             )
         try:
             from .providers.edge_tts_provider import EdgeTtsProvider
@@ -213,7 +231,10 @@ class VoiceRuntimeService:
         if find_spec("websockets") is None:
             return self._provider_unavailable_transcript(
                 "VOICE_PROVIDER_UNAVAILABLE",
-                "websockets is not installed. Install backend/voice_runtime/requirements-voice.txt to enable Vosk ASR.",
+                (
+                    "Legacy local Vosk ASR dependency is not installed. "
+                    "Prefer running unifiedTTSandASR and enabling ENABLE_EXTERNAL_VOICE_CAPABILITY_PROVIDER=true."
+                ),
                 language=language,
             )
         if not audio:
@@ -317,7 +338,11 @@ class VoiceRuntimeService:
             return None
         return VoiceRuntimeError(
             code="VOICE_RUNTIME_DISABLED",
-            message="Voice runtime is disabled. Set ENABLE_VOICE_RUNTIME=true to enable it.",
+            message=(
+                "Legacy local voice runtime is disabled. "
+                "Prefer the external unifiedTTSandASR provider with ENABLE_EXTERNAL_VOICE_CAPABILITY_PROVIDER=true; "
+                "set ENABLE_VOICE_RUNTIME=true only for local fallback compatibility."
+            ),
             provider=provider,
         )
 

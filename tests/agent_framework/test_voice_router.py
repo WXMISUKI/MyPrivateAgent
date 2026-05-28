@@ -28,6 +28,9 @@ class VoiceRouterTests(unittest.TestCase):
         payload = response.json()
         self.assertEqual(payload["contract_version"], "voice-runtime-v1")
         self.assertFalse(payload["enabled"])
+        self.assertEqual(payload["runtime_role"], "legacy_local_fallback")
+        self.assertEqual(payload["recommended_runtime"]["provider"], "unifiedTTSandASR")
+        self.assertEqual(payload["recommended_runtime"]["base_path"], "/api/capabilities")
         self.assertEqual(payload["asr"]["provider"], "vosk_server")
         self.assertEqual(payload["tts"]["provider"], "edge_tts")
 
