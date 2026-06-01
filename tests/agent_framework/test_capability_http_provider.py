@@ -432,7 +432,7 @@ class CapabilityHttpProviderTests(unittest.TestCase):
         def handler(request):
             if request.url.path == "/health":
                 return _json_response({"errorCode": 0, "errorMsg": "Healthy"})
-            self.assertEqual(request.url.path, "/layout")
+            self.assertEqual(request.url.path, "/layout-parsing")
             payload = json.loads(request.content.decode("utf-8"))
             self.assertEqual(payload["fileType"], 0)
             self.assertEqual(payload["outputFormat"], "markdown")
@@ -441,10 +441,15 @@ class CapabilityHttpProviderTests(unittest.TestCase):
                 {
                     "errorCode": 0,
                     "result": {
-                        "markdown": "# title",
-                        "elements": [{"type": "title", "text": "title"}],
-                        "tables": [{"rows": 2}],
-                        "pages": [{"page_number": 1}],
+                        "layoutParsingResults": [
+                            {
+                                "markdown": {"text": "# title"},
+                                "prunedResult": {
+                                    "layouts": [{"type": "title", "text": "title"}],
+                                    "table_res_list": [{"rows": 2}],
+                                },
+                            }
+                        ],
                     },
                 }
             )
@@ -465,6 +470,8 @@ class CapabilityHttpProviderTests(unittest.TestCase):
         self.assertTrue(result["ok"])
         self.assertEqual(result["result"]["markdown"], "# title")
         self.assertEqual(len(result["result"]["tables"]), 1)
+        self.assertEqual(len(result["result"]["elements"]), 1)
+        self.assertEqual(len(result["result"]["pages"]), 1)
         self.assertEqual(result["result"]["warnings"], [])
 
     def test_http_layout_rejects_unsupported_media_type(self):
@@ -532,6 +539,34 @@ class CapabilityHttpProviderTests(unittest.TestCase):
         self.assertEqual(result["result"]["markdown"], "fallback text")
         self.assertEqual(len(result["result"]["elements"]), 1)
         self.assertEqual(len(result["result"]["tables"]), 1)
+
+    def test_http_layout_capability_supports_custom_invoke_path(self):
+        def handler(request):
+            if request.url.path == "/health":
+                return _json_response({"errorCode": 0, "errorMsg": "Healthy"})
+            self.assertEqual(request.url.path, "/custom-layout")
+            return _json_response({"errorCode": 0, "result": {"layoutParsingResults": []}})
+
+        client = HttpCapabilityClient(
+            base_url="http://paddleocr.test",
+            transport=httpx.MockTransport(handler),
+        )
+        service = CapabilityRuntimeService(
+            CapabilityRegistry(
+                build_http_layout_capabilities(
+                    base_url="http://paddleocr.test",
+                    invoke_path="/custom-layout",
+                    client=client,
+                )
+            )
+        )
+
+        result = service.invoke(
+            "document.layout.parse",
+            {"file_base64": "AAA=", "media_type": "image/png"},
+        )
+
+        self.assertTrue(result["ok"])
 
     def test_http_vlm_capability_maps_request_and_normalizes(self):
         def handler(request):

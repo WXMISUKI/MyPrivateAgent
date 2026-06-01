@@ -1,7 +1,7 @@
 ## 1. Spec
 
-- [ ] 1.1 Add `document.layout.parse` requirement deltas in `unified-capability-runtime`.
-- [ ] 1.2 Define input/output schema examples for markdown and table extraction.
+- [x] 1.1 Add `document.layout.parse` requirement deltas in `unified-capability-runtime`.
+- [x] 1.2 Define input/output schema examples for markdown and table extraction.
 
 ## 2. Backend
 
@@ -17,5 +17,5 @@
 
 ## 4. Verification
 
-- [ ] 4.1 Run `python -m pytest tests/agent_framework/test_capability_http_provider.py -q`.
-- [ ] 4.2 Run `npm run test -- CapabilityProviderDiagnosticsPanel`.
+- [x] 4.1 Run `python -m pytest tests/agent_framework/test_capability_http_provider.py -q`.
+- [x] 4.2 Run `npm run test -- CapabilityProviderDiagnosticsPanel`.

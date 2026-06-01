@@ -39,6 +39,7 @@ def get_default_capability_registry() -> CapabilityRegistry:
             KNOWLEDGE_CAPABILITY_PROVIDER_BASE_URL,
             KNOWLEDGE_CAPABILITY_PROVIDER_TIMEOUT_SECONDS,
             LAYOUT_CAPABILITY_PROVIDER_BASE_URL,
+            LAYOUT_CAPABILITY_PROVIDER_INVOKE_PATH,
             LAYOUT_CAPABILITY_PROVIDER_TIMEOUT_SECONDS,
             OCR_CAPABILITY_PROVIDER_BASE_URL,
             OCR_CAPABILITY_PROVIDER_TIMEOUT_SECONDS,
@@ -57,6 +58,7 @@ def get_default_capability_registry() -> CapabilityRegistry:
             KNOWLEDGE_CAPABILITY_PROVIDER_BASE_URL,
             KNOWLEDGE_CAPABILITY_PROVIDER_TIMEOUT_SECONDS,
             LAYOUT_CAPABILITY_PROVIDER_BASE_URL,
+            LAYOUT_CAPABILITY_PROVIDER_INVOKE_PATH,
             LAYOUT_CAPABILITY_PROVIDER_TIMEOUT_SECONDS,
             OCR_CAPABILITY_PROVIDER_BASE_URL,
             OCR_CAPABILITY_PROVIDER_TIMEOUT_SECONDS,
@@ -92,6 +94,7 @@ def get_default_capability_registry() -> CapabilityRegistry:
             build_http_layout_capabilities(
                 base_url=LAYOUT_CAPABILITY_PROVIDER_BASE_URL,
                 timeout_seconds=LAYOUT_CAPABILITY_PROVIDER_TIMEOUT_SECONDS,
+                invoke_path=LAYOUT_CAPABILITY_PROVIDER_INVOKE_PATH,
             )
         )
     if ENABLE_VLM_CAPABILITY_PROVIDER and VLM_CAPABILITY_PROVIDER_BASE_URL:

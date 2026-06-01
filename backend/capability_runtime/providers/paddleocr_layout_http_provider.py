@@ -15,9 +15,11 @@ def build_http_layout_capabilities(
     *,
     base_url: str,
     timeout_seconds: float = 60.0,
+    invoke_path: str = "/layout-parsing",
     client: HttpCapabilityClient | None = None,
 ) -> list[CapabilityDefinition]:
     http_client = client or HttpCapabilityClient(base_url=base_url, timeout_seconds=timeout_seconds)
+    normalized_invoke_path = _normalize_invoke_path(invoke_path)
     return [
         CapabilityDefinition(
             capability_id="document.layout.parse",
@@ -56,12 +58,12 @@ def build_http_layout_capabilities(
             metadata={
                 "provider_base_url": base_url.rstrip("/"),
                 "provider_health_path": "/health",
-                "provider_invoke_path": "/layout",
+                "provider_invoke_path": normalized_invoke_path,
                 "provider_heartbeat_path": "/health",
                 "external_provider": EXTERNAL_PROVIDER_ID,
                 "serving": "pp_structure_v3",
             },
-            invoker=_invoke(http_client),
+            invoker=_invoke(http_client, normalized_invoke_path),
             health_checker=_provider_health(http_client),
             heartbeat_checker=_provider_health(http_client),
         )
@@ -86,7 +88,7 @@ def _provider_health(client: HttpCapabilityClient):
     return check
 
 
-def _invoke(client: HttpCapabilityClient):
+def _invoke(client: HttpCapabilityClient, invoke_path: str):
     def invoke(payload: dict[str, Any]) -> dict[str, Any]:
         file_base64 = str(payload.get("file_base64") or "").strip()
         if not file_base64:
@@ -112,7 +114,7 @@ def _invoke(client: HttpCapabilityClient):
                 },
             }
         try:
-            data = client.post_json("/layout", _to_layout_payload(payload, file_base64))
+            data = client.post_json(invoke_path, _to_layout_payload(payload, file_base64))
         except ValueError:
             return {
                 "ok": False,
@@ -171,10 +173,14 @@ def _is_supported_layout_media_type(media_type: str) -> bool:
 
 
 def _normalize_layout_result(result: dict[str, Any]) -> dict[str, Any]:
-    markdown = str(result.get("markdown") or result.get("md") or result.get("text") or "")
-    elements = result.get("elements") or result.get("layout") or result.get("blocks")
-    tables = result.get("tables") or result.get("tableResults")
-    pages = result.get("pages") or result.get("pageResults")
+    layout_results = result.get("layoutParsingResults")
+    if isinstance(layout_results, list) and layout_results:
+        pages = [item for item in layout_results if isinstance(item, dict)]
+    else:
+        pages = result.get("pages") or result.get("pageResults")
+    markdown = _extract_markdown(result, pages)
+    elements = _extract_elements(result, pages)
+    tables = _extract_tables(result, pages)
     warnings: list[str] = []
     if not markdown:
         warnings.append("Layout provider returned empty markdown.")
@@ -193,3 +199,68 @@ def _normalize_layout_result(result: dict[str, Any]) -> dict[str, Any]:
         "warnings": warnings,
         "raw": result,
     }
+
+
+def _extract_markdown(result: dict[str, Any], pages: list[dict[str, Any]] | Any) -> str:
+    if isinstance(result.get("markdown"), str):
+        return str(result.get("markdown") or "")
+    if isinstance(pages, list):
+        segments: list[str] = []
+        for page in pages:
+            markdown_obj = page.get("markdown")
+            if isinstance(markdown_obj, dict):
+                text = markdown_obj.get("text")
+                if isinstance(text, str) and text.strip():
+                    segments.append(text)
+                    continue
+            pruned = page.get("prunedResult")
+            if isinstance(pruned, dict):
+                text = pruned.get("markdown")
+                if isinstance(text, str) and text.strip():
+                    segments.append(text)
+        if segments:
+            return "\n\n".join(segments)
+    return str(result.get("md") or result.get("text") or "")
+
+
+def _extract_elements(result: dict[str, Any], pages: list[dict[str, Any]] | Any) -> list[Any] | Any:
+    elements = result.get("elements") or result.get("layout") or result.get("blocks")
+    if elements:
+        return elements
+    if isinstance(pages, list):
+        flattened: list[Any] = []
+        for page in pages:
+            pruned = page.get("prunedResult")
+            if isinstance(pruned, dict):
+                layouts = pruned.get("layouts")
+                if isinstance(layouts, list):
+                    flattened.extend(layouts)
+        if flattened:
+            return flattened
+    return []
+
+
+def _extract_tables(result: dict[str, Any], pages: list[dict[str, Any]] | Any) -> list[Any] | Any:
+    tables = result.get("tables") or result.get("tableResults")
+    if tables:
+        return tables
+    if isinstance(pages, list):
+        flattened: list[Any] = []
+        for page in pages:
+            pruned = page.get("prunedResult")
+            if isinstance(pruned, dict):
+                candidates = pruned.get("table_res_list") or pruned.get("tables")
+                if isinstance(candidates, list):
+                    flattened.extend(candidates)
+        if flattened:
+            return flattened
+    return []
+
+
+def _normalize_invoke_path(path: str) -> str:
+    normalized = (path or "").strip()
+    if not normalized:
+        return "/layout-parsing"
+    if not normalized.startswith("/"):
+        normalized = f"/{normalized}"
+    return normalized
