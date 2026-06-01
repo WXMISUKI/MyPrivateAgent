@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from .contracts import CapabilityDefinition
+from .providers.document_vlm_http_provider import build_http_document_vlm_capabilities
 from .providers.knowledge_http_provider import build_http_knowledge_capabilities
+from .providers.paddleocr_layout_http_provider import build_http_layout_capabilities
+from .providers.paddleocr_http_provider import build_http_paddleocr_capabilities
 from .providers.voice_provider import build_voice_capabilities
 from .providers.voice_http_provider import build_http_voice_capabilities
 
@@ -30,8 +33,17 @@ def get_default_capability_registry() -> CapabilityRegistry:
         from config import (
             ENABLE_EXTERNAL_VOICE_CAPABILITY_PROVIDER,
             ENABLE_KNOWLEDGE_CAPABILITY_PROVIDER,
+            ENABLE_LAYOUT_CAPABILITY_PROVIDER,
+            ENABLE_OCR_CAPABILITY_PROVIDER,
+            ENABLE_VLM_CAPABILITY_PROVIDER,
             KNOWLEDGE_CAPABILITY_PROVIDER_BASE_URL,
             KNOWLEDGE_CAPABILITY_PROVIDER_TIMEOUT_SECONDS,
+            LAYOUT_CAPABILITY_PROVIDER_BASE_URL,
+            LAYOUT_CAPABILITY_PROVIDER_TIMEOUT_SECONDS,
+            OCR_CAPABILITY_PROVIDER_BASE_URL,
+            OCR_CAPABILITY_PROVIDER_TIMEOUT_SECONDS,
+            VLM_CAPABILITY_PROVIDER_BASE_URL,
+            VLM_CAPABILITY_PROVIDER_TIMEOUT_SECONDS,
             VOICE_CAPABILITY_PROVIDER_BASE_URL,
             VOICE_CAPABILITY_PROVIDER_TIMEOUT_SECONDS,
         )
@@ -39,8 +51,17 @@ def get_default_capability_registry() -> CapabilityRegistry:
         from backend.config import (
             ENABLE_EXTERNAL_VOICE_CAPABILITY_PROVIDER,
             ENABLE_KNOWLEDGE_CAPABILITY_PROVIDER,
+            ENABLE_LAYOUT_CAPABILITY_PROVIDER,
+            ENABLE_OCR_CAPABILITY_PROVIDER,
+            ENABLE_VLM_CAPABILITY_PROVIDER,
             KNOWLEDGE_CAPABILITY_PROVIDER_BASE_URL,
             KNOWLEDGE_CAPABILITY_PROVIDER_TIMEOUT_SECONDS,
+            LAYOUT_CAPABILITY_PROVIDER_BASE_URL,
+            LAYOUT_CAPABILITY_PROVIDER_TIMEOUT_SECONDS,
+            OCR_CAPABILITY_PROVIDER_BASE_URL,
+            OCR_CAPABILITY_PROVIDER_TIMEOUT_SECONDS,
+            VLM_CAPABILITY_PROVIDER_BASE_URL,
+            VLM_CAPABILITY_PROVIDER_TIMEOUT_SECONDS,
             VOICE_CAPABILITY_PROVIDER_BASE_URL,
             VOICE_CAPABILITY_PROVIDER_TIMEOUT_SECONDS,
         )
@@ -57,6 +78,27 @@ def get_default_capability_registry() -> CapabilityRegistry:
             build_http_knowledge_capabilities(
                 base_url=KNOWLEDGE_CAPABILITY_PROVIDER_BASE_URL,
                 timeout_seconds=KNOWLEDGE_CAPABILITY_PROVIDER_TIMEOUT_SECONDS,
+            )
+        )
+    if ENABLE_OCR_CAPABILITY_PROVIDER and OCR_CAPABILITY_PROVIDER_BASE_URL:
+        capabilities.extend(
+            build_http_paddleocr_capabilities(
+                base_url=OCR_CAPABILITY_PROVIDER_BASE_URL,
+                timeout_seconds=OCR_CAPABILITY_PROVIDER_TIMEOUT_SECONDS,
+            )
+        )
+    if ENABLE_LAYOUT_CAPABILITY_PROVIDER and LAYOUT_CAPABILITY_PROVIDER_BASE_URL:
+        capabilities.extend(
+            build_http_layout_capabilities(
+                base_url=LAYOUT_CAPABILITY_PROVIDER_BASE_URL,
+                timeout_seconds=LAYOUT_CAPABILITY_PROVIDER_TIMEOUT_SECONDS,
+            )
+        )
+    if ENABLE_VLM_CAPABILITY_PROVIDER and VLM_CAPABILITY_PROVIDER_BASE_URL:
+        capabilities.extend(
+            build_http_document_vlm_capabilities(
+                base_url=VLM_CAPABILITY_PROVIDER_BASE_URL,
+                timeout_seconds=VLM_CAPABILITY_PROVIDER_TIMEOUT_SECONDS,
             )
         )
     return CapabilityRegistry(capabilities)

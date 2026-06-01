@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from time import perf_counter
 from typing import Any
 from urllib.parse import urljoin, urlparse, urlunparse
@@ -10,9 +11,20 @@ from .contracts import CONTRACT_VERSION, CapabilityDefinition
 from .registry import CapabilityRegistry, get_default_capability_registry
 
 
+@dataclass
+class ProviderHeartbeatState:
+    failure_count: int = 0
+    circuit_open_until: float = 0.0
+    last_error: dict[str, Any] | None = None
+
+
 class CapabilityRuntimeService:
     def __init__(self, registry: CapabilityRegistry | None = None):
         self.registry = registry or get_default_capability_registry()
+        self._provider_heartbeat_state: dict[str, ProviderHeartbeatState] = {}
+        self._heartbeat_failure_threshold = 3
+        self._heartbeat_cooldown_seconds = 30.0
+        self._load_heartbeat_config()
 
     def list_capabilities(self) -> dict[str, Any]:
         return {
@@ -267,29 +279,101 @@ class CapabilityRuntimeService:
         heartbeat_path = str(capability.metadata.get("provider_heartbeat_path") or "/health")
         if not base_url:
             return {"status": "unknown", "reason": "No provider base URL configured."}
-        if capability.heartbeat_checker is not None:
-            data = capability.heartbeat_checker()
-            if data.get("error"):
-                return data
+        breaker = self._provider_heartbeat_state.setdefault(base_url, ProviderHeartbeatState())
+        now = perf_counter()
+        if breaker.circuit_open_until > now:
+            retry_after_seconds = round(breaker.circuit_open_until - now, 2)
             return {
-                "status": str(data.get("status") or "unknown"),
-                "reason": str(data.get("message") or data.get("reason") or ""),
-                "raw": data,
+                "status": "unreachable",
+                "reason": (
+                    f"Provider heartbeat circuit open after {breaker.failure_count} failures; "
+                    f"retry after {retry_after_seconds}s."
+                ),
+                "error": breaker.last_error
+                or {
+                    "code": "CAPABILITY_PROVIDER_CIRCUIT_OPEN",
+                    "message": "Provider heartbeat circuit is open.",
+                },
+                "circuit_breaker": {
+                    "state": "open",
+                    "failure_count": breaker.failure_count,
+                    "retry_after_seconds": retry_after_seconds,
+                },
             }
+
+        def do_probe() -> dict[str, Any]:
+            if capability.heartbeat_checker is not None:
+                return capability.heartbeat_checker()
+            return HttpCapabilityClient(base_url=base_url).get_json(heartbeat_path)
+
         try:
-            data = HttpCapabilityClient(base_url=base_url).get_json(heartbeat_path)
+            data = do_probe()
+            if data.get("error"):
+                raise CapabilityProviderError(
+                    str(data["error"].get("code") or "CAPABILITY_PROVIDER_UNREACHABLE"),
+                    str(data["error"].get("message") or data.get("reason") or "Provider heartbeat failed."),
+                )
         except CapabilityProviderError as exc:
-            return {
+            breaker.failure_count += 1
+            breaker.last_error = exc.to_payload()
+            response: dict[str, Any] = {
                 "status": "unreachable",
                 "reason": exc.message,
                 "error": exc.to_payload(),
+                "circuit_breaker": {
+                    "state": "closed",
+                    "failure_count": breaker.failure_count,
+                    "threshold": self._heartbeat_failure_threshold,
+                    "cooldown_seconds": self._heartbeat_cooldown_seconds,
+                },
             }
+            if breaker.failure_count >= self._heartbeat_failure_threshold:
+                breaker.circuit_open_until = now + self._heartbeat_cooldown_seconds
+                response["circuit_breaker"] = {
+                    "state": "open",
+                    "failure_count": breaker.failure_count,
+                    "threshold": self._heartbeat_failure_threshold,
+                    "cooldown_seconds": self._heartbeat_cooldown_seconds,
+                    "retry_after_seconds": round(self._heartbeat_cooldown_seconds, 2),
+                }
+                response["reason"] = (
+                    f"{exc.message} (heartbeat circuit opened for {self._heartbeat_cooldown_seconds:.0f}s)"
+                )
+            return response
+        breaker.failure_count = 0
+        breaker.circuit_open_until = 0.0
+        breaker.last_error = None
         return {
             "status": str(data.get("status") or "unknown"),
             "reason": str(data.get("message") or ""),
             "raw": data,
+            "circuit_breaker": {
+                "state": "closed",
+                "failure_count": 0,
+                "threshold": self._heartbeat_failure_threshold,
+                "cooldown_seconds": self._heartbeat_cooldown_seconds,
+            },
         }
+
+    def _load_heartbeat_config(self) -> None:
+        try:
+            from backend import config as app_config
+        except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+            import config as app_config
+
+        threshold = int(getattr(app_config, "CAPABILITY_PROVIDER_HEARTBEAT_FAILURE_THRESHOLD", 3))
+        cooldown_seconds = float(getattr(app_config, "CAPABILITY_PROVIDER_HEARTBEAT_COOLDOWN_SECONDS", 30.0))
+        self._heartbeat_failure_threshold = max(1, threshold)
+        self._heartbeat_cooldown_seconds = max(1.0, cooldown_seconds)
 
 
 def get_capability_runtime_service() -> CapabilityRuntimeService:
-    return CapabilityRuntimeService()
+    global _capability_runtime_service_singleton
+    try:
+        service = _capability_runtime_service_singleton
+    except NameError:
+        service = None
+    if service is None:
+        service = CapabilityRuntimeService()
+        _capability_runtime_service_singleton = service
+    return service

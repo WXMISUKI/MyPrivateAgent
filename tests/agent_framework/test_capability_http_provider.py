@@ -4,7 +4,10 @@ import unittest
 import httpx
 
 from backend.capability_runtime.clients.http_client import HttpCapabilityClient
+from backend.capability_runtime.providers.document_vlm_http_provider import build_http_document_vlm_capabilities
 from backend.capability_runtime.providers.knowledge_http_provider import build_http_knowledge_capabilities
+from backend.capability_runtime.providers.paddleocr_layout_http_provider import build_http_layout_capabilities
+from backend.capability_runtime.providers.paddleocr_http_provider import build_http_paddleocr_capabilities
 from backend.capability_runtime.providers.voice_http_provider import build_http_voice_capabilities
 from backend.capability_runtime.registry import CapabilityRegistry
 from backend.capability_runtime.service import CapabilityRuntimeService
@@ -235,6 +238,354 @@ class CapabilityHttpProviderTests(unittest.TestCase):
 
         self.assertEqual(heartbeat["providers"][0]["status"], "unreachable")
         self.assertEqual(heartbeat["providers"][0]["error"]["code"], "CAPABILITY_PROVIDER_UNREACHABLE")
+
+    def test_heartbeat_opens_circuit_after_repeated_failures(self):
+        call_count = {"health": 0}
+
+        def handler(request):
+            if request.url.path == "/health":
+                call_count["health"] += 1
+                raise httpx.ConnectError("connect failed", request=request)
+            return _json_response({})
+
+        client = HttpCapabilityClient(
+            base_url="http://voice.test",
+            transport=httpx.MockTransport(handler),
+        )
+        service = CapabilityRuntimeService(
+            CapabilityRegistry(build_http_voice_capabilities(base_url="http://voice.test", client=client))
+        )
+        service._heartbeat_failure_threshold = 2
+        service._heartbeat_cooldown_seconds = 60.0
+
+        first = service.get_provider_heartbeat()
+        second = service.get_provider_heartbeat()
+        third = service.get_provider_heartbeat()
+
+        self.assertEqual(first["providers"][0]["circuit_breaker"]["state"], "closed")
+        self.assertEqual(second["providers"][0]["circuit_breaker"]["state"], "open")
+        self.assertEqual(third["providers"][0]["circuit_breaker"]["state"], "open")
+        self.assertEqual(call_count["health"], 2)
+
+    def test_heartbeat_circuit_recovers_after_cooldown(self):
+        call_count = {"health": 0}
+
+        def handler(request):
+            if request.url.path == "/health":
+                call_count["health"] += 1
+                if call_count["health"] == 1:
+                    raise httpx.ConnectError("connect failed", request=request)
+                return _json_response({"status": "ok"})
+            return _json_response({})
+
+        client = HttpCapabilityClient(
+            base_url="http://voice.test",
+            transport=httpx.MockTransport(handler),
+        )
+        service = CapabilityRuntimeService(
+            CapabilityRegistry(build_http_voice_capabilities(base_url="http://voice.test", client=client))
+        )
+        service._heartbeat_failure_threshold = 1
+        service._heartbeat_cooldown_seconds = 0.01
+
+        opened = service.get_provider_heartbeat()
+        self.assertEqual(opened["providers"][0]["circuit_breaker"]["state"], "open")
+
+        import time
+
+        time.sleep(0.02)
+        recovered = service.get_provider_heartbeat()
+        self.assertEqual(recovered["providers"][0]["status"], "ok")
+        self.assertEqual(recovered["providers"][0]["circuit_breaker"]["state"], "closed")
+        self.assertEqual(call_count["health"], 2)
+
+    def test_http_paddleocr_capability_maps_to_paddlex_ocr_endpoint(self):
+        def handler(request):
+            if request.url.path == "/health":
+                return _json_response({"errorCode": 0, "errorMsg": "Healthy"})
+            self.assertEqual(request.url.path, "/ocr")
+            payload = json.loads(request.content.decode("utf-8"))
+            self.assertEqual(payload["file"], "QUJD")
+            self.assertEqual(payload["fileType"], 1)
+            self.assertFalse(payload["visualize"])
+            return _json_response(
+                {
+                    "errorCode": 0,
+                    "errorMsg": "Success",
+                    "result": {
+                        "ocrResults": [
+                            {
+                                "prunedResult": {
+                                    "rec_texts": ["hello", "world"],
+                                    "rec_scores": [0.98, 0.96],
+                                    "rec_boxes": [[1, 2, 3, 4], [5, 6, 7, 8]],
+                                },
+                                "ocrImage": None,
+                            }
+                        ]
+                    },
+                }
+            )
+
+        client = HttpCapabilityClient(
+            base_url="http://paddleocr.test",
+            transport=httpx.MockTransport(handler),
+        )
+        service = CapabilityRuntimeService(
+            CapabilityRegistry(build_http_paddleocr_capabilities(base_url="http://paddleocr.test", client=client))
+        )
+
+        result = service.invoke(
+            "document.ocr.extract",
+            {"file_base64": "QUJD", "media_type": "image/png"},
+        )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["capability_id"], "document.ocr.extract")
+        self.assertEqual(result["provider"], "paddleocr")
+        self.assertEqual(result["result"]["text"], "hello\nworld")
+        self.assertEqual(result["result"]["pages"][0]["page_number"], 1)
+        self.assertEqual(result["result"]["blocks"][1]["text"], "world")
+        self.assertEqual(result["result"]["tables"], [])
+        self.assertEqual(result["result"]["artifacts"], [])
+        self.assertEqual(result["result"]["warnings"], [])
+        self.assertEqual(result["result"]["raw"]["ocrResults"][0]["prunedResult"]["rec_texts"][0], "hello")
+
+    def test_http_paddleocr_capability_maps_pdf_file_type(self):
+        def handler(request):
+            if request.url.path == "/health":
+                return _json_response({"errorCode": 0, "errorMsg": "Healthy"})
+            payload = json.loads(request.content.decode("utf-8"))
+            self.assertEqual(payload["fileType"], 0)
+            return _json_response(
+                {
+                    "errorCode": 0,
+                    "errorMsg": "Success",
+                    "result": {"ocrResults": [{"prunedResult": {"rec_texts": ["pdf page"]}}]},
+                }
+            )
+
+        client = HttpCapabilityClient(
+            base_url="http://paddleocr.test",
+            transport=httpx.MockTransport(handler),
+        )
+        service = CapabilityRuntimeService(
+            CapabilityRegistry(build_http_paddleocr_capabilities(base_url="http://paddleocr.test", client=client))
+        )
+
+        result = service.invoke(
+            "document.ocr.extract",
+            {"file_base64": "JVBERg==", "media_type": "application/pdf"},
+        )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["result"]["pages"][0]["text"], "pdf page")
+        self.assertEqual(result["result"]["warnings"], [])
+
+    def test_http_paddleocr_empty_result_emits_warnings(self):
+        def handler(request):
+            if request.url.path == "/health":
+                return _json_response({"errorCode": 0, "errorMsg": "Healthy"})
+            return _json_response(
+                {
+                    "errorCode": 0,
+                    "errorMsg": "Success",
+                    "result": {},
+                }
+            )
+
+        client = HttpCapabilityClient(
+            base_url="http://paddleocr.test",
+            transport=httpx.MockTransport(handler),
+        )
+        service = CapabilityRuntimeService(
+            CapabilityRegistry(build_http_paddleocr_capabilities(base_url="http://paddleocr.test", client=client))
+        )
+
+        result = service.invoke(
+            "document.ocr.extract",
+            {"file_base64": "QUJD", "media_type": "image/png"},
+        )
+
+        self.assertTrue(result["ok"])
+        self.assertIn("missing ocrResults", result["result"]["warnings"][0])
+        self.assertIn("No OCR text detected", result["result"]["warnings"][1])
+
+    def test_http_paddleocr_unreachable_health_is_structured(self):
+        def handler(request):
+            raise httpx.ConnectError("connect failed", request=request)
+
+        client = HttpCapabilityClient(
+            base_url="http://paddleocr.test",
+            transport=httpx.MockTransport(handler),
+        )
+        service = CapabilityRuntimeService(
+            CapabilityRegistry(build_http_paddleocr_capabilities(base_url="http://paddleocr.test", client=client))
+        )
+
+        health = service.get_capability_health("document.ocr.extract")
+
+        self.assertEqual(health["status"], "unreachable")
+        self.assertEqual(health["error"]["code"], "CAPABILITY_PROVIDER_UNREACHABLE")
+
+    def test_http_layout_capability_maps_request_and_normalizes(self):
+        def handler(request):
+            if request.url.path == "/health":
+                return _json_response({"errorCode": 0, "errorMsg": "Healthy"})
+            self.assertEqual(request.url.path, "/layout")
+            payload = json.loads(request.content.decode("utf-8"))
+            self.assertEqual(payload["fileType"], 0)
+            self.assertEqual(payload["outputFormat"], "markdown")
+            self.assertTrue(payload["includeTables"])
+            return _json_response(
+                {
+                    "errorCode": 0,
+                    "result": {
+                        "markdown": "# title",
+                        "elements": [{"type": "title", "text": "title"}],
+                        "tables": [{"rows": 2}],
+                        "pages": [{"page_number": 1}],
+                    },
+                }
+            )
+
+        client = HttpCapabilityClient(
+            base_url="http://paddleocr.test",
+            transport=httpx.MockTransport(handler),
+        )
+        service = CapabilityRuntimeService(
+            CapabilityRegistry(build_http_layout_capabilities(base_url="http://paddleocr.test", client=client))
+        )
+
+        result = service.invoke(
+            "document.layout.parse",
+            {"file_base64": "JVBERg==", "media_type": "application/pdf", "include_tables": True},
+        )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["result"]["markdown"], "# title")
+        self.assertEqual(len(result["result"]["tables"]), 1)
+        self.assertEqual(result["result"]["warnings"], [])
+
+    def test_http_layout_rejects_unsupported_media_type(self):
+        service = CapabilityRuntimeService(
+            CapabilityRegistry(build_http_layout_capabilities(base_url="http://paddleocr.test"))
+        )
+        result = service.invoke(
+            "document.layout.parse",
+            {"file_base64": "AAA=", "media_type": "text/plain"},
+        )
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["error"]["code"], "LAYOUT_UNSUPPORTED_MEDIA_TYPE")
+
+    def test_http_layout_rejects_invalid_output_format(self):
+        service = CapabilityRuntimeService(
+            CapabilityRegistry(build_http_layout_capabilities(base_url="http://paddleocr.test"))
+        )
+        result = service.invoke(
+            "document.layout.parse",
+            {"file_base64": "AAA=", "media_type": "application/pdf", "output_format": "html"},
+        )
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["error"]["code"], "LAYOUT_INVALID_OUTPUT_FORMAT")
+
+    def test_http_layout_rejects_non_positive_max_pages(self):
+        service = CapabilityRuntimeService(
+            CapabilityRegistry(build_http_layout_capabilities(base_url="http://paddleocr.test"))
+        )
+        result = service.invoke(
+            "document.layout.parse",
+            {"file_base64": "AAA=", "media_type": "application/pdf", "max_pages": 0},
+        )
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["error"]["code"], "LAYOUT_INVALID_INPUT")
+
+    def test_http_layout_normalization_supports_fallback_fields(self):
+        def handler(request):
+            if request.url.path == "/health":
+                return _json_response({"errorCode": 0, "errorMsg": "Healthy"})
+            return _json_response(
+                {
+                    "errorCode": 0,
+                    "result": {
+                        "text": "fallback text",
+                        "layout": [{"type": "paragraph"}],
+                        "tableResults": [{"id": "t1"}],
+                        "pageResults": [{"page_number": 1}],
+                    },
+                }
+            )
+
+        client = HttpCapabilityClient(
+            base_url="http://paddleocr.test",
+            transport=httpx.MockTransport(handler),
+        )
+        service = CapabilityRuntimeService(
+            CapabilityRegistry(build_http_layout_capabilities(base_url="http://paddleocr.test", client=client))
+        )
+
+        result = service.invoke(
+            "document.layout.parse",
+            {"file_base64": "AAA=", "media_type": "image/png"},
+        )
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["result"]["markdown"], "fallback text")
+        self.assertEqual(len(result["result"]["elements"]), 1)
+        self.assertEqual(len(result["result"]["tables"]), 1)
+
+    def test_http_vlm_capability_maps_request_and_normalizes(self):
+        def handler(request):
+            if request.url.path == "/health":
+                return _json_response({"status": "ok"})
+            self.assertEqual(request.url.path, "/vlm")
+            payload = json.loads(request.content.decode("utf-8"))
+            self.assertEqual(payload["fileType"], 0)
+            self.assertEqual(payload["task"], "summarize")
+            self.assertEqual(payload["maxPages"], 3)
+            return _json_response(
+                {
+                    "errorCode": 0,
+                    "result": {
+                        "summary": "document summary",
+                        "sections": [{"title": "Intro"}],
+                        "entities": [{"name": "Acme"}],
+                        "answers": [{"value": "ok"}],
+                        "evidence": [{"page": 1}],
+                    },
+                }
+            )
+
+        client = HttpCapabilityClient(
+            base_url="http://vlm.test",
+            transport=httpx.MockTransport(handler),
+        )
+        service = CapabilityRuntimeService(
+            CapabilityRegistry(build_http_document_vlm_capabilities(base_url="http://vlm.test", client=client))
+        )
+        result = service.invoke(
+            "document.vlm.parse",
+            {
+                "file_base64": "JVBERg==",
+                "media_type": "application/pdf",
+                "task": "summarize",
+                "max_pages": 3,
+            },
+        )
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["result"]["summary"], "document summary")
+        self.assertEqual(len(result["result"]["sections"]), 1)
+        self.assertEqual(result["result"]["warnings"], [])
+
+    def test_http_vlm_rejects_unsupported_task(self):
+        service = CapabilityRuntimeService(
+            CapabilityRegistry(build_http_document_vlm_capabilities(base_url="http://vlm.test"))
+        )
+        result = service.invoke(
+            "document.vlm.parse",
+            {"file_base64": "AAA=", "media_type": "application/pdf", "task": "translate"},
+        )
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["error"]["code"], "VLM_UNSUPPORTED_TASK")
 
 
 if __name__ == "__main__":
