@@ -8,5 +8,6 @@ from . import memory
 from . import plans
 from . import mcp
 from . import commands
+from . import document_artifacts
 
-__all__ = ['auth', 'conversations', 'chat', 'skills', 'learnings', 'permissions', 'memory', 'plans', 'mcp', 'commands']
+__all__ = ['auth', 'conversations', 'chat', 'skills', 'learnings', 'permissions', 'memory', 'plans', 'mcp', 'commands', 'document_artifacts']

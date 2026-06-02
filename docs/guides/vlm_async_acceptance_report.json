@@ -1,0 +1,53 @@
+[
+  {
+    "name": "picture.jpg",
+    "path": "D:\\AI\\ocr\\picture.jpg",
+    "media_type": "image/jpeg",
+    "ok": true,
+    "detail": "terminal status: succeeded",
+    "job_id": "vlm-job-812a341a756a4f68a1c16a61777d6a3b",
+    "status": "succeeded",
+    "progress": 1.0,
+    "poll_count": 7,
+    "submit_duration_ms": 13001.52,
+    "summary_length": 547,
+    "section_count": 1,
+    "evidence_count": 1,
+    "warnings": [],
+    "error": {}
+  },
+  {
+    "name": "table.png",
+    "path": "D:\\AI\\ocr\\table.png",
+    "media_type": "image/png",
+    "ok": true,
+    "detail": "terminal status: succeeded",
+    "job_id": "vlm-job-de49017df6b848cb87cf7996bb529788",
+    "status": "succeeded",
+    "progress": 1.0,
+    "poll_count": 5,
+    "submit_duration_ms": 8520.86,
+    "summary_length": 549,
+    "section_count": 1,
+    "evidence_count": 1,
+    "warnings": [],
+    "error": {}
+  },
+  {
+    "name": "入职通知书.pdf",
+    "path": "D:\\AI\\ocr\\入职通知书.pdf",
+    "media_type": "application/pdf",
+    "ok": true,
+    "detail": "terminal status: succeeded",
+    "job_id": "vlm-job-03ba5b72033d436fa679bb728d609622",
+    "status": "succeeded",
+    "progress": 1.0,
+    "poll_count": 7,
+    "submit_duration_ms": 12835.8,
+    "summary_length": 541,
+    "section_count": 1,
+    "evidence_count": 1,
+    "warnings": [],
+    "error": {}
+  }
+]

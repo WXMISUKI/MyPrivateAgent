@@ -170,6 +170,19 @@
         <span v-if="testResults[capability.capability_id].latency_ms !== undefined">
           ({{ testResults[capability.capability_id].latency_ms }}ms)
         </span>
+        <div v-if="canPersistDocumentArtifact(capability)" class="provider-actions">
+          <button
+            class="action-btn test-btn"
+            type="button"
+            @click="persistDocumentArtifact(capability)"
+            :disabled="artifactSaving[capability.capability_id]"
+          >
+            {{ artifactSaving[capability.capability_id] ? '保存中...' : '保存 Artifact' }}
+          </button>
+          <span v-if="artifactStatusText(capability.capability_id)" class="field-hint">
+            {{ artifactStatusText(capability.capability_id) }}
+          </span>
+        </div>
         <template v-if="capability.kind === 'ocr' && ocrResultView(testResults[capability.capability_id])">
           <div class="ocr-summary">
             <span>文本长度: {{ ocrResultView(testResults[capability.capability_id]).text.length }}</span>
@@ -315,7 +328,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
-import { capabilityApi } from '../api'
+import { capabilityApi, documentArtifactApi } from '../api'
 
 const capabilities = ref([])
 const heartbeat = ref(null)
@@ -323,6 +336,8 @@ const loading = ref(false)
 const loadError = ref('')
 const testing = reactive({})
 const testResults = reactive({})
+const artifactSaving = reactive({})
+const artifactResults = reactive({})
 const audioUrls = reactive({})
 const asrFiles = reactive({})
 const ocrFiles = reactive({})
@@ -369,6 +384,7 @@ async function runCapabilityTest(capability) {
   const capabilityId = capability.capability_id
   testing[capabilityId] = true
   testResults[capabilityId] = null
+  clearArtifactResult(capabilityId)
   clearAudioUrl(capabilityId)
   try {
     const payload = await buildTestPayload(capability)
@@ -392,6 +408,7 @@ async function runOcrInvoke(capability) {
   const capabilityId = capability.capability_id
   testing[capabilityId] = true
   testResults[capabilityId] = null
+  clearArtifactResult(capabilityId)
   try {
     const payload = await buildOcrInvokePayload(capabilityId)
     const response = await capabilityApi.invoke(capabilityId, payload)
@@ -413,6 +430,7 @@ async function runLayoutInvoke(capability) {
   const capabilityId = capability.capability_id
   testing[capabilityId] = true
   testResults[capabilityId] = null
+  clearArtifactResult(capabilityId)
   try {
     const payload = await buildLayoutInvokePayload(capabilityId)
     const response = await capabilityApi.invoke(capabilityId, payload)
@@ -434,6 +452,7 @@ async function runVlmInvoke(capability) {
   const capabilityId = capability.capability_id
   testing[capabilityId] = true
   testResults[capabilityId] = null
+  clearArtifactResult(capabilityId)
   try {
     const payload = await buildVlmInvokePayload(capabilityId)
     const response = await capabilityApi.invoke(capabilityId, payload)
@@ -455,6 +474,7 @@ async function runVlmAsyncSubmit(capability) {
   const capabilityId = capability.capability_id
   testing[capabilityId] = true
   testResults[capabilityId] = null
+  clearArtifactResult(capabilityId)
   try {
     const payload = await buildVlmInvokePayload(capabilityId, 'submit')
     const response = await capabilityApi.invoke(capabilityId, payload)
@@ -479,6 +499,7 @@ async function runVlmAsyncStatus(capability) {
   const capabilityId = capability.capability_id
   testing[capabilityId] = true
   testResults[capabilityId] = null
+  clearArtifactResult(capabilityId)
   try {
     const payload = await buildVlmInvokePayload(capabilityId, 'status')
     const response = await capabilityApi.invoke(capabilityId, payload)
@@ -779,6 +800,82 @@ function vlmAsyncResultView(result) {
     warnings: Array.isArray(payload.warnings) ? payload.warnings.map(item => String(item)) : [],
     raw: typeof payload.raw === 'object' && payload.raw ? payload.raw : {}
   }
+}
+
+function canPersistDocumentArtifact(capability) {
+  const capabilityId = capability.capability_id
+  const result = testResults[capabilityId]
+  if (!result?.ok) return false
+  if (capability.kind === 'ocr') return Boolean(ocrResultView(result))
+  if (capability.kind === 'layout') return Boolean(layoutResultView(result))
+  if (capability.kind !== 'vlm') return false
+  if (capabilityId !== 'document.vlm.parse.async') return Boolean(vlmResultView(result))
+  const asyncView = vlmAsyncResultView(result)
+  return Boolean(asyncView && asyncView.status === 'succeeded' && Object.keys(asyncView.result || {}).length > 0)
+}
+
+async function persistDocumentArtifact(capability) {
+  const capabilityId = capability.capability_id
+  artifactSaving[capabilityId] = true
+  clearArtifactResult(capabilityId)
+  try {
+    const response = await documentArtifactApi.persist({
+      source_filename: resolveDocumentSourceFilename(capabilityId),
+      media_type: resolveDocumentSourceMediaType(capabilityId),
+      capability_id: capabilityId,
+      provider: capability.provider || 'unknown',
+      result: documentResultPayload(capability),
+      include_raw: false
+    })
+    artifactResults[capabilityId] = {
+      ok: true,
+      artifact: response.data?.artifact || {}
+    }
+  } catch (error) {
+    artifactResults[capabilityId] = {
+      ok: false,
+      error: error.response?.data?.error || error.response?.data || {
+        code: 'DOCUMENT_ARTIFACT_PERSIST_REQUEST_FAILED',
+        message: error.message || '请求失败'
+      }
+    }
+  } finally {
+    artifactSaving[capabilityId] = false
+  }
+}
+
+function documentResultPayload(capability) {
+  const capabilityId = capability.capability_id
+  const result = testResults[capabilityId]
+  if (capability.kind === 'ocr') return ocrResultView(result) || {}
+  if (capability.kind === 'layout') return layoutResultView(result) || {}
+  if (capabilityId === 'document.vlm.parse.async') return vlmAsyncResultView(result)?.result || {}
+  if (capability.kind === 'vlm') return vlmResultView(result) || {}
+  return {}
+}
+
+function resolveDocumentSourceFilename(capabilityId) {
+  const file = ocrFiles[capabilityId] || layoutFiles[capabilityId] || vlmFiles[capabilityId]
+  return file?.name || ''
+}
+
+function resolveDocumentSourceMediaType(capabilityId) {
+  const file = ocrFiles[capabilityId] || layoutFiles[capabilityId] || vlmFiles[capabilityId]
+  return file ? resolveOcrMediaType(file) : ''
+}
+
+function artifactStatusText(capabilityId) {
+  const result = artifactResults[capabilityId]
+  if (!result) return ''
+  if (result.ok) {
+    return `artifact_id: ${result.artifact?.artifact_id || '(missing)'}`
+  }
+  const error = result.error || {}
+  return `${error.code || 'DOCUMENT_ARTIFACT_PERSIST_FAILED'}: ${error.message || '保存失败'}`
+}
+
+function clearArtifactResult(capabilityId) {
+  delete artifactResults[capabilityId]
 }
 
 async function copyLayoutMarkdown(markdown) {

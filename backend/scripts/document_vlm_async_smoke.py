@@ -44,14 +44,26 @@ def _media_type(path: Path) -> str:
 
 def _post_json(url: str, payload: dict[str, Any], timeout: float = 30.0) -> dict[str, Any]:
     response = requests.post(url, json=payload, timeout=timeout)
-    response.raise_for_status()
-    return response.json()
+    try:
+        data = response.json()
+    except ValueError:
+        response.raise_for_status()
+        raise
+    if response.status_code >= 400:
+        data["_http_status"] = response.status_code
+    return data
 
 
 def _get_json(url: str, timeout: float = 30.0) -> dict[str, Any]:
     response = requests.get(url, timeout=timeout)
-    response.raise_for_status()
-    return response.json()
+    try:
+        data = response.json()
+    except ValueError:
+        response.raise_for_status()
+        raise
+    if response.status_code >= 400:
+        data["_http_status"] = response.status_code
+    return data
 
 
 def _to_bool(result: dict[str, Any]) -> tuple[bool, str]:
@@ -69,6 +81,35 @@ def _collect_samples(samples_dir: Path) -> list[Path]:
     if not files:
         raise FileNotFoundError(f"no sample files found in {samples_dir}")
     return files
+
+
+def _require_async_capability_ready(runtime_base_url: str, timeout: float) -> None:
+    capabilities_payload = _get_json(f"{runtime_base_url.rstrip('/')}/api/capabilities", timeout=timeout)
+    capabilities = capabilities_payload.get("capabilities") if isinstance(capabilities_payload, dict) else []
+    if not isinstance(capabilities, list):
+        raise RuntimeError("capability list response does not contain capabilities array")
+    capability = next(
+        (
+            item
+            for item in capabilities
+            if isinstance(item, dict) and item.get("capability_id") == "document.vlm.parse.async"
+        ),
+        None,
+    )
+    if capability is None:
+        raise RuntimeError("document.vlm.parse.async is not registered. Check ENABLE_VLM_CAPABILITY_PROVIDER=true.")
+    status = str(capability.get("status") or "unknown")
+    if status != "ready":
+        metadata = capability.get("metadata") if isinstance(capability.get("metadata"), dict) else {}
+        error = capability.get("error") if isinstance(capability.get("error"), dict) else {}
+        raise RuntimeError(
+            "document.vlm.parse.async is not ready: "
+            f"status={status}; "
+            f"base_url={metadata.get('provider_base_url') or ''}; "
+            f"submit_path={metadata.get('provider_invoke_path') or ''}; "
+            f"error_code={error.get('code') or ''}; "
+            f"reason={capability.get('reason') or error.get('message') or ''}"
+        )
 
 
 def _submit_job(runtime_base_url: str, sample: Path, timeout: float, task: str, max_pages: int | None) -> tuple[dict[str, Any], str]:
@@ -208,12 +249,35 @@ def _print_report(results: list[ProbeResult]) -> None:
             print(f"  - status: {item.result.get('status')} progress: {item.result.get('progress')}")
         print(f"  - polls: {item.result.get('poll_count', 0)}")
     print()
-    print(json.dumps([r.__dict__ for r in results], ensure_ascii=False, indent=2))
+    print(json.dumps([_compact_result(r) for r in results], ensure_ascii=False, indent=2))
 
 
-def _safe_dump(path: Path, results: list[ProbeResult]) -> None:
-    payload = [r.__dict__ for r in results]
+def _safe_dump(path: Path, results: list[ProbeResult], *, include_raw: bool = False) -> None:
+    payload = [r.__dict__ for r in results] if include_raw else [_compact_result(result) for result in results]
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _compact_result(result: ProbeResult) -> dict[str, Any]:
+    job_result = result.result.get("result") if isinstance(result.result.get("result"), dict) else {}
+    normalized_result = job_result.get("result") if isinstance(job_result.get("result"), dict) else {}
+    status_poll = result.result.get("status_poll") if isinstance(result.result.get("status_poll"), dict) else {}
+    return {
+        "name": result.name,
+        "path": result.path,
+        "media_type": result.media_type,
+        "ok": result.ok,
+        "detail": result.detail,
+        "job_id": str(status_poll.get("job_id") or (result.result.get("submit_response", {}).get("result", {}) or {}).get("job_id") or ""),
+        "status": str(result.result.get("status") or ""),
+        "progress": result.result.get("progress", 0),
+        "poll_count": result.result.get("poll_count", 0),
+        "submit_duration_ms": result.result.get("submit_duration_ms"),
+        "summary_length": len(str(normalized_result.get("summary") or "")),
+        "section_count": len(normalized_result.get("sections") or []) if isinstance(normalized_result.get("sections"), list) else 0,
+        "evidence_count": len(normalized_result.get("evidence") or []) if isinstance(normalized_result.get("evidence"), list) else 0,
+        "warnings": normalized_result.get("warnings") if isinstance(normalized_result.get("warnings"), list) else [],
+        "error": job_result.get("error") if isinstance(job_result.get("error"), dict) else {},
+    }
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -226,11 +290,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--poll-interval", type=float, default=1.0)
     parser.add_argument("--timeout", type=float, default=30.0)
     parser.add_argument("--report", default="", help="Optional JSON report path, e.g. docs/guides/vlm_async_acceptance_report.json")
+    parser.add_argument("--include-raw-report", action="store_true", help="Include full provider raw payloads in --report output.")
     args = parser.parse_args(argv)
 
     # preflight
     _get_json(f"{args.runtime_base_url.rstrip('/')}/api/capabilities/heartbeat", timeout=args.timeout)
-    _get_json(f"{args.runtime_base_url.rstrip('/')}/api/capabilities", timeout=args.timeout)
+    _require_async_capability_ready(args.runtime_base_url, args.timeout)
     samples_dir = Path(args.samples_dir)
     if not samples_dir.exists():
         raise FileNotFoundError(f"samples dir not found: {samples_dir}")
@@ -240,7 +305,7 @@ def main(argv: list[str] | None = None) -> int:
 
     failures = [result for result in results if not result.ok]
     if args.report:
-        _safe_dump(Path(args.report), results)
+        _safe_dump(Path(args.report), results, include_raw=args.include_raw_report)
     if failures:
         return 1
     return 0

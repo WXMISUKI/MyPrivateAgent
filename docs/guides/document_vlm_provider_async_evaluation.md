@@ -110,7 +110,21 @@ VLM_CAPABILITY_PROVIDER_ASYNC_STATUS_PATH_TEMPLATE=/api/vlm/jobs/{job_id}
 
 ## 3B Practical Smoke Command
 
-You can run a small async lifecycle smoke against capability runtime contract:
+Start a lightweight local async wrapper provider when no real PaddleOCR-VL async service is available:
+
+```bash
+python backend/scripts/document_vlm_async_wrapper_provider.py --host 127.0.0.1 --port 8082 --upstream-base-url http://127.0.0.1:8081 --upstream-invoke-path /layout-parsing
+```
+
+This wrapper exposes:
+
+- `GET /health`
+- `POST /api/vlm/jobs`
+- `GET /api/vlm/jobs/{job_id}`
+
+It stores jobs in memory and delegates parsing to the configured upstream sync provider. For Stage 3B, the default upstream is PP-StructureV3 on `http://127.0.0.1:8081/layout-parsing`.
+
+Then run a small async lifecycle smoke against MyPrivateAgent capability runtime contract:
 
 ```bash
 python backend/scripts/document_vlm_async_smoke.py --runtime-base-url http://127.0.0.1:8000 --samples-dir D:\\AI\\ocr --task summarize --poll-timeout 60 --poll-interval 2 --report docs/guides/vlm_async_acceptance_report.json

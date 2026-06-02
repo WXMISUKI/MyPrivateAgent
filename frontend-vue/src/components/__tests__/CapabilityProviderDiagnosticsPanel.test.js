@@ -2,11 +2,12 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { listMock, heartbeatMock, testMock, invokeMock } = vi.hoisted(() => ({
+const { listMock, heartbeatMock, testMock, invokeMock, persistArtifactMock } = vi.hoisted(() => ({
   listMock: vi.fn(),
   heartbeatMock: vi.fn(),
   testMock: vi.fn(),
-  invokeMock: vi.fn()
+  invokeMock: vi.fn(),
+  persistArtifactMock: vi.fn()
 }))
 
 vi.mock('../../api', () => ({
@@ -15,6 +16,9 @@ vi.mock('../../api', () => ({
     heartbeat: heartbeatMock,
     test: testMock,
     invoke: invokeMock
+  },
+  documentArtifactApi: {
+    persist: persistArtifactMock
   }
 }))
 
@@ -33,6 +37,7 @@ describe('CapabilityProviderDiagnosticsPanel', () => {
     heartbeatMock.mockReset()
     testMock.mockReset()
     invokeMock.mockReset()
+    persistArtifactMock.mockReset()
     listMock.mockResolvedValue({
       data: {
         capabilities: [
@@ -204,6 +209,110 @@ describe('CapabilityProviderDiagnosticsPanel', () => {
     expect(wrapper.text()).toContain('warning: low quality image')
     expect(wrapper.text()).toContain('Blocks / 置信度')
     expect(wrapper.text()).toContain('Raw JSON')
+  })
+
+  it('persists a successful OCR result and displays artifact id', async () => {
+    listMock.mockResolvedValueOnce({
+      data: {
+        capabilities: [
+          {
+            capability_id: 'document.ocr.extract',
+            kind: 'ocr',
+            provider: 'paddleocr',
+            transport: 'http',
+            status: 'ready',
+            reason: ''
+          }
+        ]
+      }
+    })
+    persistArtifactMock.mockResolvedValue({
+      data: {
+        ok: true,
+        artifact: {
+          artifact_id: 'doc-artifact-123',
+          content_hash: 'abc'
+        }
+      }
+    })
+    const wrapper = mount(CapabilityProviderDiagnosticsPanel)
+    await flushPromises()
+
+    wrapper.vm.testResults['document.ocr.extract'] = {
+      ok: true,
+      result: {
+        text: 'hello world',
+        pages: [{ page_number: 1 }],
+        blocks: [],
+        warnings: [],
+        raw: { dropped: true }
+      }
+    }
+    await nextTick()
+
+    await wrapper.findAll('button').find(button => button.text() === '保存 Artifact').trigger('click')
+    await flushPromises()
+
+    expect(persistArtifactMock).toHaveBeenCalledWith({
+      source_filename: '',
+      media_type: '',
+      capability_id: 'document.ocr.extract',
+      provider: 'paddleocr',
+      include_raw: false,
+      result: {
+        text: 'hello world',
+        pages: [{ page_number: 1 }],
+        blocks: [],
+        warnings: [],
+        raw: { dropped: true }
+      }
+    })
+    expect(wrapper.text()).toContain('artifact_id: doc-artifact-123')
+  })
+
+  it('displays structured document artifact persist errors', async () => {
+    listMock.mockResolvedValueOnce({
+      data: {
+        capabilities: [
+          {
+            capability_id: 'document.layout.parse',
+            kind: 'layout',
+            provider: 'paddleocr',
+            transport: 'http',
+            status: 'ready',
+            reason: ''
+          }
+        ]
+      }
+    })
+    persistArtifactMock.mockRejectedValue({
+      response: {
+        data: {
+          error: {
+            code: 'DOCUMENT_ARTIFACT_INVALID_INPUT',
+            message: 'result must be an object.'
+          }
+        }
+      }
+    })
+    const wrapper = mount(CapabilityProviderDiagnosticsPanel)
+    await flushPromises()
+
+    wrapper.vm.testResults['document.layout.parse'] = {
+      ok: true,
+      result: {
+        markdown: '# Doc',
+        elements: [],
+        tables: [],
+        warnings: []
+      }
+    }
+    await nextTick()
+
+    await wrapper.findAll('button').find(button => button.text() === '保存 Artifact').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('DOCUMENT_ARTIFACT_INVALID_INPUT: result must be an object.')
   })
 
   it('shows layout validation error when no file is selected', async () => {

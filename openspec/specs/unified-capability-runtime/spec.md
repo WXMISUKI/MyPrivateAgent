@@ -211,3 +211,80 @@ The OCR capability SHALL map provider-neutral invoke requests to PaddleX serving
 - **THEN** the backend returns `ok = false`
 - **AND** returns error code `OCR_INVALID_INPUT`
 
+### Requirement: Local async VLM wrapper provider
+
+The project SHALL provide an optional local development provider that implements the `document.vlm.parse.async` job API for Stage 3B acceptance.
+
+#### Scenario: Wrapper health is available
+- **WHEN** the wrapper provider is running
+- **AND** a client requests `GET /health`
+- **THEN** the response includes `errorCode=0`
+- **AND** the response includes provider configuration metadata for upstream base URL and invoke path.
+
+#### Scenario: Async job submission
+- **WHEN** a client requests `POST /api/vlm/jobs`
+- **AND** the body includes `file`, `fileType`, and `task`
+- **THEN** the wrapper returns `result.job_id`
+- **AND** `result.status` is `queued` or `running`
+- **AND** `result.progress` is a number.
+
+#### Scenario: Async job polling
+- **WHEN** a client requests `GET /api/vlm/jobs/{job_id}`
+- **THEN** the wrapper returns `result.job_id`
+- **AND** `result.status` is one of `queued`, `running`, `succeeded`, `failed`
+- **AND** completed jobs expose either `result.result` or `result.error`.
+
+#### Scenario: Missing job
+- **WHEN** a client requests an unknown job id
+- **THEN** the wrapper returns HTTP 404
+- **AND** the body includes `errorCode`
+- **AND** the error message identifies the missing job id.
+
+#### Scenario: Upstream sync provider failure
+- **WHEN** upstream document parsing fails
+- **THEN** the wrapper keeps the job queryable
+- **AND** marks the job as `failed`
+- **AND** includes structured error detail in `result.error`.
+
+### Requirement: Document Artifact Persistence Contract
+
+The backend SHALL expose a local document artifact contract for compact OCR/Layout/VLM capability outputs.
+
+#### Scenario: Persist compact document artifact
+- **WHEN** a client posts `POST /api/document-artifacts`
+- **AND** the request includes `capability_id`, `provider`, and `result`
+- **THEN** the backend persists compact artifact metadata and payload
+- **AND** returns `ok=true`
+- **AND** returns `artifact.artifact_id`
+- **AND** returns `artifact.content_hash`.
+
+#### Scenario: Raw provider payload is excluded by default
+- **WHEN** the result contains a `raw` field
+- **AND** `include_raw` is not true
+- **THEN** the persisted payload MUST NOT include `raw`.
+
+#### Scenario: Read document artifact
+- **WHEN** a client requests `GET /api/document-artifacts/{artifact_id}`
+- **THEN** the backend returns metadata and compact payload for that artifact.
+
+#### Scenario: List document artifacts
+- **WHEN** a client requests `GET /api/document-artifacts`
+- **THEN** the backend returns a list of artifact metadata records sorted newest first.
+
+#### Scenario: Unknown artifact id
+- **WHEN** a client requests an unknown artifact id
+- **THEN** the backend returns HTTP 404
+- **AND** returns error code `DOCUMENT_ARTIFACT_NOT_FOUND`.
+
+### Requirement: Diagnostics Artifact Action
+
+The frontend diagnostics panel SHALL allow users to persist successful document capability results on demand.
+
+#### Scenario: Persist action appears for successful document result
+- **WHEN** OCR/Layout/VLM diagnostics result is successful
+- **THEN** the panel exposes a persist artifact action.
+
+#### Scenario: Persist action returns artifact id
+- **WHEN** a user persists a successful result
+- **THEN** the panel calls `POST /api/document-artifacts`
+- **AND** displays the returned `artifact_id`.

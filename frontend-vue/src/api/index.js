@@ -249,6 +249,20 @@ export const capabilityApi = {
   }
 }
 
+export const documentArtifactApi = {
+  list(params = {}) {
+    return api.get('/document-artifacts', { params })
+  },
+
+  get(artifactId) {
+    return api.get(`/document-artifacts/${encodeURIComponent(artifactId)}`)
+  },
+
+  persist(payload = {}) {
+    return api.post('/document-artifacts', payload)
+  }
+}
+
 export const mcpApi = {
   listServers() {
     return api.get('/mcp/servers')
