@@ -93,6 +93,10 @@
         <input class="field-input" type="text" :value="vlmQuestions[capability.capability_id] || ''" @input="event => setVlmQuestion(capability.capability_id, event)" placeholder="例如：请总结合同关键条款" />
         <label>最大页数（max_pages，可选）</label>
         <input class="field-input" type="number" min="1" step="1" :value="vlmMaxPages[capability.capability_id] || ''" @input="event => setVlmMaxPages(capability.capability_id, event)" placeholder="例如 5" />
+        <template v-if="capability.capability_id === 'document.vlm.parse.async'">
+          <label>任务 ID（job_id，用于查询）</label>
+          <input class="field-input" type="text" :value="vlmJobIds[capability.capability_id] || ''" @input="event => setVlmJobId(capability.capability_id, event)" placeholder="例如 job_20260601_001" />
+        </template>
       </div>
 
       <div class="provider-actions">
@@ -126,7 +130,7 @@
           {{ testing[capability.capability_id] ? '测试中...' : '测试 Layout' }}
         </button>
         <button
-          v-if="capability.kind === 'vlm'"
+          v-if="capability.kind === 'vlm' && capability.capability_id !== 'document.vlm.parse.async'"
           class="action-btn test-btn"
           data-test="vlm-invoke"
           type="button"
@@ -134,6 +138,26 @@
           :disabled="testing[capability.capability_id]"
         >
           {{ testing[capability.capability_id] ? '测试中...' : '测试 VLM' }}
+        </button>
+        <button
+          v-if="capability.kind === 'vlm' && capability.capability_id === 'document.vlm.parse.async'"
+          class="action-btn test-btn"
+          data-test="vlm-async-submit"
+          type="button"
+          @click="runVlmAsyncSubmit(capability)"
+          :disabled="testing[capability.capability_id]"
+        >
+          {{ testing[capability.capability_id] ? '测试中...' : '提交 VLM 任务' }}
+        </button>
+        <button
+          v-if="capability.kind === 'vlm' && capability.capability_id === 'document.vlm.parse.async'"
+          class="action-btn test-btn"
+          data-test="vlm-async-status"
+          type="button"
+          @click="runVlmAsyncStatus(capability)"
+          :disabled="testing[capability.capability_id]"
+        >
+          {{ testing[capability.capability_id] ? '测试中...' : '查询任务状态' }}
         </button>
       </div>
 
@@ -222,6 +246,34 @@
             <pre>{{ formatJson(layoutResultView(testResults[capability.capability_id]).raw) }}</pre>
           </details>
         </template>
+        <template v-else-if="capability.capability_id === 'document.vlm.parse.async' && vlmAsyncResultView(testResults[capability.capability_id])">
+          <div class="ocr-summary">
+            <span>Job: {{ vlmAsyncResultView(testResults[capability.capability_id]).job_id || '(missing)' }}</span>
+            <span>Status: {{ vlmAsyncResultView(testResults[capability.capability_id]).status }}</span>
+            <span>Progress: {{ vlmAsyncResultView(testResults[capability.capability_id]).progress }}</span>
+          </div>
+          <div v-if="vlmAsyncResultView(testResults[capability.capability_id]).warnings.length" class="ocr-warning-list">
+            <span
+              v-for="(warning, idx) in vlmAsyncResultView(testResults[capability.capability_id]).warnings"
+              :key="'vlm-async-warning-' + idx"
+              class="field-hint"
+            >
+              warning: {{ warning }}
+            </span>
+          </div>
+          <details class="ocr-section" open>
+            <summary>Async Result</summary>
+            <pre>{{ formatJson(vlmAsyncResultView(testResults[capability.capability_id]).result) }}</pre>
+          </details>
+          <details class="ocr-section">
+            <summary>Async Error</summary>
+            <pre>{{ formatJson(vlmAsyncResultView(testResults[capability.capability_id]).error) }}</pre>
+          </details>
+          <details class="ocr-section">
+            <summary>Raw JSON</summary>
+            <pre>{{ formatJson(vlmAsyncResultView(testResults[capability.capability_id]).raw) }}</pre>
+          </details>
+        </template>
         <template v-else-if="capability.kind === 'vlm' && vlmResultView(testResults[capability.capability_id])">
           <div class="ocr-summary">
             <span>Summary 长度: {{ vlmResultView(testResults[capability.capability_id]).summary.length }}</span>
@@ -284,6 +336,7 @@ const vlmFiles = reactive({})
 const vlmTasks = reactive({})
 const vlmQuestions = reactive({})
 const vlmMaxPages = reactive({})
+const vlmJobIds = reactive({})
 
 const heartbeatProviders = computed(() => heartbeat.value?.providers || [])
 
@@ -398,6 +451,51 @@ async function runVlmInvoke(capability) {
   }
 }
 
+async function runVlmAsyncSubmit(capability) {
+  const capabilityId = capability.capability_id
+  testing[capabilityId] = true
+  testResults[capabilityId] = null
+  try {
+    const payload = await buildVlmInvokePayload(capabilityId, 'submit')
+    const response = await capabilityApi.invoke(capabilityId, payload)
+    testResults[capabilityId] = response.data
+    if (response.data?.ok && response.data?.result?.job_id) {
+      vlmJobIds[capabilityId] = String(response.data.result.job_id)
+    }
+  } catch (error) {
+    testResults[capabilityId] = {
+      ok: false,
+      error: error.response?.data?.error || error.response?.data || {
+        code: 'VLM_ASYNC_SUBMIT_REQUEST_FAILED',
+        message: error.message || '请求失败'
+      }
+    }
+  } finally {
+    testing[capabilityId] = false
+  }
+}
+
+async function runVlmAsyncStatus(capability) {
+  const capabilityId = capability.capability_id
+  testing[capabilityId] = true
+  testResults[capabilityId] = null
+  try {
+    const payload = await buildVlmInvokePayload(capabilityId, 'status')
+    const response = await capabilityApi.invoke(capabilityId, payload)
+    testResults[capabilityId] = response.data
+  } catch (error) {
+    testResults[capabilityId] = {
+      ok: false,
+      error: error.response?.data?.error || error.response?.data || {
+        code: 'VLM_ASYNC_STATUS_REQUEST_FAILED',
+        message: error.message || '请求失败'
+      }
+    }
+  } finally {
+    testing[capabilityId] = false
+  }
+}
+
 async function buildTestPayload(capability) {
   if (capability.kind !== 'asr' || !asrFiles[capability.capability_id]) {
     return {}
@@ -484,6 +582,10 @@ function setVlmMaxPages(capabilityId, event) {
   vlmMaxPages[capabilityId] = String(event.target.value || '').trim()
 }
 
+function setVlmJobId(capabilityId, event) {
+  vlmJobIds[capabilityId] = String(event.target.value || '').trim()
+}
+
 function resolveAsrMediaType(file) {
   if (!file.type || file.name?.toLowerCase().endsWith('.pcm') || file.name?.toLowerCase().endsWith('.raw')) {
     return 'audio/pcm;rate=16000;channels=1;format=s16le'
@@ -560,7 +662,17 @@ async function buildLayoutInvokePayload(capabilityId) {
   }
 }
 
-async function buildVlmInvokePayload(capabilityId) {
+async function buildVlmInvokePayload(capabilityId, operation = 'submit') {
+  if (operation === 'status') {
+    const jobId = String(vlmJobIds[capabilityId] || '').trim()
+    if (!jobId) {
+      throw new Error('请先输入任务 ID（job_id）')
+    }
+    return {
+      operation: 'status',
+      job_id: jobId
+    }
+  }
   const file = vlmFiles[capabilityId]
   if (!file) {
     throw new Error('请先选择 VLM 文件（png/jpg/pdf）')
@@ -568,6 +680,7 @@ async function buildVlmInvokePayload(capabilityId) {
   const mediaType = resolveOcrMediaType(file)
   const fileBase64 = await readFileAsBase64(file)
   return {
+    operation: 'submit',
     file_base64: fileBase64,
     media_type: mediaType,
     filename: file.name,
@@ -648,6 +761,21 @@ function vlmResultView(result) {
     sections: Array.isArray(payload.sections) ? payload.sections : [],
     answers: Array.isArray(payload.answers) ? payload.answers : [],
     evidence: Array.isArray(payload.evidence) ? payload.evidence : [],
+    warnings: Array.isArray(payload.warnings) ? payload.warnings.map(item => String(item)) : [],
+    raw: typeof payload.raw === 'object' && payload.raw ? payload.raw : {}
+  }
+}
+
+function vlmAsyncResultView(result) {
+  if (!result || !result.ok) return null
+  const payload = typeof result.result === 'object' && result.result ? result.result : null
+  if (!payload) return null
+  return {
+    job_id: String(payload.job_id || ''),
+    status: String(payload.status || 'unknown'),
+    progress: payload.progress ?? 0,
+    result: typeof payload.result === 'object' && payload.result ? payload.result : {},
+    error: typeof payload.error === 'object' && payload.error ? payload.error : {},
     warnings: Array.isArray(payload.warnings) ? payload.warnings.map(item => String(item)) : [],
     raw: typeof payload.raw === 'object' && payload.raw ? payload.raw : {}
   }

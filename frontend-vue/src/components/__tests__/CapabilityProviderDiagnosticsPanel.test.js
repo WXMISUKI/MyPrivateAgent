@@ -380,4 +380,30 @@ describe('CapabilityProviderDiagnosticsPanel', () => {
     expect(wrapper.text()).toContain('Answers')
     expect(wrapper.text()).toContain('Raw JSON')
   })
+
+  it('shows VLM async status validation error when job_id is missing', async () => {
+    listMock.mockResolvedValueOnce({
+      data: {
+        capabilities: [
+          {
+            capability_id: 'document.vlm.parse.async',
+            kind: 'vlm',
+            provider: 'document_vlm_provider',
+            transport: 'http',
+            status: 'ready',
+            reason: ''
+          }
+        ]
+      }
+    })
+    const wrapper = mount(CapabilityProviderDiagnosticsPanel)
+    await flushPromises()
+
+    expect(wrapper.find('[data-test="vlm-async-status"]').exists()).toBe(true)
+    await wrapper.find('[data-test="vlm-async-status"]').trigger('click')
+    await flushPromises()
+
+    expect(invokeMock).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('请先输入任务 ID（job_id）')
+  })
 })

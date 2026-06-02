@@ -611,6 +611,17 @@ class CapabilityHttpProviderTests(unittest.TestCase):
         self.assertEqual(len(result["result"]["sections"]), 1)
         self.assertEqual(result["result"]["warnings"], [])
 
+    def test_http_vlm_rejects_unsupported_media_type(self):
+        service = CapabilityRuntimeService(
+            CapabilityRegistry(build_http_document_vlm_capabilities(base_url="http://vlm.test"))
+        )
+        result = service.invoke(
+            "document.vlm.parse",
+            {"file_base64": "AAA=", "media_type": "text/plain", "task": "summarize"},
+        )
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["error"]["code"], "VLM_UNSUPPORTED_MEDIA_TYPE")
+
     def test_http_vlm_rejects_unsupported_task(self):
         service = CapabilityRuntimeService(
             CapabilityRegistry(build_http_document_vlm_capabilities(base_url="http://vlm.test"))
@@ -621,6 +632,125 @@ class CapabilityHttpProviderTests(unittest.TestCase):
         )
         self.assertFalse(result["ok"])
         self.assertEqual(result["error"]["code"], "VLM_UNSUPPORTED_TASK")
+
+    def test_http_vlm_requires_question_for_qa_task(self):
+        service = CapabilityRuntimeService(
+            CapabilityRegistry(build_http_document_vlm_capabilities(base_url="http://vlm.test"))
+        )
+        result = service.invoke(
+            "document.vlm.parse",
+            {"file_base64": "AAA=", "media_type": "application/pdf", "task": "qa"},
+        )
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["error"]["code"], "VLM_INVALID_INPUT")
+
+    def test_http_vlm_supports_custom_invoke_path(self):
+        def handler(request):
+            if request.url.path == "/health":
+                return _json_response({"status": "ok"})
+            self.assertEqual(request.url.path, "/custom-vlm")
+            return _json_response({"errorCode": 0, "result": {"summary": "ok"}})
+
+        client = HttpCapabilityClient(
+            base_url="http://vlm.test",
+            transport=httpx.MockTransport(handler),
+        )
+        service = CapabilityRuntimeService(
+            CapabilityRegistry(
+                build_http_document_vlm_capabilities(
+                    base_url="http://vlm.test",
+                    invoke_path="/custom-vlm",
+                    client=client,
+                )
+            )
+        )
+        result = service.invoke(
+            "document.vlm.parse",
+            {"file_base64": "AAA=", "media_type": "application/pdf", "task": "summarize"},
+        )
+        self.assertTrue(result["ok"])
+
+    def test_http_vlm_normalizes_layout_parsing_results(self):
+        def handler(request):
+            if request.url.path == "/health":
+                return _json_response({"status": "ok"})
+            return _json_response(
+                {
+                    "errorCode": 0,
+                    "result": {
+                        "layoutParsingResults": [
+                            {
+                                "markdown": {"text": "Page1 content"},
+                                "prunedResult": {"layouts": [{"label": "text"}]},
+                            },
+                            {
+                                "markdown": {"text": "Page2 content"},
+                                "prunedResult": {"layouts": [{"label": "table"}, {"label": "text"}]},
+                            },
+                        ]
+                    },
+                }
+            )
+
+        client = HttpCapabilityClient(
+            base_url="http://vlm.test",
+            transport=httpx.MockTransport(handler),
+        )
+        service = CapabilityRuntimeService(
+            CapabilityRegistry(build_http_document_vlm_capabilities(base_url="http://vlm.test", client=client))
+        )
+        result = service.invoke(
+            "document.vlm.parse",
+            {"file_base64": "AAA=", "media_type": "application/pdf", "task": "summarize"},
+        )
+        self.assertTrue(result["ok"])
+        self.assertIn("Page1 content", result["result"]["summary"])
+        self.assertEqual(len(result["result"]["sections"]), 2)
+        self.assertEqual(result["result"]["evidence"][0]["layout_count"], 1)
+
+    def test_http_vlm_async_submit_and_status(self):
+        def handler(request):
+            if request.url.path == "/health":
+                return _json_response({"status": "ok"})
+            if request.url.path == "/api/vlm/jobs":
+                payload = json.loads(request.content.decode("utf-8"))
+                self.assertEqual(payload["task"], "summarize")
+                return _json_response({"result": {"job_id": "job-1", "status": "queued", "progress": 0.1}})
+            if request.url.path == "/api/vlm/jobs/job-1":
+                return _json_response({"result": {"job_id": "job-1", "status": "running", "progress": 0.6}})
+            raise AssertionError(f"Unexpected path: {request.url.path}")
+
+        client = HttpCapabilityClient(
+            base_url="http://vlm.test",
+            transport=httpx.MockTransport(handler),
+        )
+        service = CapabilityRuntimeService(
+            CapabilityRegistry(build_http_document_vlm_capabilities(base_url="http://vlm.test", client=client))
+        )
+
+        submit = service.invoke(
+            "document.vlm.parse.async",
+            {"operation": "submit", "file_base64": "AAA=", "media_type": "application/pdf", "task": "summarize"},
+        )
+        self.assertTrue(submit["ok"])
+        self.assertEqual(submit["result"]["job_id"], "job-1")
+        self.assertEqual(submit["result"]["status"], "queued")
+
+        status = service.invoke(
+            "document.vlm.parse.async",
+            {"operation": "status", "job_id": "job-1"},
+        )
+        self.assertTrue(status["ok"])
+        self.assertEqual(status["result"]["status"], "running")
+        self.assertEqual(status["result"]["progress"], 0.6)
+
+    def test_http_vlm_async_status_requires_job_id(self):
+        service = CapabilityRuntimeService(
+            CapabilityRegistry(build_http_document_vlm_capabilities(base_url="http://vlm.test"))
+        )
+        result = service.invoke("document.vlm.parse.async", {"operation": "status"})
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["error"]["code"], "VLM_ASYNC_MISSING_JOB_ID")
 
 
 if __name__ == "__main__":

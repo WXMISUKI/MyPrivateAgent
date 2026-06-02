@@ -13,6 +13,27 @@
 
 This phase is intentionally synchronous and limited to small files.
 
+## Phase 3B Progress
+
+Current provider adapter now supports two response families:
+
+- direct VLM semantic envelope (`summary/sections/entities/answers/evidence`)
+- PaddleOCR-VL-style envelope (`result.layoutParsingResults[]`) with normalized fallback extraction
+
+Recommended PaddleOCR-VL integration config:
+
+```env
+ENABLE_VLM_CAPABILITY_PROVIDER=true
+VLM_CAPABILITY_PROVIDER_BASE_URL=http://127.0.0.1:8082
+VLM_CAPABILITY_PROVIDER_TIMEOUT_SECONDS=120
+VLM_CAPABILITY_PROVIDER_INVOKE_PATH=/layout-parsing
+```
+
+Notes:
+
+- Keep OCR/Layout/VLM on separate ports in local debugging to reduce route ambiguity.
+- Keep this capability sync for now and use async only when decision signals are consistently hit.
+
 ## Phase 3B Goal
 
 Decide when to move from sync invocation to async job-mode.
@@ -25,6 +46,7 @@ Move to async provider API when any of these is true:
 - large PDFs regularly exceed request timeout
 - GPU queueing makes sync retries noisy
 - result artifacts (images/chunks/tables) exceed simple JSON envelope size
+- sustained timeout rate > 5% in a rolling 24-hour window
 
 ## Recommended Async API Shape
 
@@ -42,7 +64,9 @@ Job status fields:
 ## MyPrivateAgent Integration Plan
 
 1. Keep `document.vlm.parse` for small sync calls.
-2. Add `document.vlm.parse.async` as a separate capability id for jobs.
+2. `document.vlm.parse.async` is now available as placeholder job capability id:
+   - `operation=submit`: submit job (`POST /api/vlm/jobs`)
+   - `operation=status`: query job (`GET /api/vlm/jobs/{job_id}`)
 3. Add polling helper in diagnostics panel for job status visibility.
 4. Keep provider heartbeat and circuit-breaker behavior unchanged.
 
@@ -59,3 +83,4 @@ Job status fields:
 - Contract tests for sync envelope and error codes
 - Integration test for async lifecycle transitions
 - Frontend diagnostics test for job polling and result rendering
+- A/B test: sync `document.vlm.parse` vs proposed `document.vlm.parse.async` on the same PDF set
