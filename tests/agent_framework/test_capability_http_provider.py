@@ -752,6 +752,66 @@ class CapabilityHttpProviderTests(unittest.TestCase):
         self.assertFalse(result["ok"])
         self.assertEqual(result["error"]["code"], "VLM_ASYNC_MISSING_JOB_ID")
 
+    def test_http_vlm_async_normalizes_status_alias(self):
+        def handler(request):
+            if request.url.path == "/health":
+                return _json_response({"status": "ok"})
+            if request.url.path == "/api/vlm/jobs":
+                return _json_response({"result": {"job_id": "job-alias", "status": "pending", "progress": 0}})
+            raise AssertionError(f"Unexpected path: {request.url.path}")
+
+        client = HttpCapabilityClient(
+            base_url="http://vlm.test",
+            transport=httpx.MockTransport(handler),
+        )
+        service = CapabilityRuntimeService(
+            CapabilityRegistry(build_http_document_vlm_capabilities(base_url="http://vlm.test", client=client))
+        )
+
+        result = service.invoke(
+            "document.vlm.parse.async",
+            {"operation": "submit", "file_base64": "AAA=", "media_type": "application/pdf", "task": "summarize"},
+        )
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["result"]["status"], "queued")
+
+    def test_http_vlm_async_uses_configured_paths(self):
+        def handler(request):
+            if request.url.path == "/health":
+                return _json_response({"status": "ok"})
+            if request.url.path == "/custom/jobs":
+                return _json_response({"result": {"job_id": "job-2", "status": "running", "progress": 0.3}})
+            if request.url.path == "/custom/jobs/job-2":
+                return _json_response({"result": {"job_id": "job-2", "status": "success", "progress": 1.0}})
+            raise AssertionError(f"Unexpected path: {request.url.path}")
+
+        client = HttpCapabilityClient(
+            base_url="http://vlm.test",
+            transport=httpx.MockTransport(handler),
+        )
+        service = CapabilityRuntimeService(
+            CapabilityRegistry(
+                build_http_document_vlm_capabilities(
+                    base_url="http://vlm.test",
+                    client=client,
+                    async_submit_path="/custom/jobs",
+                    async_status_path_template="/custom/jobs/{job_id}",
+                )
+            )
+        )
+
+        submit = service.invoke(
+            "document.vlm.parse.async",
+            {"operation": "submit", "file_base64": "AAA=", "media_type": "application/pdf", "task": "summarize"},
+        )
+        self.assertTrue(submit["ok"])
+        self.assertEqual(submit["result"]["job_id"], "job-2")
+        self.assertEqual(submit["result"]["status"], "running")
+
+        status = service.invoke("document.vlm.parse.async", {"operation": "status", "job_id": "job-2"})
+        self.assertTrue(status["ok"])
+        self.assertEqual(status["result"]["status"], "succeeded")
+
 
 if __name__ == "__main__":
     unittest.main()

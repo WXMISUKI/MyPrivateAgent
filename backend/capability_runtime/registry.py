@@ -46,6 +46,8 @@ def get_default_capability_registry() -> CapabilityRegistry:
             VLM_CAPABILITY_PROVIDER_BASE_URL,
             VLM_CAPABILITY_PROVIDER_INVOKE_PATH,
             VLM_CAPABILITY_PROVIDER_TIMEOUT_SECONDS,
+            VLM_CAPABILITY_PROVIDER_ASYNC_SUBMIT_PATH,
+            VLM_CAPABILITY_PROVIDER_ASYNC_STATUS_PATH_TEMPLATE,
             VOICE_CAPABILITY_PROVIDER_BASE_URL,
             VOICE_CAPABILITY_PROVIDER_TIMEOUT_SECONDS,
         )
@@ -66,6 +68,8 @@ def get_default_capability_registry() -> CapabilityRegistry:
             VLM_CAPABILITY_PROVIDER_BASE_URL,
             VLM_CAPABILITY_PROVIDER_INVOKE_PATH,
             VLM_CAPABILITY_PROVIDER_TIMEOUT_SECONDS,
+            VLM_CAPABILITY_PROVIDER_ASYNC_SUBMIT_PATH,
+            VLM_CAPABILITY_PROVIDER_ASYNC_STATUS_PATH_TEMPLATE,
             VOICE_CAPABILITY_PROVIDER_BASE_URL,
             VOICE_CAPABILITY_PROVIDER_TIMEOUT_SECONDS,
         )
@@ -105,6 +109,8 @@ def get_default_capability_registry() -> CapabilityRegistry:
                 base_url=VLM_CAPABILITY_PROVIDER_BASE_URL,
                 timeout_seconds=VLM_CAPABILITY_PROVIDER_TIMEOUT_SECONDS,
                 invoke_path=VLM_CAPABILITY_PROVIDER_INVOKE_PATH,
+                async_submit_path=VLM_CAPABILITY_PROVIDER_ASYNC_SUBMIT_PATH,
+                async_status_path_template=VLM_CAPABILITY_PROVIDER_ASYNC_STATUS_PATH_TEMPLATE,
             )
         )
     return CapabilityRegistry(capabilities)

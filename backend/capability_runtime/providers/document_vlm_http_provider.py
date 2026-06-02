@@ -16,10 +16,14 @@ def build_http_document_vlm_capabilities(
     base_url: str,
     timeout_seconds: float = 90.0,
     invoke_path: str = "/vlm",
+    async_submit_path: str = "/api/vlm/jobs",
+    async_status_path_template: str = "/api/vlm/jobs/{job_id}",
     client: HttpCapabilityClient | None = None,
 ) -> list[CapabilityDefinition]:
     http_client = client or HttpCapabilityClient(base_url=base_url, timeout_seconds=timeout_seconds)
     normalized_invoke_path = _normalize_invoke_path(invoke_path)
+    normalized_async_submit_path = _normalize_async_path(async_submit_path)
+    normalized_async_status_path_template = _normalize_async_path_template(async_status_path_template)
     return [
         CapabilityDefinition(
             capability_id="document.vlm.parse",
@@ -104,13 +108,17 @@ def build_http_document_vlm_capabilities(
             metadata={
                 "provider_base_url": base_url.rstrip("/"),
                 "provider_health_path": "/health",
-                "provider_invoke_path": "/api/vlm/jobs",
-                "provider_status_path_template": "/api/vlm/jobs/{job_id}",
+                "provider_invoke_path": normalized_async_submit_path,
+                "provider_status_path_template": normalized_async_status_path_template,
                 "provider_heartbeat_path": "/health",
                 "external_provider": EXTERNAL_PROVIDER_ID,
                 "mode": "placeholder_async",
             },
-            invoker=_invoke_async(http_client),
+            invoker=_invoke_async(
+                client=http_client,
+                submit_path=normalized_async_submit_path,
+                status_path_template=normalized_async_status_path_template,
+            ),
             health_checker=_provider_health(http_client),
             heartbeat_checker=_provider_health(http_client),
         ),
@@ -239,7 +247,12 @@ def _normalize_vlm_result(result: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _invoke_async(client: HttpCapabilityClient):
+def _invoke_async(
+    *,
+    client: HttpCapabilityClient,
+    submit_path: str,
+    status_path_template: str,
+):
     def invoke(payload: dict[str, Any]) -> dict[str, Any]:
         operation = str(payload.get("operation") or "submit").strip().lower()
         if operation not in {"submit", "status"}:
@@ -259,7 +272,7 @@ def _invoke_async(client: HttpCapabilityClient):
                     "error": {"code": "VLM_ASYNC_MISSING_JOB_ID", "message": "job_id is required when operation=status."},
                 }
             try:
-                data = client.get_json(f"/api/vlm/jobs/{job_id}")
+                data = client.get_json(_fill_async_status_path(status_path_template, job_id))
             except CapabilityProviderError as exc:
                 return {"ok": False, "error": exc.to_payload()}
             return {
@@ -274,7 +287,7 @@ def _invoke_async(client: HttpCapabilityClient):
             return {"ok": False, "error": validation_error}
         submit_payload = _to_vlm_payload(payload, str(payload.get("file_base64") or ""), str(payload.get("task") or "summarize"))
         try:
-            data = client.post_json("/api/vlm/jobs", submit_payload)
+            data = client.post_json(submit_path, submit_payload)
         except CapabilityProviderError as exc:
             return {"ok": False, "error": exc.to_payload()}
         error_code = data.get("errorCode")
@@ -321,7 +334,7 @@ def _validate_vlm_payload(payload: dict[str, Any]) -> dict[str, Any] | None:
 
 def _normalize_async_job(data: dict[str, Any]) -> dict[str, Any]:
     result = data.get("result") if isinstance(data.get("result"), dict) else data
-    status = str(result.get("status") or result.get("job_status") or "queued")
+    status = _normalize_async_status(str(result.get("status") or result.get("job_status") or "queued"))
     job_id = str(result.get("job_id") or result.get("id") or "")
     progress_raw = result.get("progress", 0)
     try:
@@ -340,6 +353,43 @@ def _normalize_async_job(data: dict[str, Any]) -> dict[str, Any]:
         "warnings": warnings,
         "raw": data,
     }
+
+
+def _normalize_async_status(raw_status: str) -> str:
+    value = (raw_status or "").strip().lower()
+    if value in {"queued", "running", "succeeded", "failed", "expired"}:
+        return value
+    if value in {"success", "done"}:
+        return "succeeded"
+    if value in {"error", "exception", "timeout"}:
+        return "failed"
+    if value in {"init", "pending"}:
+        return "queued"
+    if value in {"", None}:
+        return "queued"
+    return "failed"
+
+
+def _normalize_async_path(path: str) -> str:
+    normalized = (path or "").strip()
+    if not normalized:
+        return "/api/vlm/jobs"
+    if not normalized.startswith("/"):
+        normalized = f"/{normalized}"
+    return normalized
+
+
+def _normalize_async_path_template(template: str) -> str:
+    normalized = _normalize_async_path(template)
+    if "{job_id}" not in normalized:
+        if normalized.endswith("/"):
+            return normalized + "{job_id}"
+        return normalized + "/{job_id}"
+    return normalized
+
+
+def _fill_async_status_path(template: str, job_id: str) -> str:
+    return str(template or "").replace("{job_id}", job_id).replace("{JOB_ID}", job_id)
 
 
 def _extract_pages(result: dict[str, Any]) -> list[dict[str, Any]]:

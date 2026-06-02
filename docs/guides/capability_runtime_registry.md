@@ -212,6 +212,50 @@ KNOWLEDGE_CAPABILITY_PROVIDER_TIMEOUT_SECONDS=5
 
 启用后，`knowledge.rag.retrieve` 和 `knowledge.graph.query` 会以 `transport=http` 注册。MyPrivateAgent 通过 provider 的 `/health` 读取健康状态，通过 `/api/rag/retrieve` 和 `/api/graph/query` 执行调用。具体外部项目开发规范见 [external_rag_provider_development.md](./external_rag_provider_development.md)。
 
+## 对接 PaddleOCR OCR/Layout
+
+`.env` 中启用基础 OCR 与 layout 解析服务：
+
+```env
+ENABLE_OCR_CAPABILITY_PROVIDER=true
+OCR_CAPABILITY_PROVIDER_BASE_URL=http://127.0.0.1:8080
+OCR_CAPABILITY_PROVIDER_TIMEOUT_SECONDS=30
+ENABLE_LAYOUT_CAPABILITY_PROVIDER=true
+LAYOUT_CAPABILITY_PROVIDER_BASE_URL=http://127.0.0.1:8081
+LAYOUT_CAPABILITY_PROVIDER_INVOKE_PATH=/layout-parsing
+LAYOUT_CAPABILITY_PROVIDER_TIMEOUT_SECONDS=60
+```
+
+启用后，MyPrivateAgent 会注册：
+
+- `document.ocr.extract`（kind=`ocr`，transport=`http`） -> 默认调用 `/ocr`
+- `document.layout.parse`（kind=`layout`，transport=`http`） -> 默认调用 `/layout-parsing`
+
+两者均通过 `heartbeat` 展示运行状态；`document.layout.parse` 的返回会被规范化为 `markdown/elements/tables/pages/artifacts/warnings/raw`。
+
+## 对接 document.vlm
+
+VLM 能力通过外部文档模型服务接入，建议将同步与异步能力分路管理：
+
+- 同步：`document.vlm.parse`
+- 异步：`document.vlm.parse.async`
+
+`ENABLE_VLM_CAPABILITY_PROVIDER=true` 后，服务端读取以下配置：
+
+```env
+VLM_CAPABILITY_PROVIDER_BASE_URL=http://127.0.0.1:8082
+VLM_CAPABILITY_PROVIDER_TIMEOUT_SECONDS=120
+VLM_CAPABILITY_PROVIDER_INVOKE_PATH=/layout-parsing
+VLM_CAPABILITY_PROVIDER_ASYNC_SUBMIT_PATH=/api/vlm/jobs
+VLM_CAPABILITY_PROVIDER_ASYNC_STATUS_PATH_TEMPLATE=/api/vlm/jobs/{job_id}
+```
+
+异步能力建议采用如下契约：
+
+- `operation=submit`：提交任务，返回 `job_id/status/progress`
+- `operation=status`：查询任务，必须带 `job_id`
+- status 支持并对齐为 `queued/running/succeeded/failed/expired`
+
 ## 前端调用
 ```js
 import { capabilityApi } from '@/api'

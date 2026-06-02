@@ -84,3 +84,41 @@ Job status fields:
 - Integration test for async lifecycle transitions
 - Frontend diagnostics test for job polling and result rendering
 - A/B test: sync `document.vlm.parse` vs proposed `document.vlm.parse.async` on the same PDF set
+
+## Contract Alignment Notes (Stage 3B)
+
+MyPrivateAgent now normalizes async responses with:
+
+- `job_id`
+- `status`:
+  - `queued`
+  - `running`
+  - `succeeded`
+  - `failed`
+  - `expired`
+- `progress`
+- `result`
+- `error`
+- `warnings`
+
+Async routing is now configurable in project env:
+
+```env
+VLM_CAPABILITY_PROVIDER_ASYNC_SUBMIT_PATH=/api/vlm/jobs
+VLM_CAPABILITY_PROVIDER_ASYNC_STATUS_PATH_TEMPLATE=/api/vlm/jobs/{job_id}
+```
+
+## 3B Practical Smoke Command
+
+You can run a small async lifecycle smoke against capability runtime contract:
+
+```bash
+python backend/scripts/document_vlm_async_smoke.py --runtime-base-url http://127.0.0.1:8000 --samples-dir D:\\AI\\ocr --task summarize --poll-timeout 60 --poll-interval 2 --report docs/guides/vlm_async_acceptance_report.json
+```
+
+Script behavior:
+
+- health preflight from MyPrivateAgent `/api/capabilities` and `/api/capabilities/heartbeat`
+- submit `document.vlm.parse.async` with `operation=submit`
+- poll the same capability with `operation=status` until terminal status (`queued|running|succeeded|failed|expired`)
+- exit non-zero when any sample fails or timeout

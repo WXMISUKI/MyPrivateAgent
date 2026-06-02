@@ -21,6 +21,25 @@ LAYOUT_CAPABILITY_PROVIDER_TIMEOUT_SECONDS=60
 LAYOUT_CAPABILITY_PROVIDER_INVOKE_PATH=/layout-parsing
 ```
 
+## Acceptance Runner
+
+可复用脚本（直接对 OCR/Layout 服务做本地真实样本冒烟）：
+
+```bash
+python backend/scripts/ocr_layout_local_smoke.py --ocr-base-url http://127.0.0.1:8080 --layout-base-url http://127.0.0.1:8081 --samples-dir D:\\AI\\ocr
+```
+
+脚本会执行：
+
+- OCR `POST /ocr`
+- Layout `POST /layout-parsing`
+- 每个样本输出 `PASS/FAIL` 与 `text_len / markdown_len` 汇总
+- 可选：加 `--report` 输出 JSON 报告，便于回滚比对
+
+```bash
+python backend/scripts/ocr_layout_local_smoke.py --ocr-base-url http://127.0.0.1:8080 --layout-base-url http://127.0.0.1:8081 --samples-dir D:\\AI\\ocr --report docs/guides/layout_acceptance_report_2026-06-xx.json
+```
+
 ## Functional Checks
 
 1. Registry and heartbeat

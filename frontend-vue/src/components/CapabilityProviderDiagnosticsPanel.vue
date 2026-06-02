@@ -817,8 +817,8 @@ function formatOcrBlocks(blocks) {
 }
 
 function statusClass(status) {
-  if (['ok', 'ready'].includes(status)) return 'configured'
-  if (['disabled', 'unconfigured', 'missing_dependency', 'unreachable'].includes(status)) return 'unconfigured'
+  if (['ok', 'ready', 'succeeded'].includes(status)) return 'configured'
+  if (['queued', 'running', 'disabled', 'unconfigured', 'missing_dependency', 'unreachable'].includes(status)) return 'unconfigured'
   return 'error'
 }
 
