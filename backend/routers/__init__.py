@@ -9,5 +9,6 @@ from . import plans
 from . import mcp
 from . import commands
 from . import document_artifacts
+from . import document_ingestions
 
-__all__ = ['auth', 'conversations', 'chat', 'skills', 'learnings', 'permissions', 'memory', 'plans', 'mcp', 'commands', 'document_artifacts']
+__all__ = ['auth', 'conversations', 'chat', 'skills', 'learnings', 'permissions', 'memory', 'plans', 'mcp', 'commands', 'document_artifacts', 'document_ingestions']

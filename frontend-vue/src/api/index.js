@@ -263,6 +263,24 @@ export const documentArtifactApi = {
   }
 }
 
+export const documentIngestionApi = {
+  list(params = {}) {
+    return api.get('/document-ingestions', { params })
+  },
+
+  get(ingestId) {
+    return api.get(`/document-ingestions/${encodeURIComponent(ingestId)}`)
+  },
+
+  getResult(ingestId) {
+    return api.get(`/document-ingestions/${encodeURIComponent(ingestId)}/result`)
+  },
+
+  submit(payload = {}) {
+    return api.post('/document-ingestions', payload)
+  }
+}
+
 export const mcpApi = {
   listServers() {
     return api.get('/mcp/servers')

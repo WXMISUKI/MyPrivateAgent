@@ -32,6 +32,94 @@
 
     <div v-if="loading" class="loading-hint">加载中...</div>
 
+    <div class="provider-card">
+      <div class="provider-header">
+        <span class="provider-name">文档 Ingestion 测试</span>
+        <span class="source-tag">upload -> parse -> artifact</span>
+      </div>
+      <div class="capability-meta">
+        <span>通过统一能力运行时调用 OCR/Layout/VLM，并将成功结果持久化为 Artifact。</span>
+      </div>
+      <div class="field-row">
+        <label>文档文件（图片/PDF）</label>
+        <input class="field-input" data-test="document-ingest-file" type="file" accept=".png,.jpg,.jpeg,.pdf,image/png,image/jpeg,application/pdf" @change="handleIngestionFile" />
+        <label>解析模式（parse_mode）</label>
+        <select class="field-input" data-test="document-ingest-mode" v-model="ingestionParseMode">
+          <option value="ocr">ocr</option>
+          <option value="layout">layout</option>
+          <option value="vlm_async">vlm_async</option>
+        </select>
+        <template v-if="ingestionParseMode === 'layout'">
+          <label>输出格式（output_format）</label>
+          <select class="field-input" v-model="ingestionLayoutOutputFormat">
+            <option value="markdown">markdown</option>
+            <option value="json">json</option>
+          </select>
+          <label class="inline-check">
+            <input type="checkbox" v-model="ingestionLayoutIncludeTables" />
+            包含表格（include_tables）
+          </label>
+          <label class="inline-check">
+            <input type="checkbox" v-model="ingestionLayoutIncludeLayout" />
+            包含版面（include_layout）
+          </label>
+        </template>
+        <template v-if="ingestionParseMode === 'vlm_async'">
+          <label>任务（task）</label>
+          <select class="field-input" v-model="ingestionVlmTask">
+            <option value="summarize">summarize</option>
+            <option value="extract_fields">extract_fields</option>
+            <option value="chart_understanding">chart_understanding</option>
+            <option value="qa">qa</option>
+          </select>
+          <label>问题（question，可选）</label>
+          <input class="field-input" type="text" v-model="ingestionVlmQuestion" placeholder="例如：请总结合同关键条款" />
+        </template>
+        <label>最大页数（max_pages，可选）</label>
+        <input class="field-input" type="number" min="1" step="1" v-model="ingestionMaxPages" placeholder="例如 5" />
+      </div>
+      <div class="provider-actions">
+        <button
+          class="action-btn test-btn"
+          data-test="document-ingest-submit"
+          type="button"
+          @click="submitDocumentIngestion"
+          :disabled="ingestionSubmitting"
+        >
+          {{ ingestionSubmitting ? '提交中...' : '提交 Ingestion' }}
+        </button>
+      </div>
+      <div
+        v-if="ingestionResult"
+        class="test-result"
+        :class="ingestionResult.ok ? 'ok' : 'error'"
+      >
+        <template v-if="ingestionResult.ok">
+          <div class="ocr-summary">
+            <span>ingest_id: {{ ingestionResult.ingestion?.ingest_id || '(missing)' }}</span>
+            <span>status: {{ ingestionResult.ingestion?.status || '(missing)' }}</span>
+            <span>artifact_id: {{ ingestionResult.ingestion?.artifact_id || '(pending)' }}</span>
+          </div>
+          <div v-if="ingestionWarnings.length" class="ocr-warning-list">
+            <span
+              v-for="(warning, idx) in ingestionWarnings"
+              :key="'ingestion-warning-' + idx"
+              class="field-hint"
+            >
+              warning: {{ warning }}
+            </span>
+          </div>
+        </template>
+        <template v-else>
+          <span>{{ ingestionErrorText }}</span>
+        </template>
+        <details class="ocr-section">
+          <summary>Raw JSON</summary>
+          <pre>{{ formatJson(ingestionResult) }}</pre>
+        </details>
+      </div>
+    </div>
+
     <div v-for="capability in capabilities" :key="capability.capability_id" class="provider-card">
       <div class="provider-header">
         <span class="provider-name">{{ capability.capability_id }}</span>
@@ -61,22 +149,22 @@
 
       <div v-if="capability.kind === 'layout'" class="field-row">
         <label>Layout 文件（图片/PDF）</label>
-        <input class="field-input" type="file" accept=".png,.jpg,.jpeg,.pdf,image/png,image/jpeg,application/pdf" @change="event => handleLayoutFile(capability.capability_id, event)" />
+        <input class="field-input" data-test="layout-file" type="file" accept=".png,.jpg,.jpeg,.pdf,image/png,image/jpeg,application/pdf" @change="event => handleLayoutFile(capability.capability_id, event)" />
         <label>输出格式（output_format）</label>
-        <select class="field-input" :value="layoutOutputFormat[capability.capability_id] || 'markdown'" @change="event => setLayoutOutputFormat(capability.capability_id, event)">
+        <select class="field-input" data-test="layout-output-format" :value="layoutOutputFormat[capability.capability_id] || 'markdown'" @change="event => setLayoutOutputFormat(capability.capability_id, event)">
           <option value="markdown">markdown</option>
           <option value="json">json</option>
         </select>
         <label class="inline-check">
-          <input type="checkbox" :checked="layoutIncludeTables[capability.capability_id] !== false" @change="event => setLayoutIncludeTables(capability.capability_id, event)" />
+            <input data-test="layout-include-tables" type="checkbox" :checked="layoutIncludeTables[capability.capability_id] !== false" @change="event => setLayoutIncludeTables(capability.capability_id, event)" />
           包含表格（include_tables）
         </label>
         <label class="inline-check">
-          <input type="checkbox" :checked="layoutIncludeLayout[capability.capability_id] !== false" @change="event => setLayoutIncludeLayout(capability.capability_id, event)" />
+            <input data-test="layout-include-layout" type="checkbox" :checked="layoutIncludeLayout[capability.capability_id] !== false" @change="event => setLayoutIncludeLayout(capability.capability_id, event)" />
           包含版面（include_layout）
         </label>
         <label>最大页数（max_pages，可选）</label>
-        <input class="field-input" type="number" min="1" step="1" :value="layoutMaxPages[capability.capability_id] || ''" @input="event => setLayoutMaxPages(capability.capability_id, event)" placeholder="例如 10" />
+        <input class="field-input" data-test="layout-max-pages" type="number" min="1" step="1" :value="layoutMaxPages[capability.capability_id] || ''" @input="event => setLayoutMaxPages(capability.capability_id, event)" placeholder="例如 10" />
         <span class="field-hint">默认输出 markdown，参数会透传到 layout provider。</span>
       </div>
       <div v-if="capability.kind === 'vlm'" class="field-row">
@@ -328,7 +416,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
-import { capabilityApi, documentArtifactApi } from '../api'
+import { capabilityApi, documentArtifactApi, documentIngestionApi } from '../api'
 
 const capabilities = ref([])
 const heartbeat = ref(null)
@@ -352,8 +440,26 @@ const vlmTasks = reactive({})
 const vlmQuestions = reactive({})
 const vlmMaxPages = reactive({})
 const vlmJobIds = reactive({})
+const ingestionFile = ref(null)
+const ingestionParseMode = ref('layout')
+const ingestionLayoutOutputFormat = ref('markdown')
+const ingestionLayoutIncludeTables = ref(true)
+const ingestionLayoutIncludeLayout = ref(true)
+const ingestionVlmTask = ref('summarize')
+const ingestionVlmQuestion = ref('')
+const ingestionMaxPages = ref('')
+const ingestionSubmitting = ref(false)
+const ingestionResult = ref(null)
 
 const heartbeatProviders = computed(() => heartbeat.value?.providers || [])
+const ingestionWarnings = computed(() => {
+  const warnings = ingestionResult.value?.ingestion?.warnings
+  return Array.isArray(warnings) ? warnings.map(item => String(item)) : []
+})
+const ingestionErrorText = computed(() => {
+  const error = ingestionResult.value?.error || {}
+  return `${error.code || 'DOCUMENT_INGEST_FAILED'}: ${error.message || '提交失败'}`
+})
 
 onMounted(() => {
   loadDiagnostics()
@@ -605,6 +711,57 @@ function setVlmMaxPages(capabilityId, event) {
 
 function setVlmJobId(capabilityId, event) {
   vlmJobIds[capabilityId] = String(event.target.value || '').trim()
+}
+
+function handleIngestionFile(event) {
+  const file = event.target.files?.[0]
+  ingestionFile.value = file || null
+  ingestionResult.value = null
+}
+
+async function submitDocumentIngestion() {
+  ingestionSubmitting.value = true
+  ingestionResult.value = null
+  try {
+    const payload = await buildDocumentIngestionPayload()
+    const response = await documentIngestionApi.submit(payload)
+    ingestionResult.value = response.data
+  } catch (error) {
+    ingestionResult.value = {
+      ok: false,
+      error: error.response?.data?.error || error.response?.data || {
+        code: 'DOCUMENT_INGEST_REQUEST_FAILED',
+        message: error.message || '请求失败'
+      }
+    }
+  } finally {
+    ingestionSubmitting.value = false
+  }
+}
+
+async function buildDocumentIngestionPayload() {
+  const file = ingestionFile.value
+  if (!file) {
+    throw new Error('请先选择文档文件（png/jpg/pdf）')
+  }
+  const parseMode = String(ingestionParseMode.value || 'layout')
+  const payload = {
+    parse_mode: parseMode,
+    file_base64: await readFileAsBase64(file),
+    media_type: resolveOcrMediaType(file),
+    filename: file.name,
+    max_pages: toPositiveInteger(ingestionMaxPages.value)
+  }
+  if (parseMode === 'layout') {
+    payload.output_format = ingestionLayoutOutputFormat.value || 'markdown'
+    payload.include_tables = ingestionLayoutIncludeTables.value
+    payload.include_layout = ingestionLayoutIncludeLayout.value
+  }
+  if (parseMode === 'vlm_async') {
+    payload.task = ingestionVlmTask.value || 'summarize'
+    payload.question = String(ingestionVlmQuestion.value || '')
+  }
+  return payload
 }
 
 function resolveAsrMediaType(file) {

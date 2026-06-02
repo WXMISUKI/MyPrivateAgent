@@ -2,12 +2,13 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { listMock, heartbeatMock, testMock, invokeMock, persistArtifactMock } = vi.hoisted(() => ({
+const { listMock, heartbeatMock, testMock, invokeMock, persistArtifactMock, submitIngestionMock } = vi.hoisted(() => ({
   listMock: vi.fn(),
   heartbeatMock: vi.fn(),
   testMock: vi.fn(),
   invokeMock: vi.fn(),
-  persistArtifactMock: vi.fn()
+  persistArtifactMock: vi.fn(),
+  submitIngestionMock: vi.fn()
 }))
 
 vi.mock('../../api', () => ({
@@ -19,6 +20,9 @@ vi.mock('../../api', () => ({
   },
   documentArtifactApi: {
     persist: persistArtifactMock
+  },
+  documentIngestionApi: {
+    submit: submitIngestionMock
   }
 }))
 
@@ -38,6 +42,7 @@ describe('CapabilityProviderDiagnosticsPanel', () => {
     testMock.mockReset()
     invokeMock.mockReset()
     persistArtifactMock.mockReset()
+    submitIngestionMock.mockReset()
     listMock.mockResolvedValue({
       data: {
         capabilities: [
@@ -315,6 +320,75 @@ describe('CapabilityProviderDiagnosticsPanel', () => {
     expect(wrapper.text()).toContain('DOCUMENT_ARTIFACT_INVALID_INPUT: result must be an object.')
   })
 
+  it('submits document ingestion and displays ingest and artifact ids', async () => {
+    submitIngestionMock.mockResolvedValue({
+      data: {
+        ok: true,
+        ingestion: {
+          ingest_id: 'doc-ingest-1',
+          status: 'succeeded',
+          artifact_id: 'doc-artifact-1',
+          warnings: ['minor']
+        }
+      }
+    })
+    const wrapper = mount(CapabilityProviderDiagnosticsPanel)
+    await flushPromises()
+
+    const file = new File([new Uint8Array([65, 66, 67])], 'layout.pdf', { type: 'application/pdf' })
+    file.arrayBuffer = async () => new Uint8Array([65, 66, 67]).buffer
+    const fileInput = wrapper.find('[data-test="document-ingest-file"]')
+    Object.defineProperty(fileInput.element, 'files', {
+      value: [file],
+      configurable: true
+    })
+    await fileInput.trigger('change')
+    await wrapper.find('[data-test="document-ingest-mode"]').setValue('layout')
+    await wrapper.find('[data-test="document-ingest-submit"]').trigger('click')
+    await flushPromises()
+
+    expect(submitIngestionMock).toHaveBeenCalledOnce()
+    expect(submitIngestionMock.mock.calls[0][0]).toMatchObject({
+      parse_mode: 'layout',
+      media_type: 'application/pdf',
+      filename: 'layout.pdf',
+      output_format: 'markdown',
+      include_tables: true,
+      include_layout: true
+    })
+    expect(wrapper.text()).toContain('ingest_id: doc-ingest-1')
+    expect(wrapper.text()).toContain('artifact_id: doc-artifact-1')
+    expect(wrapper.text()).toContain('warning: minor')
+  })
+
+  it('displays structured document ingestion errors', async () => {
+    submitIngestionMock.mockRejectedValue({
+      response: {
+        data: {
+          error: {
+            code: 'DOCUMENT_INGEST_INVALID_INPUT',
+            message: 'parse_mode must be one of: ocr, layout, vlm_async.'
+          }
+        }
+      }
+    })
+    const wrapper = mount(CapabilityProviderDiagnosticsPanel)
+    await flushPromises()
+
+    const file = new File([new Uint8Array([65])], 'sample.png', { type: 'image/png' })
+    file.arrayBuffer = async () => new Uint8Array([65]).buffer
+    const fileInput = wrapper.find('[data-test="document-ingest-file"]')
+    Object.defineProperty(fileInput.element, 'files', {
+      value: [file],
+      configurable: true
+    })
+    await fileInput.trigger('change')
+    await wrapper.find('[data-test="document-ingest-submit"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('DOCUMENT_INGEST_INVALID_INPUT: parse_mode must be one of: ocr, layout, vlm_async.')
+  })
+
   it('shows layout validation error when no file is selected', async () => {
     listMock.mockResolvedValueOnce({
       data: {
@@ -400,20 +474,19 @@ describe('CapabilityProviderDiagnosticsPanel', () => {
 
     const file = new File([new Uint8Array([65, 66, 67])], 'layout.pdf', { type: 'application/pdf' })
     file.arrayBuffer = async () => new Uint8Array([65, 66, 67]).buffer
-    const fileInput = wrapper.find('input[type="file"]')
+    const fileInput = wrapper.find('[data-test="layout-file"]')
     Object.defineProperty(fileInput.element, 'files', {
       value: [file],
       configurable: true
     })
     await fileInput.trigger('change')
 
-    const select = wrapper.find('select')
+    const select = wrapper.find('[data-test="layout-output-format"]')
     await select.setValue('json')
-    const numberInput = wrapper.find('input[type="number"]')
+    const numberInput = wrapper.find('[data-test="layout-max-pages"]')
     await numberInput.setValue('7')
-    const checkboxes = wrapper.findAll('input[type="checkbox"]')
-    await checkboxes[0].setValue(false)
-    await checkboxes[1].setValue(false)
+    await wrapper.find('[data-test="layout-include-tables"]').setValue(false)
+    await wrapper.find('[data-test="layout-include-layout"]').setValue(false)
 
     await wrapper.find('[data-test="layout-invoke"]').trigger('click')
     await flushPromises()

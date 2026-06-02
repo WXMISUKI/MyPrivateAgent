@@ -54,6 +54,8 @@ Without artifacts, downstream RAG, domain agents, and audits cannot distinguish 
 
 ## Priority 2: Document Ingestion Workflow
 
+Status: implemented in OpenSpec change `add-document-ingestion-workflow`.
+
 Problem:
 
 The diagnostics panel can test capabilities, but there is not yet a formal user/business workflow for "upload document -> OCR/Layout -> review -> persist -> hand off to knowledge/RAG."
@@ -79,6 +81,14 @@ Minimum scope:
 Boundary:
 
 The heavy parsing still runs in external providers. MyPrivateAgent owns orchestration, policy, artifact references, and audit metadata.
+
+Implementation notes:
+
+- Backend exposes `POST /api/document-ingestions`, `GET /api/document-ingestions`, `GET /api/document-ingestions/{ingest_id}`, and `GET /api/document-ingestions/{ingest_id}/result`.
+- Supported parse modes are `ocr`, `layout`, and `vlm_async`.
+- Successful OCR/Layout outputs are persisted through the document artifact contract.
+- Non-terminal VLM async responses record provider job metadata and do not fabricate artifact ids.
+- The diagnostics panel now includes a minimal document ingestion test area.
 
 ## Priority 3: Quality And Evaluation Dataset
 
