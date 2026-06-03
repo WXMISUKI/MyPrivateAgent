@@ -24,27 +24,30 @@ The backend SHALL map layout parse requests to the external provider and normali
 
 The backend SHALL return stable error codes for layout parse input and provider failures.
 
-- Unsupported media type:
-  - **WHEN** `media_type` is not in `{application/pdf, image/png, image/jpeg}`
-  - **THEN** response `error.code` MUST be `LAYOUT_UNSUPPORTED_MEDIA_TYPE`
-- Invalid output format:
-  - **WHEN** `output_format` is not `markdown` or `json`
-  - **THEN** response `error.code` MUST be `LAYOUT_INVALID_OUTPUT_FORMAT`
-- Invalid input:
-  - **WHEN** `file_base64` is missing or empty
-  - **THEN** response `error.code` MUST be `LAYOUT_INVALID_INPUT`
-- Provider failure:
-  - **WHEN** provider returns non-zero/non-null `errorCode` or transport errors
-  - **THEN** response `error.code` SHOULD be `PADDLE_LAYOUT_PROVIDER_ERROR` for mapped provider failures
-  - **WHEN** HTTP transport is unreachable
-  - **THEN** response `error.code` SHOULD be `CAPABILITY_PROVIDER_UNREACHABLE`
+#### Scenario: Unsupported layout media type is rejected
+- **WHEN** `media_type` is not in `{application/pdf, image/png, image/jpeg}`
+- **THEN** response `error.code` MUST be `LAYOUT_UNSUPPORTED_MEDIA_TYPE`.
+
+#### Scenario: Invalid layout output format is rejected
+- **WHEN** `output_format` is not `markdown` or `json`
+- **THEN** response `error.code` MUST be `LAYOUT_INVALID_OUTPUT_FORMAT`.
+
+#### Scenario: Missing layout input is rejected
+- **WHEN** `file_base64` is missing or empty
+- **THEN** response `error.code` MUST be `LAYOUT_INVALID_INPUT`.
+
+#### Scenario: Layout provider failures are mapped
+- **WHEN** provider returns non-zero/non-null `errorCode` or transport errors
+- **THEN** response `error.code` SHOULD be `PADDLE_LAYOUT_PROVIDER_ERROR` for mapped provider failures.
+
+#### Scenario: Unreachable layout provider is reported
+- **WHEN** HTTP transport is unreachable
+- **THEN** response `error.code` SHOULD be `CAPABILITY_PROVIDER_UNREACHABLE`.
 
 ### Requirement: Layout parse status visibility
 
 The contract SHALL expose health and heartbeat states as documented in `unified-capability-runtime`:
 
-- `ready`
-- `disabled`
-- `unconfigured`
-- `missing_dependency`
-- `unreachable`
+#### Scenario: Layout provider status is visible
+- **WHEN** a client inspects the layout capability
+- **THEN** the status MUST be one of `ready`, `disabled`, `unconfigured`, `missing_dependency`, or `unreachable`.

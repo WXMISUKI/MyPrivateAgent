@@ -24,6 +24,17 @@
 
 Governance Timeline 前端继续瘦身仍有价值，但不应继续作为最高优先级。
 
+### Provider Capability Roadmap 补充
+
+Provider-first 能力路线已补充到 `docs/roadmap/provider_capability_gap_assessment_2026-06-03.md`，并通过 OpenSpec `provider-capability-roadmap` 固化为后续方向。当前优先级顺序是：
+
+1. 继续 `plan-external-rag-graphrag-provider`，等待外部 RAG / GraphRAG provider readiness 后做 caller-side readiness 与 smoke；不要把 LlamaIndex、Neo4j、向量库或图数据库引入主后端。
+2. 新开 `add-agent-grounding-policy-contract`，先定义 `require_citations / allow_ungrounded / fallback_policy / source_acl_mode`，再谈默认 chat 检索注入。
+3. 新开 `add-promptops-versioned-prompt-contract`，把 `/prompts` 从 CRUD 升级为版本、变量、评测、审批、灰度、回滚合同。
+4. 新开 `add-agent-memoryops-lifecycle-contract`，区分 hot session、conversation summary、长期记忆与 retrieved evidence。
+5. 新开 `add-multiturn-agent-evaluation-gate`，用多轮场景回归验证 prompt/RAG/context 行为。
+6. P2 的多模态 taxonomy、workflow/chatflow、企业 connector 和 provider ops 后置到 P0/P1 control contract 稳定之后。
+
 ## 1.1 Phase G：外部参考对齐后的新增方向
 
 已完成第一刀：

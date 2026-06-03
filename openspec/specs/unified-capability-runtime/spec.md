@@ -347,3 +347,139 @@ The frontend diagnostics panel SHALL expose a minimal document ingestion test ar
 #### Scenario: Display structured ingestion errors
 - **WHEN** ingestion submission fails
 - **THEN** the diagnostics panel displays the backend error code and message.
+
+### Requirement: External document VLM capability registration
+
+The backend SHALL support registering `document.vlm.parse` as an HTTP capability when an external VLM provider is configured.
+
+#### Scenario: VLM capability appears in registry
+- **GIVEN** VLM provider integration is enabled
+- **WHEN** a client requests `GET /api/capabilities`
+- **THEN** the registry includes `document.vlm.parse`
+- **AND** the capability uses `kind=vlm` and `transport=http`.
+
+### Requirement: Document VLM parse normalization
+
+The backend SHALL map VLM parse requests to the external provider and normalize responses into a provider-neutral semantic envelope.
+
+#### Scenario: VLM invocation returns semantic understanding and evidence
+- **WHEN** a client invokes `POST /api/capabilities/document.vlm.parse/invoke`
+- **THEN** the response includes `summary`, `sections`, `entities`, `answers`, `evidence`, `warnings`, and `raw`.
+
+### Requirement: Async document VLM invocation contract
+
+The backend SHALL expose `document.vlm.parse.async` when VLM external provider is enabled.
+
+#### Scenario: Async submit path and operation contract
+- **GIVEN** the external VLM provider is enabled
+- **WHEN** a client invokes `POST /api/capabilities/document.vlm.parse.async/invoke`
+- **THEN** the request body MUST include `operation`.
+- **AND** when `operation=submit`, the request MUST include `file_base64` and `media_type`.
+- **AND** when `operation=status`, the request MUST include `job_id`.
+
+### Requirement: Async result schema
+
+The backend SHALL normalize async responses into a stable provider-neutral async envelope.
+
+#### Scenario: Async response includes stable fields
+- **WHEN** a client submits or checks a `document.vlm.parse.async` job
+- **THEN** the normalized response MUST include `job_id`, `status`, `progress`, `warnings`, and `raw`.
+- **AND** `status` MUST be one of `queued`, `running`, `succeeded`, `failed`, or `expired`.
+- **AND** `result` MAY be present when parsing succeeds.
+- **AND** `error` MAY be present when parsing fails.
+
+### Requirement: Status normalization
+
+The backend SHALL normalize raw provider status values into the accepted async status set.
+
+#### Scenario: Successful provider status is normalized
+- **WHEN** provider status is `success` or `done`
+- **THEN** normalized status MUST be `succeeded`.
+
+#### Scenario: Failed provider status is normalized
+- **WHEN** provider status is `error`, `exception`, or `timeout`
+- **THEN** normalized status MUST be `failed`.
+
+#### Scenario: Queued provider status is normalized
+- **WHEN** provider status is `init` or `pending`
+- **THEN** normalized status MUST be `queued`.
+
+#### Scenario: Unknown provider status fails closed
+- **WHEN** provider status is unrecognized and non-empty
+- **THEN** normalized status MUST be `failed`.
+
+### Requirement: Provider path configuration
+
+The backend SHALL read and apply configurable async provider paths.
+
+#### Scenario: Default async provider paths are used
+- **WHEN** async provider path environment variables are unset
+- **THEN** the submit path MUST default to `/api/vlm/jobs`.
+- **AND** the status path template MUST default to `/api/vlm/jobs/{job_id}`.
+
+#### Scenario: Custom async provider paths are applied
+- **WHEN** `VLM_CAPABILITY_PROVIDER_ASYNC_SUBMIT_PATH` or `VLM_CAPABILITY_PROVIDER_ASYNC_STATUS_PATH_TEMPLATE` is configured
+- **THEN** the backend MUST use the configured path values for async submit and status requests.
+
+### Requirement: Async error behavior
+
+The backend MUST return stable async VLM error codes for invalid async operations.
+
+#### Scenario: Missing async job id is rejected
+- **WHEN** `operation=status` and `job_id` is missing
+- **THEN** response `error.code` MUST be `VLM_ASYNC_MISSING_JOB_ID`.
+
+#### Scenario: Unknown async operation is rejected
+- **WHEN** `operation` is not `submit` or `status`
+- **THEN** response `error.code` MUST be `VLM_ASYNC_INVALID_OPERATION`.
+
+### Requirement: External document layout capability registration
+
+The backend SHALL support registering `document.layout.parse` as an HTTP capability when an external layout provider is configured.
+
+#### Scenario: Layout capability is discoverable
+- **GIVEN** layout provider integration is enabled
+- **WHEN** a client requests `GET /api/capabilities`
+- **THEN** the registry includes `document.layout.parse`
+- **AND** the capability uses `kind=layout` and `transport=http`.
+
+### Requirement: Document layout parse normalization
+
+The backend SHALL map layout parse requests to the external provider and normalize responses into a provider-neutral envelope.
+
+#### Scenario: Layout invocation returns markdown and table evidence
+- **WHEN** a client invokes `POST /api/capabilities/document.layout.parse/invoke`
+- **THEN** the response includes `markdown`, `elements`, `tables`, `pages`, `artifacts`, `warnings`, and `raw`.
+
+### Requirement: Layout parse error code contract
+
+The backend SHALL return stable error codes for layout parse input and provider failures.
+
+#### Scenario: Unsupported layout media type is rejected
+- **WHEN** `media_type` is not in `{application/pdf, image/png, image/jpeg}`
+- **THEN** response `error.code` MUST be `LAYOUT_UNSUPPORTED_MEDIA_TYPE`.
+
+#### Scenario: Invalid layout output format is rejected
+- **WHEN** `output_format` is not `markdown` or `json`
+- **THEN** response `error.code` MUST be `LAYOUT_INVALID_OUTPUT_FORMAT`.
+
+#### Scenario: Missing layout input is rejected
+- **WHEN** `file_base64` is missing or empty
+- **THEN** response `error.code` MUST be `LAYOUT_INVALID_INPUT`.
+
+#### Scenario: Layout provider failures are mapped
+- **WHEN** provider returns non-zero/non-null `errorCode` or transport errors
+- **THEN** response `error.code` SHOULD be `PADDLE_LAYOUT_PROVIDER_ERROR` for mapped provider failures.
+
+#### Scenario: Unreachable layout provider is reported
+- **WHEN** HTTP transport is unreachable
+- **THEN** response `error.code` SHOULD be `CAPABILITY_PROVIDER_UNREACHABLE`.
+
+### Requirement: Layout parse status visibility
+
+The contract SHALL expose health and heartbeat states as documented in `unified-capability-runtime`:
+
+#### Scenario: Layout provider status is visible
+- **WHEN** a client inspects the layout capability
+- **THEN** the status MUST be one of `ready`, `disabled`, `unconfigured`, `missing_dependency`, or `unreachable`.
+
