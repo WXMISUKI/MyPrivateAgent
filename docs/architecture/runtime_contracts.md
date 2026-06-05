@@ -1058,6 +1058,38 @@ II-1 第一刀当前未做：
 - Query Control timeline 默认 `dedupe_key` 格式为 `query_control:{channel}:{stage}:{conversation_id}:{query_id}`。
 - `QueryControlEventMapperService` 已把 Embedded SDK 现有事件映射到 Query Control lifecycle。
 - `QueryControlEventMapperService.build_record_payload(...)` 会为 `tool_result` 事件提取 compact `tool_runtime_observation`，包含 `tool_name / status / executor / policy_status / policy_permission_level / policy_reason_code / schema_validation_status / retry_status / retry_attempt_count / retry_max_attempts / timeout_status / timeout_seconds / timeout_enforcement`，但不会复制完整 result 文本、card 或任意 raw execution blob。
+
+## 12. PromptOps Versioned Prompt Contract
+
+主要来源：
+
+- `backend/models.py` 的 `SystemPrompt`
+- `backend/services/promptops_contract_service.py`
+- `backend/routers/learnings.py`
+
+当前状态：
+
+- `promptops-versioned-prompt-v1` 是现有 prompt 记录之上的只读兼容合同。
+- `GET /api/learnings/prompts/contract` 暴露 PromptOps registry，包含 `prompt_count`、`active_prompt_count`、`behavior_boundary` 和归一化后的 prompt contracts。
+- 旧 prompt 默认映射为 `version = "1"`。
+- `is_active = true` 默认映射为 `status = active`；`is_active = false` 默认映射为 `status = archived`。
+- `{{variable_name}}` 模板占位符会被提取到 `variables_schema.properties` 和 `variables_schema.required`。
+- tag 前缀可携带轻量治理元数据：
+  - `version:<value>`
+  - `status:draft|review|active|archived`
+  - `owner:<id>`
+  - `grounding_policy:<id>`
+  - `eval_set:<id>`
+  - `approval:not_required|pending|approved|rejected`
+  - `rollout:<mode>`
+  - `rollback_target:<version>`
+
+维护约束：
+
+- 该合同当前是 `visibility_only`，不改变 `/api/chat`、`RuntimeLearningService` 或 `PromptInjector` 的默认注入行为。
+- Prompt 激活、审批、灰度、回滚执行必须等待后续 eval-backed promotion change。
+- 新增 PromptOps 字段时，应优先保持向后兼容；旧 prompt 记录不能因为缺少版本 tag 而失效。
+- 该阶段不引入 prompt version 表、Prompt Studio UI 或多轮 eval runner。
 - `EmbeddedAgentRuntimeSDK` 可通过显式注入 `query_control_db` 和 timeline service 启用 query lifecycle 持久记录。
 - `QueryControlEventMapperService` 已把 external adapter pilot 事件映射到 Query Control lifecycle。
 - `FrameworkAdapterRuntimeService` 可通过显式注入 query control timeline service 启用 external adapter pilot 的 query lifecycle 持久记录。

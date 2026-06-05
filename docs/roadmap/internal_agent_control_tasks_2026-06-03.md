@@ -6,14 +6,14 @@
 
 The external RAG / GraphRAG provider remains an active but external data-plane dependency. While that project is still under development, MyPrivateAgent should keep moving on internal control contracts that are useful on their own and are required before default retrieval injection becomes safe.
 
-The next implementation line is `add-agent-grounding-policy-contract`.
+`add-agent-grounding-policy-contract` has been implemented and archived. The current Phase 21 implementation line is `add-promptops-versioned-prompt-contract`.
 
 ## Sequenced Task Queue
 
 | Order | OpenSpec change | Goal | External provider dependency | Implementation stance |
 |---|---|---|---|---|
-| 1 | `add-agent-grounding-policy-contract` | Normalize agent grounding policy, citation requirement, ungrounded fallback, and source ACL semantics | No for visibility; yes later for enforcement | Implement first |
-| 2 | `add-promptops-versioned-prompt-contract` | Turn `/prompts` CRUD into versioned prompt governance with variables, eval binding, approval, rollout, and rollback | No | Spec after grounding |
+| 1 | `add-agent-grounding-policy-contract` | Normalize agent grounding policy, citation requirement, ungrounded fallback, and source ACL semantics | No for visibility; yes later for enforcement | Done |
+| 2 | `add-promptops-versioned-prompt-contract` | Turn `/prompts` CRUD into versioned prompt governance with variables, eval binding, approval, rollout, and rollback | No | Phase 21 current |
 | 3 | `add-agent-memoryops-lifecycle-contract` | Define hot session state, conversation summary, long-term memory, TTL, deletion, confidence, conflict, and injection trace | No | Spec after PromptOps or in parallel only if needed |
 | 4 | `add-multiturn-agent-evaluation-gate` | Add scenario-based regression for prompt, grounding, memory, tool, and refusal behavior | Partial | Spec before changing default retrieval injection |
 | 5 | Later focused changes | Multimodal taxonomy, workflow/chatflow, enterprise connectors, provider ops | Depends on scenario | Defer until P0/P1 contracts stabilize |
@@ -48,3 +48,21 @@ PromptOps should follow grounding policy because prompt versions and activation 
 MemoryOps should follow PromptOps or run as a separate contract-only change if we need durable long-term memory semantics earlier.
 
 Multi-turn eval should be created before any behavior-affecting promotion such as default knowledge injection, automatic grounding enforcement, or prompt rollout.
+
+## Phase 21 PromptOps Slice
+
+Current implementation boundary:
+
+- Expose existing `SystemPrompt` records as a read-only PromptOps contract.
+- Keep legacy `/api/learnings/prompts` CRUD and runtime prompt injection unchanged.
+- Infer `version = "1"` for legacy prompts unless a `version:<value>` tag exists.
+- Report `status = active` for active prompts and `status = archived` for inactive prompts unless an explicit `status:draft` or `status:review` tag exists.
+- Extract `{{variable}}` template placeholders into a minimal variables schema.
+- Preserve optional governance tags such as `owner:<id>`, `grounding_policy:<id>`, `eval_set:<id>`, `approval:<state>`, `rollout:<mode>`, and `rollback_target:<version>`.
+
+Done means:
+
+- `add-promptops-versioned-prompt-contract` is implemented and archived.
+- A focused PromptOps read model is available without database migration.
+- Focused tests and strict OpenSpec validation pass.
+- Chat behavior and default retrieval injection remain unchanged.

@@ -18,6 +18,7 @@ try:
         Error, FeatureRequest, SystemPrompt, BestPractice
     )
     from services.self_improvement_timeline_service import get_self_improvement_timeline_service
+    from services.promptops_contract_service import get_promptops_contract_service
 except ModuleNotFoundError:  # pragma: no cover - package import compatibility
     from backend.agent_server.dependencies import get_db
     from backend.models import (
@@ -25,6 +26,7 @@ except ModuleNotFoundError:  # pragma: no cover - package import compatibility
         Error, FeatureRequest, SystemPrompt, BestPractice
     )
     from backend.services.self_improvement_timeline_service import get_self_improvement_timeline_service
+    from backend.services.promptops_contract_service import get_promptops_contract_service
 
 router = APIRouter(prefix="/api/learnings", tags=["learnings"])
 
@@ -1222,6 +1224,22 @@ async def get_active_prompts(
     query = query.order_by(SystemPrompt.priority.desc())
     prompts = query.limit(20).all()
     return [SystemPromptResponse(**model_to_dict(prompt)) for prompt in prompts]
+
+
+@router.get("/prompts/contract")
+async def get_promptops_contract(
+    prompt_type: Optional[str] = None,
+    area: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    query = db.query(SystemPrompt)
+    if prompt_type:
+        query = query.filter(SystemPrompt.prompt_type == prompt_type)
+    if area:
+        query = query.filter(SystemPrompt.area == area)
+    query = query.order_by(SystemPrompt.priority.desc(), SystemPrompt.updated_at.desc())
+    prompts = query.limit(100).all()
+    return get_promptops_contract_service().build_registry(prompts)
 
 
 @router.post("/practices", response_model=BestPracticeResponse)

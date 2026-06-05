@@ -167,6 +167,29 @@ prompts/refusal_and_risk.md
 
 Prompt 只描述业务边界和行为规范，不要写运行时实现细节，例如“直接调用某 Python 函数”。工具调用能力应由 ToolSpec、Skill、MCP 和 runtime policy 提供。
 
+当前 PromptOps v1 是轻量只读合同：后端会把现有 `SystemPrompt` 记录映射成版本化 PromptOps contract，但不会改变默认 chat prompt 注入行为。旧 prompt 不需要迁移；没有版本 tag 时默认视为 `version = "1"`。
+
+如需让 prompt 进入治理可见性，可以在 tags 中使用以下约定：
+
+```text
+version:2
+status:review
+owner:agent-team
+grounding_policy:ecommerce_support
+eval_set:refund-policy-eval
+approval:pending
+rollout:manual
+rollback_target:1
+```
+
+模板变量使用 mustache 风格占位符，例如：
+
+```text
+请根据订单 {{order_id}} 和客户 {{customer_id}} 判断退款策略。
+```
+
+`GET /api/learnings/prompts/contract` 会把这些占位符提取为 `variables_schema`，供后续 eval、审批和回滚治理使用。现阶段这些字段只用于可见性和试运行准备，不代表 prompt 已进入自动审批、灰度或强制 activation 流程。
+
 ### Step 3：定义 Tool 和 ToolSpec
 
 工具应放在：
