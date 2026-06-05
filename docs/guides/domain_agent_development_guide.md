@@ -190,6 +190,26 @@ rollback_target:1
 
 `GET /api/learnings/prompts/contract` 会把这些占位符提取为 `variables_schema`，供后续 eval、审批和回滚治理使用。现阶段这些字段只用于可见性和试运行准备，不代表 prompt 已进入自动审批、灰度或强制 activation 流程。
 
+### Step 2.1：理解 MemoryOps 边界
+
+当前 MemoryOps v1 是只读生命周期合同，用于解释记忆相关数据的来源和状态，不负责自动写入长期记忆。
+
+推荐区分：
+
+- `runtime_instruction_memory`：来自 `GLOBAL_AGENT.md`、`PROJECT_AGENT.md` 等运行时指令层。
+- `conversation_summary`：来自 `/compact` 或 conversation compact API 的持久摘要。
+- `hot_session_state`：会话内临时状态，当前仅报告 posture。
+- `long_term_memory`：长期用户/团队/领域记忆，当前尚未实现专用存储。
+- `retrieved_knowledge_evidence`：外部 RAG/GraphRAG 检索证据，不等同于 durable memory。
+
+`GET /api/admin/memoryops/contract` 可以查看当前 MemoryOps registry。传入 `conversation_id` 时，如果该会话已有 compact summary，会额外返回 `conversation_summary` entry。
+
+重要边界：
+
+- RAG 检索结果不会默认写入长期记忆。
+- compact summary 不删除原始 messages。
+- MemoryOps registry 当前是 `visibility_only`，不会改变 `/api/chat`、prompt injection 或 context packing 行为。
+
 ### Step 3：定义 Tool 和 ToolSpec
 
 工具应放在：

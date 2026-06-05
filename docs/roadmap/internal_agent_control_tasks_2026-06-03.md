@@ -6,15 +6,15 @@
 
 The external RAG / GraphRAG provider remains an active but external data-plane dependency. While that project is still under development, MyPrivateAgent should keep moving on internal control contracts that are useful on their own and are required before default retrieval injection becomes safe.
 
-`add-agent-grounding-policy-contract` has been implemented and archived. The current Phase 21 implementation line is `add-promptops-versioned-prompt-contract`.
+`add-agent-grounding-policy-contract` and `add-promptops-versioned-prompt-contract` have been implemented and archived. The current Phase 22 implementation line is `add-agent-memoryops-lifecycle-contract`.
 
 ## Sequenced Task Queue
 
 | Order | OpenSpec change | Goal | External provider dependency | Implementation stance |
 |---|---|---|---|---|
 | 1 | `add-agent-grounding-policy-contract` | Normalize agent grounding policy, citation requirement, ungrounded fallback, and source ACL semantics | No for visibility; yes later for enforcement | Done |
-| 2 | `add-promptops-versioned-prompt-contract` | Turn `/prompts` CRUD into versioned prompt governance with variables, eval binding, approval, rollout, and rollback | No | Phase 21 current |
-| 3 | `add-agent-memoryops-lifecycle-contract` | Define hot session state, conversation summary, long-term memory, TTL, deletion, confidence, conflict, and injection trace | No | Spec after PromptOps or in parallel only if needed |
+| 2 | `add-promptops-versioned-prompt-contract` | Turn `/prompts` CRUD into versioned prompt governance with variables, eval binding, approval, rollout, and rollback | No | Done |
+| 3 | `add-agent-memoryops-lifecycle-contract` | Define hot session state, conversation summary, long-term memory, TTL, deletion, confidence, conflict, and injection trace | No | Phase 22 current |
 | 4 | `add-multiturn-agent-evaluation-gate` | Add scenario-based regression for prompt, grounding, memory, tool, and refusal behavior | Partial | Spec before changing default retrieval injection |
 | 5 | Later focused changes | Multimodal taxonomy, workflow/chatflow, enterprise connectors, provider ops | Depends on scenario | Defer until P0/P1 contracts stabilize |
 
@@ -66,3 +66,20 @@ Done means:
 - A focused PromptOps read model is available without database migration.
 - Focused tests and strict OpenSpec validation pass.
 - Chat behavior and default retrieval injection remain unchanged.
+
+## Phase 22 MemoryOps Slice
+
+Current implementation boundary:
+
+- Expose existing `AgentMemoryService` runtime instruction layers as `runtime_instruction_memory` entries.
+- Expose latest durable compact summaries as `conversation_summary` entries when a `conversation_id` is provided.
+- Report posture for `hot_session_state`, `long_term_memory`, and `retrieved_knowledge_evidence` without introducing new storage.
+- Keep retrieved knowledge as evidence by default; promotion to durable memory must remain explicit in a later change.
+- Keep `/api/chat`, context packing, prompt injection, and retrieval behavior unchanged.
+
+Done means:
+
+- `add-agent-memoryops-lifecycle-contract` is implemented and archived.
+- `GET /api/admin/memoryops/contract` returns a stable visibility-only registry.
+- Focused MemoryOps tests and strict OpenSpec validation pass.
+- Multi-turn eval can reference grounding, prompt, and memory lifecycle vocabulary in the next phase.

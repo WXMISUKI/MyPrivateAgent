@@ -1090,6 +1090,33 @@ II-1 第一刀当前未做：
 - Prompt 激活、审批、灰度、回滚执行必须等待后续 eval-backed promotion change。
 - 新增 PromptOps 字段时，应优先保持向后兼容；旧 prompt 记录不能因为缺少版本 tag 而失效。
 - 该阶段不引入 prompt version 表、Prompt Studio UI 或多轮 eval runner。
+
+## 13. Agent MemoryOps Lifecycle Contract
+
+主要来源：
+
+- `backend/services/agent_memory_service.py`
+- `backend/services/chat_context_compact_service.py`
+- `backend/services/chat_context_packing_service.py`
+- `backend/services/memoryops_contract_service.py`
+- `backend/routers/memory.py`
+
+当前状态：
+
+- `agent-memoryops-lifecycle-v1` 是现有 memory/summary 能力之上的只读生命周期合同。
+- `GET /api/admin/memoryops/contract` 暴露 MemoryOps registry。
+- `AgentMemoryService` 的分层指令记忆映射为 `kind = runtime_instruction_memory`。
+- 传入 `conversation_id` 且存在 durable compact summary 时，最新摘要映射为 `kind = conversation_summary`。
+- `hot_session_state` 和 `long_term_memory` 当前只报告 posture，不表示已存在专用 MemoryOps 存储。
+- `retrieved_knowledge_evidence` 当前报告 `promotion_mode = explicit_only`，检索片段不会默认写入长期记忆。
+- registry 的 `behavior_boundary.mode = visibility_only`，并显式声明未改变 chat context packing、prompt injection 和 retrieval behavior。
+
+维护约束：
+
+- MemoryOps registry 不得创建、删除、提升、过期、注入或检索任何 memory entry。
+- 自动长期记忆写入、冲突处理、TTL 执行、隐私删除、向量记忆库都必须另开 change。
+- Conversation summary 的 audit source 仍是原始 `messages` 表；MemoryOps 只解释摘要生命周期，不替代原始会话记录。
+- 后续多轮 eval 可以引用该合同的 kind/status/source/scope/injection_trace 字段，但不得把当前 visibility-only registry 当作行为 enforcement。
 - `EmbeddedAgentRuntimeSDK` 可通过显式注入 `query_control_db` 和 timeline service 启用 query lifecycle 持久记录。
 - `QueryControlEventMapperService` 已把 external adapter pilot 事件映射到 Query Control lifecycle。
 - `FrameworkAdapterRuntimeService` 可通过显式注入 query control timeline service 启用 external adapter pilot 的 query lifecycle 持久记录。

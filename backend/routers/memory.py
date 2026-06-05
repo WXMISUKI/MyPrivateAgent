@@ -3,14 +3,22 @@
 提供会话状态和内存使用情况的监控接口
 """
 import logging
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 
 try:
     from harness import get_memory_manager, get_context_manager
+    from agent_server.dependencies import get_db
+    from services.agent_memory_service import get_agent_memory_service
+    from services.chat_context_compact_service import ChatContextCompactService
+    from services.memoryops_contract_service import get_memoryops_contract_service
 except ModuleNotFoundError:  # pragma: no cover - package import compatibility
     from backend.harness import get_memory_manager, get_context_manager
+    from backend.agent_server.dependencies import get_db
+    from backend.services.agent_memory_service import get_agent_memory_service
+    from backend.services.chat_context_compact_service import ChatContextCompactService
+    from backend.services.memoryops_contract_service import get_memoryops_contract_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -48,6 +56,25 @@ async def get_memory_stats():
     stats["context_count"] = len(context_mgr.contexts)
 
     return stats
+
+
+@router.get("/memoryops/contract")
+async def get_memoryops_contract(
+    conversation_id: Optional[int] = None,
+    db=Depends(get_db),
+):
+    """Return the MemoryOps lifecycle registry without changing runtime behavior."""
+    agent_memory_contract = get_agent_memory_service().build_runtime_contract()
+    conversation_summary = None
+    if conversation_id is not None:
+        conversation_summary = ChatContextCompactService(db).latest_summary(
+            conversation_id=conversation_id
+        )
+    return get_memoryops_contract_service().build_registry(
+        agent_memory_contract=agent_memory_contract,
+        conversation_summary=conversation_summary,
+        conversation_id=conversation_id,
+    )
 
 
 @router.get("/memory/sessions")
