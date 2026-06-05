@@ -110,13 +110,14 @@ capabilities:
     - logistics_faq
   graph_sources:
     - ecommerce_order_graph
-
-retrieval:
-  mode: agentic
-  default_top_k: 5
+grounding_policy:
   require_citations: true
-  graph_usage: relationship_questions_only
+  allow_ungrounded: false
+  must_use_knowledge_for_domains:
+    - refund.policy
+    - logistics.diagnosis
   fallback_policy: refuse_or_clarify_when_no_evidence
+  source_acl_mode: agent_manifest
 
 governance:
   approval_required:
@@ -132,7 +133,8 @@ governance:
 - `id`：前端请求中的 `execution_context.agent_id`。
 - `roles.id`：前端请求中的 `execution_context.agent_role`。
 - `capabilities`：该 agent 允许使用的能力清单，其中 `rag_sources` 和 `graph_sources` 会进入 Runtime Surface 的只读知识 registry。
-- `retrieval`：该 agent 的知识检索行为策略，描述是否由 agent 按需检索、默认 top_k、是否要求引用、图谱适用场景和无证据时的降级方式。
+- `grounding_policy`：该 agent 的知识行为策略，描述是否强制引用、是否允许无证据回答、哪些业务域必须使用知识、没有证据时如何 fallback，以及 source ACL 语义。
+- `retrieval`：兼容旧写法的知识检索行为策略输入，后续应迁移到 `grounding_policy`。
 - `governance.approval_required`：必须进入审批链路的高风险动作。
 
 ## 4. 垂域开发步骤
@@ -269,15 +271,17 @@ RAG 返回必须包含：
 - 实体关系、多跳路径、ontology 约束、关系型证据查询，优先用 Neo4j GraphRAG 作为外部 provider 内部图谱检索实现。
 - 两者都不进入 MyPrivateAgent 主后端；主项目只通过 `knowledge.rag.retrieve` 和 `knowledge.graph.query` 调用 provider。
 
-推荐在 `agent.yaml` 里显式记录检索策略：
+推荐在 `agent.yaml` 里显式记录 grounding policy，`retrieval` 仅作为兼容输入：
 
 ```yaml
-retrieval:
-  mode: agentic
-  default_top_k: 5
+grounding_policy:
   require_citations: true
-  graph_usage: relationship_questions_only
+  allow_ungrounded: false
+  must_use_knowledge_for_domains:
+    - refund.policy
+    - logistics.diagnosis
   fallback_policy: refuse_or_clarify_when_no_evidence
+  source_acl_mode: agent_manifest
 ```
 
 推荐在 `rag/retrieval_policy.md` 里补充自然语言规则：
@@ -288,6 +292,16 @@ retrieval:
 - 涉及实体关系、路径、归属、依赖时优先查询 graph source。
 - 高风险业务动作必须经过 policy / approval，不因 RAG 命中而自动执行。
 ```
+
+### Grounding policy readiness
+
+`domain_agent_registry` 会把每个 agent 的 `grounding_policy` 和 `grounding_policy_status` 一并暴露出来。这个状态是治理可见、非阻断的：
+
+- `ready`：字段完整且可直接解释。
+- `unknown`：策略存在，但 provider catalog / source readiness 仍未确认。
+- `degraded`：策略字段缺失或值不合法。
+
+在这个阶段，`grounding_policy_status.enforcement` 始终应保持 `visibility_only`，默认 `/api/chat` 的检索注入仍然保持关闭。
 
 ### Step 7：定义审批和风险策略
 

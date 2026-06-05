@@ -56,7 +56,20 @@ class _RuntimeSurfaceStub:
         self.config_service = _ConfigServiceStub()
         self.command_registry_service = _StaticContractService({"commands": []})
         self.domain_agent_registry_service = _StaticContractService(
-            {"contract_version": "domain-agent-registry-v1", "status": "empty"}
+            {
+                "contract_version": "domain-agent-registry-v1",
+                "status": "empty",
+                "grounding_policy_registry": {
+                    "contract_version": "agent-grounding-policy-registry-v1",
+                    "status": "empty",
+                    "enforcement": "visibility_only",
+                    "total_entries": 0,
+                    "ready_entries": 0,
+                    "unknown_entries": 0,
+                    "degraded_entries": 0,
+                    "entries": [],
+                },
+            }
         )
         self.tool_runtime_service = _StaticContractService({"contract_version": "tool-runtime-v1"})
         self.tool_runtime_service.build_adapter_health_contract = lambda: {"status": "ready"}
@@ -144,6 +157,14 @@ class DomainAgentRegistryServiceTests(unittest.TestCase):
                         - refund_policy_docs
                       graph_sources:
                         - ecommerce_order_graph
+                    grounding_policy:
+                      require_citations: true
+                      allow_ungrounded: false
+                      must_use_knowledge_for_domains:
+                        - refund.policy
+                        - logistics.diagnosis
+                      fallback_policy: refuse_or_clarify_when_no_evidence
+                      source_acl_mode: agent_manifest
                     governance:
                       approval_required:
                         - refund.create_request
@@ -166,6 +187,17 @@ class DomainAgentRegistryServiceTests(unittest.TestCase):
             self.assertEqual(agent["capabilities"]["tools"], ["order.lookup"])
             self.assertEqual(agent["capabilities"]["rag_sources"], ["refund_policy_docs"])
             self.assertEqual(agent["capabilities"]["graph_sources"], ["ecommerce_order_graph"])
+            self.assertEqual(agent["grounding_policy"]["policy_source"], "grounding_policy")
+            self.assertTrue(agent["grounding_policy"]["require_citations"])
+            self.assertFalse(agent["grounding_policy"]["allow_ungrounded"])
+            self.assertEqual(
+                agent["grounding_policy"]["must_use_knowledge_for_domains"],
+                ["refund.policy", "logistics.diagnosis"],
+            )
+            self.assertEqual(agent["grounding_policy"]["fallback_policy"], "refuse_or_clarify_when_no_evidence")
+            self.assertEqual(agent["grounding_policy"]["source_acl_mode"], "agent_manifest")
+            self.assertEqual(agent["grounding_policy_status"]["status"], "unknown")
+            self.assertEqual(agent["grounding_policy_status"]["enforcement"], "visibility_only")
             self.assertEqual(agent["governance"]["approval_required"], ["refund.create_request"])
             self.assertEqual(agent["agent_dir"], str(agent_dir))
             self.assertEqual(agent["manifest_path"], str(agent_dir / "agent.yaml"))
@@ -179,6 +211,53 @@ class DomainAgentRegistryServiceTests(unittest.TestCase):
             self.assertEqual(graph_registry["status"], "ready")
             self.assertEqual(graph_registry["entries"][0]["graph_id"], "ecommerce_order_graph")
             self.assertEqual(graph_registry["entries"][0]["agent_id"], "ecommerce_support")
+            grounding_registry = contract["grounding_policy_registry"]
+            self.assertEqual(grounding_registry["status"], "unknown")
+            self.assertEqual(grounding_registry["total_entries"], 1)
+            self.assertEqual(grounding_registry["entries"][0]["agent_id"], "ecommerce_support")
+            self.assertEqual(grounding_registry["entries"][0]["policy_source"], "grounding_policy")
+
+    def test_legacy_retrieval_policy_maps_to_grounding_policy(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            agent_dir = root / "legacy_agent"
+            agent_dir.mkdir()
+            (agent_dir / "agent.yaml").write_text(
+                textwrap.dedent(
+                    """
+                    id: legacy_agent
+                    name: Legacy Agent
+                    version: 0.1.0
+                    roles:
+                      - id: default
+                        default: true
+                    capabilities:
+                      rag_sources:
+                        - legacy_docs
+                    retrieval:
+                      mode: agentic
+                      default_top_k: 5
+                      require_citations: true
+                      graph_usage: relationship_questions_only
+                      fallback_policy: clarify
+                    """
+                ).strip(),
+                encoding="utf-8",
+            )
+
+            contract = DomainAgentRegistryService(root).build_runtime_contract()
+            agent = contract["agents"][0]
+
+            self.assertEqual(agent["grounding_policy"]["policy_source"], "retrieval")
+            self.assertTrue(agent["grounding_policy"]["require_citations"])
+            self.assertEqual(agent["grounding_policy"]["compatibility"]["mode"], "agentic")
+            self.assertEqual(agent["grounding_policy"]["compatibility"]["default_top_k"], 5)
+            self.assertEqual(
+                agent["grounding_policy"]["compatibility"]["graph_usage"],
+                "relationship_questions_only",
+            )
+            self.assertEqual(agent["grounding_policy"]["fallback_policy"], "clarify")
+            self.assertEqual(agent["grounding_policy_status"]["status"], "unknown")
 
     def test_invalid_manifest_reports_missing_required_field(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -210,6 +289,8 @@ class DomainAgentRegistryServiceTests(unittest.TestCase):
             self.assertEqual(contract["total_agents"], 0)
             self.assertEqual(contract["agents"], [])
             self.assertEqual(contract["errors"], [])
+            self.assertEqual(contract["grounding_policy_registry"]["status"], "empty")
+            self.assertEqual(contract["grounding_policy_registry"]["total_entries"], 0)
             self.assertEqual(rag_registry["status"], "empty")
             self.assertEqual(rag_registry["total_entries"], 0)
             self.assertEqual(graph_registry["status"], "empty")
@@ -229,6 +310,10 @@ class DomainAgentRegistryServiceTests(unittest.TestCase):
         self.assertEqual(
             profile["knowledge_graph_registry"]["contract_version"],
             "knowledge-graph-registry-v1",
+        )
+        self.assertEqual(
+            profile["domain_agent_registry"]["grounding_policy_registry"]["contract_version"],
+            "agent-grounding-policy-registry-v1",
         )
 
 

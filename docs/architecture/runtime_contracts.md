@@ -46,6 +46,8 @@ Runtime Surface 的当前聚合入口是：
 
 `domain_agent_registry` 由 `backend/services/domain_agent_registry_service.py` 构建，只读扫描 `backend/domain_agents/*/agent.yaml` 或 `agent.yml`。它用于暴露垂域 agent 身份、角色、能力和治理边界，不导入垂域代码，不自动注册工具、Skill、MCP 或 RAG，也不参与 chat 执行路由。
 
+`domain_agent_registry` 还会保留每个 agent 的规范化 `grounding_policy` 及其 `grounding_policy_status` 只读状态块，用于在默认 chat 检索注入之前向治理消费者展示策略、兼容输入和可见性 readiness。这个状态块是描述性的，不是执行授权源。
+
 `rag_source_registry` 与 `knowledge_graph_registry` 同样由 `DomainAgentRegistryService` 从 `capabilities.rag_sources` 和 `capabilities.graph_sources` 派生。它们只表达“哪个垂域 agent 允许看哪些知识源/图谱”，不创建索引、不上传文档、不编辑 ontology，也不自动把检索结果注入主 chat。外部知识执行由 capability runtime 的 `knowledge.rag.retrieve` 和 `knowledge.graph.query` 代理到 `unifiedKnowledgeProvider`。
 
 当前运行时作用域契约补充：

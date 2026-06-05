@@ -8,7 +8,20 @@ from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
 
 
 CONTRACT_VERSION = "domain-agent-registry-v1"
+GROUNDING_POLICY_CONTRACT_VERSION = "agent-grounding-policy-v1"
+GROUNDING_POLICY_REGISTRY_CONTRACT_VERSION = "agent-grounding-policy-registry-v1"
 DEFAULT_DOMAIN_AGENT_ROOT = Path(__file__).resolve().parents[1] / "domain_agents"
+SUPPORTED_FALLBACK_POLICIES = {
+    "answer_without_claiming_sources",
+    "clarify",
+    "refuse",
+    "refuse_or_clarify_when_no_evidence",
+}
+SUPPORTED_SOURCE_ACL_MODES = {
+    "agent_manifest",
+    "provider_catalog",
+    "intersection",
+}
 
 
 @dataclass(frozen=True)
@@ -37,6 +50,7 @@ class DomainAgentRegistryService:
         ready_agents = sum(1 for agent in agents if agent.get("status") == "ready")
         invalid_agents = len(errors) + sum(1 for agent in agents if agent.get("status") == "invalid")
         total_agents = len(agents) + len(errors)
+        grounding_policy_registry = _build_grounding_policy_registry(agents)
         if total_agents == 0:
             status = "empty"
         elif invalid_agents:
@@ -55,6 +69,7 @@ class DomainAgentRegistryService:
             "invalid_agents": invalid_agents,
             "agents": agents,
             "errors": errors,
+            "grounding_policy_registry": grounding_policy_registry,
         }
 
     def build_rag_source_registry_contract(self) -> Dict[str, Any]:
@@ -115,6 +130,11 @@ class DomainAgentRegistryService:
 
         capabilities = _normalize_capabilities(manifest.get("capabilities"))
         governance = _normalize_governance(manifest.get("governance"))
+        grounding_policy = _normalize_grounding_policy(
+            grounding_policy_value=manifest.get("grounding_policy"),
+            retrieval_value=manifest.get("retrieval"),
+            capabilities=capabilities,
+        )
         return {
             "id": _clean_string(manifest.get("id")),
             "name": _clean_string(manifest.get("name")),
@@ -124,6 +144,8 @@ class DomainAgentRegistryService:
             "roles": roles,
             "runtime": _normalize_mapping(manifest.get("runtime")),
             "capabilities": capabilities,
+            "grounding_policy": grounding_policy["policy"],
+            "grounding_policy_status": grounding_policy["readiness"],
             "governance": governance,
             "agent_dir": str(manifest_path.parent),
             "manifest_path": str(manifest_path),
@@ -174,6 +196,122 @@ def _normalize_capabilities(value: Any) -> Dict[str, List[str]]:
     }
 
 
+def _normalize_grounding_policy(
+    *,
+    grounding_policy_value: Any,
+    retrieval_value: Any,
+    capabilities: Mapping[str, List[str]],
+) -> Dict[str, Any]:
+    grounding_mapping = _normalize_mapping(grounding_policy_value)
+    retrieval_mapping = _normalize_mapping(retrieval_value)
+    policy_source = None
+    if grounding_mapping:
+        policy_source = "grounding_policy"
+    elif retrieval_mapping:
+        policy_source = "retrieval"
+
+    merged_mapping: Dict[str, Any] = dict(retrieval_mapping)
+    merged_mapping.update(grounding_mapping)
+
+    require_citations, require_citations_valid = _normalize_optional_bool(merged_mapping.get("require_citations"))
+    allow_ungrounded, allow_ungrounded_valid = _normalize_optional_bool(merged_mapping.get("allow_ungrounded"))
+    must_use_knowledge_for_domains = _normalize_string_list(
+        merged_mapping.get("must_use_knowledge_for_domains")
+    )
+    fallback_policy, fallback_policy_valid = _normalize_bound_enum(
+        merged_mapping.get("fallback_policy"),
+        SUPPORTED_FALLBACK_POLICIES,
+    )
+    source_acl_mode, source_acl_mode_valid = _normalize_bound_enum(
+        merged_mapping.get("source_acl_mode"),
+        SUPPORTED_SOURCE_ACL_MODES,
+    )
+
+    compatibility = {
+        "mode": _clean_string(merged_mapping.get("mode")) or None,
+        "default_top_k": _normalize_optional_int(merged_mapping.get("default_top_k")),
+        "graph_usage": _clean_string(merged_mapping.get("graph_usage")) or None,
+        "allowed_filters": _normalize_string_list(merged_mapping.get("allowed_filters")),
+    }
+    declared_fields = {
+        key: value
+        for key, value in {
+            "require_citations": require_citations,
+            "allow_ungrounded": allow_ungrounded,
+            "must_use_knowledge_for_domains": must_use_knowledge_for_domains,
+            "fallback_policy": fallback_policy,
+            "source_acl_mode": source_acl_mode,
+        }.items()
+        if value not in (None, [], {})
+    }
+    required_fields = {
+        "require_citations": require_citations,
+        "allow_ungrounded": allow_ungrounded,
+        "must_use_knowledge_for_domains": must_use_knowledge_for_domains,
+        "fallback_policy": fallback_policy,
+        "source_acl_mode": source_acl_mode,
+    } if policy_source == "grounding_policy" else {}
+    missing_fields = [
+        field
+        for field, value in required_fields.items()
+        if value in (None, [])
+    ]
+    invalid_fields = [
+        field
+        for field, valid in {
+            "require_citations": require_citations_valid,
+            "allow_ungrounded": allow_ungrounded_valid,
+            "fallback_policy": fallback_policy_valid,
+            "source_acl_mode": source_acl_mode_valid,
+        }.items()
+        if not valid and field in declared_fields
+    ]
+    source_ready = bool(capabilities.get("rag_sources") or capabilities.get("graph_sources"))
+    if invalid_fields or missing_fields:
+        status = "degraded"
+        reason_codes = sorted(set(["invalid_policy_fields", *invalid_fields, *missing_fields]))
+    elif policy_source is None and source_ready:
+        status = "unknown"
+        reason_codes = ["policy_not_declared", "source_readiness_unknown", "provider_catalog_unknown"]
+    elif policy_source and source_ready:
+        status = "unknown"
+        reason_codes = ["source_readiness_unknown", "provider_catalog_unknown"]
+    elif policy_source:
+        status = "ready"
+        reason_codes = []
+    else:
+        status = "unknown"
+        reason_codes = ["policy_not_declared"]
+
+    readiness = {
+        "contract_version": GROUNDING_POLICY_REGISTRY_CONTRACT_VERSION,
+        "status": status,
+        "policy_source": policy_source or "none",
+        "enforcement": "visibility_only",
+        "provider_catalog_status": "unknown" if source_ready else "not_applicable",
+        "source_readiness_status": "unknown" if source_ready else "not_applicable",
+        "reason_codes": reason_codes,
+        "declared_fields": sorted(declared_fields),
+        "missing_fields": missing_fields,
+        "invalid_fields": invalid_fields,
+    }
+    policy = {
+        "contract_version": GROUNDING_POLICY_CONTRACT_VERSION,
+        "policy_source": policy_source or "none",
+        "require_citations": require_citations,
+        "allow_ungrounded": allow_ungrounded,
+        "must_use_knowledge_for_domains": must_use_knowledge_for_domains,
+        "fallback_policy": fallback_policy,
+        "source_acl_mode": source_acl_mode,
+        "compatibility": compatibility,
+        "readiness": readiness,
+    }
+    return {
+        "policy": policy,
+        "readiness": readiness,
+    }
+
+
 def _build_knowledge_source_registry(
     domain_contract: Mapping[str, Any],
     *,
@@ -218,6 +356,36 @@ def _normalize_governance(value: Any) -> Dict[str, List[str]]:
 
 def _normalize_mapping(value: Any) -> Dict[str, Any]:
     return dict(value) if isinstance(value, Mapping) else {}
+
+
+def _normalize_optional_bool(value: Any) -> tuple[bool | None, bool]:
+    if isinstance(value, bool):
+        return value, True
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered in {"true", "yes", "1"}:
+            return True, True
+        if lowered in {"false", "no", "0"}:
+            return False, True
+    if value is None:
+        return None, True
+    return None, False
+
+
+def _normalize_optional_int(value: Any) -> int | None:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _normalize_bound_enum(value: Any, allowed_values: set[str]) -> tuple[str | None, bool]:
+    candidate = _clean_string(value)
+    if not candidate:
+        return None, True
+    if candidate in allowed_values:
+        return candidate, True
+    return None, False
 
 
 def _normalize_string_list(value: Any) -> List[str]:
@@ -336,3 +504,50 @@ def get_domain_agent_registry_service() -> DomainAgentRegistryService:
     if _domain_agent_registry_service is None:
         _domain_agent_registry_service = DomainAgentRegistryService()
     return _domain_agent_registry_service
+
+
+def _build_grounding_policy_registry(agents: List[Dict[str, Any]]) -> Dict[str, Any]:
+    entries: List[Dict[str, Any]] = []
+    for agent in agents:
+        if not isinstance(agent, dict) or agent.get("status") != "ready":
+            continue
+        policy = agent.get("grounding_policy")
+        readiness = agent.get("grounding_policy_status")
+        if not isinstance(policy, dict) or not isinstance(readiness, dict):
+            continue
+        entries.append(
+            {
+                "agent_id": _clean_string(agent.get("id")),
+                "agent_name": _clean_string(agent.get("name")),
+                "manifest_path": _clean_string(agent.get("manifest_path")),
+                "policy_source": _clean_string(policy.get("policy_source")) or "none",
+                "status": _clean_string(readiness.get("status")) or "unknown",
+                "enforcement": _clean_string(readiness.get("enforcement")) or "visibility_only",
+                "reason_codes": list(readiness.get("reason_codes") or []),
+                "provider_catalog_status": _clean_string(readiness.get("provider_catalog_status")) or "unknown",
+                "source_readiness_status": _clean_string(readiness.get("source_readiness_status")) or "unknown",
+                "declared_fields": list(readiness.get("declared_fields") or []),
+                "missing_fields": list(readiness.get("missing_fields") or []),
+                "invalid_fields": list(readiness.get("invalid_fields") or []),
+            }
+        )
+    entries.sort(key=lambda item: (str(item.get("agent_id") or ""), str(item.get("manifest_path") or "")))
+    statuses = {str(entry.get("status") or "unknown") for entry in entries}
+    if not entries:
+        status = "empty"
+    elif "degraded" in statuses:
+        status = "degraded"
+    elif "unknown" in statuses:
+        status = "unknown"
+    else:
+        status = "ready"
+    return {
+        "contract_version": GROUNDING_POLICY_REGISTRY_CONTRACT_VERSION,
+        "status": status,
+        "enforcement": "visibility_only",
+        "total_entries": len(entries),
+        "ready_entries": sum(1 for entry in entries if entry.get("status") == "ready"),
+        "unknown_entries": sum(1 for entry in entries if entry.get("status") == "unknown"),
+        "degraded_entries": sum(1 for entry in entries if entry.get("status") == "degraded"),
+        "entries": entries,
+    }
