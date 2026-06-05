@@ -16,8 +16,8 @@
 - [x] 3.1 Scaffold a standalone `unifiedKnowledgeProvider` project in a later implementation change.
 - [x] 3.2 Implement `/health`, `/api/capabilities`, `/api/rag/sources`, `/api/rag/retrieve`, `/api/graph/schemas`, and `/api/graph/query` in the provider.
 - [x] 3.3 Implement a provider-managed source catalog with readiness and version metadata.
-- [ ] 3.4 External provider readiness gate: confirm the external RAG / GraphRAG project exposes stable `/health`, `/api/capabilities`, `/api/catalog` or equivalent source catalog, `/api/rag/sources`, `/api/rag/retrieve`, `/api/graph/schemas`, and structured `/api/graph/query` behavior.
-- [ ] 3.5 Implement LlamaIndex-backed document RAG for the first knowledge base in the external provider project, not in the MyPrivateAgent main backend.
+- [x] 3.4 External provider readiness gate: confirm the external RAG / GraphRAG project exposes stable `/health`, `/api/capabilities`, `/api/catalog` or equivalent source catalog, `/api/rag/sources`, `/api/rag/retrieve`, `/api/graph/schemas`, and structured `/api/graph/query` behavior.
+- [x] 3.5 Implement LlamaIndex-backed document RAG for the first knowledge base in the external provider project, not in the MyPrivateAgent main backend.
 - [x] 3.6 Keep GraphRAG at schema/discovery or structured `GRAPH_NOT_IMPLEMENTED` until the external provider has a verifiable Neo4j GraphRAG namespace.
 - [x] 3.7 Add MyPrivateAgent source readiness visibility after the provider exposes stable catalog responses.
 - [x] 3.8 Add a caller-side local integration smoke that consumes provider health/catalog/RAG retrieval without changing default `/api/chat` behavior.
@@ -27,9 +27,9 @@
 
 - [x] 4.1 Run `openspec validate plan-external-rag-graphrag-provider --strict`.
 - [x] 4.2 Run a documentation review pass for contract drift against existing guides.
-- [ ] 4.3 Run provider-side focused verification when the external project is ready.
+- [x] 4.3 Run provider-side focused verification when the external project is ready.
 - [x] 4.4 Run MyPrivateAgent caller-side readiness smoke after provider readiness is available.
-- [ ] 4.5 After implementation tasks are complete, archive the change with OpenSpec and confirm canonical specs/docs contain the final decisions.
+- [x] 4.5 After implementation tasks are complete, archive the change with OpenSpec and confirm canonical specs/docs contain the final decisions.
 
 ## Phase 20 Closure Note
 
