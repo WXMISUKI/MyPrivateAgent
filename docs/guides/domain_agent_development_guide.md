@@ -387,6 +387,18 @@ grounding_policy:
 
 在这个阶段，`grounding_policy_status.enforcement` 始终应保持 `visibility_only`，默认 `/api/chat` 的检索注入仍然保持关闭。
 
+### Grounding decision gate
+
+`AgentGroundingPolicyService` 提供最小只读决策闸门，用来判断已经返回的 evidence pack 是否允许进入某个垂域 agent 的 grounded answer path。这个服务只读取 domain agent registry 和调用方传入的 evidence pack，不调用 Knowledge Provider、不创建 source binding、不写审计记录，也不改变默认 `/api/chat`。
+
+决策结果只允许三类：
+
+- `allowed`：policy 与 evidence pack 均满足要求，调用方只能使用返回的 `citation_allowlist`。
+- `blocked`：缺少 citation、证据不足、未知 agent、GraphRAG 尚未 promotion 等硬阻断。
+- `review`：policy 未声明或允许无证据回答，但仍需要调用方显式处理。
+
+后续若要让默认 `/api/chat` 自动注入 RAG，必须另开 behavior promotion change，并通过代表性多轮 eval gate。
+
 ### Step 7：定义审批和风险策略
 
 高风险动作必须进入审批链路：

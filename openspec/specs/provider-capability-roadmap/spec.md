@@ -41,8 +41,8 @@ The project MUST define grounding policy before enabling default knowledge injec
 
 #### Scenario: Agent declares knowledge behavior
 - **WHEN** a domain agent needs controlled knowledge use
-- **THEN** a future `add-agent-grounding-policy-contract` change MUST define fields such as `require_citations`, `allow_ungrounded`, `must_use_knowledge_for_domains`, `fallback_policy`, and `source_acl_mode`
-- **AND** the first implementation SHOULD expose policy/readiness in Runtime Surface before changing default chat behavior.
+- **THEN** `agent-grounding-policy` MUST define fields such as `require_citations`, `allow_ungrounded`, `must_use_knowledge_for_domains`, `fallback_policy`, and `source_acl_mode`
+- **AND** the implementation MUST expose policy/readiness and a side-effect-free decision gate before changing default chat behavior.
 
 ### Requirement: PromptOps is distinct from prompt CRUD
 
