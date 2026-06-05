@@ -1,0 +1,36 @@
+{
+  "id": "grounding_required_no_evidence",
+  "title": "Grounding required with no evidence should refuse or clarify",
+  "enabled": true,
+  "tags": ["grounding", "fallback"],
+  "turns": [
+    {
+      "role": "user",
+      "content": "请根据退款政策判断这个订单是否可以退款。"
+    },
+    {
+      "role": "assistant",
+      "content": "在没有政策证据时，应拒绝直接判断或要求补充证据。"
+    }
+  ],
+  "evidence": {
+    "grounding": {
+      "require_citations": true,
+      "evidence_available": false,
+      "fallback_policy": "refuse_or_clarify_when_no_evidence"
+    },
+    "response": {
+      "behavior": "refuse_or_clarify"
+    }
+  },
+  "assertions": {
+    "grounding": {
+      "require_citations": true,
+      "evidence_available": false,
+      "fallback_policy": "refuse_or_clarify_when_no_evidence"
+    },
+    "response": {
+      "behavior": "refuse_or_clarify"
+    }
+  }
+}

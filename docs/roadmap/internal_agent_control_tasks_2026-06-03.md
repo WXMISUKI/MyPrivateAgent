@@ -6,7 +6,7 @@
 
 The external RAG / GraphRAG provider remains an active but external data-plane dependency. While that project is still under development, MyPrivateAgent should keep moving on internal control contracts that are useful on their own and are required before default retrieval injection becomes safe.
 
-`add-agent-grounding-policy-contract` and `add-promptops-versioned-prompt-contract` have been implemented and archived. The current Phase 22 implementation line is `add-agent-memoryops-lifecycle-contract`.
+`add-agent-grounding-policy-contract`, `add-promptops-versioned-prompt-contract`, and `add-agent-memoryops-lifecycle-contract` have been implemented and archived. The current Phase 23 implementation line is `add-multiturn-agent-evaluation-gate`.
 
 ## Sequenced Task Queue
 
@@ -14,8 +14,8 @@ The external RAG / GraphRAG provider remains an active but external data-plane d
 |---|---|---|---|---|
 | 1 | `add-agent-grounding-policy-contract` | Normalize agent grounding policy, citation requirement, ungrounded fallback, and source ACL semantics | No for visibility; yes later for enforcement | Done |
 | 2 | `add-promptops-versioned-prompt-contract` | Turn `/prompts` CRUD into versioned prompt governance with variables, eval binding, approval, rollout, and rollback | No | Done |
-| 3 | `add-agent-memoryops-lifecycle-contract` | Define hot session state, conversation summary, long-term memory, TTL, deletion, confidence, conflict, and injection trace | No | Phase 22 current |
-| 4 | `add-multiturn-agent-evaluation-gate` | Add scenario-based regression for prompt, grounding, memory, tool, and refusal behavior | Partial | Spec before changing default retrieval injection |
+| 3 | `add-agent-memoryops-lifecycle-contract` | Define hot session state, conversation summary, long-term memory, TTL, deletion, confidence, conflict, and injection trace | No | Done |
+| 4 | `add-multiturn-agent-evaluation-gate` | Add scenario-based regression for prompt, grounding, memory, tool, and refusal behavior | Partial | Phase 23 current |
 | 5 | Later focused changes | Multimodal taxonomy, workflow/chatflow, enterprise connectors, provider ops | Depends on scenario | Defer until P0/P1 contracts stabilize |
 
 ## Grounding Policy Slice
@@ -83,3 +83,20 @@ Done means:
 - `GET /api/admin/memoryops/contract` returns a stable visibility-only registry.
 - Focused MemoryOps tests and strict OpenSpec validation pass.
 - Multi-turn eval can reference grounding, prompt, and memory lifecycle vocabulary in the next phase.
+
+## Phase 23 Multi-turn Eval Gate Slice
+
+Current implementation boundary:
+
+- Define a local scenario format with `turns`, compact `evidence`, and deterministic `assertions`.
+- Cover grounding fallback, PromptOps version visibility, MemoryOps summary boundaries, expected tools, and response behavior labels.
+- Produce compact `passed / failed / skipped / blocked` reports.
+- Keep the first gate deterministic and side-effect-free: no live LLM call, no `/api/chat`, no tool execution, no retrieval invocation, and no state mutation.
+- Keep default chat retrieval injection, prompt rollout, and memory injection promotion blocked until representative eval scenarios pass.
+
+Done means:
+
+- `add-multiturn-agent-evaluation-gate` is implemented and archived.
+- Repository-owned sample scenarios exist under `docs/evals/multiturn/`.
+- Focused Multi-turn Eval tests and strict OpenSpec validation pass.
+- The next behavior promotion discussion can reference concrete eval gate evidence instead of relying on smoke tests only.

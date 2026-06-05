@@ -1,0 +1,32 @@
+{
+  "id": "prompt_version_visibility",
+  "title": "PromptOps prompt version and status are visible to eval gate",
+  "enabled": true,
+  "tags": ["promptops"],
+  "turns": [
+    {
+      "role": "user",
+      "content": "订单三天未发货，客户要求退款。"
+    },
+    {
+      "role": "assistant",
+      "content": "应使用售后工作流 prompt 的 active 版本。"
+    }
+  ],
+  "evidence": {
+    "promptops": {
+      "prompt_key": "refund_policy",
+      "version": "1",
+      "status": "active",
+      "eval_set_ref": "refund-policy-eval"
+    }
+  },
+  "assertions": {
+    "promptops": {
+      "prompt_key": "refund_policy",
+      "version": "1",
+      "status": "active",
+      "eval_set_ref": "refund-policy-eval"
+    }
+  }
+}

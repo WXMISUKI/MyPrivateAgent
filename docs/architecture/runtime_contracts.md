@@ -1117,6 +1117,31 @@ II-1 第一刀当前未做：
 - 自动长期记忆写入、冲突处理、TTL 执行、隐私删除、向量记忆库都必须另开 change。
 - Conversation summary 的 audit source 仍是原始 `messages` 表；MemoryOps 只解释摘要生命周期，不替代原始会话记录。
 - 后续多轮 eval 可以引用该合同的 kind/status/source/scope/injection_trace 字段，但不得把当前 visibility-only registry 当作行为 enforcement。
+
+## 14. Multi-turn Agent Evaluation Gate
+
+主要来源：
+
+- `backend/services/multiturn_eval_gate_service.py`
+- `docs/evals/multiturn/*.json`
+
+当前状态：
+
+- `multiturn-agent-evaluation-gate-v1` 是 deterministic contract check，不调用真实 LLM。
+- scenario 文件包含 `id / title / turns / evidence / assertions`，其中 `evidence` 应使用 Grounding Policy、PromptOps、MemoryOps、tool 和 response behavior 的稳定字段。
+- 当前样例覆盖：
+  - `grounding_required_no_evidence`
+  - `prompt_version_visibility`
+  - `memory_summary_boundary`
+- eval report 固定输出 `overall_status / scenario_count / status_counts / results / behavior_boundary`。
+- scenario status 固定为 `passed / failed / skipped / blocked`。
+- malformed scenario 不抛给 runtime consumer，而是返回 `blocked` 和机器可读 reason。
+
+维护约束：
+
+- Eval gate 当前只验证合同证据，不生成答案、不调用 `/api/chat`、不执行 tool、不访问 external provider。
+- 默认 chat retrieval injection、prompt rollout、memory injection promotion 仍必须等 representative scenarios 通过后再另开 behavior promotion change。
+- 后续如果加入 live model eval 或 LLM-as-judge，必须另开 change，并保留当前 deterministic scenario report 的后向兼容字段。
 - `EmbeddedAgentRuntimeSDK` 可通过显式注入 `query_control_db` 和 timeline service 启用 query lifecycle 持久记录。
 - `QueryControlEventMapperService` 已把 external adapter pilot 事件映射到 Query Control lifecycle。
 - `FrameworkAdapterRuntimeService` 可通过显式注入 query control timeline service 启用 external adapter pilot 的 query lifecycle 持久记录。

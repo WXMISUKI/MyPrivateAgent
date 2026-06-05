@@ -210,6 +210,47 @@ rollback_target:1
 - compact summary 不删除原始 messages。
 - MemoryOps registry 当前是 `visibility_only`，不会改变 `/api/chat`、prompt injection 或 context packing 行为。
 
+### Step 2.2：补充多轮 Eval 场景
+
+当垂域 agent 的 prompt、grounding、memory、tool 或 refusal 行为会影响生产回答时，应补充轻量多轮 eval 场景。
+
+场景文件放在：
+
+```text
+docs/evals/multiturn/
+```
+
+最小结构：
+
+```json
+{
+  "id": "refund_policy_no_evidence",
+  "turns": [
+    {"role": "user", "content": "这个订单能退款吗？"}
+  ],
+  "evidence": {
+    "grounding": {
+      "require_citations": true,
+      "evidence_available": false
+    },
+    "response": {
+      "behavior": "refuse_or_clarify"
+    }
+  },
+  "assertions": {
+    "grounding": {
+      "require_citations": true,
+      "evidence_available": false
+    },
+    "response": {
+      "behavior": "refuse_or_clarify"
+    }
+  }
+}
+```
+
+当前 eval gate 是 deterministic contract check：它只检查 scenario evidence 是否满足断言，不调用模型、不执行工具、不访问 RAG provider，也不改变默认 chat 行为。后续默认 RAG 注入、prompt rollout 或 memory injection promotion 前，应先让代表性场景通过。
+
 ### Step 3：定义 Tool 和 ToolSpec
 
 工具应放在：
