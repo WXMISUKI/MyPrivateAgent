@@ -63,3 +63,61 @@ The repository SHALL document how an external Knowledge Provider should be devel
 #### Scenario: Developer reads provider guide
 - **WHEN** a developer opens the external RAG provider development guide
 - **THEN** the guide describes project layout, minimum HTTP API, RAG request and response contracts, graph query contracts, health checks, and MyPrivateAgent environment wiring
+
+### Requirement: Unified knowledge provider repo-side trial outcome is exportable
+MyPrivateAgent SHALL provide a read-only repo-side trial outcome for the unified knowledge provider integration.
+
+#### Scenario: Trial checks minimal provider access path
+- **WHEN** the repo-side trial outcome is generated
+- **THEN** it checks provider health, manifest discovery, preflight readiness, RAG retrieve consumption, and source binding review access
+- **AND** it records each check with status, endpoint, summary, and recommended action
+
+#### Scenario: Trial emits caller-owned decision
+- **WHEN** all required trial checks pass
+- **THEN** the outcome status is `trial_passed`
+- **AND** the recommended next action is to proceed with MyPrivateAgent integration hardening
+
+#### Scenario: Trial fails closed on required protocol failures
+- **WHEN** the provider is unreachable, returns invalid JSON, fails a required endpoint, or omits required response fields
+- **THEN** the outcome status is `trial_blocked`
+- **AND** the output identifies the failing check and recovery action
+
+### Requirement: Repo-side trial preserves provider and caller boundaries
+The repo-side trial SHALL remain a read-only caller-side smoke and not mutate provider or caller control-plane state.
+
+#### Scenario: Trial does not create source binding
+- **WHEN** source binding review is checked
+- **THEN** the trial only reads provider source-binding evidence
+- **AND** it does not create source-to-agent binding, approvals, audit records, or runtime policy decisions
+
+#### Scenario: Trial does not change runtime defaults
+- **WHEN** the trial outcome is generated
+- **THEN** it does not change chat defaults, retrieval backend defaults, GraphRAG execution, or answer composition behavior
+- **AND** it does not store provider API key values in generated artifacts
+
+### Requirement: Unified knowledge provider integration closure is explicit
+MyPrivateAgent SHALL emit an explicit Phase 20 integration closure decision for the unified knowledge provider after caller-side trial evidence is available.
+
+#### Scenario: Closure emits go after caller-side trial passes
+- **WHEN** the Phase 19 trial outcome is `trial_passed`
+- **AND** provider health, manifest, preflight, source binding review access, and RAG retrieve checks are all `ready`
+- **THEN** the Phase 20 closure decision is `go`
+- **AND** the recommended next line is grounding policy or integration hardening, not further handoff evidence expansion
+
+#### Scenario: Closure blocks on failed required evidence
+- **WHEN** the trial outcome is missing, invalid, `trial_blocked`, or includes a blocked required check
+- **THEN** the Phase 20 closure decision is `blocked`
+- **AND** the output identifies required recovery actions before integration can continue
+
+#### Scenario: Closure preserves chat promotion boundary
+- **WHEN** the closure decision is generated
+- **THEN** default `/api/chat` retrieval injection remains disabled
+- **AND** source binding, approval, audit policy, and final answer composition remain outside this phase
+
+### Requirement: GraphRAG promotion remains separately gated
+MyPrivateAgent SHALL NOT treat provider readiness evidence or RAG retrieve success as proof that GraphRAG execution is production-ready.
+
+#### Scenario: Closure records GraphRAG boundary
+- **WHEN** the Phase 20 closure decision is generated
+- **THEN** it records GraphRAG as `not_promoted` unless a later provider-side GraphRAG gate proves executable graph evidence
+- **AND** it permits schema discovery or structured not-implemented behavior without blocking the RAG integration closure

@@ -1,0 +1,104 @@
+{
+  "id": "unified-knowledge-provider-repo-side-trial-v1",
+  "generated_at": "2026-06-05T03:14:17.198566+00:00",
+  "status": "trial_passed",
+  "decision": "proceed_with_myprivateagent_integration_hardening",
+  "provider_base_url": "http://127.0.0.1:8021",
+  "api_key_configured": false,
+  "summary": {
+    "total_checks": 5,
+    "ready_checks": 5,
+    "review_checks": 0,
+    "blocked_checks": 0,
+    "ready_check_ids": [
+      "provider_health",
+      "provider_manifest",
+      "provider_preflight",
+      "source_bindings",
+      "rag_retrieve"
+    ],
+    "review_check_ids": [],
+    "blocked_check_ids": [],
+    "query": "refund policy",
+    "source_binding_policy_owner": "caller",
+    "runtime_promotion_status": "unchanged"
+  },
+  "checks": [
+    {
+      "id": "provider_health",
+      "endpoint": "/health",
+      "status": "ready",
+      "summary": {
+        "provider_status": "ok",
+        "service": "unifiedKnowledgeProvider"
+      },
+      "recommended_action": "no_action_required",
+      "error": null
+    },
+    {
+      "id": "provider_manifest",
+      "endpoint": "/api/provider/manifest",
+      "status": "ready",
+      "summary": {
+        "provider_id": "unifiedKnowledgeProvider",
+        "contract_version": "knowledge-provider-contract-v1",
+        "capability_count": 5
+      },
+      "recommended_action": "no_action_required",
+      "error": null
+    },
+    {
+      "id": "provider_preflight",
+      "endpoint": "/api/provider/preflight",
+      "status": "ready",
+      "summary": {
+        "bindable": true,
+        "status": null,
+        "required_capability_count": 0
+      },
+      "recommended_action": "no_action_required",
+      "error": null
+    },
+    {
+      "id": "source_bindings",
+      "endpoint": "/api/provider/source-bindings",
+      "status": "ready",
+      "summary": {
+        "status": "ready",
+        "source_count": 2,
+        "bindable_source_count": 2,
+        "selected_source_ids": [
+          "refund_policy_docs",
+          "logistics_faq"
+        ],
+        "source_binding_policy_owner": "caller"
+      },
+      "recommended_action": "no_action_required",
+      "error": null
+    },
+    {
+      "id": "rag_retrieve",
+      "endpoint": "/api/rag/retrieve",
+      "status": "ready",
+      "summary": {
+        "document_count": 1,
+        "knowledge_base_ids": [
+          "refund_policy_docs",
+          "logistics_faq"
+        ],
+        "evidence_pack_version": "evidence-pack-v1",
+        "evidence_pack_status": "answerable",
+        "citation_policy": "use_only_returned_citations"
+      },
+      "recommended_action": "no_action_required",
+      "error": null
+    }
+  ],
+  "notes": [
+    "This outcome is a read-only MyPrivateAgent repo-side trial over the external knowledge provider contract.",
+    "The trial does not create source-to-agent binding, approvals, audit records, runtime promotions, or final answer policy.",
+    "Provider API key values are never written to this artifact."
+  ],
+  "json_path": "docs\\integration\\unified-knowledge-provider-trial\\unified-knowledge-provider-trial-outcome.json",
+  "markdown_path": "docs\\integration\\unified-knowledge-provider-trial\\unified-knowledge-provider-trial-outcome.md"
+}

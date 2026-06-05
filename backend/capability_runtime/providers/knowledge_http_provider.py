@@ -126,20 +126,56 @@ def _metadata(
 def _provider_health(client: HttpCapabilityClient):
     def check() -> dict[str, Any]:
         try:
-            data = client.get_json("/health")
+            health = client.get_json("/health")
         except CapabilityProviderError as exc:
             return {
                 "status": "unreachable",
                 "reason": exc.message,
                 "error": exc.to_payload(),
             }
-        status = str(data.get("status") or "unknown")
+        status = str(health.get("status") or "unknown")
         if status == "ok":
             status = "ready"
+        reason = str(health.get("message") or health.get("reason") or "")
+        catalog_summary: dict[str, Any] | None = None
+        source_catalog: dict[str, Any] | None = None
+        try:
+            catalog = client.get_json("/api/catalog")
+            source_catalog = catalog.get("catalog") if isinstance(catalog.get("catalog"), dict) else None
+            if source_catalog is not None:
+                knowledge_bases = source_catalog.get("knowledge_bases") or []
+                graphs = source_catalog.get("graphs") or []
+                degraded_sources = [
+                    source.get("id")
+                    for source in [*knowledge_bases, *graphs]
+                    if isinstance(source, dict) and str(source.get("status") or "").lower() != "ready"
+                ]
+                catalog_summary = {
+                    "status": str(catalog.get("status") or "unknown"),
+                    "knowledge_base_count": len(knowledge_bases),
+                    "graph_count": len(graphs),
+                    "source_count": len(knowledge_bases) + len(graphs),
+                    "degraded_sources": degraded_sources,
+                }
+                if degraded_sources or catalog_summary["status"] not in {"ready", "ok"}:
+                    status = "degraded" if status == "ready" else status
+                    if not reason:
+                        reason = "Provider source catalog reports degraded sources."
+        except CapabilityProviderError as exc:
+            catalog_summary = {
+                "status": "unreachable",
+                "error": exc.to_payload(),
+            }
+            if status == "ready":
+                status = "degraded"
+            if not reason:
+                reason = "Provider source catalog is unavailable."
         return {
             "status": status,
-            "reason": str(data.get("message") or data.get("reason") or ""),
-            "raw": data,
+            "reason": reason,
+            "raw": health,
+            "catalog": source_catalog,
+            "catalog_summary": catalog_summary,
         }
 
     return check

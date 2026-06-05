@@ -180,6 +180,8 @@ add-multiturn-agent-evaluation-gate
 - 不依赖 provider 的规格工作：Grounding Policy、PromptOps、MemoryOps、多轮 eval 的 proposal/design/spec。
 - 依赖 provider 的对接工作：等外部 provider readiness 后再做 source readiness、RAG retrieve smoke、GraphRAG smoke 和默认行为 promotion。
 
+已新增内部控制面任务队列文档：`docs/roadmap/internal_agent_control_tasks_2026-06-03.md`。当外部 provider 暂不进入 MyPrivateAgent 对接阶段时，下一刀固定为 `add-agent-grounding-policy-contract`：先把 agent grounding policy 变成 Runtime Surface 可见合同，再进入 PromptOps、MemoryOps 和 multi-turn eval。
+
 ## 6. External References
 
 - OpenAI Agents SDK tracing: https://github.com/openai/openai-agents-python/blob/main/docs/tracing.md

@@ -35,6 +35,8 @@ Provider-first 能力路线已补充到 `docs/roadmap/provider_capability_gap_as
 5. 新开 `add-multiturn-agent-evaluation-gate`，用多轮场景回归验证 prompt/RAG/context 行为。
 6. P2 的多模态 taxonomy、workflow/chatflow、企业 connector 和 provider ops 后置到 P0/P1 control contract 稳定之后。
 
+外部 RAG / GraphRAG provider 仍在开发时，MyPrivateAgent 内部控制面按 `docs/roadmap/internal_agent_control_tasks_2026-06-03.md` 推进；当前 active internal slice 是 `add-agent-grounding-policy-contract`，只做 grounding policy 可见性和合同收口，不改变默认 `/api/chat` 检索行为。
+
 ## 1.1 Phase G：外部参考对齐后的新增方向
 
 已完成第一刀：

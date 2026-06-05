@@ -1,0 +1,125 @@
+{
+  "id": "phase20-unified-knowledge-provider-integration-closure-v1",
+  "generated_at": "2026-06-05T03:30:03.776236+00:00",
+  "decision": "go",
+  "evidence_chain_status": "closed",
+  "recommended_next_line": "continue_with_agent_grounding_policy_contract",
+  "trial_outcome_path": "docs\\integration\\unified-knowledge-provider-trial\\unified-knowledge-provider-trial-outcome.json",
+  "trial_status": "trial_passed",
+  "trial_decision": "proceed_with_myprivateagent_integration_hardening",
+  "provider_base_url": "http://127.0.0.1:8021",
+  "summary": {
+    "required_check_count": 5,
+    "ready_required_check_count": 5,
+    "review_required_check_count": 0,
+    "blocked_required_check_count": 0,
+    "missing_required_check_count": 0,
+    "source_binding_policy_owner": "caller",
+    "runtime_promotion_status": "unchanged",
+    "default_chat_retrieval_injection": "disabled",
+    "graph_rag_promotion_status": "not_promoted",
+    "plan_external_rag_graphrag_provider_status": "review_open"
+  },
+  "required_checks": [
+    {
+      "id": "provider_health",
+      "status": "ready",
+      "recommended_action": "no_action_required",
+      "summary": {
+        "provider_status": "ok",
+        "service": "unifiedKnowledgeProvider"
+      },
+      "error": null
+    },
+    {
+      "id": "provider_manifest",
+      "status": "ready",
+      "recommended_action": "no_action_required",
+      "summary": {
+        "provider_id": "unifiedKnowledgeProvider",
+        "contract_version": "knowledge-provider-contract-v1",
+        "capability_count": 5
+      },
+      "error": null
+    },
+    {
+      "id": "provider_preflight",
+      "status": "ready",
+      "recommended_action": "no_action_required",
+      "summary": {
+        "bindable": true,
+        "status": null,
+        "required_capability_count": 0
+      },
+      "error": null
+    },
+    {
+      "id": "source_bindings",
+      "status": "ready",
+      "recommended_action": "no_action_required",
+      "summary": {
+        "status": "ready",
+        "source_count": 2,
+        "bindable_source_count": 2,
+        "selected_source_ids": [
+          "refund_policy_docs",
+          "logistics_faq"
+        ],
+        "source_binding_policy_owner": "caller"
+      },
+      "error": null
+    },
+    {
+      "id": "rag_retrieve",
+      "status": "ready",
+      "recommended_action": "no_action_required",
+      "summary": {
+        "document_count": 1,
+        "knowledge_base_ids": [
+          "refund_policy_docs",
+          "logistics_faq"
+        ],
+        "evidence_pack_version": "evidence-pack-v1",
+        "evidence_pack_status": "answerable",
+        "citation_policy": "use_only_returned_citations"
+      },
+      "error": null
+    }
+  ],
+  "boundary": {
+    "source_binding_policy_owner": "caller",
+    "runtime_promotion_status": "unchanged",
+    "default_chat_retrieval_injection": "disabled",
+    "graph_rag_promotion_status": "not_promoted",
+    "source_to_agent_binding_creation": "not_performed",
+    "approval_or_audit_policy_change": "not_performed",
+    "final_answer_composition_policy": "not_performed"
+  },
+  "actions": [
+    {
+      "id": "close_readiness_evidence_chain",
+      "owner": "MyPrivateAgent",
+      "status": "ready",
+      "summary": "Stop adding default readiness evidence phases for the minimal provider access path."
+    },
+    {
+      "id": "continue_grounding_policy_contract",
+      "owner": "MyPrivateAgent",
+      "status": "next",
+      "summary": "Use add-agent-grounding-policy-contract for default knowledge behavior control."
+    },
+    {
+      "id": "keep_graphrag_separately_gated",
+      "owner": "unifiedKnowledgeRAG",
+      "status": "not_promoted",
+      "summary": "Treat graph execution as a later provider-side gate, not a Phase 20 promotion."
+    }
+  ],
+  "notes": [
+    "Phase 20 closes the readiness evidence chain for the minimal provider access path.",
+    "The closure does not enable default chat retrieval injection.",
+    "GraphRAG execution remains separately gated and is not promoted by RAG retrieve success."
+  ],
+  "json_path": "docs\\integration\\unified-knowledge-provider-trial\\phase20-integration-closure-decision.json",
+  "markdown_path": "docs\\integration\\unified-knowledge-provider-trial\\phase20-integration-closure-decision.md"
+}

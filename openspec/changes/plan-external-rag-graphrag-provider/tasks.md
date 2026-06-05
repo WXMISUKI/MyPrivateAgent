@@ -18,15 +18,21 @@
 - [x] 3.3 Implement a provider-managed source catalog with readiness and version metadata.
 - [ ] 3.4 External provider readiness gate: confirm the external RAG / GraphRAG project exposes stable `/health`, `/api/capabilities`, `/api/catalog` or equivalent source catalog, `/api/rag/sources`, `/api/rag/retrieve`, `/api/graph/schemas`, and structured `/api/graph/query` behavior.
 - [ ] 3.5 Implement LlamaIndex-backed document RAG for the first knowledge base in the external provider project, not in the MyPrivateAgent main backend.
-- [ ] 3.6 Keep GraphRAG at schema/discovery or structured `GRAPH_NOT_IMPLEMENTED` until the external provider has a verifiable Neo4j GraphRAG namespace.
-- [ ] 3.7 Add MyPrivateAgent source readiness visibility after the provider exposes stable catalog responses.
-- [ ] 3.8 Add a caller-side local integration smoke that consumes provider health/catalog/RAG retrieval without changing default `/api/chat` behavior.
-- [ ] 3.9 Leave default chat retrieval injection to a later grounding policy OpenSpec change.
+- [x] 3.6 Keep GraphRAG at schema/discovery or structured `GRAPH_NOT_IMPLEMENTED` until the external provider has a verifiable Neo4j GraphRAG namespace.
+- [x] 3.7 Add MyPrivateAgent source readiness visibility after the provider exposes stable catalog responses.
+- [x] 3.8 Add a caller-side local integration smoke that consumes provider health/catalog/RAG retrieval without changing default `/api/chat` behavior.
+- [x] 3.9 Leave default chat retrieval injection to a later grounding policy OpenSpec change.
 
 ## 4. Verification and Archive
 
 - [x] 4.1 Run `openspec validate plan-external-rag-graphrag-provider --strict`.
 - [x] 4.2 Run a documentation review pass for contract drift against existing guides.
 - [ ] 4.3 Run provider-side focused verification when the external project is ready.
-- [ ] 4.4 Run MyPrivateAgent caller-side readiness smoke after provider readiness is available.
+- [x] 4.4 Run MyPrivateAgent caller-side readiness smoke after provider readiness is available.
 - [ ] 4.5 After implementation tasks are complete, archive the change with OpenSpec and confirm canonical specs/docs contain the final decisions.
+
+## Phase 20 Closure Note
+
+- Phase 20 closure decision is `go` for the minimal MyPrivateAgent caller-side provider access path.
+- Readiness evidence expansion should stop for the minimal access path; the next behavior-control line is `add-agent-grounding-policy-contract`.
+- This change remains open for broader provider-side proof items that Phase 20 does not claim: full readiness gate coverage, first LlamaIndex-backed document RAG confirmation, and provider-side focused verification.

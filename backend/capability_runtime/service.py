@@ -41,6 +41,7 @@ class CapabilityRuntimeService:
     def get_capability_health(self, capability_id: str) -> dict[str, Any]:
         capability = self.registry.get(capability_id)
         contract = self._capability_contract(capability)
+        provider_health = self._resolve_health(capability)
         health = {
             "capability_id": capability.capability_id,
             "kind": capability.kind,
@@ -48,6 +49,7 @@ class CapabilityRuntimeService:
             "transport": capability.transport,
             "status": contract.get("status") or "unknown",
             "reason": contract.get("reason") or "",
+            "provider_health": provider_health,
         }
         if contract.get("error"):
             health["error"] = contract["error"]

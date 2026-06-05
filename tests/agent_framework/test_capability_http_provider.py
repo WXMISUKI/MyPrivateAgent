@@ -128,8 +128,20 @@ class CapabilityHttpProviderTests(unittest.TestCase):
 
     def test_http_knowledge_capabilities_report_remote_health(self):
         def handler(request):
-            self.assertEqual(request.url.path, "/health")
-            return _json_response({"status": "ok", "service": "unifiedKnowledgeProvider"})
+            if request.url.path == "/health":
+                return _json_response({"status": "ok", "service": "unifiedKnowledgeProvider"})
+            self.assertEqual(request.url.path, "/api/catalog")
+            return _json_response(
+                {
+                    "status": "ready",
+                    "catalog": {
+                        "knowledge_bases": [
+                            {"id": "kb-refunds", "status": "ready", "version": "2026.06"},
+                        ],
+                        "graphs": [],
+                    },
+                }
+            )
 
         client = HttpCapabilityClient(
             base_url="http://knowledge.test",
@@ -151,6 +163,47 @@ class CapabilityHttpProviderTests(unittest.TestCase):
         self.assertEqual(rag["transport"], "http")
         self.assertEqual(rag["status"], "ready")
         self.assertEqual(rag["metadata"]["provider_base_url"], "http://knowledge.test")
+
+    def test_http_knowledge_capabilities_surface_catalog_readiness(self):
+        def handler(request):
+            if request.url.path == "/health":
+                return _json_response({"status": "ok", "service": "unifiedKnowledgeProvider"})
+            self.assertEqual(request.url.path, "/api/catalog")
+            return _json_response(
+                {
+                    "status": "degraded",
+                    "catalog": {
+                        "knowledge_bases": [
+                            {"id": "kb-refunds", "status": "ready", "version": "2026.06"},
+                            {"id": "kb-claims", "status": "degraded", "version": "2026.06"},
+                        ],
+                        "graphs": [
+                            {"id": "graph-orders", "status": "ready", "version": "2026.06"},
+                        ],
+                    },
+                }
+            )
+
+        client = HttpCapabilityClient(
+            base_url="http://knowledge.test",
+            transport=httpx.MockTransport(handler),
+        )
+        service = CapabilityRuntimeService(
+            CapabilityRegistry(build_http_knowledge_capabilities(base_url="http://knowledge.test", client=client))
+        )
+
+        heartbeat = service.get_provider_heartbeat()
+        provider = heartbeat["providers"][0]
+        capability_health = provider["capabilities"][0]
+
+        self.assertEqual(provider["status"], "degraded")
+        self.assertEqual(capability_health["status"], "degraded")
+        self.assertEqual(capability_health["provider_health"]["catalog_summary"]["status"], "degraded")
+        self.assertEqual(capability_health["provider_health"]["catalog_summary"]["knowledge_base_count"], 2)
+        self.assertEqual(capability_health["provider_health"]["catalog_summary"]["graph_count"], 1)
+        self.assertEqual(capability_health["provider_health"]["catalog_summary"]["source_count"], 3)
+        self.assertIn("kb-claims", capability_health["provider_health"]["catalog_summary"]["degraded_sources"])
+        self.assertEqual(capability_health["provider_health"]["catalog"]["knowledge_bases"][0]["id"], "kb-refunds")
 
     def test_http_knowledge_rag_invocation_preserves_citations(self):
         def handler(request):
@@ -221,6 +274,65 @@ class CapabilityHttpProviderTests(unittest.TestCase):
         self.assertEqual(result["capability_id"], "knowledge.graph.query")
         self.assertEqual(result["result"]["graph_id"], "ecommerce_order_graph")
         self.assertEqual(result["result"]["entities"][0]["id"], "order-1")
+
+    def test_http_knowledge_smoke_uses_health_catalog_and_retrieve_without_chat(self):
+        calls: list[str] = []
+
+        def handler(request):
+            calls.append(request.url.path)
+            if request.url.path == "/health":
+                return _json_response({"status": "ok", "service": "unifiedKnowledgeProvider"})
+            if request.url.path == "/api/catalog":
+                return _json_response(
+                    {
+                        "status": "ready",
+                        "catalog": {
+                            "knowledge_bases": [
+                                {"id": "kb-refunds", "status": "ready", "version": "2026.06"},
+                            ],
+                            "graphs": [],
+                        },
+                    }
+                )
+            if request.url.path == "/api/rag/retrieve":
+                payload = json.loads(request.content.decode("utf-8"))
+                self.assertEqual(payload["query"], "refund policy")
+                return _json_response(
+                    {
+                        "ok": True,
+                        "result": {
+                            "answer_context": "refund policy context",
+                            "documents": [
+                                {
+                                    "source_id": "kb-refunds",
+                                    "document_id": "refund-policy-2026",
+                                    "title": "Refund Policy",
+                                    "snippet": "refund snippet",
+                                    "score": 0.91,
+                                    "citation": "refund-policy-2026#section-2",
+                                }
+                            ],
+                        },
+                    }
+                )
+            self.fail(f"Unexpected provider path in smoke test: {request.url.path}")
+
+        client = HttpCapabilityClient(
+            base_url="http://knowledge.test",
+            transport=httpx.MockTransport(handler),
+        )
+        service = CapabilityRuntimeService(
+            CapabilityRegistry(build_http_knowledge_capabilities(base_url="http://knowledge.test", client=client))
+        )
+
+        heartbeat = service.get_provider_heartbeat()
+        self.assertEqual(heartbeat["providers"][0]["status"], "ready")
+        self.assertEqual(heartbeat["providers"][0]["capabilities"][0]["provider_health"]["catalog_summary"]["source_count"], 1)
+
+        result = service.invoke("knowledge.rag.retrieve", {"query": "refund policy"})
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["result"]["documents"][0]["citation"], "refund-policy-2026#section-2")
+        self.assertNotIn("/api/chat", calls)
 
     def test_http_knowledge_heartbeat_survives_unreachable_provider(self):
         def handler(request):
