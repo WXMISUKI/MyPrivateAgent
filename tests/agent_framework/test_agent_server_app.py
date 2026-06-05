@@ -39,11 +39,11 @@ from backend.agent_server.router_registry import get_api_router_registrations, g
 class AgentServerAppTests(unittest.TestCase):
     def test_router_registry_returns_expected_count(self):
         routers = tuple(get_api_routers())
-        self.assertEqual(len(routers), 12)
+        self.assertEqual(len(routers), 17)
 
     def test_router_registry_can_filter_by_group(self):
         registrations = get_api_router_registrations(route_groups=("admin",))
-        self.assertEqual(tuple(registration.name for registration in registrations), ("memory",))
+        self.assertEqual(tuple(registration.name for registration in registrations), ("memory", "commands"))
 
     def test_router_registry_exposes_supported_groups(self):
         self.assertEqual(
@@ -59,6 +59,7 @@ class AgentServerAppTests(unittest.TestCase):
                 "admin",
                 "voice",
                 "capabilities",
+                "domain_agents",
             ),
         )
 
@@ -71,6 +72,7 @@ class AgentServerAppTests(unittest.TestCase):
         self.assertIn("/login", route_paths)
         self.assertIn("/api/chat", route_paths)
         self.assertIn("/api/conversations", route_paths)
+        self.assertIn("/api/domain-agents/{agent_id}/grounded-answer-trial", route_paths)
         self.assertIn("/api/admin/memory/stats", route_paths)
         if spa_index.exists():
             self.assertIn("/chat", route_paths)
@@ -93,6 +95,7 @@ class AgentServerAppTests(unittest.TestCase):
 
         self.assertIn("/api/chat", route_paths)
         self.assertIn("/api/conversations", route_paths)
+        self.assertIn("/api/domain-agents/{agent_id}/grounded-answer-trial", route_paths)
         self.assertNotIn("/api/auth/login", route_paths)
         self.assertNotIn("/api/admin/memory/stats", route_paths)
         self.assertNotIn("/login", route_paths)

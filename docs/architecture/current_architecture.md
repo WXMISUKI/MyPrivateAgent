@@ -156,6 +156,7 @@
 - Main chat 已具备 `ChatContextPackingService` 输入装配边界：模型请求会在运行时系统层之后注入同一 `conversation_id` 的持久化最近历史，并在历史超出窗口或预算时用确定性早期摘要收口；该能力只影响主聊天模型输入，不改变 Runtime Surface / Governance Timeline payload，也不替代长期记忆检索。
 - Main chat 现在具备 durable compact 边界：`ConversationSummary` 保存手动压缩后的会话摘要、覆盖消息数和最后覆盖消息 id；用户可通过 `/compact` 或会话 compact API 主动生成摘要，后续模型输入优先使用持久化摘要加摘要之后的新消息，原始 `messages` 仍保留用于审计、展示和搜索。
 - Domain agent grounded answer 现在具备最小 promotion gate：`DomainAgentGroundedAnswerPromotionService` 会把 provider trial、grounding decision、PromptOps、MemoryOps 与 multi-turn eval evidence 聚合成 `go / review / blocked`，用于判断是否可以进入 repo-side grounded answer trial；该 gate 不调用 provider、不生成 answer、不写 source binding、不改变默认 `/api/chat` retrieval injection，GraphRAG 仍单独 gated。
+- Domain agent grounded answer 现在具备显式 trial surface：`DomainAgentGroundedAnswerTrialService` 与 `POST /api/domain-agents/{agent_id}/grounded-answer-trial` 会把调用方传入的 evidence pack、provider/PromptOps/MemoryOps/eval evidence 汇总成 trial report；该 surface 仍是只读试接入口，不调用 `/api/chat`、不调用 provider、不生成 answer、不写 memory/audit/trace、不创建 source binding。
 
 ## 4. 当前仍在路上的能力
 

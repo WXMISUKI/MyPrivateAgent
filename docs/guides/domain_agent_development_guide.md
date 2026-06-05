@@ -419,6 +419,35 @@ grounding_policy:
 
 如果该 gate 返回 `go`，下一步也只是进入调用方 repo-side grounded answer trial；默认聊天路径自动 RAG 注入仍需要单独的 behavior promotion change。
 
+### Grounded answer trial surface
+
+`DomainAgentGroundedAnswerTrialService` 和 `POST /api/domain-agents/{agent_id}/grounded-answer-trial` 提供显式 opt-in 的试运行入口。调用方可以把已经拿到的 provider evidence、evidence pack、PromptOps、MemoryOps 和 multi-turn eval evidence 传入，接口会返回统一 trial report。
+
+请求示例：
+
+```json
+{
+  "domain": "refund.policy",
+  "query": "退款政策是什么？",
+  "evidence_pack": {
+    "status": "answerable",
+    "allowed_citations": ["refund_policy_2026#section-3"]
+  },
+  "provider_evidence": {"status": "trial_passed"},
+  "promptops_evidence": {"prompt_key": "refund_policy", "version": "2", "status": "active"},
+  "memoryops_evidence": {"retrieved_knowledge_promotion_mode": "explicit_only"},
+  "eval_evidence": {"overall_status": "passed"}
+}
+```
+
+返回的 `trial.trial_status` 只允许：
+
+- `go`：可以进入调用方 repo-side grounded answer trial。
+- `review`：还需要人工确认 PromptOps、MemoryOps 或 grounding policy warning。
+- `blocked`：provider、citation、grounding、eval 或 GraphRAG 边界存在硬阻断。
+
+这个 endpoint 仍然不是默认聊天执行入口：它不调用 provider、不生成最终回答、不写 audit / trace / memory、不创建 source binding，也不改变 `/api/chat` 的默认检索注入。
+
 ### Step 7：定义审批和风险策略
 
 高风险动作必须进入审批链路：

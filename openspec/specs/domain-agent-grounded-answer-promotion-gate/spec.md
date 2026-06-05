@@ -35,6 +35,11 @@ The promotion gate SHALL only aggregate readiness evidence and SHALL NOT invoke 
 - **AND** no memory, audit, source binding, or chat state is mutated
 - **AND** default `/api/chat` retrieval injection remains disabled
 
+#### Scenario: Trial surface consumes promotion decision
+- **WHEN** the grounded-answer trial surface evaluates a requested agent
+- **THEN** it consumes the promotion decision as trial evidence
+- **AND** the trial surface does not promote runtime behavior or default chat retrieval injection by itself
+
 ### Requirement: Promotion gate fails closed for provider and grounding blockers
 
 The promotion gate SHALL block repo-side grounded-answer trial when provider readiness or grounding policy evidence is unsafe.
