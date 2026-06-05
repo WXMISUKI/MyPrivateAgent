@@ -155,3 +155,8 @@ The unified knowledge provider trial and closure evidence SHALL NOT enable defau
 - **WHEN** a caller-owned answer path evaluates grounding policy
 - **THEN** the decision uses already-returned evidence pack metadata
 - **AND** it does not call the provider or mutate runtime defaults
+
+#### Scenario: Promotion gate consumes provider trial evidence
+- **WHEN** a grounded-answer promotion gate evaluates provider readiness
+- **THEN** provider trial success is treated as one readiness input
+- **AND** provider trial success alone does not enable chat grounding, answer generation, source binding, or GraphRAG execution

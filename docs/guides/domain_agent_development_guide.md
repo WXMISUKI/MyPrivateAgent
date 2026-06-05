@@ -399,6 +399,26 @@ grounding_policy:
 
 后续若要让默认 `/api/chat` 自动注入 RAG，必须另开 behavior promotion change，并通过代表性多轮 eval gate。
 
+### Grounded answer promotion gate
+
+`DomainAgentGroundedAnswerPromotionService` 是进入真实试接前的最小聚合闸门。它把 provider trial、grounding decision、PromptOps version、MemoryOps boundary 和 multi-turn eval 结果汇总成 `go / review / blocked`，用于回答“这个 domain agent 是否可以进入 grounded answer repo-side trial”。
+
+这个 gate 仍然是只读能力：
+
+- 不调用 RAG / GraphRAG provider。
+- 不生成最终回答。
+- 不创建 source-to-agent binding。
+- 不写长期记忆或审计事件。
+- 不改变默认 `/api/chat` retrieval injection。
+
+推荐判断口径：
+
+- `go`：provider ready、grounding allowed、prompt version 可见、retrieved evidence 仍是 explicit-only、multi-turn eval passed。
+- `review`：policy 或 PromptOps / MemoryOps 证据还需要人工确认，但没有硬阻断。
+- `blocked`：provider 不可用、citation 缺失、grounding blocked、multi-turn eval failed/blocked，或 GraphRAG 尚未 promotion。
+
+如果该 gate 返回 `go`，下一步也只是进入调用方 repo-side grounded answer trial；默认聊天路径自动 RAG 注入仍需要单独的 behavior promotion change。
+
 ### Step 7：定义审批和风险策略
 
 高风险动作必须进入审批链路：

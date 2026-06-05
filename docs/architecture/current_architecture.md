@@ -155,6 +155,7 @@
 - 当前阶段推荐的工作模式已从“继续扩某个单一 channel 的局部体验”切换为“先收口通用边界，再决定是否继续扩 channel”；也就是说，`main_chat` 更像通用模式基准线，而不是默认继续加功能的主线。
 - Main chat 已具备 `ChatContextPackingService` 输入装配边界：模型请求会在运行时系统层之后注入同一 `conversation_id` 的持久化最近历史，并在历史超出窗口或预算时用确定性早期摘要收口；该能力只影响主聊天模型输入，不改变 Runtime Surface / Governance Timeline payload，也不替代长期记忆检索。
 - Main chat 现在具备 durable compact 边界：`ConversationSummary` 保存手动压缩后的会话摘要、覆盖消息数和最后覆盖消息 id；用户可通过 `/compact` 或会话 compact API 主动生成摘要，后续模型输入优先使用持久化摘要加摘要之后的新消息，原始 `messages` 仍保留用于审计、展示和搜索。
+- Domain agent grounded answer 现在具备最小 promotion gate：`DomainAgentGroundedAnswerPromotionService` 会把 provider trial、grounding decision、PromptOps、MemoryOps 与 multi-turn eval evidence 聚合成 `go / review / blocked`，用于判断是否可以进入 repo-side grounded answer trial；该 gate 不调用 provider、不生成 answer、不写 source binding、不改变默认 `/api/chat` retrieval injection，GraphRAG 仍单独 gated。
 
 ## 4. 当前仍在路上的能力
 
