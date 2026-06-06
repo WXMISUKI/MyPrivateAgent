@@ -478,6 +478,19 @@ grounding_policy:
 
 `DomainAgentGroundedAnswerCompositionTrialService` 和 `POST /api/domain-agents/{agent_id}/grounded-answer-composition-trial` 是这条 grounded-answer 控制面链路的最后一层受控试运行。
 
+当外部 `unifiedKnowledgeRAG` provider 已在本地启动后，可以运行一个显式 live trial，把真实 provider document RAG evidence 接入同一条 grounded-answer 控制面链路：
+
+```powershell
+python backend/scripts/domain_agent_live_grounded_answer_trial.py `
+  --agent-id ecommerce_support `
+  --domain refund.policy `
+  --query "退款政策是什么？" `
+  --provider-base-url http://127.0.0.1:8020 `
+  --pretty
+```
+
+该命令会读取 `agent.yaml` 中声明的 `rag_sources`，调用 provider 的 `/api/rag/retrieve`，再把返回的 `evidence_pack` 交给 grounded-answer trial、package dry-run 和 composition trial。它仍然是显式 opt-in 的只读试运行：不调用默认 `/api/chat`，不写 memory/audit/trace，不创建 source-to-agent binding，不执行 GraphRAG，也不推广 retrieval runtime defaults。
+
 它会消费 `grounded_answer_package`，并返回：
 
 - `composition_status`: `ready / review / blocked`

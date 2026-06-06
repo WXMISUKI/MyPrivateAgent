@@ -1,0 +1,726 @@
+{
+  "contract_version": "domain-agent-live-grounded-answer-trial-v1",
+  "generated_at": "2026-06-06T06:22:33.718137+00:00",
+  "agent_id": "ecommerce_support",
+  "query": "退款政策是什么？",
+  "domain": "refund.policy",
+  "provider_base_url": "http://127.0.0.1:8020",
+  "live_trial_status": "go",
+  "reason_code": "live_grounded_answer_trial_ready",
+  "recommended_next_action": "proceed_with_explicit_grounded_answer_trial",
+  "provider_retrieve": {
+    "endpoint": "/api/rag/retrieve",
+    "status": "ready",
+    "reason_code": "provider_retrieve_ready",
+    "document_count": 3,
+    "knowledge_base_ids": [
+      "refund_policy_docs",
+      "logistics_faq"
+    ],
+    "evidence_pack_status": "answerable",
+    "citation_policy": "use_only_returned_citations",
+    "allowed_citations": [
+      "refund_policy_2026#exact-refund-code",
+      "refund_policy_2026#section-3",
+      "refund_policy_2026#section-5"
+    ],
+    "documents": [
+      {
+        "source_id": "refund_policy_docs",
+        "document_id": "refund_policy_2026",
+        "title": "精确退款编码",
+        "snippet": "政策编号 RFD-2026-003 适用于三天未发货退款复核；售后专员需填写表单 AF-REFUND-02，并关联原订单编号和付款凭证。",
+        "score": 0.3333,
+        "citation": "refund_policy_2026#exact-refund-code"
+      },
+      {
+        "source_id": "refund_policy_docs",
+        "document_id": "refund_policy_2026",
+        "title": "售后退款规则",
+        "snippet": "客户三天未发货可以申请退款，售后专员应核验订单状态和发货记录后处理。",
+        "score": 0.1667,
+        "citation": "refund_policy_2026#section-3"
+      },
+      {
+        "source_id": "refund_policy_docs",
+        "document_id": "refund_policy_2026",
+        "title": "退款凭证规则",
+        "snippet": "退款处理需要保留订单编号、付款记录、售后沟通记录和处理人信息。",
+        "score": 0.1667,
+        "citation": "refund_policy_2026#section-5"
+      }
+    ],
+    "evidence_pack": {
+      "pack_id": "evidence-pack-14721063a4d7b198",
+      "version": "evidence-pack-v1",
+      "status": "answerable",
+      "reason": "documents_returned",
+      "query": "退款政策是什么？",
+      "requested_source_ids": [
+        "refund_policy_docs",
+        "logistics_faq"
+      ],
+      "retrieval_backend": "fixture",
+      "citation_policy": "use_only_returned_citations",
+      "allowed_citations": [
+        "refund_policy_2026#exact-refund-code",
+        "refund_policy_2026#section-3",
+        "refund_policy_2026#section-5"
+      ],
+      "evidence_count": 3,
+      "score_summary": {
+        "max_score": 0.3333,
+        "min_score": 0.1667
+      },
+      "filter_context": {
+        "tenant_id": null,
+        "document_ids": [],
+        "acl_tags": [],
+        "agent_id": null,
+        "role": null,
+        "extra_filters": {},
+        "backend": "fixture",
+        "enforced": false
+      },
+      "evidence": [
+        {
+          "source_id": "refund_policy_docs",
+          "document_id": "refund_policy_2026",
+          "title": "精确退款编码",
+          "citation": "refund_policy_2026#exact-refund-code",
+          "score": 0.3333,
+          "snippet": "政策编号 RFD-2026-003 适用于三天未发货退款复核；售后专员需填写表单 AF-REFUND-02，并关联原订单编号和付款凭证。",
+          "provenance": {
+            "source_path": "app/data/sources/refund_policy_docs.md",
+            "chunk_id": "exact-refund-code",
+            "chunking_strategy": "fixture-evidence-v1",
+            "citation_anchor": "refund_policy_2026#exact-refund-code"
+          }
+        },
+        {
+          "source_id": "refund_policy_docs",
+          "document_id": "refund_policy_2026",
+          "title": "售后退款规则",
+          "citation": "refund_policy_2026#section-3",
+          "score": 0.1667,
+          "snippet": "客户三天未发货可以申请退款，售后专员应核验订单状态和发货记录后处理。",
+          "provenance": {
+            "source_path": "app/data/sources/refund_policy_docs.md",
+            "chunk_id": "section-3",
+            "chunking_strategy": "fixture-evidence-v1",
+            "citation_anchor": "refund_policy_2026#section-3"
+          }
+        },
+        {
+          "source_id": "refund_policy_docs",
+          "document_id": "refund_policy_2026",
+          "title": "退款凭证规则",
+          "citation": "refund_policy_2026#section-5",
+          "score": 0.1667,
+          "snippet": "退款处理需要保留订单编号、付款记录、售后沟通记录和处理人信息。",
+          "provenance": {
+            "source_path": "app/data/sources/refund_policy_docs.md",
+            "chunk_id": "section-5",
+            "chunking_strategy": "fixture-evidence-v1",
+            "citation_anchor": "refund_policy_2026#section-5"
+          }
+        }
+      ]
+    },
+    "warnings": [],
+    "blockers": []
+  },
+  "trial_report": {
+    "contract_version": "domain-agent-grounded-answer-trial-surface-v1",
+    "agent_id": "ecommerce_support",
+    "trial_status": "go",
+    "reason_code": "grounded_answer_trial_ready",
+    "recommended_next_action": "start_repo_side_grounded_answer_trial",
+    "grounding_decision": {
+      "contract_version": "agent-grounding-policy-decision-v1",
+      "agent_id": "ecommerce_support",
+      "decision": "allowed",
+      "reason_code": "answerable_evidence_pack",
+      "recommended_action": "use_allowed_citations_only",
+      "citation_allowlist": [
+        "refund_policy_2026#exact-refund-code",
+        "refund_policy_2026#section-3",
+        "refund_policy_2026#section-5"
+      ],
+      "fallback_policy": "refuse_or_clarify_when_no_evidence",
+      "boundary": {
+        "default_chat_retrieval_injection": "disabled",
+        "provider_invocation": "not_performed",
+        "source_binding_creation": "not_performed",
+        "graphrag_execution": "not_promoted",
+        "runtime_behavior_changed": false
+      },
+      "policy_summary": {
+        "policy_source": "grounding_policy",
+        "require_citations": true,
+        "allow_ungrounded": false,
+        "fallback_policy": "refuse_or_clarify_when_no_evidence",
+        "source_acl_mode": "agent_manifest"
+      }
+    },
+    "promotion_decision": {
+      "contract_version": "domain-agent-grounded-answer-promotion-gate-v1",
+      "agent_id": "ecommerce_support",
+      "decision": "go",
+      "reason_code": "grounded_answer_trial_ready",
+      "recommended_next_action": "start_repo_side_grounded_answer_trial",
+      "blockers": [],
+      "warnings": [],
+      "evidence_summary": {
+        "agent": {
+          "exists": true,
+          "status": "ready"
+        },
+        "provider": {
+          "ready": true,
+          "status": "trial_passed",
+          "reason_code": "provider_ready"
+        },
+        "grounding": {
+          "decision": "allowed",
+          "reason_code": "answerable_evidence_pack",
+          "citation_count": 3,
+          "fallback_policy": "refuse_or_clarify_when_no_evidence"
+        },
+        "promptops": {
+          "ready": true,
+          "status": "active",
+          "reason_code": "promptops_ready",
+          "prompt_key": "ecommerce_support.grounded_answer",
+          "version": "1"
+        },
+        "memoryops": {
+          "ready": true,
+          "status": "ready",
+          "reason_code": "memoryops_explicit_only",
+          "retrieved_knowledge_promotion_mode": "explicit_only"
+        },
+        "eval": {
+          "ready": true,
+          "status": "passed",
+          "reason_code": "eval_passed"
+        }
+      },
+      "boundary": {
+        "default_chat_retrieval_injection": "disabled",
+        "provider_invocation": "not_performed",
+        "answer_generation": "not_performed",
+        "source_binding_creation": "not_performed",
+        "memory_write": "not_performed",
+        "graphrag_execution": "not_promoted",
+        "runtime_behavior_changed": false
+      }
+    },
+    "citation_allowlist": [
+      "refund_policy_2026#exact-refund-code",
+      "refund_policy_2026#section-3",
+      "refund_policy_2026#section-5"
+    ],
+    "blockers": [],
+    "warnings": [],
+    "evidence_summary": {
+      "agent": {
+        "exists": true,
+        "status": "ready"
+      },
+      "provider": {
+        "ready": true,
+        "status": "trial_passed",
+        "reason_code": "provider_ready"
+      },
+      "grounding": {
+        "decision": "allowed",
+        "reason_code": "answerable_evidence_pack",
+        "citation_count": 3,
+        "fallback_policy": "refuse_or_clarify_when_no_evidence"
+      },
+      "promptops": {
+        "ready": true,
+        "status": "active",
+        "reason_code": "promptops_ready",
+        "prompt_key": "ecommerce_support.grounded_answer",
+        "version": "1"
+      },
+      "memoryops": {
+        "ready": true,
+        "status": "ready",
+        "reason_code": "memoryops_explicit_only",
+        "retrieved_knowledge_promotion_mode": "explicit_only"
+      },
+      "eval": {
+        "ready": true,
+        "status": "passed",
+        "reason_code": "eval_passed"
+      }
+    },
+    "boundary": {
+      "default_chat_retrieval_injection": "disabled",
+      "provider_invocation": "not_performed",
+      "answer_generation": "not_performed",
+      "source_binding_creation": "not_performed",
+      "memory_write": "not_performed",
+      "audit_write": "not_performed",
+      "trace_write": "not_performed",
+      "chat_invocation": "not_performed",
+      "graphrag_execution": "not_promoted",
+      "runtime_behavior_changed": false
+    },
+    "request_summary": {
+      "domain": "refund.policy",
+      "query": "退款政策是什么？",
+      "query_provided": true,
+      "evidence_pack_status": "answerable",
+      "graph_requested": false
+    }
+  },
+  "package": {
+    "contract_version": "domain-agent-grounded-answer-package-dry-run-v1",
+    "agent_id": "ecommerce_support",
+    "package_status": "ready",
+    "reason_code": "grounded_answer_package_ready",
+    "query": "退款政策是什么？",
+    "domain": "refund.policy",
+    "allowed_citations": [
+      "refund_policy_2026#exact-refund-code",
+      "refund_policy_2026#section-3",
+      "refund_policy_2026#section-5"
+    ],
+    "evidence_items": [
+      {
+        "source_type": "citation",
+        "citation": "refund_policy_2026#exact-refund-code"
+      },
+      {
+        "source_type": "citation",
+        "citation": "refund_policy_2026#section-3"
+      },
+      {
+        "source_type": "citation",
+        "citation": "refund_policy_2026#section-5"
+      }
+    ],
+    "prompt_binding": {
+      "prompt_key": "ecommerce_support.grounded_answer",
+      "version": "1",
+      "status": "active"
+    },
+    "memory_boundary": {
+      "retrieved_knowledge_promotion_mode": "explicit_only",
+      "stored_as_memory_by_default": false
+    },
+    "fallback_policy": "refuse_or_clarify_when_no_evidence",
+    "blockers": [],
+    "warnings": [],
+    "boundary": {
+      "provider_invocation": "not_performed",
+      "model_invocation": "not_performed",
+      "answer_generation": "not_performed",
+      "chat_invocation": "not_performed",
+      "source_binding_creation": "not_performed",
+      "memory_write": "not_performed",
+      "audit_write": "not_performed",
+      "trace_write": "not_performed",
+      "runtime_behavior_changed": false
+    },
+    "trial_report": {
+      "contract_version": "domain-agent-grounded-answer-trial-surface-v1",
+      "agent_id": "ecommerce_support",
+      "trial_status": "go",
+      "reason_code": "grounded_answer_trial_ready",
+      "recommended_next_action": "start_repo_side_grounded_answer_trial",
+      "grounding_decision": {
+        "contract_version": "agent-grounding-policy-decision-v1",
+        "agent_id": "ecommerce_support",
+        "decision": "allowed",
+        "reason_code": "answerable_evidence_pack",
+        "recommended_action": "use_allowed_citations_only",
+        "citation_allowlist": [
+          "refund_policy_2026#exact-refund-code",
+          "refund_policy_2026#section-3",
+          "refund_policy_2026#section-5"
+        ],
+        "fallback_policy": "refuse_or_clarify_when_no_evidence",
+        "boundary": {
+          "default_chat_retrieval_injection": "disabled",
+          "provider_invocation": "not_performed",
+          "source_binding_creation": "not_performed",
+          "graphrag_execution": "not_promoted",
+          "runtime_behavior_changed": false
+        },
+        "policy_summary": {
+          "policy_source": "grounding_policy",
+          "require_citations": true,
+          "allow_ungrounded": false,
+          "fallback_policy": "refuse_or_clarify_when_no_evidence",
+          "source_acl_mode": "agent_manifest"
+        }
+      },
+      "promotion_decision": {
+        "contract_version": "domain-agent-grounded-answer-promotion-gate-v1",
+        "agent_id": "ecommerce_support",
+        "decision": "go",
+        "reason_code": "grounded_answer_trial_ready",
+        "recommended_next_action": "start_repo_side_grounded_answer_trial",
+        "blockers": [],
+        "warnings": [],
+        "evidence_summary": {
+          "agent": {
+            "exists": true,
+            "status": "ready"
+          },
+          "provider": {
+            "ready": true,
+            "status": "trial_passed",
+            "reason_code": "provider_ready"
+          },
+          "grounding": {
+            "decision": "allowed",
+            "reason_code": "answerable_evidence_pack",
+            "citation_count": 3,
+            "fallback_policy": "refuse_or_clarify_when_no_evidence"
+          },
+          "promptops": {
+            "ready": true,
+            "status": "active",
+            "reason_code": "promptops_ready",
+            "prompt_key": "ecommerce_support.grounded_answer",
+            "version": "1"
+          },
+          "memoryops": {
+            "ready": true,
+            "status": "ready",
+            "reason_code": "memoryops_explicit_only",
+            "retrieved_knowledge_promotion_mode": "explicit_only"
+          },
+          "eval": {
+            "ready": true,
+            "status": "passed",
+            "reason_code": "eval_passed"
+          }
+        },
+        "boundary": {
+          "default_chat_retrieval_injection": "disabled",
+          "provider_invocation": "not_performed",
+          "answer_generation": "not_performed",
+          "source_binding_creation": "not_performed",
+          "memory_write": "not_performed",
+          "graphrag_execution": "not_promoted",
+          "runtime_behavior_changed": false
+        }
+      },
+      "citation_allowlist": [
+        "refund_policy_2026#exact-refund-code",
+        "refund_policy_2026#section-3",
+        "refund_policy_2026#section-5"
+      ],
+      "blockers": [],
+      "warnings": [],
+      "evidence_summary": {
+        "agent": {
+          "exists": true,
+          "status": "ready"
+        },
+        "provider": {
+          "ready": true,
+          "status": "trial_passed",
+          "reason_code": "provider_ready"
+        },
+        "grounding": {
+          "decision": "allowed",
+          "reason_code": "answerable_evidence_pack",
+          "citation_count": 3,
+          "fallback_policy": "refuse_or_clarify_when_no_evidence"
+        },
+        "promptops": {
+          "ready": true,
+          "status": "active",
+          "reason_code": "promptops_ready",
+          "prompt_key": "ecommerce_support.grounded_answer",
+          "version": "1"
+        },
+        "memoryops": {
+          "ready": true,
+          "status": "ready",
+          "reason_code": "memoryops_explicit_only",
+          "retrieved_knowledge_promotion_mode": "explicit_only"
+        },
+        "eval": {
+          "ready": true,
+          "status": "passed",
+          "reason_code": "eval_passed"
+        }
+      },
+      "boundary": {
+        "default_chat_retrieval_injection": "disabled",
+        "provider_invocation": "not_performed",
+        "answer_generation": "not_performed",
+        "source_binding_creation": "not_performed",
+        "memory_write": "not_performed",
+        "audit_write": "not_performed",
+        "trace_write": "not_performed",
+        "chat_invocation": "not_performed",
+        "graphrag_execution": "not_promoted",
+        "runtime_behavior_changed": false
+      },
+      "request_summary": {
+        "domain": "refund.policy",
+        "query": "退款政策是什么？",
+        "query_provided": true,
+        "evidence_pack_status": "answerable",
+        "graph_requested": false
+      }
+    }
+  },
+  "composition": {
+    "contract_version": "domain-agent-grounded-answer-composition-trial-v1",
+    "agent_id": "ecommerce_support",
+    "composition_status": "ready",
+    "reason_code": "grounded_answer_composition_ready",
+    "answer_preview": "基于 refund_policy_2026#exact-refund-code, refund_policy_2026#section-3, refund_policy_2026#section-5，已为 `refund.policy` 生成受控回答预览：退款政策是什么？",
+    "used_citations": [
+      "refund_policy_2026#exact-refund-code",
+      "refund_policy_2026#section-3",
+      "refund_policy_2026#section-5"
+    ],
+    "composition_policy": {
+      "mode": "deterministic_preview",
+      "citation_mode": "allowlist_only",
+      "fallback_policy": "refuse_or_clarify_when_no_evidence"
+    },
+    "fallback_behavior": {
+      "when_blocked": "refuse_or_clarify_when_no_evidence"
+    },
+    "blockers": [],
+    "warnings": [],
+    "boundary": {
+      "provider_invocation": "not_performed",
+      "model_invocation": "not_performed",
+      "answer_generation": "not_performed",
+      "chat_invocation": "not_performed",
+      "source_binding_creation": "not_performed",
+      "memory_write": "not_performed",
+      "audit_write": "not_performed",
+      "trace_write": "not_performed",
+      "runtime_behavior_changed": false
+    },
+    "package": {
+      "contract_version": "domain-agent-grounded-answer-package-dry-run-v1",
+      "agent_id": "ecommerce_support",
+      "package_status": "ready",
+      "reason_code": "grounded_answer_package_ready",
+      "query": "退款政策是什么？",
+      "domain": "refund.policy",
+      "allowed_citations": [
+        "refund_policy_2026#exact-refund-code",
+        "refund_policy_2026#section-3",
+        "refund_policy_2026#section-5"
+      ],
+      "evidence_items": [
+        {
+          "source_type": "citation",
+          "citation": "refund_policy_2026#exact-refund-code"
+        },
+        {
+          "source_type": "citation",
+          "citation": "refund_policy_2026#section-3"
+        },
+        {
+          "source_type": "citation",
+          "citation": "refund_policy_2026#section-5"
+        }
+      ],
+      "prompt_binding": {
+        "prompt_key": "ecommerce_support.grounded_answer",
+        "version": "1",
+        "status": "active"
+      },
+      "memory_boundary": {
+        "retrieved_knowledge_promotion_mode": "explicit_only",
+        "stored_as_memory_by_default": false
+      },
+      "fallback_policy": "refuse_or_clarify_when_no_evidence",
+      "blockers": [],
+      "warnings": [],
+      "boundary": {
+        "provider_invocation": "not_performed",
+        "model_invocation": "not_performed",
+        "answer_generation": "not_performed",
+        "chat_invocation": "not_performed",
+        "source_binding_creation": "not_performed",
+        "memory_write": "not_performed",
+        "audit_write": "not_performed",
+        "trace_write": "not_performed",
+        "runtime_behavior_changed": false
+      },
+      "trial_report": {
+        "contract_version": "domain-agent-grounded-answer-trial-surface-v1",
+        "agent_id": "ecommerce_support",
+        "trial_status": "go",
+        "reason_code": "grounded_answer_trial_ready",
+        "recommended_next_action": "start_repo_side_grounded_answer_trial",
+        "grounding_decision": {
+          "contract_version": "agent-grounding-policy-decision-v1",
+          "agent_id": "ecommerce_support",
+          "decision": "allowed",
+          "reason_code": "answerable_evidence_pack",
+          "recommended_action": "use_allowed_citations_only",
+          "citation_allowlist": [
+            "refund_policy_2026#exact-refund-code",
+            "refund_policy_2026#section-3",
+            "refund_policy_2026#section-5"
+          ],
+          "fallback_policy": "refuse_or_clarify_when_no_evidence",
+          "boundary": {
+            "default_chat_retrieval_injection": "disabled",
+            "provider_invocation": "not_performed",
+            "source_binding_creation": "not_performed",
+            "graphrag_execution": "not_promoted",
+            "runtime_behavior_changed": false
+          },
+          "policy_summary": {
+            "policy_source": "grounding_policy",
+            "require_citations": true,
+            "allow_ungrounded": false,
+            "fallback_policy": "refuse_or_clarify_when_no_evidence",
+            "source_acl_mode": "agent_manifest"
+          }
+        },
+        "promotion_decision": {
+          "contract_version": "domain-agent-grounded-answer-promotion-gate-v1",
+          "agent_id": "ecommerce_support",
+          "decision": "go",
+          "reason_code": "grounded_answer_trial_ready",
+          "recommended_next_action": "start_repo_side_grounded_answer_trial",
+          "blockers": [],
+          "warnings": [],
+          "evidence_summary": {
+            "agent": {
+              "exists": true,
+              "status": "ready"
+            },
+            "provider": {
+              "ready": true,
+              "status": "trial_passed",
+              "reason_code": "provider_ready"
+            },
+            "grounding": {
+              "decision": "allowed",
+              "reason_code": "answerable_evidence_pack",
+              "citation_count": 3,
+              "fallback_policy": "refuse_or_clarify_when_no_evidence"
+            },
+            "promptops": {
+              "ready": true,
+              "status": "active",
+              "reason_code": "promptops_ready",
+              "prompt_key": "ecommerce_support.grounded_answer",
+              "version": "1"
+            },
+            "memoryops": {
+              "ready": true,
+              "status": "ready",
+              "reason_code": "memoryops_explicit_only",
+              "retrieved_knowledge_promotion_mode": "explicit_only"
+            },
+            "eval": {
+              "ready": true,
+              "status": "passed",
+              "reason_code": "eval_passed"
+            }
+          },
+          "boundary": {
+            "default_chat_retrieval_injection": "disabled",
+            "provider_invocation": "not_performed",
+            "answer_generation": "not_performed",
+            "source_binding_creation": "not_performed",
+            "memory_write": "not_performed",
+            "graphrag_execution": "not_promoted",
+            "runtime_behavior_changed": false
+          }
+        },
+        "citation_allowlist": [
+          "refund_policy_2026#exact-refund-code",
+          "refund_policy_2026#section-3",
+          "refund_policy_2026#section-5"
+        ],
+        "blockers": [],
+        "warnings": [],
+        "evidence_summary": {
+          "agent": {
+            "exists": true,
+            "status": "ready"
+          },
+          "provider": {
+            "ready": true,
+            "status": "trial_passed",
+            "reason_code": "provider_ready"
+          },
+          "grounding": {
+            "decision": "allowed",
+            "reason_code": "answerable_evidence_pack",
+            "citation_count": 3,
+            "fallback_policy": "refuse_or_clarify_when_no_evidence"
+          },
+          "promptops": {
+            "ready": true,
+            "status": "active",
+            "reason_code": "promptops_ready",
+            "prompt_key": "ecommerce_support.grounded_answer",
+            "version": "1"
+          },
+          "memoryops": {
+            "ready": true,
+            "status": "ready",
+            "reason_code": "memoryops_explicit_only",
+            "retrieved_knowledge_promotion_mode": "explicit_only"
+          },
+          "eval": {
+            "ready": true,
+            "status": "passed",
+            "reason_code": "eval_passed"
+          }
+        },
+        "boundary": {
+          "default_chat_retrieval_injection": "disabled",
+          "provider_invocation": "not_performed",
+          "answer_generation": "not_performed",
+          "source_binding_creation": "not_performed",
+          "memory_write": "not_performed",
+          "audit_write": "not_performed",
+          "trace_write": "not_performed",
+          "chat_invocation": "not_performed",
+          "graphrag_execution": "not_promoted",
+          "runtime_behavior_changed": false
+        },
+        "request_summary": {
+          "domain": "refund.policy",
+          "query": "退款政策是什么？",
+          "query_provided": true,
+          "evidence_pack_status": "answerable",
+          "graph_requested": false
+        }
+      }
+    }
+  },
+  "blockers": [],
+  "warnings": [],
+  "boundary": {
+    "default_chat_retrieval_injection": "disabled",
+    "chat_invocation": "not_performed",
+    "model_invocation": "not_performed",
+    "tool_execution": "not_performed",
+    "source_binding_creation": "not_performed",
+    "memory_write": "not_performed",
+    "audit_write": "not_performed",
+    "trace_write": "not_performed",
+    "graphrag_execution": "not_promoted",
+    "runtime_behavior_changed": false
+  },
+  "json_path": "docs\\integration\\domain-agent-live-grounded-answer-trial\\domain-agent-live-grounded-answer-trial.json",
+  "markdown_path": "docs\\integration\\domain-agent-live-grounded-answer-trial\\domain-agent-live-grounded-answer-trial.md"
+}

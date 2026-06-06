@@ -220,6 +220,18 @@ python scripts/export_unified_knowledge_provider_trial_outcome.py `
 
 `--provider-readiness-path` 是可选输入，用于把 provider 侧 Phase 24 `decision=go` 的文档 RAG readiness closure 记录到 MyPrivateAgent 侧 trial outcome。它不能替代真实 HTTP 检查；provider 仍需单独启动并通过 health、manifest、preflight、source binding preview 和 RAG retrieve 检查。
 
+当 provider 已经通过仓库侧 trial outcome 后，可以继续运行垂域 agent 显式 live trial，验证真实 document RAG evidence 是否能进入 MyPrivateAgent 的 grounded-answer 控制面链路：
+
+```powershell
+python backend/scripts/domain_agent_live_grounded_answer_trial.py `
+  --agent-id ecommerce_support `
+  --domain refund.policy `
+  --query "退款政策是什么？" `
+  --provider-base-url http://127.0.0.1:8020
+```
+
+这个 live trial 只使用 provider 的 document RAG retrieve 合同和 agent manifest 中声明的 `rag_sources`。它不启用默认 chat 检索注入，不创建绑定，不执行 GraphRAG，不写审计或记忆。
+
 ## 7. agent.yaml 绑定
 
 垂域 agent 通过 `capabilities.rag_sources` 和 `capabilities.graph_sources` 声明可见知识能力：

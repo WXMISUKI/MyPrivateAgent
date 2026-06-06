@@ -190,3 +190,11 @@ Provider-side readiness evidence SHALL NOT bypass MyPrivateAgent repo-side trial
 - **THEN** the trial still requires live HTTP trial checks before emitting `trial_passed`
 - **AND** the trial does not create source-to-agent binding, approval records, audit policy changes, runtime promotion, default chat retrieval injection, or GraphRAG execution
 
+### Requirement: Knowledge provider supports domain-agent live trial retrieval
+MyPrivateAgent SHALL be able to use the external knowledge provider RAG retrieve contract as an explicit domain-agent trial input.
+
+#### Scenario: Domain-agent live trial retrieves provider evidence
+- **WHEN** a domain-agent live grounded-answer trial calls `POST /api/rag/retrieve`
+- **THEN** the provider result is interpreted through the existing `documents` and `metadata.evidence_pack` contract
+- **AND** the retrieved evidence is treated as trial evidence, not as default chat context injection
+

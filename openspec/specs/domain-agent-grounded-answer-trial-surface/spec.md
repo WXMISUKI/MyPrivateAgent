@@ -3,9 +3,7 @@
 ## Purpose
 
 Define the explicit opt-in trial surface that lets callers inspect whether a domain agent can enter a grounded-answer repo-side trial. This capability does not enable default `/api/chat` retrieval injection.
-
 ## Requirements
-
 ### Requirement: Trial surface returns a bounded trial report
 
 The system SHALL expose a machine-readable grounded-answer trial report for a requested domain agent.
@@ -63,3 +61,12 @@ The trial surface SHALL NOT treat document RAG evidence as GraphRAG execution re
 - **WHEN** a trial request sets graph usage
 - **THEN** the trial report status is `blocked`
 - **AND** the report identifies GraphRAG execution as not promoted
+
+### Requirement: Trial surface can consume live provider evidence
+The existing grounded-answer trial surface SHALL accept evidence produced by the live domain-agent provider retrieve trial without changing its side-effect-free behavior.
+
+#### Scenario: Live trial feeds evidence pack into trial surface
+- **WHEN** the live trial obtains a provider `evidence_pack`
+- **THEN** the grounded-answer trial surface consumes that evidence pack as caller-provided evidence
+- **AND** the trial surface still does not call providers, chat, models, tools, memory writes, audit writes, or source binding.
+
