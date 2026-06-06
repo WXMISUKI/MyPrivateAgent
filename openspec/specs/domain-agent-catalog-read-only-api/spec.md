@@ -11,7 +11,7 @@ The system SHALL expose a read-only domain agent catalog API that wraps the mani
 - **WHEN** a caller requests `GET /api/agents`
 - **AND** the domain agent registry has ready agents
 - **THEN** the response includes `contract_version = domain-agent-catalog-v1`
-- **AND** the response includes ready agent entries with identity, roles, declared capabilities, capability counts, and grounding summaries
+- **AND** the response includes ready agent entries with identity, roles, declared capabilities, capability counts, grounding summaries, and capability linkage readiness
 
 #### Scenario: Empty catalog stays stable
 - **WHEN** a caller requests `GET /api/agents`
@@ -32,3 +32,13 @@ The catalog SHALL preserve invalid-manifest diagnostics and SHALL NOT change cha
 - **WHEN** a caller reads the catalog
 - **THEN** no manifest is mutated
 - **AND** no tool, skill, MCP, prompt, memory, or retrieval behavior is activated or changed
+
+### Requirement: Domain agent catalog includes capability linkage readiness
+The catalog SHALL include read-only linkage readiness for manifest-declared Tool, Skill, and MCP references.
+
+#### Scenario: Agent declares local capabilities
+- **WHEN** a caller requests `GET /api/agents`
+- **AND** an agent declares `tools`, `skills`, or `mcp_servers`
+- **THEN** the matching catalog entry includes `capability_linkage`
+- **AND** the linkage report lists resolved, missing, or disabled local capability references
+- **AND** RAG and graph source declarations remain external-provider references marked outside local linkage enforcement

@@ -71,9 +71,9 @@ backend/domain_agents/
 
 当前代码已经提供只读 `DomainAgentRegistryService`，会扫描 `backend/domain_agents/*/agent.yaml` 或 `agent.yml` 并在 Runtime Surface 的 `domain_agent_registry` 中暴露 agent 身份、角色、能力和治理边界。这个 registry 只登记资产，不导入垂域代码，不自动注册 Tool / Skill / MCP / RAG，也不改变主 chat 执行路径。
 
-另外，当前也提供了最小只读 catalog API：`GET /api/agents`。它复用 registry 作为真源，但返回更窄的 API-facing contract，便于调用方或治理工具读取 agent 列表，而不需要依赖整个 Runtime Surface payload。
+另外，当前也提供了最小只读 catalog API：`GET /api/agents`。它复用 registry 作为真源，但返回更窄的 API-facing contract，便于调用方或治理工具读取 agent 列表，而不需要依赖整个 Runtime Surface payload。每个 agent entry 还会包含 `capability_linkage`，用于只读展示 manifest 声明的 Tool、Skill、MCP server 或 MCP capability 是否能在当前能力层被识别；`rag_sources` 和 `graph_sources` 仍只作为外部 Knowledge Provider 声明，不在 MyPrivateAgent 内部执行检查。
 
-因此垂域实现仍通过现有 Tool / Skill / MCP / Policy 服务接入；`agent.yaml` 是资产目录和治理可见性的真源。后续若要实现启停、编辑或自动注册，仍应另开 OpenSpec change。
+因此垂域实现仍通过现有 Tool / Skill / MCP / Policy 服务接入；`agent.yaml` 是资产目录和治理可见性的真源。后续若要实现启停、编辑、自动注册、默认 chat 检索注入或最终回答生成，仍应另开 OpenSpec change。
 
 ## 3. agent.yaml 建议格式
 
@@ -611,18 +611,25 @@ GET /api/doctor
 
 业务产品前端可以只接 `POST /api/chat`。治理台、运维台、内部调试台再接这些只读接口。其中 `GET /api/runtime-profile` 的 `domain_agent_registry` 字段是当前垂域 agent 资产列表的统一只读来源。
 
-## 6. 未来可选包装接口
+## 6. 已有和未来可选包装接口
 
-如果后续多个外部项目前端都接入本后端，可以新增更明确的包装接口：
+当前已实现：
+
+```http
+GET /api/agents
+```
+
+该接口只提供 agent catalog 和 capability linkage readiness，不启停 agent，不自动注册能力，不调用 provider，也不改变 `/api/chat` 行为。
+
+如果后续多个外部项目前端都接入本后端，可以继续新增更明确的包装接口：
 
 ```http
 POST /api/agents/{agent_id}/chat
-GET  /api/agents
 GET  /api/agents/{agent_id}
 GET  /api/agents/{agent_id}/capabilities
 ```
 
-但这些接口当前不是已实现事实。新增前必须开 OpenSpec change，至少说明：
+除 `GET /api/agents` 外，这些接口当前不是已实现事实。新增前必须开 OpenSpec change，至少说明：
 
 - agent catalog 来源，默认应复用 `domain_agent_registry`。
 - `agent_id` 到 prompt / skill / tool / MCP / policy 的解析规则。

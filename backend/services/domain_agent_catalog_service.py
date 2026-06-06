@@ -5,8 +5,10 @@ from __future__ import annotations
 from typing import Any, Dict, List, Mapping, Optional
 
 try:
+    from services.domain_agent_capability_linkage_service import DomainAgentCapabilityLinkageService
     from services.domain_agent_registry_service import DomainAgentRegistryService
 except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+    from backend.services.domain_agent_capability_linkage_service import DomainAgentCapabilityLinkageService
     from backend.services.domain_agent_registry_service import DomainAgentRegistryService
 
 
@@ -16,8 +18,13 @@ CONTRACT_VERSION = "domain-agent-catalog-v1"
 class DomainAgentCatalogService:
     """Expose a narrow catalog contract over the manifest-driven registry."""
 
-    def __init__(self, registry_service: DomainAgentRegistryService):
+    def __init__(
+        self,
+        registry_service: DomainAgentRegistryService,
+        linkage_service: Optional[DomainAgentCapabilityLinkageService] = None,
+    ):
         self.registry_service = registry_service
+        self.linkage_service = linkage_service
 
     def build_catalog(self) -> Dict[str, Any]:
         registry = self.registry_service.build_runtime_contract()
@@ -43,6 +50,13 @@ class DomainAgentCatalogService:
         mcp_servers = _string_list(capabilities.get("mcp_servers"))
         rag_sources = _string_list(capabilities.get("rag_sources"))
         graph_sources = _string_list(capabilities.get("graph_sources"))
+        normalized_capabilities = {
+            "tools": tools,
+            "skills": skills,
+            "mcp_servers": mcp_servers,
+            "rag_sources": rag_sources,
+            "graph_sources": graph_sources,
+        }
         grounding_policy = agent.get("grounding_policy") if isinstance(agent.get("grounding_policy"), Mapping) else {}
         grounding_status = (
             agent.get("grounding_policy_status")
@@ -57,13 +71,7 @@ class DomainAgentCatalogService:
             "status": str(agent.get("status") or "unknown"),
             "roles": [role for role in roles if isinstance(role, dict)],
             "default_role_id": _default_role_id(roles),
-            "capabilities": {
-                "tools": tools,
-                "skills": skills,
-                "mcp_servers": mcp_servers,
-                "rag_sources": rag_sources,
-                "graph_sources": graph_sources,
-            },
+            "capabilities": normalized_capabilities,
             "capability_counts": {
                 "tools": len(tools),
                 "skills": len(skills),
@@ -88,7 +96,16 @@ class DomainAgentCatalogService:
                 "provider_catalog_status": grounding_status.get("provider_catalog_status") or "unknown",
                 "source_readiness_status": grounding_status.get("source_readiness_status") or "unknown",
             },
+            "capability_linkage": self._build_capability_linkage(normalized_capabilities),
         }
+
+    def _build_capability_linkage(self, capabilities: Mapping[str, Any]) -> Dict[str, Any]:
+        if self.linkage_service is None:
+            return {
+                "status": "not_checked",
+                "reason": "linkage_service_not_configured",
+            }
+        return self.linkage_service.build_linkage(capabilities)
 
 
 def _string_list(value: Any) -> List[str]:
@@ -117,5 +134,17 @@ def get_domain_agent_catalog_service() -> DomainAgentCatalogService:
         except ModuleNotFoundError:  # pragma: no cover - package import compatibility
             from backend.services.domain_agent_registry_service import get_domain_agent_registry_service
 
-        _domain_agent_catalog_service = DomainAgentCatalogService(get_domain_agent_registry_service())
+        try:
+            from services.domain_agent_capability_linkage_service import (
+                get_domain_agent_capability_linkage_service,
+            )
+        except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+            from backend.services.domain_agent_capability_linkage_service import (
+                get_domain_agent_capability_linkage_service,
+            )
+
+        _domain_agent_catalog_service = DomainAgentCatalogService(
+            get_domain_agent_registry_service(),
+            get_domain_agent_capability_linkage_service(),
+        )
     return _domain_agent_catalog_service

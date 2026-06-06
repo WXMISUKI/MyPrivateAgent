@@ -18,7 +18,13 @@ class DomainAgentsRouterTests(unittest.TestCase):
             "total_agents": 1,
             "ready_agents": 1,
             "invalid_agents": 0,
-            "agents": [{"id": "ecommerce_support", "name": "Ecommerce Support"}],
+            "agents": [
+                {
+                    "id": "ecommerce_support",
+                    "name": "Ecommerce Support",
+                    "capability_linkage": {"status": "ready"},
+                }
+            ],
             "errors": [],
         }
 
@@ -32,6 +38,7 @@ class DomainAgentsRouterTests(unittest.TestCase):
         payload = response.json()
         self.assertEqual(payload["contract_version"], "domain-agent-catalog-v1")
         self.assertEqual(payload["agents"][0]["id"], "ecommerce_support")
+        self.assertEqual(payload["agents"][0]["capability_linkage"]["status"], "ready")
         fake_service.build_catalog.assert_called_once()
 
     def test_grounded_answer_trial_endpoint_returns_trial_report(self):

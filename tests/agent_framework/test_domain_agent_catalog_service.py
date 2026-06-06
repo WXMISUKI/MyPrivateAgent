@@ -11,6 +11,15 @@ class StubRegistryService:
         return self.contract
 
 
+class StubLinkageService:
+    def build_linkage(self, capabilities):
+        return {
+            "contract_version": "domain-agent-capability-linkage-readiness-v1",
+            "status": "ready",
+            "tools": {"declared": capabilities.get("tools", []), "missing": []},
+        }
+
+
 class DomainAgentCatalogServiceTests(unittest.TestCase):
     def test_build_catalog_returns_ready_agent_summary(self):
         service = DomainAgentCatalogService(
@@ -58,7 +67,8 @@ class DomainAgentCatalogServiceTests(unittest.TestCase):
                     ],
                     "errors": [],
                 }
-            )
+            ),
+            StubLinkageService(),
         )
 
         catalog = service.build_catalog()
@@ -67,6 +77,7 @@ class DomainAgentCatalogServiceTests(unittest.TestCase):
         self.assertEqual(catalog["status"], "ready")
         self.assertEqual(catalog["agents"][0]["default_role_id"], "after_sales_specialist")
         self.assertEqual(catalog["agents"][0]["capability_counts"]["tools"], 2)
+        self.assertEqual(catalog["agents"][0]["capability_linkage"]["status"], "ready")
         self.assertTrue(catalog["agents"][0]["grounding_policy"]["require_citations"])
 
     def test_build_catalog_preserves_empty_shape(self):
