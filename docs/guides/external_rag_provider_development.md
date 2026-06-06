@@ -210,6 +210,16 @@ POST /api/capabilities/knowledge.graph.query/invoke
 GET  /api/capabilities/heartbeat
 ```
 
+MyPrivateAgent 仓库侧文档 RAG 试接结果可通过以下命令导出：
+
+```powershell
+python scripts/export_unified_knowledge_provider_trial_outcome.py `
+  --provider-base-url http://127.0.0.1:8020 `
+  --provider-readiness-path D:\AI\AIcode\unifiedKnowledgeRAG\docs\integration\myprivateagent-document-rag-trial-readiness\phase24-document-rag-trial-readiness.json
+```
+
+`--provider-readiness-path` 是可选输入，用于把 provider 侧 Phase 24 `decision=go` 的文档 RAG readiness closure 记录到 MyPrivateAgent 侧 trial outcome。它不能替代真实 HTTP 检查；provider 仍需单独启动并通过 health、manifest、preflight、source binding preview 和 RAG retrieve 检查。
+
 ## 7. agent.yaml 绑定
 
 垂域 agent 通过 `capabilities.rag_sources` 和 `capabilities.graph_sources` 声明可见知识能力：

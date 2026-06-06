@@ -1,16 +1,17 @@
 {
   "id": "unified-knowledge-provider-repo-side-trial-v1",
-  "generated_at": "2026-06-05T03:14:17.198566+00:00",
+  "generated_at": "2026-06-06T05:57:58.456518+00:00",
   "status": "trial_passed",
   "decision": "proceed_with_myprivateagent_integration_hardening",
-  "provider_base_url": "http://127.0.0.1:8021",
+  "provider_base_url": "http://127.0.0.1:8020",
   "api_key_configured": false,
   "summary": {
-    "total_checks": 5,
-    "ready_checks": 5,
+    "total_checks": 6,
+    "ready_checks": 6,
     "review_checks": 0,
     "blocked_checks": 0,
     "ready_check_ids": [
+      "provider_document_rag_readiness",
       "provider_health",
       "provider_manifest",
       "provider_preflight",
@@ -20,10 +21,34 @@
     "review_check_ids": [],
     "blocked_check_ids": [],
     "query": "refund policy",
+    "provider_document_rag_readiness": {
+      "decision": "go",
+      "trial_readiness_state": "ready_for_repo_side_document_rag_trial",
+      "provider_status": "ready",
+      "primitive_gate_status": "ready",
+      "generated_at": "2026-06-05T07:54:27.335439+00:00",
+      "supplied": true,
+      "status": "ready",
+      "recommended_action": "no_action_required"
+    },
     "source_binding_policy_owner": "caller",
     "runtime_promotion_status": "unchanged"
   },
   "checks": [
+    {
+      "id": "provider_document_rag_readiness",
+      "endpoint": "D:\\AI\\AIcode\\unifiedKnowledgeRAG\\docs\\integration\\myprivateagent-document-rag-trial-readiness\\phase24-document-rag-trial-readiness.json",
+      "status": "ready",
+      "summary": {
+        "decision": "go",
+        "trial_readiness_state": "ready_for_repo_side_document_rag_trial",
+        "provider_status": "ready",
+        "primitive_gate_status": "ready",
+        "generated_at": "2026-06-05T07:54:27.335439+00:00"
+      },
+      "recommended_action": "no_action_required",
+      "error": null
+    },
     {
       "id": "provider_health",
       "endpoint": "/health",

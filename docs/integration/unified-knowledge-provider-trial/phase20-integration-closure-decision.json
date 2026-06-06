@@ -1,13 +1,13 @@
 {
   "id": "phase20-unified-knowledge-provider-integration-closure-v1",
-  "generated_at": "2026-06-05T03:30:03.776236+00:00",
+  "generated_at": "2026-06-06T05:58:51.046527+00:00",
   "decision": "go",
   "evidence_chain_status": "closed",
   "recommended_next_line": "continue_with_agent_grounding_policy_contract",
   "trial_outcome_path": "docs\\integration\\unified-knowledge-provider-trial\\unified-knowledge-provider-trial-outcome.json",
   "trial_status": "trial_passed",
   "trial_decision": "proceed_with_myprivateagent_integration_hardening",
-  "provider_base_url": "http://127.0.0.1:8021",
+  "provider_base_url": "http://127.0.0.1:8020",
   "summary": {
     "required_check_count": 5,
     "ready_required_check_count": 5,

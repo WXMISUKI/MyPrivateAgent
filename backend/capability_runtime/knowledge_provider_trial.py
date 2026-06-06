@@ -16,6 +16,7 @@ DEFAULT_PROVIDER_BASE_URL = "http://127.0.0.1:8020"
 DEFAULT_TRIAL_QUERY = "refund policy"
 OUTPUT_JSON_FILENAME = "unified-knowledge-provider-trial-outcome.json"
 OUTPUT_MARKDOWN_FILENAME = "unified-knowledge-provider-trial-outcome.md"
+PROVIDER_READINESS_CHECK_ID = "provider_document_rag_readiness"
 
 
 @dataclass(frozen=True)
@@ -47,6 +48,7 @@ def build_knowledge_provider_trial_outcome(
     *,
     provider_base_url: str = DEFAULT_PROVIDER_BASE_URL,
     provider_api_key: str | None = None,
+    provider_readiness_path: Path | None = None,
     query: str = DEFAULT_TRIAL_QUERY,
     timeout_seconds: float = 5.0,
     transport: httpx.BaseTransport | None = None,
@@ -54,6 +56,9 @@ def build_knowledge_provider_trial_outcome(
     base_url = provider_base_url.rstrip("/")
     headers = _provider_headers(provider_api_key)
     checks: list[TrialCheck] = []
+    provider_readiness_summary = _provider_readiness_summary(provider_readiness_path)
+    if provider_readiness_path is not None:
+        checks.append(_provider_readiness_check(provider_readiness_path))
     with httpx.Client(timeout=timeout_seconds, transport=transport, trust_env=False) as client:
         checks.append(_health_check(client, base_url))
         checks.append(_manifest_check(client, base_url, headers))
@@ -79,6 +84,7 @@ def build_knowledge_provider_trial_outcome(
             "review_check_ids": [check.id for check in checks if check.status == "review"],
             "blocked_check_ids": [check.id for check in checks if check.status == "blocked"],
             "query": query,
+            "provider_document_rag_readiness": provider_readiness_summary,
             "source_binding_policy_owner": "caller",
             "runtime_promotion_status": "unchanged",
         },
@@ -96,6 +102,7 @@ def export_knowledge_provider_trial_outcome(
     output_dir: Path = Path("docs/integration/unified-knowledge-provider-trial"),
     provider_base_url: str = DEFAULT_PROVIDER_BASE_URL,
     provider_api_key: str | None = None,
+    provider_readiness_path: Path | None = None,
     query: str = DEFAULT_TRIAL_QUERY,
     timeout_seconds: float = 5.0,
     transport: httpx.BaseTransport | None = None,
@@ -104,6 +111,7 @@ def export_knowledge_provider_trial_outcome(
     outcome = build_knowledge_provider_trial_outcome(
         provider_base_url=provider_base_url,
         provider_api_key=provider_api_key,
+        provider_readiness_path=provider_readiness_path,
         query=query,
         timeout_seconds=timeout_seconds,
         transport=transport,
@@ -183,6 +191,56 @@ def _health_check(client: httpx.Client, base_url: str) -> TrialCheck:
         status="ready" if ready else "review",
         summary={"provider_status": status, "service": payload.get("service")},
         recommended_action="no_action_required" if ready else "review_provider_health",
+    )
+
+
+def _provider_readiness_summary(provider_readiness_path: Path | None) -> dict[str, Any]:
+    if provider_readiness_path is None:
+        return {
+            "supplied": False,
+            "status": "not_supplied",
+            "recommended_action": "supply_phase24_provider_readiness_artifact_for_document_rag_trial_context",
+        }
+    check = _provider_readiness_check(provider_readiness_path)
+    summary = dict(check.summary)
+    summary.update(
+        {
+            "supplied": True,
+            "status": check.status,
+            "recommended_action": check.recommended_action,
+        }
+    )
+    if check.error is not None:
+        summary["error"] = check.error
+    return summary
+
+
+def _provider_readiness_check(provider_readiness_path: Path) -> TrialCheck:
+    endpoint = str(provider_readiness_path)
+    payload, error = _load_provider_readiness(provider_readiness_path)
+    if error is not None:
+        return _blocked(PROVIDER_READINESS_CHECK_ID, endpoint, "refresh_phase24_document_rag_readiness", error)
+
+    decision = str(payload.get("decision") or "unknown")
+    readiness_state = str(payload.get("trial_readiness_state") or "unknown")
+    status = str(payload.get("status") or "unknown")
+    primitive_gate_status = str(_nested(payload, "summary", "primitive_gate_status") or "unknown")
+    ready = decision == "go" and readiness_state == "ready_for_repo_side_document_rag_trial"
+    blocked = decision == "blocked" or status == "blocked"
+    check_status = "ready" if ready else "blocked" if blocked else "review"
+    return TrialCheck(
+        id=PROVIDER_READINESS_CHECK_ID,
+        endpoint=endpoint,
+        status=check_status,
+        summary={
+            "decision": decision,
+            "trial_readiness_state": readiness_state,
+            "provider_status": status,
+            "primitive_gate_status": primitive_gate_status,
+            "generated_at": payload.get("generated_at"),
+        },
+        recommended_action="no_action_required" if ready else "resolve_phase24_document_rag_readiness",
+        error=None if check_status != "blocked" else {"code": "PROVIDER_DOCUMENT_RAG_READINESS_BLOCKED"},
     )
 
 
@@ -365,6 +423,21 @@ def _request_json(
         return {}, {"code": "INVALID_JSON", "message": str(exc)}
 
 
+def _load_provider_readiness(path: Path) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    if not path.exists():
+        return {}, {"code": "PROVIDER_READINESS_MISSING", "message": f"Missing provider readiness artifact: {path}"}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except ValueError as exc:
+        return {}, {"code": "PROVIDER_READINESS_INVALID_JSON", "message": str(exc)}
+    if not isinstance(payload, dict):
+        return {}, {
+            "code": "PROVIDER_READINESS_INVALID_SHAPE",
+            "message": "Provider readiness artifact must be a JSON object.",
+        }
+    return payload, None
+
+
 def _provider_headers(provider_api_key: str | None) -> dict[str, str]:
     if not provider_api_key:
         return {}
@@ -435,6 +508,15 @@ def _int(value: Any, *, fallback: int | None) -> int | None:
         return int(value)
     except (TypeError, ValueError):
         return fallback
+
+
+def _nested(payload: dict[str, Any], *keys: str) -> Any:
+    current: Any = payload
+    for key in keys:
+        if not isinstance(current, dict):
+            return None
+        current = current.get(key)
+    return current
 
 
 def _format_value(value: Any) -> str:

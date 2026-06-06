@@ -31,6 +31,14 @@ def main() -> None:
         help="Optional provider API key. The value is not written to artifacts.",
     )
     parser.add_argument(
+        "--provider-readiness-path",
+        type=Path,
+        default=Path(os.getenv("UNIFIED_KNOWLEDGE_PROVIDER_READINESS_PATH"))
+        if os.getenv("UNIFIED_KNOWLEDGE_PROVIDER_READINESS_PATH")
+        else None,
+        help="Optional provider-side Phase 24 document RAG readiness JSON path.",
+    )
+    parser.add_argument(
         "--query",
         default=os.getenv("UNIFIED_KNOWLEDGE_PROVIDER_TRIAL_QUERY", DEFAULT_TRIAL_QUERY),
         help="RAG retrieve query used by the trial.",
@@ -53,6 +61,7 @@ def main() -> None:
         output_dir=args.output_dir,
         provider_base_url=args.provider_base_url,
         provider_api_key=args.provider_api_key,
+        provider_readiness_path=args.provider_readiness_path,
         query=args.query,
         timeout_seconds=args.timeout_seconds,
     )

@@ -1,4 +1,5 @@
 import json
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -108,6 +109,7 @@ class KnowledgeProviderTrialTests(unittest.TestCase):
         self.assertEqual(outcome.decision, "proceed_with_myprivateagent_integration_hardening")
         self.assertTrue(outcome.api_key_configured)
         self.assertEqual(outcome.summary["blocked_checks"], 0)
+        self.assertEqual(outcome.summary["provider_document_rag_readiness"]["status"], "not_supplied")
         self.assertEqual(calls, [
             ("GET", "/health"),
             ("GET", "/api/provider/manifest"),
@@ -145,6 +147,60 @@ class KnowledgeProviderTrialTests(unittest.TestCase):
         self.assertEqual(outcome.status, "trial_review")
         self.assertIn("source_bindings", outcome.summary["review_check_ids"])
         self.assertEqual(outcome.summary["source_binding_policy_owner"], "caller")
+
+    def test_trial_records_ready_phase24_provider_readiness_context(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            readiness_path = Path(tmp) / "phase24-document-rag-trial-readiness.json"
+            readiness_path.write_text(json.dumps(_phase24_readiness_payload()), encoding="utf-8")
+
+            outcome = build_knowledge_provider_trial_outcome(
+                provider_base_url="http://knowledge.test",
+                provider_readiness_path=readiness_path,
+                transport=httpx.MockTransport(_ready_provider_handler),
+            )
+
+        self.assertEqual(outcome.status, "trial_passed")
+        self.assertEqual(outcome.checks[0].id, "provider_document_rag_readiness")
+        self.assertEqual(outcome.checks[0].status, "ready")
+        self.assertEqual(outcome.summary["provider_document_rag_readiness"]["decision"], "go")
+        self.assertEqual(outcome.summary["total_checks"], 6)
+
+    def test_trial_blocks_when_explicit_provider_readiness_artifact_is_missing(self):
+        outcome = build_knowledge_provider_trial_outcome(
+            provider_base_url="http://knowledge.test",
+            provider_readiness_path=Path("missing-phase24-document-rag-trial-readiness.json"),
+            transport=httpx.MockTransport(_ready_provider_handler),
+        )
+
+        self.assertEqual(outcome.status, "trial_blocked")
+        self.assertIn("provider_document_rag_readiness", outcome.summary["blocked_check_ids"])
+        self.assertEqual(
+            outcome.summary["provider_document_rag_readiness"]["error"]["code"],
+            "PROVIDER_READINESS_MISSING",
+        )
+
+    def test_trial_reviews_non_go_provider_readiness_artifact(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            readiness_path = Path(tmp) / "phase24-document-rag-trial-readiness.json"
+            readiness_path.write_text(
+                json.dumps(
+                    _phase24_readiness_payload(
+                        status="review",
+                        decision="review",
+                        trial_readiness_state="review_provider_context",
+                    )
+                ),
+                encoding="utf-8",
+            )
+
+            outcome = build_knowledge_provider_trial_outcome(
+                provider_base_url="http://knowledge.test",
+                provider_readiness_path=readiness_path,
+                transport=httpx.MockTransport(_ready_provider_handler),
+            )
+
+        self.assertEqual(outcome.status, "trial_review")
+        self.assertIn("provider_document_rag_readiness", outcome.summary["review_check_ids"])
 
     def test_trial_blocks_when_provider_is_unreachable(self):
         def handler(request):
@@ -238,6 +294,43 @@ def _retrieve_payload(*, pack_status: str = "answerable", documents=None):
                 }
             },
         },
+    }
+
+
+def _ready_provider_handler(request):
+    if request.url.path == "/health":
+        return _json_response({"status": "ok"})
+    if request.url.path == "/api/provider/manifest":
+        return _json_response(_manifest_payload())
+    if request.url.path == "/api/provider/preflight":
+        return _json_response({"status": "ready", "bindable": True})
+    if request.url.path == "/api/rag/retrieve":
+        return _json_response(_retrieve_payload())
+    if request.url.path == "/api/provider/source-bindings":
+        return _json_response(
+            {
+                "status": "ready",
+                "total_source_count": 1,
+                "bindable_source_count": 1,
+                "sources": [{"source_id": "refund_policy_docs", "bindable": True}],
+            }
+        )
+    raise AssertionError(f"Unexpected path: {request.url.path}")
+
+
+def _phase24_readiness_payload(
+    *,
+    status: str = "ready",
+    decision: str = "go",
+    trial_readiness_state: str = "ready_for_repo_side_document_rag_trial",
+):
+    return {
+        "id": "phase24-document-rag-trial-readiness-v1",
+        "status": status,
+        "decision": decision,
+        "trial_readiness_state": trial_readiness_state,
+        "generated_at": "2026-06-05T07:54:27+00:00",
+        "summary": {"primitive_gate_status": "ready"},
     }
 
 
