@@ -71,7 +71,9 @@ backend/domain_agents/
 
 当前代码已经提供只读 `DomainAgentRegistryService`，会扫描 `backend/domain_agents/*/agent.yaml` 或 `agent.yml` 并在 Runtime Surface 的 `domain_agent_registry` 中暴露 agent 身份、角色、能力和治理边界。这个 registry 只登记资产，不导入垂域代码，不自动注册 Tool / Skill / MCP / RAG，也不改变主 chat 执行路径。
 
-因此垂域实现仍通过现有 Tool / Skill / MCP / Policy 服务接入；`agent.yaml` 是资产目录和治理可见性的真源。后续若要实现启停、编辑、自动注册或独立 agent catalog API，应另开 OpenSpec change。
+另外，当前也提供了最小只读 catalog API：`GET /api/agents`。它复用 registry 作为真源，但返回更窄的 API-facing contract，便于调用方或治理工具读取 agent 列表，而不需要依赖整个 Runtime Surface payload。
+
+因此垂域实现仍通过现有 Tool / Skill / MCP / Policy 服务接入；`agent.yaml` 是资产目录和治理可见性的真源。后续若要实现启停、编辑或自动注册，仍应另开 OpenSpec change。
 
 ## 3. agent.yaml 建议格式
 

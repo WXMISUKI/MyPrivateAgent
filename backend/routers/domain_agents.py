@@ -7,16 +7,23 @@ from typing import Any
 from fastapi import APIRouter
 
 try:
+    from services.domain_agent_catalog_service import get_domain_agent_catalog_service
     from services.domain_agent_grounded_answer_composition_trial_service import get_domain_agent_grounded_answer_composition_trial_service
     from services.domain_agent_grounded_answer_package_service import get_domain_agent_grounded_answer_package_service
     from services.domain_agent_grounded_answer_trial_service import get_domain_agent_grounded_answer_trial_service
 except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+    from backend.services.domain_agent_catalog_service import get_domain_agent_catalog_service
     from backend.services.domain_agent_grounded_answer_composition_trial_service import get_domain_agent_grounded_answer_composition_trial_service
     from backend.services.domain_agent_grounded_answer_package_service import get_domain_agent_grounded_answer_package_service
     from backend.services.domain_agent_grounded_answer_trial_service import get_domain_agent_grounded_answer_trial_service
 
 
 router = APIRouter(prefix="/api", tags=["domain-agents"])
+
+
+@router.get("/agents")
+def list_domain_agents() -> dict[str, Any]:
+    return get_domain_agent_catalog_service().build_catalog()
 
 
 @router.post("/domain-agents/{agent_id}/grounded-answer-trial")

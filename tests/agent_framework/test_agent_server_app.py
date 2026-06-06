@@ -70,6 +70,7 @@ class AgentServerAppTests(unittest.TestCase):
 
         self.assertIn("/", route_paths)
         self.assertIn("/login", route_paths)
+        self.assertIn("/api/agents", route_paths)
         self.assertIn("/api/chat", route_paths)
         self.assertIn("/api/conversations", route_paths)
         self.assertIn("/api/domain-agents/{agent_id}/grounded-answer-trial", route_paths)
@@ -93,6 +94,7 @@ class AgentServerAppTests(unittest.TestCase):
         )
         route_paths = {route.path for route in app.router.routes}
 
+        self.assertIn("/api/agents", route_paths)
         self.assertIn("/api/chat", route_paths)
         self.assertIn("/api/conversations", route_paths)
         self.assertIn("/api/domain-agents/{agent_id}/grounded-answer-trial", route_paths)

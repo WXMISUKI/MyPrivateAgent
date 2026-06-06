@@ -8,6 +8,32 @@ from backend.routers.domain_agents import router
 
 
 class DomainAgentsRouterTests(unittest.TestCase):
+    def test_agents_catalog_endpoint_returns_catalog_contract(self):
+        app = FastAPI()
+        app.include_router(router)
+        fake_service = Mock()
+        fake_service.build_catalog.return_value = {
+            "contract_version": "domain-agent-catalog-v1",
+            "status": "ready",
+            "total_agents": 1,
+            "ready_agents": 1,
+            "invalid_agents": 0,
+            "agents": [{"id": "ecommerce_support", "name": "Ecommerce Support"}],
+            "errors": [],
+        }
+
+        with patch(
+            "backend.routers.domain_agents.get_domain_agent_catalog_service",
+            return_value=fake_service,
+        ):
+            response = TestClient(app).get("/api/agents")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["contract_version"], "domain-agent-catalog-v1")
+        self.assertEqual(payload["agents"][0]["id"], "ecommerce_support")
+        fake_service.build_catalog.assert_called_once()
+
     def test_grounded_answer_trial_endpoint_returns_trial_report(self):
         app = FastAPI()
         app.include_router(router)
