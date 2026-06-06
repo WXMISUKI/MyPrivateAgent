@@ -1307,8 +1307,13 @@ Provider-first 能力路线已补充到 `docs/roadmap/provider_capability_gap_as
 
 下一批优先级：
 
-1. 完成文档入口产品化，并把 `agent-runtime-control-plane-positioning` 作为项目定位入口。
+1. 完成文档入口产品化，并把 `agent-runtime-control-plane-positioning` 与 `agent-runtime-control-plane-entrypoint-readiness` 作为项目定位入口。
 2. 准备 framework adapter authoring checklist / promotion gate，而不是直接接入第二个框架。
 3. 深化 Embedded SDK 持久化与恢复能力。
 4. 拆 Governance Timeline。
 5. 拆 Runtime Surface contract assembler。
+
+当前补充：
+
+- Domain agent grounded-answer 证据链已经达到 repo-side minimal integration trial pack 完成线。后续除非真实调用方试接暴露具体缺口，否则不再默认沿 domain-agent evidence 继续拆小阶段。
+- 默认下一步应回到 Agent Runtime Control Plane 入口、Embedded SDK / Execution Loop 主干，或 framework adapter authoring checklist，而不是继续增加本地 trial evidence 层。

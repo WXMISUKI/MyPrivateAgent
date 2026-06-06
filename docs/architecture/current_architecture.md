@@ -182,10 +182,11 @@
 
 ## 6. 推荐阅读顺序
 
-1. `docs/architecture/current_architecture.md`
-2. `docs/architecture/runtime_contracts.md`
-3. `openspec/specs/query-workspace-generalization/spec.md`
-4. `docs/architecture/reference_project_mapping.md`
-5. `docs/architecture/extension_points.md`
-6. `docs/roadmap/next_phase_hardening.md`
-7. `docs/change/2026-05-13-phase-e-architecture-hardening-plan.md`
+1. `docs/architecture/agent_runtime_control_plane_entrypoint.md`
+2. `docs/architecture/current_architecture.md`
+3. `docs/architecture/runtime_contracts.md`
+4. `docs/architecture/extension_points.md`
+5. `docs/guides/project_entrypoint_checklist.md`
+6. `openspec/specs/query-workspace-generalization/spec.md`
+7. `docs/architecture/reference_project_mapping.md`
+8. `docs/roadmap/next_phase_hardening.md`

@@ -1,17 +1,24 @@
-# MyPrivateAgent Agent Framework Demo
+# MyPrivateAgent
 
 ## 项目定位
-本仓库已从“单项目私有助手”演进为“可复用的通用智能体 Demo 框架”，用于后续垂域 Agent 快速孵化。
+本仓库当前定位为企业级 **Agent Runtime Control Plane**。它不是单一聊天 Demo，也不是某个外部 Agent 框架的替代实现；它负责 Runtime Core、ToolRuntime、Query Control、Governance Timeline、审批、审计、权限、外部 provider 边界和业务系统集成语义。
 
-核心边界：
-- 框架层：`backend/agent_framework`、`backend/agent_server`
-- 业务层：`backend/services` 中领域服务、`frontend-vue` 页面与文案
+建议先读：
 
-## 当前状态（2026-04-24）
-- 后端执行链：`AgentHarness + Orchestrator + ChatService` 已收口
-- 前端主界面：`frontend-vue`（Vue SPA）为默认展示面
-- 反馈闭环：消息级反馈、runtime effect 关联、feedback analytics 已打通
-- 幂等治理：同用户同消息反馈采用 upsert 语义（避免统计污染）
+- 当前入口：`docs/architecture/agent_runtime_control_plane_entrypoint.md`
+- 当前事实：`docs/architecture/current_architecture.md`
+- 运行时契约：`docs/architecture/runtime_contracts.md`
+- 扩展点：`docs/architecture/extension_points.md`
+- 接入清单：`docs/guides/project_entrypoint_checklist.md`
+
+## 当前状态
+
+- Runtime Core 已具备 run/event/approval/trace/audit/artifact 的核心边界。
+- Capability Layer 已具备 Tool / MCP / Skill / Memory / Command / provider contract。
+- Governance Layer 已具备 runtime contract gate、doctor、health、timeline 和 quality gate evidence。
+- Embedded SDK / Agent Harness Facade 已具备最小开发者入口，但仍处于持续硬化阶段。
+- Domain agent 线已具备 catalog、capability linkage、grounded-answer trial/package/composition 和 repo-side smoke trial pack。
+- 默认 `/api/chat` retrieval injection 仍保持关闭；外部 RAG/GraphRAG/OCR/Voice 等重能力保持 provider-first。
 
 ## 快速启动
 
@@ -200,6 +207,11 @@ python -m uvicorn examples.weather_demo_app:app --port 8010
 ```
 
 ## 关键文档
+- 当前入口：`docs/architecture/agent_runtime_control_plane_entrypoint.md`
+- 接入清单：`docs/guides/project_entrypoint_checklist.md`
+- 当前架构：`docs/architecture/current_architecture.md`
+- 运行时契约：`docs/architecture/runtime_contracts.md`
+- 扩展点：`docs/architecture/extension_points.md`
 - Starter 指南：`docs/agent_framework_starter_guide.md`
 - Demo 指南：`docs/agent_framework_demo_guide.md`
 - Demo 运行手册：`docs/demo_runbook.md`
