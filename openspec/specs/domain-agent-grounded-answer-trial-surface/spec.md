@@ -15,6 +15,11 @@ The system SHALL expose a machine-readable grounded-answer trial report for a re
 - **THEN** the trial report status is `go`
 - **AND** the report includes grounding decision, promotion decision, citation allowlist, blockers, warnings, and recommended next action
 
+#### Scenario: Composition trial remains downstream
+- **WHEN** a grounded-answer composition trial exists
+- **THEN** trial surface remains an upstream readiness layer
+- **AND** the trial report alone does not generate an answer preview without package/composition evaluation
+
 #### Scenario: Trial requires review
 - **WHEN** grounding or promotion decision returns `review` and no blocker exists
 - **THEN** the trial report status is `review`

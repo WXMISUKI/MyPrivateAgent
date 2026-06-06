@@ -158,6 +158,7 @@
 - Domain agent grounded answer 现在具备最小 promotion gate：`DomainAgentGroundedAnswerPromotionService` 会把 provider trial、grounding decision、PromptOps、MemoryOps 与 multi-turn eval evidence 聚合成 `go / review / blocked`，用于判断是否可以进入 repo-side grounded answer trial；该 gate 不调用 provider、不生成 answer、不写 source binding、不改变默认 `/api/chat` retrieval injection，GraphRAG 仍单独 gated。
 - Domain agent grounded answer 现在具备显式 trial surface：`DomainAgentGroundedAnswerTrialService` 与 `POST /api/domain-agents/{agent_id}/grounded-answer-trial` 会把调用方传入的 evidence pack、provider/PromptOps/MemoryOps/eval evidence 汇总成 trial report；该 surface 仍是只读试接入口，不调用 `/api/chat`、不调用 provider、不生成 answer、不写 memory/audit/trace、不创建 source binding。
 - Domain agent grounded answer 现在具备 package dry-run：`DomainAgentGroundedAnswerPackageService` 与 `POST /api/domain-agents/{agent_id}/grounded-answer-package-dry-run` 会把 trial report 或同源 evidence 整理为一个受控输入包，供未来 answer composer 消费；该 package 仍不调用 provider、LLM 或 `/api/chat`，不生成 answer，不写 memory/audit/trace/source binding。
+- Domain agent grounded answer 现在具备 composition trial：`DomainAgentGroundedAnswerCompositionTrialService` 与 `POST /api/domain-agents/{agent_id}/grounded-answer-composition-trial` 会把 ready package 组合成一个 deterministic answer preview；它仍然不调用 provider、LLM 或 `/api/chat`，不生成默认聊天答案，也不写 memory/audit/trace/source binding。该层可以视为当前 grounded-answer 控制面分支的收尾层。
 
 ## 4. 当前仍在路上的能力
 

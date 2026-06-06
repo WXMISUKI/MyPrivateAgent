@@ -149,6 +149,58 @@ class DomainAgentsRouterTests(unittest.TestCase):
         self.assertFalse(response.json()["ok"])
         self.assertTrue(fake_service.build_package.call_args.kwargs["graph_requested"])
 
+    def test_grounded_answer_composition_trial_endpoint_returns_preview(self):
+        app = FastAPI()
+        app.include_router(router)
+        fake_service = Mock()
+        fake_service.run_trial.return_value.to_dict.return_value = {
+            "contract_version": "domain-agent-grounded-answer-composition-trial-v1",
+            "agent_id": "ecommerce_support",
+            "composition_status": "ready",
+            "reason_code": "grounded_answer_composition_ready",
+            "answer_preview": "基于 refund_policy_2026#section-3，已生成受控回答预览。",
+            "used_citations": ["refund_policy_2026#section-3"],
+            "composition_policy": {"mode": "deterministic_preview", "citation_mode": "allowlist_only"},
+            "fallback_behavior": {"when_blocked": "refuse_or_clarify_when_no_evidence"},
+            "blockers": [],
+            "warnings": [],
+            "boundary": {"model_invocation": "not_performed", "answer_generation": "not_performed"},
+        }
+
+        with patch(
+            "backend.routers.domain_agents.get_domain_agent_grounded_answer_composition_trial_service",
+            return_value=fake_service,
+        ):
+            response = TestClient(app).post(
+                "/api/domain-agents/ecommerce_support/grounded-answer-composition-trial",
+                json={"package": {"package_status": "ready"}},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["ok"])
+        self.assertEqual(response.json()["composition"]["composition_status"], "ready")
+
+    def test_grounded_answer_composition_trial_endpoint_marks_blocked_as_not_ok(self):
+        app = FastAPI()
+        app.include_router(router)
+        fake_service = Mock()
+        fake_service.run_trial.return_value.to_dict.return_value = {
+            "composition_status": "blocked",
+            "blockers": [{"component": "graph", "reason_code": "graphrag_not_promoted"}],
+        }
+
+        with patch(
+            "backend.routers.domain_agents.get_domain_agent_grounded_answer_composition_trial_service",
+            return_value=fake_service,
+        ):
+            response = TestClient(app).post(
+                "/api/domain-agents/ecommerce_support/grounded-answer-composition-trial",
+                json={"graph_requested": True},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.json()["ok"])
+
 
 if __name__ == "__main__":
     unittest.main()

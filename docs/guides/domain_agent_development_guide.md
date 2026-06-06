@@ -472,6 +472,28 @@ grounding_policy:
 
 只有当 trial report 是 `go` 时，package 才能进入 `ready`。如果 trial 还是 `review` 或 `blocked`，package 也必须保持同级收口，而不能越级进入回答阶段。
 
+### Grounded answer composition trial
+
+`DomainAgentGroundedAnswerCompositionTrialService` 和 `POST /api/domain-agents/{agent_id}/grounded-answer-composition-trial` 是这条 grounded-answer 控制面链路的最后一层受控试运行。
+
+它会消费 `grounded_answer_package`，并返回：
+
+- `composition_status`: `ready / review / blocked`
+- `answer_preview`
+- `used_citations`
+- `composition_policy`
+- `fallback_behavior`
+
+这里的 `answer_preview` 仍然是 deterministic preview，不是默认聊天结果，也不是 live LLM answer。当前边界依然保持：
+
+- 不调用 provider
+- 不调用 LLM
+- 不调用 `/api/chat`
+- 不写 memory / audit / trace / source binding
+- 不提升 GraphRAG
+
+推荐把这一层视为当前 domain-agent grounded-answer 分支的收尾层。做完 composition trial 后，后续若要继续推进，就应单独评估是否真的有必要进入默认 `/api/chat` retrieval injection promotion，而不是沿着这条线继续拆更多局部切片。
+
 ### Step 7：定义审批和风险策略
 
 高风险动作必须进入审批链路：
