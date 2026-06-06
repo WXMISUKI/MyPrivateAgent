@@ -1,0 +1,26 @@
+{
+  "agent_id": "ecommerce_support",
+  "domain": "refund.policy",
+  "query": "What refund policy applies to this order?",
+  "graph_requested": false,
+  "evidence_pack": {
+    "status": "answerable",
+    "allowed_citations": [
+      "refund_policy_2026#section-3"
+    ]
+  },
+  "provider_evidence": {
+    "status": "trial_passed"
+  },
+  "promptops_evidence": {
+    "prompt_key": "refund_policy",
+    "version": "2",
+    "status": "active"
+  },
+  "memoryops_evidence": {
+    "retrieved_knowledge_promotion_mode": "explicit_only"
+  },
+  "eval_evidence": {
+    "overall_status": "passed"
+  }
+}

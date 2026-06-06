@@ -496,6 +496,32 @@ grounding_policy:
 
 推荐把这一层视为当前 domain-agent grounded-answer 分支的收尾层。做完 composition trial 后，后续若要继续推进，就应单独评估是否真的有必要进入默认 `/api/chat` retrieval injection promotion，而不是沿着这条线继续拆更多局部切片。
 
+### Repo-side minimal integration trial pack
+
+当前推荐把 repo-side 试接收口为一条最小链路，而不是继续追加新的控制面层：
+
+```text
+GET /api/agents
+  -> inspect capability_linkage
+  -> POST /api/domain-agents/{agent_id}/grounded-answer-trial
+  -> POST /api/domain-agents/{agent_id}/grounded-answer-package-dry-run
+  -> POST /api/domain-agents/{agent_id}/grounded-answer-composition-trial
+```
+
+如果调用方只想在仓库内先做 smoke，可以运行：
+
+```powershell
+python backend/scripts/domain_agent_trial_smoke.py --payload docs/examples/domain_agent_trial_payload.json --pretty
+```
+
+该脚本会读取最小 evidence payload，复用现有 trial / package / composition service，并输出统一 `overall_status`：
+
+- `go`：可以进入调用方 repo-side grounded answer trial。
+- `review`：没有硬阻断，但需要先确认 warnings。
+- `blocked`：存在 provider、citation、grounding、eval 或 GraphRAG blocker。
+
+该 trial pack 仍然保持只读：不启动服务、不调用 provider、不调用 LLM、不调用 `/api/chat`、不写 memory / audit / trace、不创建 source binding，也不改变默认聊天检索注入。
+
 ### Step 7：定义审批和风险策略
 
 高风险动作必须进入审批链路：
