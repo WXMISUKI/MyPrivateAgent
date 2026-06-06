@@ -120,6 +120,7 @@ class DomainAgentGroundedAnswerTrialService:
             },
             request_summary={
                 "domain": _clean(domain) or None,
+                "query": _clean(query) or None,
                 "query_provided": bool(_clean(query)),
                 "evidence_pack_status": _clean((evidence_pack or {}).get("status")) or None,
                 "graph_requested": bool(graph_requested),

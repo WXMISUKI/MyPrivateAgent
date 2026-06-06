@@ -448,6 +448,30 @@ grounding_policy:
 
 这个 endpoint 仍然不是默认聊天执行入口：它不调用 provider、不生成最终回答、不写 audit / trace / memory、不创建 source binding，也不改变 `/api/chat` 的默认检索注入。
 
+### Grounded answer package dry-run
+
+`DomainAgentGroundedAnswerPackageService` 和 `POST /api/domain-agents/{agent_id}/grounded-answer-package-dry-run` 提供下一层只读能力：把 trial report 或同一批 evidence 输入整理成一个可供后续 answer composer 消费的 `grounded_answer_package`。
+
+它的目标不是生成回答，而是准备一个受控输入包，通常包含：
+
+- `package_status`: `ready / review / blocked`
+- `allowed_citations`
+- `evidence_items`
+- `prompt_binding`
+- `memory_boundary`
+- `fallback_policy`
+- `blockers / warnings`
+
+这个 package dry-run 仍然保持严格边界：
+
+- 不调用 LLM。
+- 不调用 provider。
+- 不调用 `/api/chat`。
+- 不生成最终回答。
+- 不写 memory / audit / trace / source binding。
+
+只有当 trial report 是 `go` 时，package 才能进入 `ready`。如果 trial 还是 `review` 或 `blocked`，package 也必须保持同级收口，而不能越级进入回答阶段。
+
 ### Step 7：定义审批和风险策略
 
 高风险动作必须进入审批链路：

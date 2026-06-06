@@ -25,6 +25,11 @@ The system SHALL expose a machine-readable grounded-answer trial report for a re
 - **THEN** the trial report status is `blocked`
 - **AND** the report includes machine-readable blockers
 
+#### Scenario: Package dry-run consumes trial report
+- **WHEN** a grounded-answer package dry-run is requested
+- **THEN** it may consume the trial report as its input
+- **AND** consuming the trial report does not invoke provider, model, chat, or answer generation
+
 ### Requirement: Trial surface is explicit opt-in
 
 The grounded-answer trial surface SHALL be reachable only through an explicit trial entrypoint and SHALL NOT alter default chat behavior.

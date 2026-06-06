@@ -19,6 +19,12 @@ The system SHALL expose a machine-readable grounded-answer promotion decision fo
 - **THEN** the promotion decision is `go`
 - **AND** the recommended next action is to start a repo-side grounded-answer trial
 
+#### Scenario: Package dry-run requires promotion go
+- **WHEN** a grounded-answer package dry-run is requested
+- **AND** the promotion decision is not `go`
+- **THEN** the package dry-run MUST remain `review` or `blocked`
+- **AND** promotion `go` alone still does not permit answer generation
+
 #### Scenario: Required evidence is missing
 - **WHEN** required provider, grounding, PromptOps, MemoryOps, or eval evidence is missing
 - **THEN** the promotion decision is `blocked` or `review`
