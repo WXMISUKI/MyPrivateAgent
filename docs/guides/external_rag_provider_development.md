@@ -220,6 +220,23 @@ python scripts/export_unified_knowledge_provider_trial_outcome.py `
 
 `--provider-readiness-path` 是可选输入，用于把 provider 侧 Phase 24 `decision=go` 的文档 RAG readiness closure 记录到 MyPrivateAgent 侧 trial outcome。它不能替代真实 HTTP 检查；provider 仍需单独启动并通过 health、manifest、preflight、source binding preview 和 RAG retrieve 检查。
 
+当 provider 已经注册并通过 live HTTP 验收某个本地业务语料后，可以在 MyPrivateAgent 侧跑一个更聚焦的 caller-side corpus trial：
+
+```powershell
+python scripts/export_local_knowledge_provider_corpus_trial.py `
+  --provider-base-url http://127.0.0.1:8020 `
+  --source-id company_profile_2025_trial
+```
+
+该命令会调用 provider 的 `/api/rag/sources`、`/api/rag/sources/{source_id}/documents`、`/api/rag/retrieve` 和 `/api/rag/answer`，验证 answerable 问题、citation allowlist 和负控问题。输出位于：
+
+```text
+docs/integration/local-knowledge-provider-corpus-trial/local-knowledge-provider-corpus-trial.json
+docs/integration/local-knowledge-provider-corpus-trial/local-knowledge-provider-corpus-trial.md
+```
+
+`decision=go` 只表示 MyPrivateAgent 已能通过本地 HTTP 合同使用该 source；它不创建 source-to-agent binding，不启用默认 `/api/chat` retrieval injection，不写审计或记忆，也不执行 GraphRAG。
+
 当 provider 已经通过仓库侧 trial outcome 后，可以继续运行垂域 agent 显式 live trial，验证真实 document RAG evidence 是否能进入 MyPrivateAgent 的 grounded-answer 控制面链路：
 
 ```powershell
