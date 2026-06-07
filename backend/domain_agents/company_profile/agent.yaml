@@ -1,0 +1,32 @@
+id: company_profile
+name: Company Profile Agent
+version: 0.1.0
+description: Domain agent for company profile, qualifications, organization, and project scale questions.
+roles:
+  - id: company_profile_specialist
+    name: Company Profile Specialist
+    default: true
+runtime:
+  default_model: default
+  enable_query_control_timeline: true
+  response_mode: stream
+capabilities:
+  tools: []
+  skills:
+    - company_profile_qa
+  mcp_servers: []
+  rag_sources:
+    - company_profile_2025_trial
+  graph_sources: []
+grounding_policy:
+  require_citations: true
+  allow_ungrounded: false
+  must_use_knowledge_for_domains:
+    - company.profile
+  fallback_policy: refuse_or_clarify_when_no_evidence
+  source_acl_mode: agent_manifest
+governance:
+  approval_required: []
+  audit_tags:
+    - company_profile
+    - local_trial

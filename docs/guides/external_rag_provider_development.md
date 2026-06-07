@@ -249,6 +249,19 @@ python backend/scripts/domain_agent_live_grounded_answer_trial.py `
 
 这个 live trial 只使用 provider 的 document RAG retrieve 合同和 agent manifest 中声明的 `rag_sources`。它不启用默认 chat 检索注入，不创建绑定，不执行 GraphRAG，不写审计或记忆。
 
+针对当前本地公司简介语料，推荐先跑最小公司简介垂域 agent 试验：
+
+```powershell
+python backend/scripts/domain_agent_live_grounded_answer_trial.py `
+  --agent-id company_profile `
+  --domain company.profile `
+  --query "公司主营业务是什么？" `
+  --provider-base-url http://127.0.0.1:8020 `
+  --output-dir docs/integration/company-profile-domain-agent-live-trial
+```
+
+`company_profile` agent 只声明 `company_profile_2025_trial`，因此该命令用于验证“真实 agent manifest -> provider retrieve -> grounded-answer trial”的显式闭环。它仍然不启用默认 `/api/chat` retrieval injection，也不创建 source-to-agent binding。
+
 ## 7. agent.yaml 绑定
 
 垂域 agent 通过 `capabilities.rag_sources` 和 `capabilities.graph_sources` 声明可见知识能力：

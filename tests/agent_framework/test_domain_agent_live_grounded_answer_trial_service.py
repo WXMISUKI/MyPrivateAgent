@@ -46,6 +46,32 @@ class DomainAgentLiveGroundedAnswerTrialServiceTests(unittest.TestCase):
         self.assertFalse(report.boundary["runtime_behavior_changed"])
         self.assertIn("# Domain Agent Live Grounded Answer Trial", render_domain_agent_live_grounded_answer_trial_markdown(report))
 
+    def test_live_trial_uses_company_profile_manifest_rag_source(self):
+        service = DomainAgentLiveGroundedAnswerTrialService(
+            registry_service=self._registry_service(
+                agent_id="company_profile",
+                agent_name="Company Profile",
+                rag_sources=["company_profile_2025_trial"],
+                domains=["company.profile"],
+            )
+        )
+
+        report = service.run_trial(
+            agent_id="company_profile",
+            domain="company.profile",
+            query="公司主营业务是什么？",
+            provider_base_url="http://knowledge.test",
+            transport=httpx.MockTransport(_company_profile_provider_handler),
+            eval_dir=self._eval_dir(),
+        )
+
+        self.assertEqual(report.live_trial_status, "go")
+        self.assertEqual(report.provider_retrieve["knowledge_base_ids"], ["company_profile_2025_trial"])
+        self.assertEqual(report.provider_retrieve["allowed_citations"], ["company_profile_2025_trial#page-1"])
+        self.assertEqual(report.boundary["chat_invocation"], "not_performed")
+        self.assertEqual(report.boundary["source_binding_creation"], "not_performed")
+        self.assertFalse(report.boundary["runtime_behavior_changed"])
+
     def test_live_trial_blocks_insufficient_evidence_for_citation_required_agent(self):
         service = DomainAgentLiveGroundedAnswerTrialService(registry_service=self._registry_service())
 
@@ -142,24 +168,35 @@ class DomainAgentLiveGroundedAnswerTrialServiceTests(unittest.TestCase):
             self.assertEqual(payload["live_trial_status"], "go")
             self.assertIn("Domain Agent Live Grounded Answer Trial", markdown)
 
-    def _registry_service(self, *, include_sources=True):
+    def _registry_service(
+        self,
+        *,
+        include_sources=True,
+        agent_id="ecommerce_support",
+        agent_name="Ecommerce Support",
+        rag_sources=None,
+        domains=None,
+    ):
         temp_dir = tempfile.TemporaryDirectory()
         self.addCleanup(temp_dir.cleanup)
         root = Path(temp_dir.name)
-        agent_dir = root / "ecommerce_support"
+        agent_dir = root / agent_id
         agent_dir.mkdir()
+        rag_sources = rag_sources or ["refund_policy_docs"]
+        domains = domains or ["refund.policy"]
         source_block = (
             """
               rag_sources:
-                - refund_policy_docs
             """
+            + "".join(f"    - {source_id}\n" for source_id in rag_sources)
             if include_sources
             else ""
         )
+        domain_block = "".join(f"    - {domain}\n" for domain in domains)
         manifest = (
-            """
-            id: ecommerce_support
-            name: Ecommerce Support
+            f"""
+            id: {agent_id}
+            name: {agent_name}
             version: 0.1.0
             roles:
               - id: default
@@ -167,12 +204,12 @@ class DomainAgentLiveGroundedAnswerTrialServiceTests(unittest.TestCase):
             capabilities:
             """
             + source_block
-            + """
+            + f"""
             grounding_policy:
               require_citations: true
               allow_ungrounded: false
               must_use_knowledge_for_domains:
-                - refund.policy
+            {domain_block.rstrip()}
               fallback_policy: refuse_or_clarify_when_no_evidence
               source_acl_mode: agent_manifest
             """
@@ -215,6 +252,36 @@ def _answerable_provider_handler(request):
                         "snippet": "refund snippet",
                         "score": 0.91,
                         "citation": "refund_policy_2026#section-3",
+                    }
+                ],
+                "metadata": {
+                    "evidence_pack": {
+                        "version": "evidence-pack-v1",
+                        "status": "answerable",
+                        "citation_policy": "use_only_returned_citations",
+                    }
+                },
+            },
+        }
+    )
+
+
+def _company_profile_provider_handler(request):
+    payload = json.loads(request.content.decode("utf-8"))
+    assert request.url.path == "/api/rag/retrieve"
+    assert payload["knowledge_base_ids"] == ["company_profile_2025_trial"]
+    return _json_response(
+        {
+            "ok": True,
+            "result": {
+                "documents": [
+                    {
+                        "source_id": "company_profile_2025_trial",
+                        "document_id": "company_profile_2025_trial",
+                        "title": "公司简介2025",
+                        "snippet": "公司主营业务覆盖企业级 AI 应用与知识服务。",
+                        "score": 0.93,
+                        "citation": "company_profile_2025_trial#page-1",
                     }
                 ],
                 "metadata": {
