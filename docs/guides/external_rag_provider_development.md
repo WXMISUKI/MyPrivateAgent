@@ -282,6 +282,22 @@ POST /api/domain-agents/company_profile/live-grounded-answer
 
 该接口返回调用方更容易消费的 `ok`、`status`、`reason_code`、`answer_preview`、`citations`、`documents` 和 `boundary`，同时保留完整 `trial` 供排障使用。它仍然是显式试问入口，不修改默认 `/api/chat`，不写 memory/audit/trace，不创建 source binding，不执行 GraphRAG，也不做真实 LLM answer generation。
 
+日常本地验证时，推荐使用调用方侧 smoke 命令确认整条显式 API 链路可用：
+
+```powershell
+python backend/scripts/company_profile_explicit_api_local_smoke.py `
+  --provider-base-url http://127.0.0.1:8020
+```
+
+该命令通过 MyPrivateAgent 的 FastAPI router 调用 `POST /api/domain-agents/company_profile/live-grounded-answer`，因此不需要单独启动 MyPrivateAgent 后端进程；但需要外部 provider 已经在 `http://127.0.0.1:8020` 可访问。输出位于：
+
+```text
+docs/integration/company-profile-explicit-api-local-smoke/company-profile-explicit-api-local-smoke.json
+docs/integration/company-profile-explicit-api-local-smoke/company-profile-explicit-api-local-smoke.md
+```
+
+`decision=go` 表示 provider 本地 source、MyPrivateAgent domain agent manifest、显式 API、citation allowlist 和 boundary 都能一起工作。该 smoke 不启动 provider，不接入默认 `/api/chat`，不写 memory/audit/trace，不创建 source binding，不执行 GraphRAG，也不做真实 LLM answer generation。
+
 ## 7. agent.yaml 绑定
 
 垂域 agent 通过 `capabilities.rag_sources` 和 `capabilities.graph_sources` 声明可见知识能力：
