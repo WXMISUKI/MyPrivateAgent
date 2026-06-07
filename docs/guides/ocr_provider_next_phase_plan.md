@@ -195,6 +195,7 @@ Current local shape:
 - The loop converts the persisted document artifact into a unifiedKnowledgeRAG parser artifact JSON.
 - The loop can invoke the provider repo ingestion command and then reuse the existing local knowledge provider corpus trial.
 - This remains explicit operator tooling; it does not enable default `/api/chat` retrieval injection, source binding, answer policy, memory/audit writes, or GraphRAG.
+- `scripts/export_document_rag_local_readiness.py` can be run before the upload-to-use loop to verify OCR provider health, CPU/GPU profile, large-PDF timeout posture, unifiedKnowledgeRAG health, source visibility, provider repo script, and `GRAPHRAG` Python command readiness.
 
 Next productization trigger:
 

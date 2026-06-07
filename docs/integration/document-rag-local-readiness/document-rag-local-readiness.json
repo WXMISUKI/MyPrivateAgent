@@ -1,0 +1,153 @@
+{
+  "id": "document-rag-local-readiness-v1",
+  "generated_at": "2026-06-07T12:23:12.663173+00:00",
+  "decision": "go",
+  "reason_code": "document_rag_local_readiness_ready",
+  "ocr_base_url": "http://127.0.0.1:8080",
+  "ocr_profile": "gpu",
+  "ocr_timeout_seconds": 180.0,
+  "provider_base_url": "http://127.0.0.1:8020",
+  "source_id": "company_profile_2025_trial",
+  "provider_repo_path": "D:\\AI\\AIcode\\unifiedKnowledgeRAG",
+  "provider_python": "conda run -n GRAPHRAG python",
+  "checks": [
+    {
+      "id": "ocr_provider",
+      "status": "ready",
+      "reason_code": "ocr_profile_ready",
+      "endpoint": "http://127.0.0.1:8080/health",
+      "summary": {
+        "status": "ready",
+        "raw": {
+          "logId": "a153c9e0-c706-451c-8167-eec4ed1a1175",
+          "errorCode": 0,
+          "errorMsg": "Healthy"
+        },
+        "ocr_profile": "gpu",
+        "ocr_timeout_seconds": 180.0,
+        "large_pdf_timeout_recommendation_seconds": 120.0
+      },
+      "recommended_actions": [
+        "use_gpu_ocr_service_endpoint_for_large_pdf_trials"
+      ]
+    },
+    {
+      "id": "knowledge_provider",
+      "status": "ready",
+      "reason_code": "knowledge_provider_health_ready",
+      "endpoint": "http://127.0.0.1:8020/health",
+      "summary": {
+        "status": "ready",
+        "raw": {
+          "status": "ok",
+          "service": "unifiedKnowledgeProvider",
+          "rag": {
+            "status": "ready",
+            "reason": null,
+            "backend": "fixture",
+            "backend_status": "ready",
+            "index_status": "ready"
+          },
+          "answer": {
+            "status": "ready",
+            "reason": null,
+            "backend": "deterministic",
+            "backend_status": "ready",
+            "index_status": null
+          },
+          "graph": {
+            "status": "planned",
+            "reason": "Graph query execution is not in slice v1.",
+            "backend": null,
+            "backend_status": null,
+            "index_status": null
+          }
+        }
+      },
+      "recommended_actions": []
+    },
+    {
+      "id": "knowledge_source_catalog",
+      "status": "ready",
+      "reason_code": "source_visible",
+      "endpoint": "http://127.0.0.1:8020/api/rag/sources",
+      "summary": {
+        "source_id": "company_profile_2025_trial",
+        "visible_source_ids": [
+          "company_profile_2025_trial",
+          "logistics_faq",
+          "refund_policy_docs"
+        ]
+      },
+      "recommended_actions": []
+    },
+    {
+      "id": "provider_ingestion_command",
+      "status": "ready",
+      "reason_code": "provider_python_command_ready",
+      "endpoint": "D:\\AI\\AIcode\\unifiedKnowledgeRAG\\scripts\\export_parser_artifact_local_ingestion_loop.py",
+      "summary": {
+        "provider_repo_path": "D:\\AI\\AIcode\\unifiedKnowledgeRAG",
+        "provider_python": "conda run -n GRAPHRAG python",
+        "command": [
+          "conda",
+          "run",
+          "-n",
+          "GRAPHRAG",
+          "python",
+          "--version"
+        ],
+        "return_code": 0,
+        "stdout": "Python 3.11.15",
+        "stderr": ""
+      },
+      "recommended_actions": []
+    },
+    {
+      "id": "runtime_boundaries",
+      "status": "ready",
+      "reason_code": "side_effect_free_readiness_only",
+      "endpoint": null,
+      "summary": {
+        "document_parse_status": "not_run",
+        "provider_ingestion_status": "not_run",
+        "service_start_status": "not_started",
+        "default_chat_retrieval_injection": "not_enabled",
+        "source_binding_status": "not_created",
+        "memory_audit_governance_write_status": "not_written",
+        "graph_execution_status": "not_executed"
+      },
+      "recommended_actions": []
+    }
+  ],
+  "summary": {
+    "final_decision": "go",
+    "ready_check_count": 5,
+    "review_check_count": 0,
+    "blocked_check_count": 0,
+    "ocr_profile": "gpu",
+    "ocr_timeout_seconds": 180.0,
+    "large_pdf_timeout_recommendation_seconds": 120.0,
+    "default_chat_retrieval_injection": "not_enabled",
+    "source_binding_status": "not_created",
+    "document_parse_status": "not_run",
+    "provider_ingestion_status": "not_run",
+    "service_start_status": "not_started",
+    "graph_execution_status": "not_executed"
+  },
+  "recommended_actions": [
+    "run_document_rag_upload_to_use_loop_for_real_document",
+    "use_gpu_ocr_service_endpoint_for_large_pdf_trials"
+  ],
+  "non_goals": [
+    "does_not_upload_parse_or_ingest_documents",
+    "does_not_start_external_services",
+    "does_not_enable_default_chat_retrieval_injection",
+    "does_not_create_source_to_agent_binding",
+    "does_not_write_memory_audit_approval_or_governance_records",
+    "does_not_execute_graphrag",
+    "does_not_add_frontend_document_management_ui"
+  ],
+  "json_path": "docs\\integration\\document-rag-local-readiness\\document-rag-local-readiness.json",
+  "markdown_path": "docs\\integration\\document-rag-local-readiness\\document-rag-local-readiness.md"
+}
