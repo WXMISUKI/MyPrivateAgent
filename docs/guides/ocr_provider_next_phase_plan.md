@@ -158,6 +158,8 @@ After artifact contract is in place, because async jobs should return artifact r
 
 ## Priority 5: Knowledge/RAG Handoff
 
+Status: local upload-to-use trial implemented in OpenSpec change `add-document-rag-upload-to-use-loop`.
+
 Problem:
 
 OCR/Layout output is not yet connected to knowledge ingestion or agent tools.
@@ -186,6 +188,17 @@ Output:
 Boundary:
 
 The knowledge provider owns chunking, embedding, rerank, and indexing. MyPrivateAgent only passes artifact references and receives ingestion status.
+
+Current local shape:
+
+- `scripts/export_document_rag_upload_to_use_loop.py` reuses `DocumentIngestionService` for OCR/Layout parsing.
+- The loop converts the persisted document artifact into a unifiedKnowledgeRAG parser artifact JSON.
+- The loop can invoke the provider repo ingestion command and then reuse the existing local knowledge provider corpus trial.
+- This remains explicit operator tooling; it does not enable default `/api/chat` retrieval injection, source binding, answer policy, memory/audit writes, or GraphRAG.
+
+Next productization trigger:
+
+- Promote `knowledge.document.ingest` only when the provider exposes a stable HTTP ingestion API and the local command bridge is no longer enough for day-to-day use.
 
 ## Priority 6: Provider Packaging And Startup Reliability
 

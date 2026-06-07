@@ -27,7 +27,7 @@ build/
 err_log.txt
 
 # Local agent runtime state
-.myagent/app.db
+.myagent/
 
 # Node
 node_modules/

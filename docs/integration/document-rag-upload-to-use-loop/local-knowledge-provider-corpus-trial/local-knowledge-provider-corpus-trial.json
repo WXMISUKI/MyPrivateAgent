@@ -1,0 +1,148 @@
+{
+  "id": "local-knowledge-provider-corpus-trial-v1",
+  "generated_at": "2026-06-07T11:08:05.817039+00:00",
+  "provider_base_url": "http://127.0.0.1:8020",
+  "source_id": "company_profile_2025_trial",
+  "top_k": 3,
+  "decision": "go",
+  "reason_code": "local_corpus_trial_accepted",
+  "api_key_configured": false,
+  "summary": {
+    "case_count": 5,
+    "ready_case_count": 5,
+    "review_case_count": 0,
+    "blocked_case_count": 0,
+    "invalid_citation_count": 0,
+    "source_binding_status": "not_created",
+    "default_chat_retrieval_injection": "not_enabled",
+    "graph_execution_status": "not_executed",
+    "runtime_promotion_status": "unchanged"
+  },
+  "cases": [
+    {
+      "id": "business_scope",
+      "query": "公司主营业务是什么？",
+      "expected_mode": "answerable",
+      "status": "ready",
+      "reason_code": "answerable_case_passed",
+      "retrieve_ok": true,
+      "retrieve_count": 3,
+      "answer_ok": true,
+      "answer_status": "answered",
+      "citations": [
+        "company_profile_2025_trial#chunk-123",
+        "company_profile_2025_trial#chunk-201",
+        "company_profile_2025_trial#chunk-1"
+      ],
+      "allowed_citations": [
+        "company_profile_2025_trial#chunk-123",
+        "company_profile_2025_trial#chunk-201",
+        "company_profile_2025_trial#chunk-1"
+      ],
+      "invalid_citations": [],
+      "notes": []
+    },
+    {
+      "id": "qualifications",
+      "query": "公司有哪些资质？",
+      "expected_mode": "answerable",
+      "status": "ready",
+      "reason_code": "answerable_case_passed",
+      "retrieve_ok": true,
+      "retrieve_count": 3,
+      "answer_ok": true,
+      "answer_status": "answered",
+      "citations": [
+        "company_profile_2025_trial#chunk-111",
+        "company_profile_2025_trial#chunk-1",
+        "company_profile_2025_trial#chunk-3"
+      ],
+      "allowed_citations": [
+        "company_profile_2025_trial#chunk-111",
+        "company_profile_2025_trial#chunk-1",
+        "company_profile_2025_trial#chunk-3"
+      ],
+      "invalid_citations": [],
+      "notes": []
+    },
+    {
+      "id": "organization",
+      "query": "公司组织机构包括哪些部门？",
+      "expected_mode": "answerable",
+      "status": "ready",
+      "reason_code": "answerable_case_passed",
+      "retrieve_ok": true,
+      "retrieve_count": 3,
+      "answer_ok": true,
+      "answer_status": "answered",
+      "citations": [
+        "company_profile_2025_trial#chunk-51",
+        "company_profile_2025_trial#chunk-163",
+        "company_profile_2025_trial#chunk-655"
+      ],
+      "allowed_citations": [
+        "company_profile_2025_trial#chunk-51",
+        "company_profile_2025_trial#chunk-163",
+        "company_profile_2025_trial#chunk-655"
+      ],
+      "invalid_citations": [],
+      "notes": []
+    },
+    {
+      "id": "project_scale",
+      "query": "公司完成过哪些工程规模？",
+      "expected_mode": "answerable",
+      "status": "ready",
+      "reason_code": "answerable_case_passed",
+      "retrieve_ok": true,
+      "retrieve_count": 3,
+      "answer_ok": true,
+      "answer_status": "answered",
+      "citations": [
+        "company_profile_2025_trial#chunk-141",
+        "company_profile_2025_trial#chunk-3",
+        "company_profile_2025_trial#chunk-107"
+      ],
+      "allowed_citations": [
+        "company_profile_2025_trial#chunk-141",
+        "company_profile_2025_trial#chunk-3",
+        "company_profile_2025_trial#chunk-107"
+      ],
+      "invalid_citations": [],
+      "notes": []
+    },
+    {
+      "id": "negative_refund_policy",
+      "query": "售后退款凭证规则",
+      "expected_mode": "insufficient_evidence",
+      "status": "ready",
+      "reason_code": "negative_control_passed",
+      "retrieve_ok": true,
+      "retrieve_count": 0,
+      "answer_ok": true,
+      "answer_status": "insufficient_evidence",
+      "citations": [],
+      "allowed_citations": [],
+      "invalid_citations": [],
+      "notes": []
+    }
+  ],
+  "recommended_actions": [
+    "use_company_profile_source_for_explicit_myprivateagent_domain_trial",
+    "keep_source_to_agent_binding_in_caller_control_plane",
+    "do_not_enable_default_chat_retrieval_without_grounding_promotion"
+  ],
+  "non_goals": [
+    "does_not_start_provider_service",
+    "does_not_create_source_to_agent_binding",
+    "does_not_mutate_domain_agent_manifest",
+    "does_not_write_audit_or_memory_records",
+    "does_not_enable_default_chat_retrieval_injection",
+    "does_not_run_myprivateagent_orchestration",
+    "does_not_promote_retrieval_backend",
+    "does_not_start_ocr_services",
+    "does_not_execute_graphrag"
+  ],
+  "json_path": "docs\\integration\\document-rag-upload-to-use-loop\\local-knowledge-provider-corpus-trial\\local-knowledge-provider-corpus-trial.json",
+  "markdown_path": "docs\\integration\\document-rag-upload-to-use-loop\\local-knowledge-provider-corpus-trial\\local-knowledge-provider-corpus-trial.md"
+}

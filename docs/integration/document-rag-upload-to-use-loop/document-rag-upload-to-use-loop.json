@@ -1,0 +1,160 @@
+{
+  "id": "document-rag-upload-to-use-loop-v1",
+  "generated_at": "2026-06-07T11:08:05.818267+00:00",
+  "decision": "go",
+  "reason_code": "document_rag_upload_to_use_ready",
+  "document_path": "D:\\xwechat_files\\wxid_pc6sc451nt9022_dea0\\msg\\file\\2026-06\\公司简介2025年10月27日(1).pdf",
+  "parse_mode": "ocr",
+  "source_id": "company_profile_2025_trial",
+  "title": "公司简介 2025 trial",
+  "query": "公司主营业务和服务范围是什么？",
+  "provider_base_url": "http://127.0.0.1:8020",
+  "provider_repo_path": "D:\\AI\\AIcode\\unifiedKnowledgeRAG",
+  "handoff_only": false,
+  "ingestion": {
+    "ingest_id": "doc-ingest-2595ea56e56043f4ad9f439d29c14f11",
+    "status": "succeeded",
+    "parse_mode": "ocr",
+    "capability_id": "document.ocr.extract",
+    "provider": "paddleocr",
+    "artifact_id": "doc-artifact-7b55392e709a46de9daf4d399bec7530",
+    "warnings": [],
+    "error": {}
+  },
+  "parser_artifact_path": "docs\\integration\\document-rag-upload-to-use-loop\\parser-artifacts\\document-rag-parser-artifact.json",
+  "provider_ingestion": {
+    "ok": true,
+    "status": "ready",
+    "reason_code": "provider_ingestion_command_ready",
+    "command": [
+      "conda",
+      "run",
+      "-n",
+      "GRAPHRAG",
+      "python",
+      "D:\\AI\\AIcode\\unifiedKnowledgeRAG\\scripts\\export_parser_artifact_local_ingestion_loop.py",
+      "--artifact-path",
+      "D:\\AI\\AIcode\\MyPrivateAgent\\docs\\integration\\document-rag-upload-to-use-loop\\parser-artifacts\\document-rag-parser-artifact.json",
+      "--output-dir",
+      "docs\\integration\\document-rag-upload-to-use-loop\\provider-parser-artifact-ingestion-loop",
+      "--query",
+      "公司主营业务和服务范围是什么？",
+      "--top-k",
+      "3"
+    ],
+    "return_code": 0,
+    "stdout": "Parser artifact local ingestion loop JSON ready: docs\\integration\\document-rag-upload-to-use-loop\\provider-parser-artifact-ingestion-loop\\parser-artifact-local-ingestion-loop.json\nParser artifact local ingestion loop Markdown ready: docs\\integration\\document-rag-upload-to-use-loop\\provider-parser-artifact-ingestion-loop\\parser-artifact-local-ingestion-loop.md\nDecision: go\nReason: parser_artifact_local_ingestion_ready\n",
+    "stderr": ""
+  },
+  "corpus_trial": {
+    "decision": "go",
+    "reason_code": "local_corpus_trial_accepted",
+    "source_id": "company_profile_2025_trial",
+    "provider_base_url": "http://127.0.0.1:8020",
+    "json_path": "docs\\integration\\document-rag-upload-to-use-loop\\local-knowledge-provider-corpus-trial\\local-knowledge-provider-corpus-trial.json",
+    "markdown_path": "docs\\integration\\document-rag-upload-to-use-loop\\local-knowledge-provider-corpus-trial\\local-knowledge-provider-corpus-trial.md",
+    "summary": {
+      "case_count": 5,
+      "ready_case_count": 5,
+      "review_case_count": 0,
+      "blocked_case_count": 0,
+      "invalid_citation_count": 0,
+      "source_binding_status": "not_created",
+      "default_chat_retrieval_injection": "not_enabled",
+      "graph_execution_status": "not_executed",
+      "runtime_promotion_status": "unchanged"
+    }
+  },
+  "steps": [
+    {
+      "id": "document_ingestion",
+      "status": "succeeded",
+      "reason_code": "document_ingestion_succeeded",
+      "artifacts": {
+        "artifact_id": "doc-artifact-7b55392e709a46de9daf4d399bec7530"
+      },
+      "summary": {
+        "ingest_id": "doc-ingest-2595ea56e56043f4ad9f439d29c14f11",
+        "status": "succeeded",
+        "parse_mode": "ocr",
+        "capability_id": "document.ocr.extract",
+        "provider": "paddleocr",
+        "artifact_id": "doc-artifact-7b55392e709a46de9daf4d399bec7530",
+        "warnings": [],
+        "error": {}
+      }
+    },
+    {
+      "id": "rag_handoff_artifact",
+      "status": "ready",
+      "reason_code": "normalized_parser_artifact_written",
+      "artifacts": {
+        "parser_artifact": "docs\\integration\\document-rag-upload-to-use-loop\\parser-artifacts\\document-rag-parser-artifact.json"
+      },
+      "summary": {
+        "artifact_id": "company_profile_2025_trial_ocr_document_upload",
+        "text_block_count": 500
+      }
+    },
+    {
+      "id": "provider_parser_artifact_ingestion",
+      "status": "ready",
+      "reason_code": "provider_ingestion_command_ready",
+      "artifacts": {},
+      "summary": {
+        "return_code": 0,
+        "stdout_preview": "Parser artifact local ingestion loop JSON ready: docs\\integration\\document-rag-upload-to-use-loop\\provider-parser-artifact-ingestion-loop\\parser-artifact-local-ingestion-loop.json Parser artifact local ingestion loop Markdown ready: docs\\integration\\document-rag-upload-to-use-loop\\provider-parser-artifact-ingestion-loop\\parser-artifact-local-ingestion-loop.md Decision: go Reason: parser_artifact_local_ingestion_ready",
+        "stderr_preview": ""
+      }
+    },
+    {
+      "id": "local_knowledge_provider_corpus_trial",
+      "status": "go",
+      "reason_code": "local_corpus_trial_accepted",
+      "artifacts": {
+        "json": "docs\\integration\\document-rag-upload-to-use-loop\\local-knowledge-provider-corpus-trial\\local-knowledge-provider-corpus-trial.json",
+        "markdown": "docs\\integration\\document-rag-upload-to-use-loop\\local-knowledge-provider-corpus-trial\\local-knowledge-provider-corpus-trial.md"
+      },
+      "summary": {
+        "case_count": 5,
+        "ready_case_count": 5,
+        "review_case_count": 0,
+        "blocked_case_count": 0,
+        "invalid_citation_count": 0,
+        "source_binding_status": "not_created",
+        "default_chat_retrieval_injection": "not_enabled",
+        "graph_execution_status": "not_executed",
+        "runtime_promotion_status": "unchanged"
+      }
+    }
+  ],
+  "summary": {
+    "final_decision": "go",
+    "default_chat_retrieval_injection": "not_enabled",
+    "source_binding_status": "not_created",
+    "memory_write_status": "not_written",
+    "audit_write_status": "not_written",
+    "service_start_status": "not_started",
+    "graph_execution_status": "not_executed",
+    "text_block_count": 500,
+    "provider_ingestion_status": "ready",
+    "corpus_trial_decision": "go",
+    "corpus_trial_reason_code": "local_corpus_trial_accepted"
+  },
+  "recommended_actions": [
+    "use_generated_source_id_for_explicit_local_rag_questions",
+    "productize_http_knowledge_document_ingest_only_after_repeated_go_trials"
+  ],
+  "non_goals": [
+    "does_not_enable_default_chat_retrieval_injection",
+    "does_not_create_source_to_agent_binding",
+    "does_not_mutate_domain_agent_manifests",
+    "does_not_write_memory_audit_approval_or_governance_records",
+    "does_not_start_paddleocr_or_unifiedknowledgerag_services",
+    "does_not_promote_retrieval_backends",
+    "does_not_execute_graphrag",
+    "does_not_add_frontend_upload_ui"
+  ],
+  "json_path": "docs\\integration\\document-rag-upload-to-use-loop\\document-rag-upload-to-use-loop.json",
+  "markdown_path": "docs\\integration\\document-rag-upload-to-use-loop\\document-rag-upload-to-use-loop.md"
+}
