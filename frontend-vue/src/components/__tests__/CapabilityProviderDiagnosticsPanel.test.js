@@ -46,6 +46,7 @@ import CapabilityProviderDiagnosticsPanel from '../CapabilityProviderDiagnostics
 describe('CapabilityProviderDiagnosticsPanel', () => {
   beforeEach(() => {
     vi.stubGlobal('atob', (value) => Buffer.from(value, 'base64').toString('binary'))
+    vi.stubGlobal('btoa', (value) => Buffer.from(value, 'binary').toString('base64'))
     if (!URL.createObjectURL) {
       URL.createObjectURL = vi.fn(() => 'blob:capability-test')
     }
@@ -474,6 +475,60 @@ describe('CapabilityProviderDiagnosticsPanel', () => {
     expect(wrapper.text()).toContain('upload: go')
     expect(wrapper.text()).toContain('upload report: upload.md')
     expect(wrapper.text()).toContain('parser artifact: parser.json')
+  })
+
+  it('runs local document rag trial with uploaded file payload and displays materialized path', async () => {
+    documentRagRunMock.mockResolvedValue({
+      data: {
+        ok: true,
+        decision: 'go',
+        reason_code: 'document_rag_upload_to_use_ready',
+        readiness: {
+          decision: 'go',
+          markdown_path: 'readiness.md'
+        },
+        upload_to_use: {
+          decision: 'go',
+          markdown_path: 'upload.md'
+        },
+        summary: {
+          source_id: 'company_profile_2025_trial',
+          upload_materialization: {
+            filename: 'company.pdf',
+            media_type: 'application/pdf',
+            document_path: '.myagent/document-rag-operator-uploads/abc-company.pdf',
+            byte_size: 9
+          }
+        }
+      }
+    })
+    const wrapper = mount(CapabilityProviderDiagnosticsPanel)
+    await flushPromises()
+
+    const file = {
+      name: 'company.pdf',
+      type: 'application/pdf',
+      arrayBuffer: vi.fn().mockResolvedValue(new Uint8Array([112, 100, 102]).buffer)
+    }
+    const input = wrapper.find('[data-test="document-rag-file"]')
+    Object.defineProperty(input.element, 'files', {
+      value: [file],
+      configurable: true
+    })
+    await input.trigger('change')
+    await wrapper.find('[data-test="document-rag-run-trial"]').trigger('click')
+    await flushPromises()
+
+    expect(documentRagRunMock).toHaveBeenCalledWith(expect.objectContaining({
+      file_base64: 'cGRm',
+      filename: 'company.pdf',
+      media_type: 'application/pdf',
+      parse_mode: 'ocr',
+      allow_review_readiness: true
+    }))
+    expect(documentRagRunMock.mock.calls[0][0]).not.toHaveProperty('document_path')
+    expect(wrapper.text()).toContain('selected file: company.pdf')
+    expect(wrapper.text()).toContain('materialized upload: .myagent/document-rag-operator-uploads/abc-company.pdf')
   })
 
   it('shows layout validation error when no file is selected', async () => {

@@ -1,21 +1,6 @@
-# document-rag-local-operator-entrypoint Specification
+# document-rag-local-operator-entrypoint Specification Delta
 
-## Purpose
-Defines the minimal MyPrivateAgent local operator entrypoint for real document RAG trials. The entrypoint wraps local readiness and upload-to-use tooling behind backend APIs and a compact Settings diagnostics control so local users can operate the current RAG flow without manually stitching scripts together.
-## Requirements
-### Requirement: Local operator can request document RAG readiness through API
-MyPrivateAgent SHALL expose a backend API for refreshing local document RAG readiness.
-
-#### Scenario: Readiness request succeeds
-- **WHEN** a caller posts local readiness options
-- **THEN** the API returns `ok=true`
-- **AND** it includes readiness `decision`, `reason_code`, checks, summary, and report paths
-
-#### Scenario: Readiness is blocked
-- **WHEN** local readiness detects a blocked dependency
-- **THEN** the API still returns the readiness report
-- **AND** `ok=false`
-- **AND** the report identifies the blocking reason
+## MODIFIED Requirements
 
 ### Requirement: Local operator can run document RAG trial through API
 MyPrivateAgent SHALL expose a backend API for running a local document RAG upload-to-use trial from either a local document path or an uploaded document payload.
@@ -70,16 +55,3 @@ The Settings diagnostics panel SHALL provide a compact local document RAG operat
 - **AND** clicks the trial action
 - **THEN** the frontend sends `document_path` to the local trial API
 - **AND** displays readiness and trial decisions, source id, and report paths
-
-### Requirement: Local operator entrypoint preserves runtime boundaries
-The local operator entrypoint SHALL remain explicit local tooling.
-
-#### Scenario: Entrypoint runs
-- **WHEN** readiness or trial API runs
-- **THEN** it does not enable default `/api/chat` retrieval injection
-- **AND** it does not create source-to-agent binding
-- **AND** it does not mutate domain-agent manifests
-- **AND** it does not write memory, audit, approval, or governance records
-- **AND** it does not start PaddleOCR or unifiedKnowledgeRAG services
-- **AND** it does not execute GraphRAG
-

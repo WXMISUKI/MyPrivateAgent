@@ -129,6 +129,9 @@
         <span>组合本地 readiness 与真实文档 RAG 试跑，保持显式本地操作，不接入默认聊天。</span>
       </div>
       <div class="field-row">
+        <label>上传文档文件</label>
+        <input class="field-input" data-test="document-rag-file" type="file" accept=".png,.jpg,.jpeg,.pdf,image/png,image/jpeg,application/pdf" @change="handleDocumentRagFile" />
+        <span v-if="documentRagFileName" class="field-hint">selected: {{ documentRagFileName }}</span>
         <label>本地文档路径</label>
         <input class="field-input" data-test="document-rag-path" type="text" v-model="documentRagPath" placeholder="例如 D:\xwechat_files\...\公司简介.pdf" />
         <label>解析模式（parse_mode）</label>
@@ -186,8 +189,11 @@
         <div class="ocr-summary">
           <span>readiness: {{ documentRagResult.readiness?.decision || '(missing)' }}</span>
           <span>upload: {{ documentRagResult.upload_to_use?.decision || documentRagResult.upload_to_use?.status || '(not_run)' }}</span>
+          <span v-if="documentRagMaterializedUploadPath">input: uploaded_file</span>
         </div>
         <div class="ocr-warning-list">
+          <span v-if="documentRagSelectedFilename" class="field-hint">selected file: {{ documentRagSelectedFilename }}</span>
+          <span v-if="documentRagMaterializedUploadPath" class="field-hint">materialized upload: {{ documentRagMaterializedUploadPath }}</span>
           <span v-if="documentRagReadinessReportPath" class="field-hint">readiness report: {{ documentRagReadinessReportPath }}</span>
           <span v-if="documentRagUploadReportPath" class="field-hint">upload report: {{ documentRagUploadReportPath }}</span>
           <span v-if="documentRagParserArtifactPath" class="field-hint">parser artifact: {{ documentRagParserArtifactPath }}</span>
@@ -540,6 +546,7 @@ const documentRagProviderPython = ref('conda run -n GRAPHRAG python')
 const documentRagReadinessRunning = ref(false)
 const documentRagTrialRunning = ref(false)
 const documentRagResult = ref(null)
+const documentRagFile = ref(null)
 
 const heartbeatProviders = computed(() => heartbeat.value?.providers || [])
 const ingestionWarnings = computed(() => {
@@ -559,6 +566,13 @@ const documentRagUploadReportPath = computed(() => {
 const documentRagParserArtifactPath = computed(() => {
   return documentRagResult.value?.upload_to_use?.parser_artifact_path || ''
 })
+const documentRagMaterializedUploadPath = computed(() => {
+  return documentRagResult.value?.summary?.upload_materialization?.document_path || ''
+})
+const documentRagSelectedFilename = computed(() => {
+  return documentRagResult.value?.summary?.upload_materialization?.filename || documentRagFile.value?.name || ''
+})
+const documentRagFileName = computed(() => documentRagFile.value?.name || '')
 
 onMounted(() => {
   loadDiagnostics()
@@ -818,6 +832,12 @@ function handleIngestionFile(event) {
   ingestionResult.value = null
 }
 
+function handleDocumentRagFile(event) {
+  const file = event.target.files?.[0]
+  documentRagFile.value = file || null
+  documentRagResult.value = null
+}
+
 async function submitDocumentIngestion() {
   ingestionSubmitting.value = true
   ingestionResult.value = null
@@ -864,9 +884,16 @@ async function runDocumentRagLocalTrial() {
   try {
     const payload = {
       ...buildDocumentRagBasePayload(),
-      document_path: String(documentRagPath.value || '').trim(),
       parse_mode: documentRagParseMode.value || 'ocr',
       allow_review_readiness: true
+    }
+    const file = documentRagFile.value
+    if (file) {
+      payload.file_base64 = await readFileAsBase64(file)
+      payload.media_type = resolveOcrMediaType(file)
+      payload.filename = file.name
+    } else {
+      payload.document_path = String(documentRagPath.value || '').trim()
     }
     const response = await documentRagLocalTrialApi.run(payload)
     documentRagResult.value = response.data

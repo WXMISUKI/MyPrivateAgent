@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -11,6 +13,7 @@ from fastapi.testclient import TestClient
 from backend.capability_runtime.document_rag_local_operator_entrypoint import (
     DOCUMENT_RAG_LOCAL_OPERATOR_ENTRYPOINT_ID,
     DocumentRagLocalOperatorResult,
+    materialize_document_rag_operator_upload,
     run_document_rag_local_readiness_entrypoint,
     run_document_rag_local_trial_entrypoint,
 )
@@ -57,6 +60,25 @@ class DocumentRagLocalOperatorEntrypointTests(unittest.TestCase):
         self.assertEqual(result.summary["upload_to_use_status"], "go")
         self.assertEqual(result.upload_to_use["source_id"], "company_profile_2025_trial")
 
+    def test_trial_summary_includes_upload_materialization_metadata(self):
+        result = run_document_rag_local_trial_entrypoint(
+            document_path=Path("D:/uploads/abc-company.pdf"),
+            source_id="company_profile_2025_trial",
+            upload_materialization={
+                "filename": "company.pdf",
+                "media_type": "application/pdf",
+                "document_path": Path("D:/uploads/abc-company.pdf"),
+                "sha256": "abc123",
+                "byte_size": 7,
+            },
+            readiness_exporter=_readiness_exporter("go"),
+            upload_to_use_exporter=_upload_exporter("go"),
+        )
+
+        self.assertEqual(result.summary["input_mode"], "uploaded_file")
+        self.assertEqual(result.summary["upload_materialization"]["filename"], "company.pdf")
+        self.assertEqual(result.summary["upload_materialization"]["byte_size"], 7)
+
     def test_trial_holds_review_readiness_when_not_allowed(self):
         result = run_document_rag_local_trial_entrypoint(
             document_path=Path("D:/docs/company.pdf"),
@@ -95,6 +117,77 @@ class DocumentRagLocalOperatorEntrypointTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json()["error"]["code"], "DOCUMENT_RAG_LOCAL_TRIAL_INVALID_INPUT")
+
+    def test_materializes_uploaded_file_with_safe_hash_path(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            materialized = materialize_document_rag_operator_upload(
+                file_base64=base64.b64encode(b"pdf-bytes").decode("ascii"),
+                filename="../company profile.pdf",
+                media_type="application/pdf",
+                upload_dir=Path(temp_dir),
+            )
+
+            self.assertTrue(materialized.document_path.exists())
+            self.assertEqual(materialized.document_path.read_bytes(), b"pdf-bytes")
+            self.assertEqual(materialized.filename, "company_profile.pdf")
+            self.assertEqual(materialized.media_type, "application/pdf")
+            self.assertEqual(materialized.byte_size, 9)
+            self.assertTrue(materialized.document_path.name.endswith("-company_profile.pdf"))
+
+    def test_router_trial_accepts_uploaded_file_payload(self):
+        app = FastAPI()
+        app.include_router(router)
+        client = TestClient(app)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with patch(
+                "backend.routers.document_rag_local_trials.run_document_rag_local_trial_entrypoint",
+                return_value=_operator_result("go"),
+            ) as run_trial:
+                response = client.post(
+                    "/api/document-rag/local-trials",
+                    json={
+                        "file_base64": base64.b64encode(b"pdf-bytes").decode("ascii"),
+                        "filename": "company.pdf",
+                        "media_type": "application/pdf",
+                        "operator_upload_dir": temp_dir,
+                    },
+                )
+
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(response.json()["ok"])
+            self.assertEqual(run_trial.call_args.kwargs["document_path"].read_bytes(), b"pdf-bytes")
+            self.assertEqual(run_trial.call_args.kwargs["upload_materialization"].filename, "company.pdf")
+
+    def test_router_trial_rejects_invalid_uploaded_file_payload(self):
+        app = FastAPI()
+        app.include_router(router)
+        client = TestClient(app)
+
+        with patch("backend.routers.document_rag_local_trials.run_document_rag_local_trial_entrypoint") as run_trial:
+            response = client.post(
+                "/api/document-rag/local-trials",
+                json={"file_base64": "not-base64", "filename": "company.pdf", "media_type": "application/pdf"},
+            )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["error"]["code"], "DOCUMENT_RAG_LOCAL_TRIAL_INVALID_UPLOAD")
+        run_trial.assert_not_called()
+
+    def test_router_trial_keeps_document_path_fallback(self):
+        app = FastAPI()
+        app.include_router(router)
+        client = TestClient(app)
+
+        with patch(
+            "backend.routers.document_rag_local_trials.run_document_rag_local_trial_entrypoint",
+            return_value=_operator_result("go"),
+        ) as run_trial:
+            response = client.post("/api/document-rag/local-trials", json={"document_path": "D:/docs/company.pdf"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(run_trial.call_args.kwargs["document_path"], Path("D:/docs/company.pdf"))
+        self.assertIsNone(run_trial.call_args.kwargs["upload_materialization"])
 
     def test_router_registered_in_capabilities_group(self):
         registrations = get_api_router_registrations(route_names=["document_rag_local_trials"])

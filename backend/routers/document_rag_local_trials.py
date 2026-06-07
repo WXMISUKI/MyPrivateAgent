@@ -11,16 +11,20 @@ from fastapi.responses import JSONResponse
 try:
     from backend.capability_runtime.document_rag_local_operator_entrypoint import (
         DEFAULT_OPERATOR_OUTPUT_DIR,
+        DEFAULT_OPERATOR_UPLOAD_DIR,
         DEFAULT_PROVIDER_REPO,
         document_rag_local_operator_result_to_dict,
+        materialize_document_rag_operator_upload,
         run_document_rag_local_readiness_entrypoint,
         run_document_rag_local_trial_entrypoint,
     )
 except ModuleNotFoundError:  # pragma: no cover - package import compatibility
     from capability_runtime.document_rag_local_operator_entrypoint import (
         DEFAULT_OPERATOR_OUTPUT_DIR,
+        DEFAULT_OPERATOR_UPLOAD_DIR,
         DEFAULT_PROVIDER_REPO,
         document_rag_local_operator_result_to_dict,
+        materialize_document_rag_operator_upload,
         run_document_rag_local_readiness_entrypoint,
         run_document_rag_local_trial_entrypoint,
     )
@@ -47,7 +51,30 @@ def run_document_rag_local_readiness(payload: dict[str, Any]):
 
 @router.post("/document-rag/local-trials")
 def run_document_rag_local_trial(payload: dict[str, Any]):
-    document_path = _optional_path(payload.get("document_path"))
+    upload_materialization = None
+    if _optional_str(payload.get("file_base64")):
+        try:
+            upload_materialization = materialize_document_rag_operator_upload(
+                file_base64=str(payload.get("file_base64") or ""),
+                filename=str(payload.get("filename") or "document.bin"),
+                media_type=str(payload.get("media_type") or "application/octet-stream"),
+                upload_dir=_optional_path(payload.get("operator_upload_dir")) or DEFAULT_OPERATOR_UPLOAD_DIR,
+            )
+        except ValueError as exc:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "ok": False,
+                    "error": {
+                        "code": "DOCUMENT_RAG_LOCAL_TRIAL_INVALID_UPLOAD",
+                        "message": str(exc),
+                    },
+                },
+            )
+        document_path = upload_materialization.document_path
+    else:
+        document_path = _optional_path(payload.get("document_path"))
+
     if document_path is None:
         return JSONResponse(
             status_code=400,
@@ -55,7 +82,7 @@ def run_document_rag_local_trial(payload: dict[str, Any]):
                 "ok": False,
                 "error": {
                     "code": "DOCUMENT_RAG_LOCAL_TRIAL_INVALID_INPUT",
-                    "message": "document_path is required.",
+                    "message": "document_path or file_base64 is required.",
                 },
             },
         )
@@ -78,6 +105,7 @@ def run_document_rag_local_trial(payload: dict[str, Any]):
         handoff_only=bool(payload.get("handoff_only", False)),
         allow_review_readiness=bool(payload.get("allow_review_readiness", True)),
         output_dir=_optional_path(payload.get("output_dir")) or DEFAULT_OPERATOR_OUTPUT_DIR,
+        upload_materialization=upload_materialization,
     )
     return _response(result)
 
