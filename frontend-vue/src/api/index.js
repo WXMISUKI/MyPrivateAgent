@@ -288,6 +288,10 @@ export const documentRagLocalTrialApi = {
 
   run(payload = {}) {
     return api.post('/document-rag/local-trials', payload)
+  },
+
+  questionTrial(payload = {}) {
+    return api.post('/document-rag/local-question-trials', payload)
   }
 }
 

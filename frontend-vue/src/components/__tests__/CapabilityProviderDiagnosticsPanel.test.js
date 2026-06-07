@@ -10,7 +10,8 @@ const {
   persistArtifactMock,
   submitIngestionMock,
   documentRagReadinessMock,
-  documentRagRunMock
+  documentRagRunMock,
+  documentRagQuestionMock
 } = vi.hoisted(() => ({
   listMock: vi.fn(),
   heartbeatMock: vi.fn(),
@@ -19,7 +20,8 @@ const {
   persistArtifactMock: vi.fn(),
   submitIngestionMock: vi.fn(),
   documentRagReadinessMock: vi.fn(),
-  documentRagRunMock: vi.fn()
+  documentRagRunMock: vi.fn(),
+  documentRagQuestionMock: vi.fn()
 }))
 
 vi.mock('../../api', () => ({
@@ -37,7 +39,8 @@ vi.mock('../../api', () => ({
   },
   documentRagLocalTrialApi: {
     readiness: documentRagReadinessMock,
-    run: documentRagRunMock
+    run: documentRagRunMock,
+    questionTrial: documentRagQuestionMock
   }
 }))
 
@@ -61,6 +64,7 @@ describe('CapabilityProviderDiagnosticsPanel', () => {
     submitIngestionMock.mockReset()
     documentRagReadinessMock.mockReset()
     documentRagRunMock.mockReset()
+    documentRagQuestionMock.mockReset()
     listMock.mockResolvedValue({
       data: {
         capabilities: [
@@ -529,6 +533,42 @@ describe('CapabilityProviderDiagnosticsPanel', () => {
     expect(documentRagRunMock.mock.calls[0][0]).not.toHaveProperty('document_path')
     expect(wrapper.text()).toContain('selected file: company.pdf')
     expect(wrapper.text()).toContain('materialized upload: .myagent/document-rag-operator-uploads/abc-company.pdf')
+  })
+
+  it('runs local document rag question trial and displays answer citations', async () => {
+    documentRagQuestionMock.mockResolvedValue({
+      data: {
+        ok: true,
+        decision: 'go',
+        reason_code: 'rag_question_answered',
+        answer_status: 'answered',
+        answer: '公司主营业务包括智慧园区和信息化系统集成。',
+        citations: ['company_profile_2025_trial#page-1'],
+        evidence_pack: {
+          status: 'ready'
+        },
+        markdown_path: 'docs/integration/local-rag-question-trial-entrypoint/local-rag-question-trial-entrypoint.md'
+      }
+    })
+    const wrapper = mount(CapabilityProviderDiagnosticsPanel)
+    await flushPromises()
+
+    await wrapper.find('[data-test="document-rag-question"]').setValue('公司主营业务是什么？')
+    await wrapper.find('[data-test="document-rag-top-k"]').setValue('2')
+    await wrapper.find('[data-test="document-rag-run-question"]').trigger('click')
+    await flushPromises()
+
+    expect(documentRagQuestionMock).toHaveBeenCalledWith(expect.objectContaining({
+      source_id: 'company_profile_2025_trial',
+      provider_base_url: 'http://127.0.0.1:8020',
+      question: '公司主营业务是什么？',
+      top_k: 2
+    }))
+    expect(wrapper.text()).toContain('question decision: go')
+    expect(wrapper.text()).toContain('answer_status: answered')
+    expect(wrapper.text()).toContain('公司主营业务包括智慧园区和信息化系统集成。')
+    expect(wrapper.text()).toContain('citation: company_profile_2025_trial#page-1')
+    expect(wrapper.text()).toContain('question report: docs/integration/local-rag-question-trial-entrypoint/local-rag-question-trial-entrypoint.md')
   })
 
   it('shows layout validation error when no file is selected', async () => {

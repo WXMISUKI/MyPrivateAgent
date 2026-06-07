@@ -155,6 +155,10 @@
         <input class="field-input" data-test="document-rag-provider-repo" type="text" v-model="documentRagProviderRepo" />
         <label>Provider Python</label>
         <input class="field-input" data-test="document-rag-provider-python" type="text" v-model="documentRagProviderPython" />
+        <label>RAG 试问问题</label>
+        <input class="field-input" data-test="document-rag-question" type="text" v-model="documentRagQuestion" placeholder="例如：公司主营业务和服务范围是什么？" />
+        <label>Top K</label>
+        <input class="field-input" data-test="document-rag-top-k" type="number" min="1" step="1" v-model="documentRagTopK" />
       </div>
       <div class="provider-actions">
         <button
@@ -174,6 +178,15 @@
           :disabled="documentRagTrialRunning"
         >
           {{ documentRagTrialRunning ? '试跑中...' : '运行本地 RAG 试跑' }}
+        </button>
+        <button
+          class="action-btn test-btn"
+          data-test="document-rag-run-question"
+          type="button"
+          @click="runDocumentRagQuestionTrial"
+          :disabled="documentRagQuestionRunning"
+        >
+          {{ documentRagQuestionRunning ? '试问中...' : '试问 RAG' }}
         </button>
       </div>
       <div
@@ -201,6 +214,36 @@
         <details class="ocr-section">
           <summary>Raw JSON</summary>
           <pre>{{ formatJson(documentRagResult) }}</pre>
+        </details>
+      </div>
+      <div
+        v-if="documentRagQuestionResult"
+        class="test-result"
+        :class="documentRagQuestionResult.ok ? 'ok' : 'error'"
+      >
+        <div class="ocr-summary">
+          <span>question decision: {{ documentRagQuestionResult.decision || '(missing)' }}</span>
+          <span>reason: {{ documentRagQuestionResult.reason_code || '(missing)' }}</span>
+          <span>answer_status: {{ documentRagQuestionResult.answer_status || '(missing)' }}</span>
+          <span>evidence: {{ documentRagQuestionResult.evidence_pack?.status || '(missing)' }}</span>
+        </div>
+        <div v-if="documentRagQuestionResult.answer" class="ocr-section">
+          <strong>Answer</strong>
+          <pre>{{ documentRagQuestionResult.answer }}</pre>
+        </div>
+        <div class="ocr-warning-list">
+          <span
+            v-for="citation in documentRagQuestionCitations"
+            :key="'document-rag-question-citation-' + citation"
+            class="field-hint"
+          >
+            citation: {{ citation }}
+          </span>
+          <span v-if="documentRagQuestionReportPath" class="field-hint">question report: {{ documentRagQuestionReportPath }}</span>
+        </div>
+        <details class="ocr-section">
+          <summary>Raw JSON</summary>
+          <pre>{{ formatJson(documentRagQuestionResult) }}</pre>
         </details>
       </div>
     </div>
@@ -543,9 +586,13 @@ const documentRagOcrTimeoutSeconds = ref('180')
 const documentRagProviderBaseUrl = ref('http://127.0.0.1:8020')
 const documentRagProviderRepo = ref('D:\\AI\\AIcode\\unifiedKnowledgeRAG')
 const documentRagProviderPython = ref('conda run -n GRAPHRAG python')
+const documentRagQuestion = ref('公司主营业务和服务范围是什么？')
+const documentRagTopK = ref('3')
 const documentRagReadinessRunning = ref(false)
 const documentRagTrialRunning = ref(false)
+const documentRagQuestionRunning = ref(false)
 const documentRagResult = ref(null)
+const documentRagQuestionResult = ref(null)
 const documentRagFile = ref(null)
 
 const heartbeatProviders = computed(() => heartbeat.value?.providers || [])
@@ -573,6 +620,13 @@ const documentRagSelectedFilename = computed(() => {
   return documentRagResult.value?.summary?.upload_materialization?.filename || documentRagFile.value?.name || ''
 })
 const documentRagFileName = computed(() => documentRagFile.value?.name || '')
+const documentRagQuestionReportPath = computed(() => {
+  return documentRagQuestionResult.value?.markdown_path || documentRagQuestionResult.value?.json_path || ''
+})
+const documentRagQuestionCitations = computed(() => {
+  const citations = documentRagQuestionResult.value?.citations
+  return Array.isArray(citations) ? citations : []
+})
 
 onMounted(() => {
   loadDiagnostics()
@@ -836,6 +890,7 @@ function handleDocumentRagFile(event) {
   const file = event.target.files?.[0]
   documentRagFile.value = file || null
   documentRagResult.value = null
+  documentRagQuestionResult.value = null
 }
 
 async function submitDocumentIngestion() {
@@ -908,6 +963,30 @@ async function runDocumentRagLocalTrial() {
     }
   } finally {
     documentRagTrialRunning.value = false
+  }
+}
+
+async function runDocumentRagQuestionTrial() {
+  documentRagQuestionRunning.value = true
+  documentRagQuestionResult.value = null
+  try {
+    const response = await documentRagLocalTrialApi.questionTrial({
+      ...buildDocumentRagBasePayload(),
+      question: String(documentRagQuestion.value || '').trim(),
+      top_k: toPositiveInteger(documentRagTopK.value) || 3
+    })
+    documentRagQuestionResult.value = response.data
+  } catch (error) {
+    documentRagQuestionResult.value = {
+      ok: false,
+      ...(error.response?.data || {}),
+      error: error.response?.data?.error || {
+        code: 'DOCUMENT_RAG_QUESTION_TRIAL_REQUEST_FAILED',
+        message: error.message || '请求失败'
+      }
+    }
+  } finally {
+    documentRagQuestionRunning.value = false
   }
 }
 

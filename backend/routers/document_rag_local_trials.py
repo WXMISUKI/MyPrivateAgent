@@ -18,6 +18,11 @@ try:
         run_document_rag_local_readiness_entrypoint,
         run_document_rag_local_trial_entrypoint,
     )
+    from backend.capability_runtime.local_rag_question_trial_entrypoint import (
+        DEFAULT_OUTPUT_DIR as DEFAULT_QUESTION_TRIAL_OUTPUT_DIR,
+        export_local_rag_question_trial_entrypoint,
+        local_rag_question_trial_entrypoint_to_dict,
+    )
 except ModuleNotFoundError:  # pragma: no cover - package import compatibility
     from capability_runtime.document_rag_local_operator_entrypoint import (
         DEFAULT_OPERATOR_OUTPUT_DIR,
@@ -27,6 +32,11 @@ except ModuleNotFoundError:  # pragma: no cover - package import compatibility
         materialize_document_rag_operator_upload,
         run_document_rag_local_readiness_entrypoint,
         run_document_rag_local_trial_entrypoint,
+    )
+    from capability_runtime.local_rag_question_trial_entrypoint import (
+        DEFAULT_OUTPUT_DIR as DEFAULT_QUESTION_TRIAL_OUTPUT_DIR,
+        export_local_rag_question_trial_entrypoint,
+        local_rag_question_trial_entrypoint_to_dict,
     )
 
 
@@ -108,6 +118,28 @@ def run_document_rag_local_trial(payload: dict[str, Any]):
         upload_materialization=upload_materialization,
     )
     return _response(result)
+
+
+@router.post("/document-rag/local-question-trials")
+def run_document_rag_local_question_trial(payload: dict[str, Any]):
+    result = export_local_rag_question_trial_entrypoint(
+        output_dir=_optional_path(payload.get("output_dir")) or DEFAULT_QUESTION_TRIAL_OUTPUT_DIR,
+        provider_base_url=str(payload.get("provider_base_url") or "http://127.0.0.1:8020"),
+        provider_api_key=_optional_str(payload.get("provider_api_key")),
+        source_id=str(payload.get("source_id") or "company_profile_2025_trial"),
+        question=str(payload.get("question") or ""),
+        top_k=_int(payload.get("top_k"), 3),
+        timeout_seconds=_float(payload.get("timeout_seconds"), 5.0),
+    )
+    payload = local_rag_question_trial_entrypoint_to_dict(result)
+    status_code = 200 if result.decision != "blocked" else 503
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "ok": result.decision != "blocked",
+            **payload,
+        },
+    )
 
 
 def _response(result) -> JSONResponse:
