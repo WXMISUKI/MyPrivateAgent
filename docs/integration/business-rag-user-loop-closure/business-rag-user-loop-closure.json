@@ -1,0 +1,61 @@
+{
+  "contract_version": "business-rag-user-loop-closure-v1",
+  "generated_at": "2026-06-07T05:48:02.975502+00:00",
+  "decision": "go",
+  "reason_code": "business_rag_user_loop_ready",
+  "recommended_next_action": "use_explicit_company_profile_rag_for_local_business_qa_trial",
+  "source_id": "company_profile_2025_trial",
+  "provider_base_url": "http://127.0.0.1:8020",
+  "corpus_trial": {
+    "id": "local-knowledge-provider-corpus-trial-v1",
+    "generated_at": "2026-06-07T05:22:56.503391+00:00",
+    "decision": "go",
+    "reason_code": "local_corpus_trial_accepted",
+    "provider_base_url": "http://127.0.0.1:8020",
+    "source_id": "company_profile_2025_trial",
+    "case_count": 5,
+    "ready_case_count": 5,
+    "blocked_case_count": 0,
+    "invalid_citation_count": 0
+  },
+  "explicit_api_smoke": {
+    "contract_version": "company-profile-explicit-api-local-smoke-v1",
+    "generated_at": "2026-06-07T04:00:33.219666+00:00",
+    "decision": "go",
+    "reason_code": "company_profile_explicit_api_ready",
+    "endpoint": "/api/domain-agents/company_profile/live-grounded-answer",
+    "agent_id": "company_profile",
+    "domain": "company.profile",
+    "query": "公司主营业务是什么？",
+    "provider_base_url": "http://127.0.0.1:8020",
+    "http_status_code": 200,
+    "document_count": 3,
+    "api_status": "go",
+    "answer_preview": "基于 company_profile_2025_trial#chunk-1, company_profile_2025_trial#chunk-4, company_profile_2025_trial#chunk-5，已为 `company.profile` 生成受控回答预览：公司主营业务是什么？"
+  },
+  "citations": [
+    "company_profile_2025_trial#chunk-1",
+    "company_profile_2025_trial#chunk-4",
+    "company_profile_2025_trial#chunk-5"
+  ],
+  "blockers": [],
+  "warnings": [],
+  "boundary": {
+    "default_chat_retrieval_injection": "disabled",
+    "chat_invocation": "not_performed",
+    "model_invocation": "not_performed",
+    "tool_execution": "not_performed",
+    "source_binding_creation": "not_performed",
+    "memory_write": "not_performed",
+    "audit_write": "not_performed",
+    "trace_write": "not_performed",
+    "graphrag_execution": "not_promoted",
+    "runtime_behavior_changed": false
+  },
+  "inputs": {
+    "corpus_trial_json_path": "docs\\integration\\local-knowledge-provider-corpus-trial\\local-knowledge-provider-corpus-trial.json",
+    "explicit_api_smoke_json_path": "docs\\integration\\company-profile-explicit-api-local-smoke\\company-profile-explicit-api-local-smoke.json"
+  },
+  "json_path": "docs\\integration\\business-rag-user-loop-closure\\business-rag-user-loop-closure.json",
+  "markdown_path": "docs\\integration\\business-rag-user-loop-closure\\business-rag-user-loop-closure.md"
+}
