@@ -281,6 +281,16 @@ export const documentIngestionApi = {
   }
 }
 
+export const documentRagLocalTrialApi = {
+  readiness(payload = {}) {
+    return api.post('/document-rag/local-trials/readiness', payload)
+  },
+
+  run(payload = {}) {
+    return api.post('/document-rag/local-trials', payload)
+  }
+}
+
 export const mcpApi = {
   listServers() {
     return api.get('/mcp/servers')

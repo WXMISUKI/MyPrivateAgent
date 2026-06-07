@@ -196,6 +196,7 @@ Current local shape:
 - The loop can invoke the provider repo ingestion command and then reuse the existing local knowledge provider corpus trial.
 - This remains explicit operator tooling; it does not enable default `/api/chat` retrieval injection, source binding, answer policy, memory/audit writes, or GraphRAG.
 - `scripts/export_document_rag_local_readiness.py` can be run before the upload-to-use loop to verify OCR provider health, CPU/GPU profile, large-PDF timeout posture, unifiedKnowledgeRAG health, source visibility, provider repo script, and `GRAPHRAG` Python command readiness.
+- `POST /api/document-rag/local-trials/readiness` and `POST /api/document-rag/local-trials` expose the same local operator flow through MyPrivateAgent, and Settings diagnostics now has a compact card for local path-based readiness/trial runs.
 
 Next productization trigger:
 

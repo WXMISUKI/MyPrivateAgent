@@ -2,13 +2,24 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { listMock, heartbeatMock, testMock, invokeMock, persistArtifactMock, submitIngestionMock } = vi.hoisted(() => ({
+const {
+  listMock,
+  heartbeatMock,
+  testMock,
+  invokeMock,
+  persistArtifactMock,
+  submitIngestionMock,
+  documentRagReadinessMock,
+  documentRagRunMock
+} = vi.hoisted(() => ({
   listMock: vi.fn(),
   heartbeatMock: vi.fn(),
   testMock: vi.fn(),
   invokeMock: vi.fn(),
   persistArtifactMock: vi.fn(),
-  submitIngestionMock: vi.fn()
+  submitIngestionMock: vi.fn(),
+  documentRagReadinessMock: vi.fn(),
+  documentRagRunMock: vi.fn()
 }))
 
 vi.mock('../../api', () => ({
@@ -23,6 +34,10 @@ vi.mock('../../api', () => ({
   },
   documentIngestionApi: {
     submit: submitIngestionMock
+  },
+  documentRagLocalTrialApi: {
+    readiness: documentRagReadinessMock,
+    run: documentRagRunMock
   }
 }))
 
@@ -43,6 +58,8 @@ describe('CapabilityProviderDiagnosticsPanel', () => {
     invokeMock.mockReset()
     persistArtifactMock.mockReset()
     submitIngestionMock.mockReset()
+    documentRagReadinessMock.mockReset()
+    documentRagRunMock.mockReset()
     listMock.mockResolvedValue({
       data: {
         capabilities: [
@@ -387,6 +404,76 @@ describe('CapabilityProviderDiagnosticsPanel', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('DOCUMENT_INGEST_INVALID_INPUT: parse_mode must be one of: ocr, layout, vlm_async.')
+  })
+
+  it('runs local document rag readiness and displays report path', async () => {
+    documentRagReadinessMock.mockResolvedValue({
+      data: {
+        ok: true,
+        decision: 'go',
+        reason_code: 'document_rag_local_readiness_ready',
+        readiness: {
+          decision: 'go',
+          markdown_path: 'docs/integration/document-rag-local-readiness/document-rag-local-readiness.md'
+        },
+        upload_to_use: {
+          status: 'not_run'
+        },
+        summary: {
+          source_id: 'company_profile_2025_trial'
+        }
+      }
+    })
+    const wrapper = mount(CapabilityProviderDiagnosticsPanel)
+    await flushPromises()
+
+    await wrapper.find('[data-test="document-rag-readiness"]').trigger('click')
+    await flushPromises()
+
+    expect(documentRagReadinessMock).toHaveBeenCalledWith(expect.objectContaining({
+      source_id: 'company_profile_2025_trial',
+      ocr_profile: 'gpu',
+      provider_base_url: 'http://127.0.0.1:8020'
+    }))
+    expect(wrapper.text()).toContain('decision: go')
+    expect(wrapper.text()).toContain('readiness report: docs/integration/document-rag-local-readiness/document-rag-local-readiness.md')
+  })
+
+  it('runs local document rag trial with document path and displays upload report', async () => {
+    documentRagRunMock.mockResolvedValue({
+      data: {
+        ok: true,
+        decision: 'go',
+        reason_code: 'document_rag_upload_to_use_ready',
+        readiness: {
+          decision: 'go',
+          markdown_path: 'readiness.md'
+        },
+        upload_to_use: {
+          decision: 'go',
+          markdown_path: 'upload.md',
+          parser_artifact_path: 'parser.json'
+        },
+        summary: {
+          source_id: 'company_profile_2025_trial'
+        }
+      }
+    })
+    const wrapper = mount(CapabilityProviderDiagnosticsPanel)
+    await flushPromises()
+
+    await wrapper.find('[data-test="document-rag-path"]').setValue('D:\\docs\\company.pdf')
+    await wrapper.find('[data-test="document-rag-run-trial"]').trigger('click')
+    await flushPromises()
+
+    expect(documentRagRunMock).toHaveBeenCalledWith(expect.objectContaining({
+      document_path: 'D:\\docs\\company.pdf',
+      parse_mode: 'ocr',
+      allow_review_readiness: true
+    }))
+    expect(wrapper.text()).toContain('upload: go')
+    expect(wrapper.text()).toContain('upload report: upload.md')
+    expect(wrapper.text()).toContain('parser artifact: parser.json')
   })
 
   it('shows layout validation error when no file is selected', async () => {

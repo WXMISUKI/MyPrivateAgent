@@ -6,9 +6,9 @@ from dataclasses import dataclass
 from typing import Iterable, Sequence
 
 try:
-    from routers import auth, capabilities, chat, commands, conversations, document_artifacts, document_ingestions, domain_agents, health, learnings, mcp, memory, permissions, plans, providers, skills, voice
+    from routers import auth, capabilities, chat, commands, conversations, document_artifacts, document_ingestions, document_rag_local_trials, domain_agents, health, learnings, mcp, memory, permissions, plans, providers, skills, voice
 except ModuleNotFoundError:  # pragma: no cover - package import compatibility
-    from backend.routers import auth, capabilities, chat, commands, conversations, document_artifacts, document_ingestions, domain_agents, health, learnings, mcp, memory, permissions, plans, providers, skills, voice
+    from backend.routers import auth, capabilities, chat, commands, conversations, document_artifacts, document_ingestions, document_rag_local_trials, domain_agents, health, learnings, mcp, memory, permissions, plans, providers, skills, voice
 
 
 @dataclass(frozen=True)
@@ -37,6 +37,7 @@ ROUTER_REGISTRATIONS = (
     RouterRegistration(name="capabilities", groups=("core", "capabilities"), router=capabilities.router),
     RouterRegistration(name="document_artifacts", groups=("core", "capabilities"), router=document_artifacts.router),
     RouterRegistration(name="document_ingestions", groups=("core", "capabilities"), router=document_ingestions.router),
+    RouterRegistration(name="document_rag_local_trials", groups=("core", "capabilities"), router=document_rag_local_trials.router),
     RouterRegistration(name="domain_agents", groups=("core", "domain_agents"), router=domain_agents.router),
 )
 

@@ -120,6 +120,85 @@
       </div>
     </div>
 
+    <div class="provider-card">
+      <div class="provider-header">
+        <span class="provider-name">本地文档 RAG 操作入口</span>
+        <span class="source-tag">readiness -> upload-to-use</span>
+      </div>
+      <div class="capability-meta">
+        <span>组合本地 readiness 与真实文档 RAG 试跑，保持显式本地操作，不接入默认聊天。</span>
+      </div>
+      <div class="field-row">
+        <label>本地文档路径</label>
+        <input class="field-input" data-test="document-rag-path" type="text" v-model="documentRagPath" placeholder="例如 D:\xwechat_files\...\公司简介.pdf" />
+        <label>解析模式（parse_mode）</label>
+        <select class="field-input" data-test="document-rag-parse-mode" v-model="documentRagParseMode">
+          <option value="ocr">ocr</option>
+          <option value="layout">layout</option>
+        </select>
+        <label>Source ID</label>
+        <input class="field-input" data-test="document-rag-source-id" type="text" v-model="documentRagSourceId" />
+        <label>OCR Profile</label>
+        <select class="field-input" data-test="document-rag-ocr-profile" v-model="documentRagOcrProfile">
+          <option value="gpu">gpu</option>
+          <option value="cpu">cpu</option>
+          <option value="unknown">unknown</option>
+        </select>
+        <label>OCR Timeout Seconds</label>
+        <input class="field-input" data-test="document-rag-ocr-timeout" type="number" min="1" step="1" v-model="documentRagOcrTimeoutSeconds" />
+        <label>Provider Base URL</label>
+        <input class="field-input" data-test="document-rag-provider-url" type="text" v-model="documentRagProviderBaseUrl" />
+        <label>Knowledge Provider Repo</label>
+        <input class="field-input" data-test="document-rag-provider-repo" type="text" v-model="documentRagProviderRepo" />
+        <label>Provider Python</label>
+        <input class="field-input" data-test="document-rag-provider-python" type="text" v-model="documentRagProviderPython" />
+      </div>
+      <div class="provider-actions">
+        <button
+          class="action-btn test-btn"
+          data-test="document-rag-readiness"
+          type="button"
+          @click="runDocumentRagReadiness"
+          :disabled="documentRagReadinessRunning"
+        >
+          {{ documentRagReadinessRunning ? '检查中...' : '检查 RAG Readiness' }}
+        </button>
+        <button
+          class="action-btn test-btn"
+          data-test="document-rag-run-trial"
+          type="button"
+          @click="runDocumentRagLocalTrial"
+          :disabled="documentRagTrialRunning"
+        >
+          {{ documentRagTrialRunning ? '试跑中...' : '运行本地 RAG 试跑' }}
+        </button>
+      </div>
+      <div
+        v-if="documentRagResult"
+        class="test-result"
+        :class="documentRagResult.ok ? 'ok' : 'error'"
+      >
+        <div class="ocr-summary">
+          <span>decision: {{ documentRagResult.decision || '(missing)' }}</span>
+          <span>reason: {{ documentRagResult.reason_code || '(missing)' }}</span>
+          <span>source_id: {{ documentRagResult.summary?.source_id || documentRagSourceId }}</span>
+        </div>
+        <div class="ocr-summary">
+          <span>readiness: {{ documentRagResult.readiness?.decision || '(missing)' }}</span>
+          <span>upload: {{ documentRagResult.upload_to_use?.decision || documentRagResult.upload_to_use?.status || '(not_run)' }}</span>
+        </div>
+        <div class="ocr-warning-list">
+          <span v-if="documentRagReadinessReportPath" class="field-hint">readiness report: {{ documentRagReadinessReportPath }}</span>
+          <span v-if="documentRagUploadReportPath" class="field-hint">upload report: {{ documentRagUploadReportPath }}</span>
+          <span v-if="documentRagParserArtifactPath" class="field-hint">parser artifact: {{ documentRagParserArtifactPath }}</span>
+        </div>
+        <details class="ocr-section">
+          <summary>Raw JSON</summary>
+          <pre>{{ formatJson(documentRagResult) }}</pre>
+        </details>
+      </div>
+    </div>
+
     <div v-for="capability in capabilities" :key="capability.capability_id" class="provider-card">
       <div class="provider-header">
         <span class="provider-name">{{ capability.capability_id }}</span>
@@ -416,7 +495,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
-import { capabilityApi, documentArtifactApi, documentIngestionApi } from '../api'
+import { capabilityApi, documentArtifactApi, documentIngestionApi, documentRagLocalTrialApi } from '../api'
 
 const capabilities = ref([])
 const heartbeat = ref(null)
@@ -450,6 +529,17 @@ const ingestionVlmQuestion = ref('')
 const ingestionMaxPages = ref('')
 const ingestionSubmitting = ref(false)
 const ingestionResult = ref(null)
+const documentRagPath = ref('')
+const documentRagParseMode = ref('ocr')
+const documentRagSourceId = ref('company_profile_2025_trial')
+const documentRagOcrProfile = ref('gpu')
+const documentRagOcrTimeoutSeconds = ref('180')
+const documentRagProviderBaseUrl = ref('http://127.0.0.1:8020')
+const documentRagProviderRepo = ref('D:\\AI\\AIcode\\unifiedKnowledgeRAG')
+const documentRagProviderPython = ref('conda run -n GRAPHRAG python')
+const documentRagReadinessRunning = ref(false)
+const documentRagTrialRunning = ref(false)
+const documentRagResult = ref(null)
 
 const heartbeatProviders = computed(() => heartbeat.value?.providers || [])
 const ingestionWarnings = computed(() => {
@@ -459,6 +549,15 @@ const ingestionWarnings = computed(() => {
 const ingestionErrorText = computed(() => {
   const error = ingestionResult.value?.error || {}
   return `${error.code || 'DOCUMENT_INGEST_FAILED'}: ${error.message || '提交失败'}`
+})
+const documentRagReadinessReportPath = computed(() => {
+  return documentRagResult.value?.readiness?.markdown_path || documentRagResult.value?.readiness?.json_path || ''
+})
+const documentRagUploadReportPath = computed(() => {
+  return documentRagResult.value?.upload_to_use?.markdown_path || documentRagResult.value?.upload_to_use?.json_path || ''
+})
+const documentRagParserArtifactPath = computed(() => {
+  return documentRagResult.value?.upload_to_use?.parser_artifact_path || ''
 })
 
 onMounted(() => {
@@ -736,6 +835,63 @@ async function submitDocumentIngestion() {
     }
   } finally {
     ingestionSubmitting.value = false
+  }
+}
+
+async function runDocumentRagReadiness() {
+  documentRagReadinessRunning.value = true
+  documentRagResult.value = null
+  try {
+    const response = await documentRagLocalTrialApi.readiness(buildDocumentRagBasePayload())
+    documentRagResult.value = response.data
+  } catch (error) {
+    documentRagResult.value = {
+      ok: false,
+      ...(error.response?.data || {}),
+      error: error.response?.data?.error || {
+        code: 'DOCUMENT_RAG_READINESS_REQUEST_FAILED',
+        message: error.message || '请求失败'
+      }
+    }
+  } finally {
+    documentRagReadinessRunning.value = false
+  }
+}
+
+async function runDocumentRagLocalTrial() {
+  documentRagTrialRunning.value = true
+  documentRagResult.value = null
+  try {
+    const payload = {
+      ...buildDocumentRagBasePayload(),
+      document_path: String(documentRagPath.value || '').trim(),
+      parse_mode: documentRagParseMode.value || 'ocr',
+      allow_review_readiness: true
+    }
+    const response = await documentRagLocalTrialApi.run(payload)
+    documentRagResult.value = response.data
+  } catch (error) {
+    documentRagResult.value = {
+      ok: false,
+      ...(error.response?.data || {}),
+      error: error.response?.data?.error || {
+        code: 'DOCUMENT_RAG_LOCAL_TRIAL_REQUEST_FAILED',
+        message: error.message || '请求失败'
+      }
+    }
+  } finally {
+    documentRagTrialRunning.value = false
+  }
+}
+
+function buildDocumentRagBasePayload() {
+  return {
+    source_id: String(documentRagSourceId.value || '').trim() || 'company_profile_2025_trial',
+    ocr_profile: documentRagOcrProfile.value || 'unknown',
+    ocr_timeout_seconds: Number(documentRagOcrTimeoutSeconds.value) || 180,
+    provider_base_url: String(documentRagProviderBaseUrl.value || '').trim() || 'http://127.0.0.1:8020',
+    knowledge_provider_repo: String(documentRagProviderRepo.value || '').trim(),
+    provider_python: String(documentRagProviderPython.value || '').trim() || 'conda run -n GRAPHRAG python'
   }
 }
 
