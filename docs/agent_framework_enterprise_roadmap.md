@@ -52,6 +52,24 @@
 
 将当前的伪 handoff 模型升级为真正的调度器，使其能够将 plan item fan-out 为多个 child execution，并把结果 merge 回 parent run。
 
+### 当前第一刀：Scheduler Fan-out 本地最小调度闭环
+
+在启用真实 worker、sandbox backend 或 production dispatch 之前，先用本地 deterministic trial 固定最小 parent/child 调度语义：
+
+```powershell
+python backend/scripts/scheduler_fanout_local_trial.py --pretty
+python backend/scripts/scheduler_fanout_local_trial.py --mode partial-failure --pretty
+```
+
+该 trial 复用现有 `SchedulerService`，验证：
+
+- plan item 可以 fan-out 为多个 child run。
+- child run 具备稳定 `child_run_id / child_display_id / scheduler_run_id`。
+- 成功子执行可以 collect 并 merge 回 parent。
+- 部分失败会形成 `review` 和 `merge_status=partial_failed`，不会静默消失。
+
+边界：该 trial 不启动真实 worker，不调用 child executor backend，不调用 sandbox adapter，不调度 retry，不调用 LLM，不调用 `/api/chat`，也不改变默认运行时行为。
+
 ### 范围
 
 - 引入独立于 chat route 控制流的 scheduler service
