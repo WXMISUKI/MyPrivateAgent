@@ -1,0 +1,79 @@
+{
+  "contract_version": "local-knowledge-base-user-loop-v1",
+  "generated_at": "2026-06-07T09:52:04.072217+00:00",
+  "decision": "go",
+  "reason_code": "local_knowledge_base_user_loop_ready",
+  "recommended_next_action": "start_local_business_qa_trial_with_explicit_company_profile_entrypoint",
+  "source": {
+    "source_id": "company_profile_2025_trial",
+    "provider_base_url": "http://127.0.0.1:8020",
+    "corpus_trial_decision": "go",
+    "corpus_trial_reason_code": "local_corpus_trial_accepted",
+    "case_count": 5,
+    "ready_case_count": 5,
+    "review_case_count": 0,
+    "blocked_case_count": 0,
+    "invalid_citation_count": 0
+  },
+  "entrypoint": {
+    "endpoint": "/api/domain-agents/company_profile/live-grounded-answer",
+    "agent_id": "company_profile",
+    "domain": "company.profile",
+    "query": "公司主营业务是什么？",
+    "http_status_code": 200,
+    "api_status": "go",
+    "document_count": 3,
+    "answer_preview": "基于 company_profile_2025_trial#chunk-1, company_profile_2025_trial#chunk-4, company_profile_2025_trial#chunk-5，已为 `company.profile` 生成受控回答预览：公司主营业务是什么？"
+  },
+  "citation_summary": {
+    "source_id": "company_profile_2025_trial",
+    "citation_count": 3,
+    "citations": [
+      "company_profile_2025_trial#chunk-1",
+      "company_profile_2025_trial#chunk-4",
+      "company_profile_2025_trial#chunk-5"
+    ]
+  },
+  "suggested_questions": [
+    {
+      "query": "公司主营业务是什么？",
+      "expected_mode": "answerable"
+    },
+    {
+      "query": "公司有哪些资质？",
+      "expected_mode": "answerable"
+    },
+    {
+      "query": "公司组织机构包括哪些部门？",
+      "expected_mode": "answerable"
+    },
+    {
+      "query": "公司完成过哪些工程规模？",
+      "expected_mode": "answerable"
+    },
+    {
+      "query": "售后退款凭证规则",
+      "expected_mode": "insufficient_evidence"
+    }
+  ],
+  "boundary": {
+    "default_chat_retrieval_injection": "disabled",
+    "chat_invocation": "not_performed",
+    "model_invocation": "not_performed",
+    "tool_execution": "not_performed",
+    "source_binding_creation": "not_performed",
+    "memory_write": "not_performed",
+    "audit_write": "not_performed",
+    "trace_write": "not_performed",
+    "graphrag_execution": "not_promoted",
+    "runtime_behavior_changed": false
+  },
+  "inputs": {
+    "corpus_trial_json_path": "docs\\integration\\local-knowledge-provider-corpus-trial\\local-knowledge-provider-corpus-trial.json",
+    "explicit_api_smoke_json_path": "docs\\integration\\company-profile-explicit-api-local-smoke\\company-profile-explicit-api-local-smoke.json"
+  },
+  "warnings": [],
+  "blockers": [],
+  "json_path": "docs\\integration\\local-knowledge-base-user-loop\\local-knowledge-base-user-loop.json",
+  "markdown_path": "docs\\integration\\local-knowledge-base-user-loop\\local-knowledge-base-user-loop.md"
+}
