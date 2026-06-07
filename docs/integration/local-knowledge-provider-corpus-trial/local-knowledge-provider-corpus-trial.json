@@ -1,6 +1,6 @@
 {
   "id": "local-knowledge-provider-corpus-trial-v1",
-  "generated_at": "2026-06-07T02:44:15.050782+00:00",
+  "generated_at": "2026-06-07T05:22:56.503391+00:00",
   "provider_base_url": "http://127.0.0.1:8020",
   "source_id": "company_profile_2025_trial",
   "top_k": 3,
