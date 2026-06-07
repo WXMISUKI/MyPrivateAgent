@@ -262,6 +262,26 @@ python backend/scripts/domain_agent_live_grounded_answer_trial.py `
 
 `company_profile` agent 只声明 `company_profile_2025_trial`，因此该命令用于验证“真实 agent manifest -> provider retrieve -> grounded-answer trial”的显式闭环。它仍然不启用默认 `/api/chat` retrieval injection，也不创建 source-to-agent binding。
 
+如果需要让业务代码或前端显式调用这个能力，而不是依赖命令行脚本，可以调用 MyPrivateAgent 后端的显式 API：
+
+```http
+POST /api/domain-agents/company_profile/live-grounded-answer
+```
+
+示例请求：
+
+```json
+{
+  "query": "公司主营业务是什么？",
+  "domain": "company.profile",
+  "provider_base_url": "http://127.0.0.1:8020",
+  "top_k": 3,
+  "timeout_seconds": 5
+}
+```
+
+该接口返回调用方更容易消费的 `ok`、`status`、`reason_code`、`answer_preview`、`citations`、`documents` 和 `boundary`，同时保留完整 `trial` 供排障使用。它仍然是显式试问入口，不修改默认 `/api/chat`，不写 memory/audit/trace，不创建 source binding，不执行 GraphRAG，也不做真实 LLM answer generation。
+
 ## 7. agent.yaml 绑定
 
 垂域 agent 通过 `capabilities.rag_sources` 和 `capabilities.graph_sources` 声明可见知识能力：

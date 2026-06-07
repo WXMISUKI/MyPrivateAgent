@@ -234,6 +234,77 @@ class DomainAgentsRouterTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.json()["ok"])
 
+    def test_live_grounded_answer_endpoint_returns_compact_response(self):
+        app = FastAPI()
+        app.include_router(router)
+        fake_service = Mock()
+        fake_service.run.return_value = {
+            "ok": True,
+            "status": "go",
+            "reason_code": "live_grounded_answer_trial_ready",
+            "answer_preview": "基于 company_profile_2025_trial#chunk-4，已生成受控回答预览。",
+            "citations": ["company_profile_2025_trial#chunk-4"],
+            "documents": [{"source_id": "company_profile_2025_trial"}],
+            "boundary": {"default_chat_retrieval_injection": "disabled"},
+            "trial": {"provider_retrieve": {"knowledge_base_ids": ["company_profile_2025_trial"]}},
+        }
+
+        with patch(
+            "backend.routers.domain_agents.get_domain_agent_live_grounded_answer_api_service",
+            return_value=fake_service,
+        ):
+            response = TestClient(app).post(
+                "/api/domain-agents/company_profile/live-grounded-answer",
+                json={
+                    "domain": "company.profile",
+                    "query": "公司主营业务是什么？",
+                    "provider_base_url": "http://127.0.0.1:8020",
+                    "top_k": 3,
+                    "timeout_seconds": 5,
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["citations"], ["company_profile_2025_trial#chunk-4"])
+        call_kwargs = fake_service.run.call_args.kwargs
+        self.assertEqual(call_kwargs["agent_id"], "company_profile")
+        self.assertEqual(call_kwargs["domain"], "company.profile")
+        self.assertEqual(call_kwargs["query"], "公司主营业务是什么？")
+        self.assertEqual(call_kwargs["provider_base_url"], "http://127.0.0.1:8020")
+        self.assertEqual(call_kwargs["top_k"], 3)
+        self.assertEqual(call_kwargs["timeout_seconds"], 5.0)
+
+    def test_live_grounded_answer_endpoint_does_not_echo_provider_api_key(self):
+        app = FastAPI()
+        app.include_router(router)
+        fake_service = Mock()
+        fake_service.run.return_value = {
+            "ok": False,
+            "status": "blocked",
+            "reason_code": "provider_unreachable",
+            "blockers": [{"component": "provider", "reason_code": "provider_unreachable"}],
+            "boundary": {"default_chat_retrieval_injection": "disabled"},
+            "trial": {},
+        }
+
+        with patch(
+            "backend.routers.domain_agents.get_domain_agent_live_grounded_answer_api_service",
+            return_value=fake_service,
+        ):
+            response = TestClient(app).post(
+                "/api/domain-agents/company_profile/live-grounded-answer",
+                json={
+                    "query": "公司主营业务是什么？",
+                    "provider_api_key": "secret-provider-key",
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("secret-provider-key", response.text)
+        self.assertEqual(fake_service.run.call_args.kwargs["provider_api_key"], "secret-provider-key")
+
 
 if __name__ == "__main__":
     unittest.main()
