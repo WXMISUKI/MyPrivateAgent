@@ -298,6 +298,22 @@ docs/integration/company-profile-explicit-api-local-smoke/company-profile-explic
 
 `decision=go` 表示 provider 本地 source、MyPrivateAgent domain agent manifest、显式 API、citation allowlist 和 boundary 都能一起工作。该 smoke 不启动 provider，不接入默认 `/api/chat`，不写 memory/audit/trace，不创建 source binding，不执行 GraphRAG，也不做真实 LLM answer generation。
 
+更推荐的日常入口是先跑本地 knowledge runtime doctor：
+
+```powershell
+python backend/scripts/doctor.py `
+  --knowledge-runtime `
+  --provider-base-url http://127.0.0.1:8020
+```
+
+该命令复用 company-profile 显式 API smoke，但输出更适合作为本地排障入口的 `scope/status/decision/reason_code/checks/blockers/recommended_next_action/boundary`。常见含义：
+
+- `decision=go`：本地知识链路可进入显式业务试问。
+- `decision=review`：链路没有硬阻断，但需要先确认 warnings。
+- `decision=blocked`：provider、显式 API、citation/evidence 或 boundary 存在硬阻断，先按 `recommended_next_action` 处理。
+
+CLI 退出码为 `0=go`、`2=review`、`1=blocked`。该 doctor 仍然只是本地只读诊断：不启动 provider，不接入默认 `/api/chat`，不写 memory/audit/trace，不创建 source binding，不执行工具，不执行 GraphRAG，不运行 OCR，也不做真实 LLM answer generation。
+
 ## 7. agent.yaml 绑定
 
 垂域 agent 通过 `capabilities.rag_sources` 和 `capabilities.graph_sources` 声明可见知识能力：

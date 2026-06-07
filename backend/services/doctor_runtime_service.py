@@ -6,10 +6,10 @@ from typing import Any, Dict
 
 try:
     from services.startup_diagnostics_service import get_startup_diagnostics_service
-    from scripts.doctor import _build_capability_gap_report
+    from scripts.doctor import _build_capability_gap_report, _build_knowledge_runtime_report
 except ModuleNotFoundError:  # pragma: no cover - package import compatibility
     from backend.services.startup_diagnostics_service import get_startup_diagnostics_service
-    from backend.scripts.doctor import _build_capability_gap_report
+    from backend.scripts.doctor import _build_capability_gap_report, _build_knowledge_runtime_report
 
 
 class DoctorRuntimeService:
@@ -37,6 +37,27 @@ class DoctorRuntimeService:
         )
         report["exit_code"] = 0 if report.get("gate_passed") else 2
         return report
+
+    def run_knowledge_runtime_report(
+        self,
+        *,
+        provider_base_url: str,
+        provider_api_key: str | None = None,
+        agent_id: str,
+        domain: str | None,
+        query: str,
+        top_k: int = 3,
+        timeout_seconds: float = 5,
+    ) -> Dict[str, Any]:
+        return _build_knowledge_runtime_report(
+            provider_base_url=provider_base_url,
+            provider_api_key=provider_api_key,
+            agent_id=agent_id,
+            domain=domain,
+            query=query,
+            top_k=top_k,
+            timeout_seconds=timeout_seconds,
+        )
 
 
 _doctor_runtime_service: DoctorRuntimeService | None = None

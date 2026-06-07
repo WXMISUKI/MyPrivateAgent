@@ -20,16 +20,30 @@ _bootstrap_path()
 
 try:
     from database import SessionLocal
+    from services.company_profile_explicit_api_local_smoke_service import (
+        DEFAULT_AGENT_ID as DEFAULT_KNOWLEDGE_AGENT_ID,
+        DEFAULT_DOMAIN as DEFAULT_KNOWLEDGE_DOMAIN,
+        DEFAULT_QUERY as DEFAULT_KNOWLEDGE_QUERY,
+        run_company_profile_explicit_api_local_smoke,
+    )
     from services.capability_gap_service import get_capability_gap_service
     from services.framework_adapter_diagnostics_service import FrameworkAdapterDiagnosticsService
     from services.remediation_status_service import get_remediation_status_service
     from services.startup_diagnostics_service import get_startup_diagnostics_service
+    from services.domain_agent_live_grounded_answer_trial_service import DEFAULT_PROVIDER_BASE_URL
 except ModuleNotFoundError:  # pragma: no cover - package import compatibility
     from backend.database import SessionLocal
+    from backend.services.company_profile_explicit_api_local_smoke_service import (
+        DEFAULT_AGENT_ID as DEFAULT_KNOWLEDGE_AGENT_ID,
+        DEFAULT_DOMAIN as DEFAULT_KNOWLEDGE_DOMAIN,
+        DEFAULT_QUERY as DEFAULT_KNOWLEDGE_QUERY,
+        run_company_profile_explicit_api_local_smoke,
+    )
     from backend.services.capability_gap_service import get_capability_gap_service
     from backend.services.framework_adapter_diagnostics_service import FrameworkAdapterDiagnosticsService
     from backend.services.remediation_status_service import get_remediation_status_service
     from backend.services.startup_diagnostics_service import get_startup_diagnostics_service
+    from backend.services.domain_agent_live_grounded_answer_trial_service import DEFAULT_PROVIDER_BASE_URL
 
 ACTION_OWNERSHIP_MAP: Dict[str, Dict[str, Any]] = {
     "fix_final_synthesis_chain": {
@@ -133,9 +147,51 @@ def _build_parser() -> argparse.ArgumentParser:
         description="Doctor diagnostics for startup and capability-gap governance.",
     )
     parser.add_argument(
+        "--knowledge-runtime",
+        action="store_true",
+        help="Output local knowledge runtime doctor report instead of startup diagnostics.",
+    )
+    parser.add_argument(
         "--capability-gaps",
         action="store_true",
         help="Output capability-gap governance summary instead of startup diagnostics.",
+    )
+    parser.add_argument(
+        "--provider-base-url",
+        default=DEFAULT_PROVIDER_BASE_URL,
+        help="External knowledge provider base URL for --knowledge-runtime.",
+    )
+    parser.add_argument(
+        "--provider-api-key",
+        default=None,
+        help="Optional provider API key for --knowledge-runtime. It is never written to output.",
+    )
+    parser.add_argument(
+        "--agent-id",
+        default=DEFAULT_KNOWLEDGE_AGENT_ID,
+        help="Domain agent id for --knowledge-runtime.",
+    )
+    parser.add_argument(
+        "--domain",
+        default=DEFAULT_KNOWLEDGE_DOMAIN,
+        help="Domain value for --knowledge-runtime.",
+    )
+    parser.add_argument(
+        "--query",
+        default=DEFAULT_KNOWLEDGE_QUERY,
+        help="Query for --knowledge-runtime.",
+    )
+    parser.add_argument(
+        "--top-k",
+        type=int,
+        default=3,
+        help="Top-k retrieve size for --knowledge-runtime.",
+    )
+    parser.add_argument(
+        "--timeout-seconds",
+        type=float,
+        default=5,
+        help="Provider timeout seconds for --knowledge-runtime.",
     )
     parser.add_argument(
         "--window-days",
@@ -163,6 +219,170 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Fail governance gate when long-blocked remediation actions exceed this value.",
     )
     return parser
+
+
+def _build_knowledge_runtime_report(
+    *,
+    provider_base_url: str = DEFAULT_PROVIDER_BASE_URL,
+    provider_api_key: str | None = None,
+    agent_id: str = DEFAULT_KNOWLEDGE_AGENT_ID,
+    domain: str | None = DEFAULT_KNOWLEDGE_DOMAIN,
+    query: str = DEFAULT_KNOWLEDGE_QUERY,
+    top_k: int = 3,
+    timeout_seconds: float = 5,
+) -> Dict[str, Any]:
+    try:
+        smoke = run_company_profile_explicit_api_local_smoke(
+            provider_base_url=provider_base_url,
+            provider_api_key=provider_api_key,
+            agent_id=agent_id,
+            domain=domain,
+            query=query,
+            top_k=top_k,
+            timeout_seconds=timeout_seconds,
+        )
+        smoke_payload = smoke.to_dict()
+    except Exception as exc:  # pragma: no cover - defensive local diagnostics guard
+        return _redact_secret(
+            {
+            "scope": "knowledge_runtime",
+            "status": "fail",
+            "decision": "blocked",
+            "reason_code": "knowledge_runtime_doctor_failed",
+            "exit_code": 1,
+            "provider_base_url": provider_base_url,
+            "agent_id": agent_id,
+            "domain": domain,
+            "query": query,
+            "checks": [
+                {
+                    "name": "company_profile_explicit_api_local_smoke",
+                    "status": "fail",
+                    "reason_code": "knowledge_runtime_doctor_failed",
+                }
+            ],
+            "blockers": [
+                {
+                    "component": "doctor",
+                    "status": "blocked",
+                    "reason_code": "knowledge_runtime_doctor_failed",
+                    "message": str(exc),
+                }
+            ],
+            "warnings": [],
+            "recommended_next_action": "run_focused_doctor_tests_before_local_business_use",
+            "boundary": _knowledge_runtime_boundary({}),
+            "smoke": {},
+            },
+            provider_api_key,
+        )
+
+    decision = str(smoke_payload.get("decision") or "blocked").strip() or "blocked"
+    status = _knowledge_runtime_status(decision)
+    reason_code = str(smoke_payload.get("reason_code") or "").strip() or "knowledge_runtime_unknown"
+    blockers = list(smoke_payload.get("blockers") or [])
+    warnings = list(smoke_payload.get("warnings") or [])
+    boundary = _knowledge_runtime_boundary(smoke_payload.get("boundary") or {})
+    check_status = "ok" if decision == "go" else ("warn" if decision == "review" else "fail")
+    return _redact_secret(
+        {
+        "scope": "knowledge_runtime",
+        "status": status,
+        "decision": decision,
+        "reason_code": reason_code,
+        "exit_code": _knowledge_runtime_exit_code(decision),
+        "provider_base_url": str(smoke_payload.get("provider_base_url") or provider_base_url),
+        "agent_id": str(smoke_payload.get("agent_id") or agent_id),
+        "domain": smoke_payload.get("domain") if smoke_payload.get("domain") is not None else domain,
+        "query": str(smoke_payload.get("query") or query),
+        "endpoint": str(smoke_payload.get("endpoint") or ""),
+        "checks": [
+            {
+                "name": "company_profile_explicit_api_local_smoke",
+                "status": check_status,
+                "decision": decision,
+                "reason_code": reason_code,
+                "http_status_code": smoke_payload.get("http_status_code"),
+                "ok": bool(smoke_payload.get("ok")),
+                "document_count": int(smoke_payload.get("document_count") or 0),
+                "citation_count": len(smoke_payload.get("citations") or []),
+            }
+        ],
+        "blockers": blockers,
+        "warnings": warnings,
+        "recommended_next_action": _knowledge_runtime_next_action(reason_code, decision),
+        "boundary": boundary,
+        "smoke": {
+            "contract_version": smoke_payload.get("contract_version"),
+            "decision": decision,
+            "reason_code": reason_code,
+            "answer_preview": smoke_payload.get("answer_preview"),
+            "citations": list(smoke_payload.get("citations") or []),
+            "document_count": int(smoke_payload.get("document_count") or 0),
+            "api_status": smoke_payload.get("api_status"),
+        },
+        },
+        provider_api_key,
+    )
+
+
+def _knowledge_runtime_status(decision: str) -> str:
+    if decision == "go":
+        return "ok"
+    if decision == "review":
+        return "warn"
+    return "fail"
+
+
+def _knowledge_runtime_exit_code(decision: str) -> int:
+    if decision == "go":
+        return 0
+    if decision == "review":
+        return 2
+    return 1
+
+
+def _knowledge_runtime_next_action(reason_code: str, decision: str) -> str:
+    if decision == "go":
+        return "local_knowledge_runtime_ready_for_explicit_business_trials"
+    if reason_code in {"provider_unreachable", "live_provider_retrieve_failed", "explicit_api_route_failed"}:
+        return "start_unifiedKnowledgeRAG_provider_and_rerun_doctor"
+    if reason_code in {"explicit_api_boundary_missing", "provider_api_key_leaked"}:
+        return "fix_myprivateagent_explicit_api_boundary_before_business_use"
+    if "citation" in reason_code or "evidence" in reason_code or "source" in reason_code:
+        return "rerun_provider_corpus_trial_and_verify_company_profile_2025_trial"
+    if decision == "review":
+        return "review_knowledge_runtime_warnings_before_business_use"
+    return "fix_provider_or_explicit_api_before_business_use"
+
+
+def _knowledge_runtime_boundary(smoke_boundary: Dict[str, Any]) -> Dict[str, Any]:
+    boundary = dict(smoke_boundary or {})
+    boundary.setdefault("default_chat_retrieval_injection", "disabled")
+    boundary.setdefault("chat_invocation", "not_performed")
+    boundary.setdefault("provider_startup", "not_performed")
+    boundary.setdefault("source_binding", "not_performed")
+    boundary.setdefault("memory_write", "not_performed")
+    boundary.setdefault("audit_write", "not_performed")
+    boundary.setdefault("trace_write", "not_performed")
+    boundary.setdefault("tool_execution", "not_performed")
+    boundary.setdefault("provider_data_mutation", "not_performed")
+    boundary.setdefault("ocr_execution", "not_performed")
+    boundary.setdefault("graphrag_execution", "not_promoted")
+    boundary.setdefault("llm_answer_generation", "not_performed")
+    return boundary
+
+
+def _redact_secret(value: Any, secret: str | None) -> Any:
+    if not secret:
+        return value
+    if isinstance(value, str):
+        return value.replace(secret, "[REDACTED]")
+    if isinstance(value, list):
+        return [_redact_secret(item, secret) for item in value]
+    if isinstance(value, dict):
+        return {key: _redact_secret(item, secret) for key, item in value.items()}
+    return value
 
 
 def _build_capability_gap_report(
@@ -321,6 +541,19 @@ def _build_capability_gap_report(
 def main(argv: List[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
+    if args.knowledge_runtime:
+        report = _build_knowledge_runtime_report(
+            provider_base_url=args.provider_base_url,
+            provider_api_key=args.provider_api_key,
+            agent_id=args.agent_id,
+            domain=args.domain,
+            query=args.query,
+            top_k=args.top_k,
+            timeout_seconds=args.timeout_seconds,
+        )
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+        return int(report.get("exit_code", 1))
+
     if args.capability_gaps:
         report = _build_capability_gap_report(
             limit=args.limit,

@@ -17,6 +17,12 @@ try:
     from services.run_trace_service import get_run_trace_service
     from services.remediation_status_service import get_remediation_status_service
     from services.provider_failover_analytics_service import get_provider_failover_analytics_service
+    from services.company_profile_explicit_api_local_smoke_service import (
+        DEFAULT_AGENT_ID as DEFAULT_KNOWLEDGE_AGENT_ID,
+        DEFAULT_DOMAIN as DEFAULT_KNOWLEDGE_DOMAIN,
+        DEFAULT_QUERY as DEFAULT_KNOWLEDGE_QUERY,
+    )
+    from services.domain_agent_live_grounded_answer_trial_service import DEFAULT_PROVIDER_BASE_URL
     from database import get_db
     from schemas_runtime_surface import FrameworkAdapterExternalPilotRunRequest, FrameworkAdapterPilotRunRequest, FrameworkAdapterPrecheckRequest, RuntimeSurfaceEmbeddedRuntimeBootstrapUpdateRequest, RuntimeSurfaceUpdateRequest
     from config import CORS_ALLOWED_ORIGINS, CORS_ALLOWED_ORIGIN_REGEX, ENABLE_LANGGRAPH_EXTERNAL_PILOT, ENABLE_LOCAL_FAKE_FRAMEWORK_ADAPTER
@@ -31,6 +37,12 @@ except ModuleNotFoundError:  # pragma: no cover - package import compatibility
     from backend.services.run_trace_service import get_run_trace_service
     from backend.services.remediation_status_service import get_remediation_status_service
     from backend.services.provider_failover_analytics_service import get_provider_failover_analytics_service
+    from backend.services.company_profile_explicit_api_local_smoke_service import (
+        DEFAULT_AGENT_ID as DEFAULT_KNOWLEDGE_AGENT_ID,
+        DEFAULT_DOMAIN as DEFAULT_KNOWLEDGE_DOMAIN,
+        DEFAULT_QUERY as DEFAULT_KNOWLEDGE_QUERY,
+    )
+    from backend.services.domain_agent_live_grounded_answer_trial_service import DEFAULT_PROVIDER_BASE_URL
     from backend.database import get_db
     from backend.schemas_runtime_surface import FrameworkAdapterExternalPilotRunRequest, FrameworkAdapterPilotRunRequest, FrameworkAdapterPrecheckRequest, RuntimeSurfaceEmbeddedRuntimeBootstrapUpdateRequest, RuntimeSurfaceUpdateRequest
     from backend.config import CORS_ALLOWED_ORIGINS, CORS_ALLOWED_ORIGIN_REGEX, ENABLE_LANGGRAPH_EXTERNAL_PILOT, ENABLE_LOCAL_FAKE_FRAMEWORK_ADAPTER
@@ -2379,15 +2391,33 @@ def reconcile_runtime_backend(
 
 @router.get("/doctor")
 def run_doctor(
+    knowledge_runtime: bool = False,
     capability_gaps: bool = False,
     window_days: int = 0,
     limit: int = 100,
     max_open_actions: int | None = None,
     max_long_blocked_actions: int | None = None,
+    provider_base_url: str = DEFAULT_PROVIDER_BASE_URL,
+    provider_api_key: str | None = None,
+    agent_id: str = DEFAULT_KNOWLEDGE_AGENT_ID,
+    domain: str | None = DEFAULT_KNOWLEDGE_DOMAIN,
+    query: str = DEFAULT_KNOWLEDGE_QUERY,
+    top_k: int = 3,
+    timeout_seconds: float = 5,
     conversation_id: int | None = None,
     db: Session = Depends(get_db),
 ):
     service = get_doctor_runtime_service()
+    if knowledge_runtime:
+        return service.run_knowledge_runtime_report(
+            provider_base_url=provider_base_url,
+            provider_api_key=provider_api_key,
+            agent_id=agent_id,
+            domain=domain,
+            query=query,
+            top_k=top_k,
+            timeout_seconds=timeout_seconds,
+        )
     if capability_gaps:
         report = service.run_capability_gap_report(
             limit=limit,
