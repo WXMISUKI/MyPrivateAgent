@@ -1,23 +1,23 @@
 {
   "id": "document-rag-upload-to-use-loop-v1",
-  "generated_at": "2026-06-07T11:08:05.818267+00:00",
+  "generated_at": "2026-06-08T01:32:39.195468+00:00",
   "decision": "go",
   "reason_code": "document_rag_upload_to_use_ready",
   "document_path": "D:\\xwechat_files\\wxid_pc6sc451nt9022_dea0\\msg\\file\\2026-06\\公司简介2025年10月27日(1).pdf",
   "parse_mode": "ocr",
   "source_id": "company_profile_2025_trial",
-  "title": "公司简介 2025 trial",
-  "query": "公司主营业务和服务范围是什么？",
+  "title": "公司简介 2025-10-27",
+  "query": "公司主营业务是什么？",
   "provider_base_url": "http://127.0.0.1:8020",
   "provider_repo_path": "D:\\AI\\AIcode\\unifiedKnowledgeRAG",
   "handoff_only": false,
   "ingestion": {
-    "ingest_id": "doc-ingest-2595ea56e56043f4ad9f439d29c14f11",
+    "ingest_id": "doc-ingest-b9ce5c5d9d644c9a8c1478c451186b47",
     "status": "succeeded",
     "parse_mode": "ocr",
     "capability_id": "document.ocr.extract",
     "provider": "paddleocr",
-    "artifact_id": "doc-artifact-7b55392e709a46de9daf4d399bec7530",
+    "artifact_id": "doc-artifact-2516b997157549e8a35c27d7c96976fa",
     "warnings": [],
     "error": {}
   },
@@ -38,7 +38,7 @@
       "--output-dir",
       "docs\\integration\\document-rag-upload-to-use-loop\\provider-parser-artifact-ingestion-loop",
       "--query",
-      "公司主营业务和服务范围是什么？",
+      "公司主营业务是什么？",
       "--top-k",
       "3"
     ],
@@ -71,15 +71,15 @@
       "status": "succeeded",
       "reason_code": "document_ingestion_succeeded",
       "artifacts": {
-        "artifact_id": "doc-artifact-7b55392e709a46de9daf4d399bec7530"
+        "artifact_id": "doc-artifact-2516b997157549e8a35c27d7c96976fa"
       },
       "summary": {
-        "ingest_id": "doc-ingest-2595ea56e56043f4ad9f439d29c14f11",
+        "ingest_id": "doc-ingest-b9ce5c5d9d644c9a8c1478c451186b47",
         "status": "succeeded",
         "parse_mode": "ocr",
         "capability_id": "document.ocr.extract",
         "provider": "paddleocr",
-        "artifact_id": "doc-artifact-7b55392e709a46de9daf4d399bec7530",
+        "artifact_id": "doc-artifact-2516b997157549e8a35c27d7c96976fa",
         "warnings": [],
         "error": {}
       }
@@ -93,7 +93,7 @@
       },
       "summary": {
         "artifact_id": "company_profile_2025_trial_ocr_document_upload",
-        "text_block_count": 500
+        "text_block_count": 502
       }
     },
     {
@@ -136,7 +136,7 @@
     "audit_write_status": "not_written",
     "service_start_status": "not_started",
     "graph_execution_status": "not_executed",
-    "text_block_count": 500,
+    "text_block_count": 502,
     "provider_ingestion_status": "ready",
     "corpus_trial_decision": "go",
     "corpus_trial_reason_code": "local_corpus_trial_accepted"

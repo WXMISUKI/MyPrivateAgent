@@ -314,6 +314,32 @@ python backend/scripts/doctor.py `
 
 CLI 退出码为 `0=go`、`2=review`、`1=blocked`。该 doctor 仍然只是本地只读诊断：不启动 provider，不接入默认 `/api/chat`，不写 memory/audit/trace，不创建 source binding，不执行工具，不执行 GraphRAG，不运行 OCR，也不做真实 LLM answer generation。
 
+当真实业务资料已经通过上传到 RAG 使用闭环，并且已经生成一个或多个显式 RAG 试问报告后，可以导出本地真实业务试用验收结论：
+
+```powershell
+python scripts/export_local_rag_real_business_trial_acceptance.py `
+  --upload-report-path docs/integration/document-rag-upload-to-use-loop/document-rag-upload-to-use-loop.json `
+  --question-report-path docs/integration/local-rag-question-trial-entrypoint/local-rag-question-trial-entrypoint.json
+```
+
+如果某个问题是负控问题，预期应该返回 `insufficient_evidence`，使用：
+
+```powershell
+python scripts/export_local_rag_real_business_trial_acceptance.py `
+  --upload-report-path docs/integration/document-rag-upload-to-use-loop/document-rag-upload-to-use-loop.json `
+  --question-report-path docs/integration/local-rag-question-trial-entrypoint/company-business-question.json `
+  --negative-question-report-path docs/integration/local-rag-question-trial-entrypoint/refund-policy-negative-control.json
+```
+
+输出位于：
+
+```text
+docs/integration/local-rag-real-business-trial-acceptance/local-rag-real-business-trial-acceptance.json
+docs/integration/local-rag-real-business-trial-acceptance/local-rag-real-business-trial-acceptance.md
+```
+
+`decision=go` 表示当前真实资料可以进入更多本地业务试用；`review` 会把下一步分流到 parser/OCR、citation/evidence、retrieval-quality 或 operator-flow；`blocked` 表示先修 provider、报告缺失或上传链路硬阻断。该验收报告只读取现有 trial 产物，不启动服务、不调用 provider、不接入默认 `/api/chat`、不创建 source binding、不写 memory/audit/trace，也不执行 GraphRAG。
+
 ## 7. agent.yaml 绑定
 
 垂域 agent 通过 `capabilities.rag_sources` 和 `capabilities.graph_sources` 声明可见知识能力：

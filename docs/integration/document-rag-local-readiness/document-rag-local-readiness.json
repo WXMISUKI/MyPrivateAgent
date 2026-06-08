@@ -1,6 +1,6 @@
 {
   "id": "document-rag-local-readiness-v1",
-  "generated_at": "2026-06-07T12:23:12.663173+00:00",
+  "generated_at": "2026-06-08T01:32:07.689704+00:00",
   "decision": "go",
   "reason_code": "document_rag_local_readiness_ready",
   "ocr_base_url": "http://127.0.0.1:8080",
@@ -19,7 +19,7 @@
       "summary": {
         "status": "ready",
         "raw": {
-          "logId": "a153c9e0-c706-451c-8167-eec4ed1a1175",
+          "logId": "9c2fbfe8-805b-4c57-aafb-866ab9abedcf",
           "errorCode": 0,
           "errorMsg": "Healthy"
         },

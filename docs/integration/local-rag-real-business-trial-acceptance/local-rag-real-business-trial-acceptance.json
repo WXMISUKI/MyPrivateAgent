@@ -1,0 +1,156 @@
+{
+  "id": "local-rag-real-business-trial-acceptance-v1",
+  "generated_at": "2026-06-08T01:34:56.465735+00:00",
+  "decision": "go",
+  "reason_code": "local_rag_real_business_trial_accepted",
+  "source_id": "company_profile_2025_trial",
+  "document_path": "D:\\xwechat_files\\wxid_pc6sc451nt9022_dea0\\msg\\file\\2026-06\\公司简介2025年10月27日(1).pdf",
+  "provider_base_url": "http://127.0.0.1:8020",
+  "upload_report_path": "docs\\integration\\document-rag-upload-to-use-loop\\document-rag-upload-to-use-loop.json",
+  "upload_summary": {
+    "status": "supplied",
+    "path": "docs\\integration\\document-rag-upload-to-use-loop\\document-rag-upload-to-use-loop.json",
+    "decision": "go",
+    "reason_code": "document_rag_upload_to_use_ready",
+    "source_id": "company_profile_2025_trial",
+    "document_path": "D:\\xwechat_files\\wxid_pc6sc451nt9022_dea0\\msg\\file\\2026-06\\公司简介2025年10月27日(1).pdf",
+    "parser_artifact_path": "docs\\integration\\document-rag-upload-to-use-loop\\parser-artifacts\\document-rag-parser-artifact.json",
+    "provider_ingestion_status": "ready"
+  },
+  "question_cases": [
+    {
+      "id": "local-rag-question-trial-entrypoint-v1",
+      "question": "公司主营业务是什么？",
+      "expected_mode": "answerable",
+      "report_path": "docs\\integration\\local-rag-question-trial-entrypoint\\business_scope\\local-rag-question-trial-entrypoint.json",
+      "decision": "go",
+      "reason_code": "rag_question_answered",
+      "answer_status": "answered",
+      "status": "ready",
+      "follow_up_area": "no_follow_up_required",
+      "citations": [
+        "company_profile_2025_trial#chunk-127",
+        "company_profile_2025_trial#chunk-203",
+        "company_profile_2025_trial#chunk-1"
+      ],
+      "invalid_citations": [],
+      "notes": [
+        "source_id=company_profile_2025_trial",
+        "provider_base_url=http://127.0.0.1:8020"
+      ]
+    },
+    {
+      "id": "local-rag-question-trial-entrypoint-v1",
+      "question": "公司有哪些资质或能力？",
+      "expected_mode": "answerable",
+      "report_path": "docs\\integration\\local-rag-question-trial-entrypoint\\qualifications\\local-rag-question-trial-entrypoint.json",
+      "decision": "go",
+      "reason_code": "rag_question_answered",
+      "answer_status": "answered",
+      "status": "ready",
+      "follow_up_area": "no_follow_up_required",
+      "citations": [
+        "company_profile_2025_trial#chunk-115",
+        "company_profile_2025_trial#chunk-1",
+        "company_profile_2025_trial#chunk-3"
+      ],
+      "invalid_citations": [],
+      "notes": [
+        "source_id=company_profile_2025_trial",
+        "provider_base_url=http://127.0.0.1:8020"
+      ]
+    },
+    {
+      "id": "local-rag-question-trial-entrypoint-v1",
+      "question": "公司组织结构或部门有哪些？",
+      "expected_mode": "answerable",
+      "report_path": "docs\\integration\\local-rag-question-trial-entrypoint\\organization\\local-rag-question-trial-entrypoint.json",
+      "decision": "go",
+      "reason_code": "rag_question_answered",
+      "answer_status": "answered",
+      "status": "ready",
+      "follow_up_area": "no_follow_up_required",
+      "citations": [
+        "company_profile_2025_trial#chunk-663",
+        "company_profile_2025_trial#chunk-787",
+        "company_profile_2025_trial#chunk-921"
+      ],
+      "invalid_citations": [],
+      "notes": [
+        "source_id=company_profile_2025_trial",
+        "provider_base_url=http://127.0.0.1:8020"
+      ]
+    },
+    {
+      "id": "local-rag-question-trial-entrypoint-v1",
+      "question": "公司有哪些项目经验或服务范围？",
+      "expected_mode": "answerable",
+      "report_path": "docs\\integration\\local-rag-question-trial-entrypoint\\project_experience\\local-rag-question-trial-entrypoint.json",
+      "decision": "go",
+      "reason_code": "rag_question_answered",
+      "answer_status": "answered",
+      "status": "ready",
+      "follow_up_area": "no_follow_up_required",
+      "citations": [
+        "company_profile_2025_trial#chunk-129",
+        "company_profile_2025_trial#chunk-151",
+        "company_profile_2025_trial#chunk-155"
+      ],
+      "invalid_citations": [],
+      "notes": [
+        "source_id=company_profile_2025_trial",
+        "provider_base_url=http://127.0.0.1:8020"
+      ]
+    },
+    {
+      "id": "local-rag-question-trial-entrypoint-v1",
+      "question": "售后退款凭证规则是什么？",
+      "expected_mode": "insufficient_evidence",
+      "report_path": "docs\\integration\\local-rag-question-trial-entrypoint\\negative_refund_policy\\local-rag-question-trial-entrypoint.json",
+      "decision": "go",
+      "reason_code": "rag_question_insufficient_evidence",
+      "answer_status": "insufficient_evidence",
+      "status": "ready",
+      "follow_up_area": "no_follow_up_required",
+      "citations": [],
+      "invalid_citations": [],
+      "notes": [
+        "source_id=company_profile_2025_trial",
+        "provider_base_url=http://127.0.0.1:8020"
+      ]
+    }
+  ],
+  "follow_up_area": "no_follow_up_required",
+  "blockers": [],
+  "warnings": [],
+  "summary": {
+    "final_decision": "go",
+    "question_case_count": 5,
+    "ready_question_count": 5,
+    "review_question_count": 0,
+    "blocked_question_count": 0,
+    "answerable_case_count": 4,
+    "negative_control_case_count": 1,
+    "follow_up_area": "no_follow_up_required",
+    "default_chat_retrieval_injection": "not_enabled",
+    "source_binding_status": "not_created",
+    "memory_write_status": "not_written",
+    "audit_write_status": "not_written",
+    "trace_write_status": "not_written",
+    "service_start_status": "not_started",
+    "graph_execution_status": "not_executed"
+  },
+  "recommended_actions": [
+    "continue_with_more_real_business_documents_or_questions"
+  ],
+  "non_goals": [
+    "does_not_enable_default_chat_retrieval_injection",
+    "does_not_create_source_to_agent_binding",
+    "does_not_mutate_domain_agent_manifests",
+    "does_not_start_external_services",
+    "does_not_add_graphrag_vector_backend_hybrid_or_rerank_promotion",
+    "does_not_write_memory_audit_approval_trace_or_governance_records"
+  ],
+  "json_path": "docs\\integration\\local-rag-real-business-trial-acceptance\\local-rag-real-business-trial-acceptance.json",
+  "markdown_path": "docs\\integration\\local-rag-real-business-trial-acceptance\\local-rag-real-business-trial-acceptance.md"
+}

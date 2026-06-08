@@ -1,7 +1,7 @@
 {
   "artifact_id": "company_profile_2025_trial_ocr_document_upload",
   "source_id": "company_profile_2025_trial",
-  "title": "公司简介 2025 trial",
+  "title": "公司简介 2025-10-27",
   "owner": "myprivateagent_document_rag_upload_to_use_loop",
   "domain": "local_business_corpus",
   "language": "zh-CN",
@@ -15,9 +15,9 @@
   "parser": {
     "parser_id": "myprivateagent-ocr-artifact-handoff-v1",
     "parser_version": "local-trial",
-    "parsed_at": "2026-06-07T11:08:02.802940+00:00",
-    "document_ingest_id": "doc-ingest-2595ea56e56043f4ad9f439d29c14f11",
-    "document_artifact_id": "doc-artifact-7b55392e709a46de9daf4d399bec7530",
+    "parsed_at": "2026-06-08T01:32:35.960337+00:00",
+    "document_ingest_id": "doc-ingest-b9ce5c5d9d644c9a8c1478c451186b47",
+    "document_artifact_id": "doc-artifact-2516b997157549e8a35c27d7c96976fa",
     "capability_id": "document.ocr.extract",
     "provider": "paddleocr"
   },
@@ -40,7 +40,7 @@
     },
     {
       "block_id": "page-1-block-3",
-      "text": "J.S.TRAFFIC ENGINEERING CONSULTING & SUPERVISIoNCO., LTD",
+      "text": "J.S. TRAFFIC ENGINEERINGCoNSULTING& SUPERVISIoNCO., LTD",
       "citation": "company_profile_2025_trial#page-1",
       "provenance": {
         "page": 1
@@ -168,7 +168,7 @@
     },
     {
       "block_id": "page-2-block-19",
-      "text": "科学管理、创新服",
+      "text": "科学管理、",
       "citation": "company_profile_2025_trial#page-2",
       "provenance": {
         "page": 2
@@ -176,6 +176,14 @@
     },
     {
       "block_id": "page-2-block-20",
+      "text": "创新服",
+      "citation": "company_profile_2025_trial#page-2",
+      "provenance": {
+        "page": 2
+      }
+    },
+    {
+      "block_id": "page-2-block-21",
       "text": "务",
       "citation": "company_profile_2025_trial#page-2",
       "provenance": {
@@ -183,7 +191,7 @@
       }
     },
     {
-      "block_id": "page-3-block-21",
+      "block_id": "page-3-block-22",
       "text": "目录",
       "citation": "company_profile_2025_trial#page-3",
       "provenance": {
@@ -191,16 +199,8 @@
       }
     },
     {
-      "block_id": "page-3-block-22",
-      "text": "一、公司简介…",
-      "citation": "company_profile_2025_trial#page-3",
-      "provenance": {
-        "page": 3
-      }
-    },
-    {
       "block_id": "page-3-block-23",
-      "text": ".2",
+      "text": "K",
       "citation": "company_profile_2025_trial#page-3",
       "provenance": {
         "page": 3
@@ -208,7 +208,7 @@
     },
     {
       "block_id": "page-3-block-24",
-      "text": "←",
+      "text": "一、公司简介…",
       "citation": "company_profile_2025_trial#page-3",
       "provenance": {
         "page": 3
@@ -240,7 +240,7 @@
     },
     {
       "block_id": "page-3-block-28",
-      "text": "三、资质证书…",
+      "text": "三、资质证书……",
       "citation": "company_profile_2025_trial#page-3",
       "provenance": {
         "page": 3
@@ -256,7 +256,7 @@
     },
     {
       "block_id": "page-3-block-30",
-      "text": "四、体系认证…",
+      "text": "四、体系认证……",
       "citation": "company_profile_2025_trial#page-3",
       "provenance": {
         "page": 3
@@ -264,7 +264,7 @@
     },
     {
       "block_id": "page-3-block-31",
-      "text": "K",
+      "text": "←",
       "citation": "company_profile_2025_trial#page-3",
       "provenance": {
         "page": 3
@@ -280,7 +280,7 @@
     },
     {
       "block_id": "page-3-block-33",
-      "text": "6",
+      "text": ".9",
       "citation": "company_profile_2025_trial#page-3",
       "provenance": {
         "page": 3
@@ -288,7 +288,7 @@
     },
     {
       "block_id": "page-3-block-34",
-      "text": "→",
+      "text": "←",
       "citation": "company_profile_2025_trial#page-3",
       "provenance": {
         "page": 3
@@ -296,7 +296,7 @@
     },
     {
       "block_id": "page-3-block-35",
-      "text": "……",
+      "text": "六、主要监理业绩照片……",
       "citation": "company_profile_2025_trial#page-3",
       "provenance": {
         "page": 3
@@ -304,7 +304,7 @@
     },
     {
       "block_id": "page-3-block-36",
-      "text": "2",
+      "text": "·17",
       "citation": "company_profile_2025_trial#page-3",
       "provenance": {
         "page": 3
@@ -312,7 +312,7 @@
     },
     {
       "block_id": "page-3-block-37",
-      "text": "!",
+      "text": "←",
       "citation": "company_profile_2025_trial#page-3",
       "provenance": {
         "page": 3
@@ -320,7 +320,7 @@
     },
     {
       "block_id": "page-3-block-38",
-      "text": "（）",
+      "text": "七、近年来主要（改）扩建工程业绩……………………1",
       "citation": "company_profile_2025_trial#page-3",
       "provenance": {
         "page": 3
@@ -328,7 +328,7 @@
     },
     {
       "block_id": "page-3-block-39",
-      "text": "→",
+      "text": "F",
       "citation": "company_profile_2025_trial#page-3",
       "provenance": {
         "page": 3
@@ -336,7 +336,7 @@
     },
     {
       "block_id": "page-3-block-40",
-      "text": "（",
+      "text": "八、近年来主要项目管理（代建）业绩…………………24",
       "citation": "company_profile_2025_trial#page-3",
       "provenance": {
         "page": 3
@@ -344,7 +344,7 @@
     },
     {
       "block_id": "page-3-block-41",
-      "text": "7",
+      "text": "K",
       "citation": "company_profile_2025_trial#page-3",
       "provenance": {
         "page": 3
@@ -352,7 +352,7 @@
     },
     {
       "block_id": "page-3-block-42",
-      "text": "…（）",
+      "text": "九、主要项目管理（代建）业绩照片……………………25",
       "citation": "company_profile_2025_trial#page-3",
       "provenance": {
         "page": 3
@@ -360,7 +360,7 @@
     },
     {
       "block_id": "page-3-block-43",
-      "text": "!",
+      "text": "←",
       "citation": "company_profile_2025_trial#page-3",
       "provenance": {
         "page": 3
@@ -368,7 +368,7 @@
     },
     {
       "block_id": "page-3-block-44",
-      "text": "·26",
+      "text": "十、近年来主要获奖情况………",
       "citation": "company_profile_2025_trial#page-3",
       "provenance": {
         "page": 3
@@ -376,7 +376,7 @@
     },
     {
       "block_id": "page-3-block-45",
-      "text": "十一、主要获奖证书………",
+      "text": "K",
       "citation": "company_profile_2025_trial#page-3",
       "provenance": {
         "page": 3
@@ -384,7 +384,7 @@
     },
     {
       "block_id": "page-3-block-46",
-      "text": "←",
+      "text": "·26",
       "citation": "company_profile_2025_trial#page-3",
       "provenance": {
         "page": 3
@@ -392,7 +392,7 @@
     },
     {
       "block_id": "page-3-block-47",
-      "text": "·28",
+      "text": "十一、主要获奖证书………",
       "citation": "company_profile_2025_trial#page-3",
       "provenance": {
         "page": 3
@@ -400,14 +400,6 @@
     },
     {
       "block_id": "page-3-block-48",
-      "text": "十二、桥梁工程预制拼装监理实践……",
-      "citation": "company_profile_2025_trial#page-3",
-      "provenance": {
-        "page": 3
-      }
-    },
-    {
-      "block_id": "page-3-block-49",
       "text": "←",
       "citation": "company_profile_2025_trial#page-3",
       "provenance": {
@@ -415,8 +407,16 @@
       }
     },
     {
+      "block_id": "page-3-block-49",
+      "text": "·28",
+      "citation": "company_profile_2025_trial#page-3",
+      "provenance": {
+        "page": 3
+      }
+    },
+    {
       "block_id": "page-3-block-50",
-      "text": "·37",
+      "text": "十二、桥梁工程预制拼装监理实践……",
       "citation": "company_profile_2025_trial#page-3",
       "provenance": {
         "page": 3
@@ -424,6 +424,22 @@
     },
     {
       "block_id": "page-3-block-51",
+      "text": "←",
+      "citation": "company_profile_2025_trial#page-3",
+      "provenance": {
+        "page": 3
+      }
+    },
+    {
+      "block_id": "page-3-block-52",
+      "text": "·37",
+      "citation": "company_profile_2025_trial#page-3",
+      "provenance": {
+        "page": 3
+      }
+    },
+    {
+      "block_id": "page-3-block-53",
       "text": "1",
       "citation": "company_profile_2025_trial#page-3",
       "provenance": {
@@ -431,7 +447,7 @@
       }
     },
     {
-      "block_id": "page-4-block-52",
+      "block_id": "page-4-block-54",
       "text": "一、公司简介",
       "citation": "company_profile_2025_trial#page-4",
       "provenance": {
@@ -439,7 +455,7 @@
       }
     },
     {
-      "block_id": "page-4-block-53",
+      "block_id": "page-4-block-55",
       "text": "江苏交通工程咨询监理有限公司成立于1993年5月，拥有公路工程监理甲级、",
       "citation": "company_profile_2025_trial#page-4",
       "provenance": {
@@ -447,7 +463,7 @@
       }
     },
     {
-      "block_id": "page-4-block-54",
+      "block_id": "page-4-block-56",
       "text": "水运工程监理甲级、特殊独立大桥监理专项、特殊独立隧道监理专项、机电工程监",
       "citation": "company_profile_2025_trial#page-4",
       "provenance": {
@@ -455,7 +471,7 @@
       }
     },
     {
-      "block_id": "page-4-block-55",
+      "block_id": "page-4-block-57",
       "text": "理专项资质、市政公用工程监理乙级、公路工程综合乙级试验检测资质；公司通过",
       "citation": "company_profile_2025_trial#page-4",
       "provenance": {
@@ -463,7 +479,7 @@
       }
     },
     {
-      "block_id": "page-4-block-56",
+      "block_id": "page-4-block-58",
       "text": "了IS09001质量管理体系认证、IS014001环境管理体系认证、GB/T28001职业健康安",
       "citation": "company_profile_2025_trial#page-4",
       "provenance": {
@@ -471,7 +487,7 @@
       }
     },
     {
-      "block_id": "page-4-block-57",
+      "block_id": "page-4-block-59",
       "text": "全管理体系认证，是江苏省科委、江苏省工商局和江苏省科协确认的“AAA”级信誉",
       "citation": "company_profile_2025_trial#page-4",
       "provenance": {
@@ -479,7 +495,7 @@
       }
     },
     {
-      "block_id": "page-4-block-58",
+      "block_id": "page-4-block-60",
       "text": "企业、江苏省文明单位、江苏省交通建设监理协会副理事长单位、中国交通监理常",
       "citation": "company_profile_2025_trial#page-4",
       "provenance": {
@@ -487,7 +503,7 @@
       }
     },
     {
-      "block_id": "page-4-block-59",
+      "block_id": "page-4-block-61",
       "text": "务理事单位；2016年度监理信用评价交通运输部、上海市“AA”级、江苏省、福建",
       "citation": "company_profile_2025_trial#page-4",
       "provenance": {
@@ -495,7 +511,7 @@
       }
     },
     {
-      "block_id": "page-4-block-60",
+      "block_id": "page-4-block-62",
       "text": "省、河北省、云南省“A”级企业。",
       "citation": "company_profile_2025_trial#page-4",
       "provenance": {
@@ -503,7 +519,7 @@
       }
     },
     {
-      "block_id": "page-4-block-61",
+      "block_id": "page-4-block-63",
       "text": "公司主要经营高等级公路、大型桥梁和隧道工程及水运工程的施工监理、技术",
       "citation": "company_profile_2025_trial#page-4",
       "provenance": {
@@ -511,7 +527,7 @@
       }
     },
     {
-      "block_id": "page-4-block-62",
+      "block_id": "page-4-block-64",
       "text": "咨询、技术服务，工程项目管理，建设工程的项目管理、技术咨询，市政公用工程",
       "citation": "company_profile_2025_trial#page-4",
       "provenance": {
@@ -519,7 +535,7 @@
       }
     },
     {
-      "block_id": "page-4-block-63",
+      "block_id": "page-4-block-65",
       "text": "监理。公司设市场开发部、财务审计部、办公室、中心试验室，现有员工478名，",
       "citation": "company_profile_2025_trial#page-4",
       "provenance": {
@@ -527,7 +543,7 @@
       }
     },
     {
-      "block_id": "page-4-block-64",
+      "block_id": "page-4-block-66",
       "text": "高、中级技术人员285名，有国家注册工程师261名，其中：住建部注册结构师1人、",
       "citation": "company_profile_2025_trial#page-4",
       "provenance": {
@@ -535,7 +551,7 @@
       }
     },
     {
-      "block_id": "page-4-block-65",
+      "block_id": "page-4-block-67",
       "text": "住建部注册造价工程师5人、住建部注册监理工程师30人、国家注册咨询工程师15",
       "citation": "company_profile_2025_trial#page-4",
       "provenance": {
@@ -543,7 +559,7 @@
       }
     },
     {
-      "block_id": "page-4-block-66",
+      "block_id": "page-4-block-68",
       "text": "人、国家注册招标师33人、交通运输部注册监理工程师177人（含专业、交通运输",
       "citation": "company_profile_2025_trial#page-4",
       "provenance": {
@@ -551,7 +567,7 @@
       }
     },
     {
-      "block_id": "page-4-block-67",
+      "block_id": "page-4-block-69",
       "text": "部注册造价工程师8人、交通运输部公路工程试验检测工程师46人、交通运输部公",
       "citation": "company_profile_2025_trial#page-4",
       "provenance": {
@@ -559,7 +575,7 @@
       }
     },
     {
-      "block_id": "page-4-block-68",
+      "block_id": "page-4-block-70",
       "text": "路工程试验检测员32人；公司现有12个工地试验室，13个试验检测专业、111个参",
       "citation": "company_profile_2025_trial#page-4",
       "provenance": {
@@ -567,7 +583,7 @@
       }
     },
     {
-      "block_id": "page-4-block-69",
+      "block_id": "page-4-block-71",
       "text": "数1380余台（套）试验检测仪器设备。",
       "citation": "company_profile_2025_trial#page-4",
       "provenance": {
@@ -575,7 +591,7 @@
       }
     },
     {
-      "block_id": "page-4-block-70",
+      "block_id": "page-4-block-72",
       "text": "公司完成了近2800km高速公路、450座独立特大桥、大中桥工程、42km隧道",
       "citation": "company_profile_2025_trial#page-4",
       "provenance": {
@@ -583,7 +599,7 @@
       }
     },
     {
-      "block_id": "page-4-block-71",
+      "block_id": "page-4-block-73",
       "text": "新建工程、460km高速公路扩建工程施工监理及20余项代建（项目管理工程），年",
       "citation": "company_profile_2025_trial#page-4",
       "provenance": {
@@ -591,7 +607,7 @@
       }
     },
     {
-      "block_id": "page-4-block-72",
+      "block_id": "page-4-block-74",
       "text": "产值达到2亿元。自成立起，始终秉持“廉洁、尽责、精细、耐劳、分忧”的服务",
       "citation": "company_profile_2025_trial#page-4",
       "provenance": {
@@ -599,7 +615,7 @@
       }
     },
     {
-      "block_id": "page-4-block-73",
+      "block_id": "page-4-block-75",
       "text": "理念，持续发扬“守法公正、诚信履约、科学管理、创新服务”的公司精神，以诚",
       "citation": "company_profile_2025_trial#page-4",
       "provenance": {
@@ -607,7 +623,7 @@
       }
     },
     {
-      "block_id": "page-4-block-74",
+      "block_id": "page-4-block-76",
       "text": "信履约为核心，全体员工牢固树立了“细节决定成败、细节决定品牌”的意识，以",
       "citation": "company_profile_2025_trial#page-4",
       "provenance": {
@@ -615,7 +631,7 @@
       }
     },
     {
-      "block_id": "page-4-block-75",
+      "block_id": "page-4-block-77",
       "text": "“今天的业主是我们永远的业主”为服务宗旨，践行“用诚信和实力塑造公司品牌”",
       "citation": "company_profile_2025_trial#page-4",
       "provenance": {
@@ -623,7 +639,7 @@
       }
     },
     {
-      "block_id": "page-4-block-76",
+      "block_id": "page-4-block-78",
       "text": "的企业核心价值观，认真履行“公正、科学、诚信、自律”职业准则，形成遵纪、",
       "citation": "company_profile_2025_trial#page-4",
       "provenance": {
@@ -631,7 +647,7 @@
       }
     },
     {
-      "block_id": "page-4-block-77",
+      "block_id": "page-4-block-79",
       "text": "敬业、爱岗的良好氛围，在激烈的市场竞争中屡创佳绩，连续获得国家、部、省、",
       "citation": "company_profile_2025_trial#page-4",
       "provenance": {
@@ -639,7 +655,7 @@
       }
     },
     {
-      "block_id": "page-4-block-78",
+      "block_id": "page-4-block-80",
       "text": "市颁发的国家优质工程奖、鲁班奖、詹天佑奖、市政金杯示范奖、公路交通优质奖",
       "citation": "company_profile_2025_trial#page-4",
       "provenance": {
@@ -647,7 +663,7 @@
       }
     },
     {
-      "block_id": "page-4-block-79",
+      "block_id": "page-4-block-81",
       "text": "（李春奖）、省级优质工程奖等表彰130余项。",
       "citation": "company_profile_2025_trial#page-4",
       "provenance": {
@@ -655,7 +671,7 @@
       }
     },
     {
-      "block_id": "page-4-block-80",
+      "block_id": "page-4-block-82",
       "text": "2",
       "citation": "company_profile_2025_trial#page-4",
       "provenance": {
@@ -663,7 +679,7 @@
       }
     },
     {
-      "block_id": "page-5-block-81",
+      "block_id": "page-5-block-83",
       "text": "二、组织机构",
       "citation": "company_profile_2025_trial#page-5",
       "provenance": {
@@ -671,7 +687,7 @@
       }
     },
     {
-      "block_id": "page-5-block-82",
+      "block_id": "page-5-block-84",
       "text": "董事会",
       "citation": "company_profile_2025_trial#page-5",
       "provenance": {
@@ -679,7 +695,7 @@
       }
     },
     {
-      "block_id": "page-5-block-83",
+      "block_id": "page-5-block-85",
       "text": "经营层",
       "citation": "company_profile_2025_trial#page-5",
       "provenance": {
@@ -687,7 +703,7 @@
       }
     },
     {
-      "block_id": "page-5-block-84",
+      "block_id": "page-5-block-86",
       "text": "市场",
       "citation": "company_profile_2025_trial#page-5",
       "provenance": {
@@ -695,7 +711,7 @@
       }
     },
     {
-      "block_id": "page-5-block-85",
+      "block_id": "page-5-block-87",
       "text": "财务",
       "citation": "company_profile_2025_trial#page-5",
       "provenance": {
@@ -703,7 +719,7 @@
       }
     },
     {
-      "block_id": "page-5-block-86",
+      "block_id": "page-5-block-88",
       "text": "办",
       "citation": "company_profile_2025_trial#page-5",
       "provenance": {
@@ -711,7 +727,7 @@
       }
     },
     {
-      "block_id": "page-5-block-87",
+      "block_id": "page-5-block-89",
       "text": "中心",
       "citation": "company_profile_2025_trial#page-5",
       "provenance": {
@@ -719,7 +735,7 @@
       }
     },
     {
-      "block_id": "page-5-block-88",
+      "block_id": "page-5-block-90",
       "text": "开发",
       "citation": "company_profile_2025_trial#page-5",
       "provenance": {
@@ -727,7 +743,7 @@
       }
     },
     {
-      "block_id": "page-5-block-89",
+      "block_id": "page-5-block-91",
       "text": "审计",
       "citation": "company_profile_2025_trial#page-5",
       "provenance": {
@@ -735,24 +751,8 @@
       }
     },
     {
-      "block_id": "page-5-block-90",
-      "text": "公",
-      "citation": "company_profile_2025_trial#page-5",
-      "provenance": {
-        "page": 5
-      }
-    },
-    {
-      "block_id": "page-5-block-91",
-      "text": "试验",
-      "citation": "company_profile_2025_trial#page-5",
-      "provenance": {
-        "page": 5
-      }
-    },
-    {
       "block_id": "page-5-block-92",
-      "text": "室",
+      "text": "公室",
       "citation": "company_profile_2025_trial#page-5",
       "provenance": {
         "page": 5
@@ -760,7 +760,7 @@
     },
     {
       "block_id": "page-5-block-93",
-      "text": "部",
+      "text": "试验",
       "citation": "company_profile_2025_trial#page-5",
       "provenance": {
         "page": 5
@@ -776,7 +776,7 @@
     },
     {
       "block_id": "page-5-block-95",
-      "text": "室",
+      "text": "部",
       "citation": "company_profile_2025_trial#page-5",
       "provenance": {
         "page": 5
@@ -784,7 +784,7 @@
     },
     {
       "block_id": "page-5-block-96",
-      "text": "各项目组",
+      "text": "室",
       "citation": "company_profile_2025_trial#page-5",
       "provenance": {
         "page": 5
@@ -792,7 +792,7 @@
     },
     {
       "block_id": "page-5-block-97",
-      "text": "公司设立了市场开发部、财务审计部、办公室、中心试验室的二部二室管理构",
+      "text": "各项目组",
       "citation": "company_profile_2025_trial#page-5",
       "provenance": {
         "page": 5
@@ -800,7 +800,7 @@
     },
     {
       "block_id": "page-5-block-98",
-      "text": "架，并先后成立了江苏安泰路桥工程检测有限公司、江苏茂森工程咨询监理有限",
+      "text": "公司设立了市场开发部、财务审计部、办公室、中心试验室的二部二室管理构",
       "citation": "company_profile_2025_trial#page-5",
       "provenance": {
         "page": 5
@@ -808,7 +808,7 @@
     },
     {
       "block_id": "page-5-block-99",
-      "text": "公司（原名：江苏茂盛工程咨询监理有限公司）两个独资子公司。",
+      "text": "架，并先后成立了江苏安泰路桥工程检测有限公司、江苏茂森工程咨询监理有限",
       "citation": "company_profile_2025_trial#page-5",
       "provenance": {
         "page": 5
@@ -816,7 +816,7 @@
     },
     {
       "block_id": "page-5-block-100",
-      "text": "公司主要管理人员：",
+      "text": "公司（原名：江苏茂盛工程咨询监理有限公司）两个独资子公司。",
       "citation": "company_profile_2025_trial#page-5",
       "provenance": {
         "page": 5
@@ -824,7 +824,7 @@
     },
     {
       "block_id": "page-5-block-101",
-      "text": "董事长：徐金法，硕士，高级工程师，国家注册结构工程师、国家注册监理工",
+      "text": "公司主要管理人员：",
       "citation": "company_profile_2025_trial#page-5",
       "provenance": {
         "page": 5
@@ -832,7 +832,7 @@
     },
     {
       "block_id": "page-5-block-102",
-      "text": "程师，交通运输部监理工程师，注册咨询工程师（投资）、国家注册招标师、江",
+      "text": "董事长：徐金法，硕士，高级工程师，国家注册结构工程师、国家注册监理工",
       "citation": "company_profile_2025_trial#page-5",
       "provenance": {
         "page": 5
@@ -840,7 +840,7 @@
     },
     {
       "block_id": "page-5-block-103",
-      "text": "苏省注册咨询专家；",
+      "text": "程师，交通运输部监理工程师，注册咨询工程师（投资）、国家注册招标师、江",
       "citation": "company_profile_2025_trial#page-5",
       "provenance": {
         "page": 5
@@ -848,7 +848,7 @@
     },
     {
       "block_id": "page-5-block-104",
-      "text": "法定代表人、总经理：王国华，本科，高级工程师，国家注册监理工程师、交",
+      "text": "苏省注册咨询专家；",
       "citation": "company_profile_2025_trial#page-5",
       "provenance": {
         "page": 5
@@ -856,7 +856,7 @@
     },
     {
       "block_id": "page-5-block-105",
-      "text": "通运输部注册监理工程师、国家注册咨询（投资）工程师，交通运输部交通建设",
+      "text": "法定代表人、总经理：王国华，本科，高级工程师，国家注册监理工程师、交",
       "citation": "company_profile_2025_trial#page-5",
       "provenance": {
         "page": 5
@@ -864,7 +864,7 @@
     },
     {
       "block_id": "page-5-block-106",
-      "text": "优秀监理工程师、江苏省交通行业第五届“金桥奖”、2008年度和2009年度上海",
+      "text": "通运输部注册监理工程师、国家注册咨询（投资）工程师，交通运输部交通建设",
       "citation": "company_profile_2025_trial#page-5",
       "provenance": {
         "page": 5
@@ -872,7 +872,7 @@
     },
     {
       "block_id": "page-5-block-107",
-      "text": "市政重大工程赛区立功竞赛先进个人；",
+      "text": "优秀监理工程师、江苏省交通行业第五届“金桥奖”、2008年度和2009年度上海",
       "citation": "company_profile_2025_trial#page-5",
       "provenance": {
         "page": 5
@@ -880,7 +880,7 @@
     },
     {
       "block_id": "page-5-block-108",
-      "text": "总工程师：李兵，工程硕士，高级工程师，交通运输部注册监理工程师、交通",
+      "text": "市政重大工程赛区立功竞赛先进个人；",
       "citation": "company_profile_2025_trial#page-5",
       "provenance": {
         "page": 5
@@ -888,7 +888,7 @@
     },
     {
       "block_id": "page-5-block-109",
-      "text": "运输部造价工程师、国家注册造价工程师、国家注册监理工程师，国家注册咨询",
+      "text": "总工程师：李兵，工程硕士，高级工程师，交通运输部注册监理工程师、交通",
       "citation": "company_profile_2025_trial#page-5",
       "provenance": {
         "page": 5
@@ -896,7 +896,7 @@
     },
     {
       "block_id": "page-5-block-110",
-      "text": "工程师（投资），南京市交通局十佳监理工程师，南通绕城高速项目先进个人，",
+      "text": "运输部造价工程师、国家注册造价工程师、国家注册监理工程师，国家注册咨询",
       "citation": "company_profile_2025_trial#page-5",
       "provenance": {
         "page": 5
@@ -904,7 +904,7 @@
     },
     {
       "block_id": "page-5-block-111",
-      "text": "2022年度交通建设优秀监理工程师。",
+      "text": "工程师（投资），南京市交通局十佳监理工程师，南通绕城高速项目先进个人，",
       "citation": "company_profile_2025_trial#page-5",
       "provenance": {
         "page": 5
@@ -912,6 +912,14 @@
     },
     {
       "block_id": "page-5-block-112",
+      "text": "2022年度交通建设优秀监理工程师。",
+      "citation": "company_profile_2025_trial#page-5",
+      "provenance": {
+        "page": 5
+      }
+    },
+    {
+      "block_id": "page-5-block-113",
       "text": "3",
       "citation": "company_profile_2025_trial#page-5",
       "provenance": {
@@ -919,16 +927,8 @@
       }
     },
     {
-      "block_id": "page-6-block-113",
-      "text": "三、资质证书",
-      "citation": "company_profile_2025_trial#page-6",
-      "provenance": {
-        "page": 6
-      }
-    },
-    {
       "block_id": "page-6-block-114",
-      "text": "公路工程监理甲级",
+      "text": "三、资质证书",
       "citation": "company_profile_2025_trial#page-6",
       "provenance": {
         "page": 6
@@ -936,7 +936,7 @@
     },
     {
       "block_id": "page-6-block-115",
-      "text": "←",
+      "text": "公路工程监理甲级",
       "citation": "company_profile_2025_trial#page-6",
       "provenance": {
         "page": 6
@@ -944,7 +944,7 @@
     },
     {
       "block_id": "page-6-block-116",
-      "text": "水运工程监理甲级",
+      "text": "←",
       "citation": "company_profile_2025_trial#page-6",
       "provenance": {
         "page": 6
@@ -952,7 +952,7 @@
     },
     {
       "block_id": "page-6-block-117",
-      "text": "K",
+      "text": "水运工程监理甲级",
       "citation": "company_profile_2025_trial#page-6",
       "provenance": {
         "page": 6
@@ -960,14 +960,6 @@
     },
     {
       "block_id": "page-6-block-118",
-      "text": "公路机电工程监理专项",
-      "citation": "company_profile_2025_trial#page-6",
-      "provenance": {
-        "page": 6
-      }
-    },
-    {
-      "block_id": "page-6-block-119",
       "text": "K",
       "citation": "company_profile_2025_trial#page-6",
       "provenance": {
@@ -975,8 +967,16 @@
       }
     },
     {
+      "block_id": "page-6-block-119",
+      "text": "公路机电工程监理专项",
+      "citation": "company_profile_2025_trial#page-6",
+      "provenance": {
+        "page": 6
+      }
+    },
+    {
       "block_id": "page-6-block-120",
-      "text": "市政公用工程监理专业乙级",
+      "text": "K",
       "citation": "company_profile_2025_trial#page-6",
       "provenance": {
         "page": 6
@@ -984,7 +984,7 @@
     },
     {
       "block_id": "page-6-block-121",
-      "text": "←",
+      "text": "市政公用工程监理专业乙级",
       "citation": "company_profile_2025_trial#page-6",
       "provenance": {
         "page": 6
@@ -992,7 +992,7 @@
     },
     {
       "block_id": "page-6-block-122",
-      "text": "房屋建筑工程监理专业乙级",
+      "text": "←",
       "citation": "company_profile_2025_trial#page-6",
       "provenance": {
         "page": 6
@@ -1000,7 +1000,7 @@
     },
     {
       "block_id": "page-6-block-123",
-      "text": "机电安装工程监理专业乙级",
+      "text": "房屋建筑工程监理专业乙级",
       "citation": "company_profile_2025_trial#page-6",
       "provenance": {
         "page": 6
@@ -1008,7 +1008,7 @@
     },
     {
       "block_id": "page-6-block-124",
-      "text": "←",
+      "text": "机电安装工程监理专业乙级",
       "citation": "company_profile_2025_trial#page-6",
       "provenance": {
         "page": 6
@@ -1016,14 +1016,6 @@
     },
     {
       "block_id": "page-6-block-125",
-      "text": "公路工程综合试验检测乙级",
-      "citation": "company_profile_2025_trial#page-6",
-      "provenance": {
-        "page": 6
-      }
-    },
-    {
-      "block_id": "page-6-block-126",
       "text": "←",
       "citation": "company_profile_2025_trial#page-6",
       "provenance": {
@@ -1031,7 +1023,23 @@
       }
     },
     {
+      "block_id": "page-6-block-126",
+      "text": "公路工程综合试验检测乙级",
+      "citation": "company_profile_2025_trial#page-6",
+      "provenance": {
+        "page": 6
+      }
+    },
+    {
       "block_id": "page-6-block-127",
+      "text": "←",
+      "citation": "company_profile_2025_trial#page-6",
+      "provenance": {
+        "page": 6
+      }
+    },
+    {
+      "block_id": "page-6-block-128",
       "text": "4",
       "citation": "company_profile_2025_trial#page-6",
       "provenance": {
@@ -1039,16 +1047,8 @@
       }
     },
     {
-      "block_id": "page-7-block-128",
-      "text": "三、资质证书",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
       "block_id": "page-7-block-129",
-      "text": "公路水运工程监理企业资质证书",
+      "text": "三、资质证书",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
         "page": 7
@@ -1056,7 +1056,7 @@
     },
     {
       "block_id": "page-7-block-130",
-      "text": "编3200012",
+      "text": "公路水运工程监理企业资质证书",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
         "page": 7
@@ -1064,7 +1064,7 @@
     },
     {
       "block_id": "page-7-block-131",
-      "text": "统一社会信用代码",
+      "text": "编32000310",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
         "page": 7
@@ -1072,7 +1072,7 @@
     },
     {
       "block_id": "page-7-block-132",
-      "text": "营业执照",
+      "text": "统一社会信用代码",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
         "page": 7
@@ -1080,7 +1080,7 @@
     },
     {
       "block_id": "page-7-block-133",
-      "text": "号：文公甲第106-2006号",
+      "text": "营业执照",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
         "page": 7
@@ -1088,7 +1088,7 @@
     },
     {
       "block_id": "page-7-block-134",
-      "text": "企业住所",
+      "text": "号：文公甲第10-2006号",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
         "page": 7
@@ -1096,494 +1096,6 @@
     },
     {
       "block_id": "page-7-block-135",
-      "text": "913200001329233",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-136",
-      "text": "南京市富路163号民大厦17",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-137",
-      "text": "(1/3)",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-138",
-      "text": "企业名称：江苏交通工咨询监理有限公司",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-139",
-      "text": "企业类型",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-140",
-      "text": "有限责任公司",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-141",
-      "text": "法定代表人",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-142",
-      "text": "王国",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-143",
-      "text": "SCJDGL（副本）",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-144",
-      "text": "SCJDGL",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-145",
-      "text": "地一社会信用代",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-146",
-      "text": "913200001347697633",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-147",
-      "text": "资质等：会路工程甲",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-148",
-      "text": "重务范围：在全国范内从事一、二、三公路工程的监理",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-149",
-      "text": "许可机关",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-150",
-      "text": "交通运输部",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-151",
-      "text": "批准文号",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-152",
-      "text": "(2023年第14号）",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-153",
-      "text": "心善",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-154",
-      "text": "注册资本100万整",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-155",
-      "text": "类型有限责任公司",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-156",
-      "text": "业务",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-157",
-      "text": "变更",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-158",
-      "text": "栏",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-159",
-      "text": "市场监督",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-160",
-      "text": "成立日期19年011日",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-161",
-      "text": "法定代表人王国",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-162",
-      "text": "营业期限1993年0月1日",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-163",
-      "text": "经营范围",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-164",
-      "text": "高公程，殊立大程，工程及术工程，机电工程",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-165",
-      "text": "工理，术务，工程口管，建工程",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-166",
-      "text": "的口理，各，工程理",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-167",
-      "text": "住",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-168",
-      "text": "所南京丰路3号大17",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-169",
-      "text": "的项目，相天门社后方可开经动",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-170",
-      "text": "经",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-171",
-      "text": "JDGL",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-172",
-      "text": "SCJDGL",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-173",
-      "text": "SCJDGL",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-174",
-      "text": "运",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-175",
-      "text": "登记机关",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-176",
-      "text": "交",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-177",
-      "text": "发让机关政许可专用章",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-178",
-      "text": "生",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-179",
-      "text": "SCJDGL",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-180",
-      "text": "SCJDGL",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-181",
-      "text": "2019",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-182",
-      "text": "月2",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-183",
-      "text": "发证日期",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-184",
-      "text": "效2023年3月21日至2028年3月20日",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-185",
-      "text": "国家全息：//w..o.",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-186",
-      "text": "国公",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-187",
-      "text": "主当于年年1月1日6月30日通",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-188",
-      "text": "国家市场监督管理监制",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-189",
-      "text": "中华人民共和国部",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-190",
-      "text": "公路水运工程监理企业资质证书",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-191",
-      "text": "公路水运工程监理企业资质证书",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-192",
-      "text": "号：蓝公机第029-2008号",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-193",
-      "text": "只化",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-194",
-      "text": "南京市丰富163号民大厦17层",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-195",
-      "text": "量：交水甲苏第012-2024号",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-196",
       "text": "企业住所",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
@@ -1591,23 +1103,47 @@
       }
     },
     {
-      "block_id": "page-7-block-197",
-      "text": "金老非：江界文通工程咨询监理有际公司",
+      "block_id": "page-7-block-136",
+      "text": "913200001329233",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
         "page": 7
       }
     },
     {
-      "block_id": "page-7-block-198",
-      "text": "会业关型",
+      "block_id": "page-7-block-137",
+      "text": "南京市富路163号民大厦17",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
         "page": 7
       }
     },
     {
-      "block_id": "page-7-block-199",
+      "block_id": "page-7-block-138",
+      "text": "(1/3)",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-139",
+      "text": "企业名称：江苏交通工咨询监理有限公司",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-140",
+      "text": "企业类型",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-141",
       "text": "有限责任公司",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
@@ -1615,55 +1151,15 @@
       }
     },
     {
-      "block_id": "page-7-block-200",
-      "text": "定代数人",
+      "block_id": "page-7-block-142",
+      "text": "法定代表人",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
         "page": 7
       }
     },
     {
-      "block_id": "page-7-block-201",
-      "text": "王国学",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-202",
-      "text": "企业名称：苏交通工程资询理有限公司",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-203",
-      "text": "企业质",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-204",
-      "text": "有限责任公司",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-205",
-      "text": "南代表人",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-206",
+      "block_id": "page-7-block-143",
       "text": "王国",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
@@ -1671,23 +1167,31 @@
       }
     },
     {
-      "block_id": "page-7-block-207",
-      "text": "资客：公路工权电专项",
+      "block_id": "page-7-block-144",
+      "text": "SCJDGL（副本）",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
         "page": 7
       }
     },
     {
-      "block_id": "page-7-block-208",
-      "text": "统一会信用代码",
+      "block_id": "page-7-block-145",
+      "text": "SCJDGL",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
         "page": 7
       }
     },
     {
-      "block_id": "page-7-block-209",
+      "block_id": "page-7-block-146",
+      "text": "地一社会信用代",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-147",
       "text": "913200001347697633",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
@@ -1695,8 +1199,504 @@
       }
     },
     {
+      "block_id": "page-7-block-148",
+      "text": "资质等：会路工程甲",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-149",
+      "text": "称江东交通工程咨询理有限公司",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-150",
+      "text": "重务范围：在全国范内从事一、二、三公路工程的监理",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-151",
+      "text": "许可机关",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-152",
+      "text": "交通运输部",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-153",
+      "text": "批准文号",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-154",
+      "text": "(2023年第14号）",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-155",
+      "text": "心善",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-156",
+      "text": "注册资本100万",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-157",
+      "text": "类型有限责公司",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-158",
+      "text": "业务",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-159",
+      "text": "变更",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-160",
+      "text": "栏",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-161",
+      "text": "市场监督",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-162",
+      "text": "成立日期19011日",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-163",
+      "text": "法定代表人王国",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-164",
+      "text": "营业期限1993年0月11日至",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-165",
+      "text": "经营范围",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-166",
+      "text": "高程，特殊立大程、工程及水工程，机电工程",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-167",
+      "text": "工理，术务，工程口管，建设工程",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-168",
+      "text": "的目管理，术，公用工程理",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-169",
+      "text": "住",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-170",
+      "text": "所南京丰路3号大厦17",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-171",
+      "text": "的项目，相天门社后方可开动",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-172",
+      "text": "经",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-173",
+      "text": "JDGL",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-174",
+      "text": "SCJDGL",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-175",
+      "text": "SCJDGL",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-176",
+      "text": "运",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-177",
+      "text": "登记机关",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-178",
+      "text": "交",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-179",
+      "text": "发让机关政许可专用章",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-180",
+      "text": "生",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-181",
+      "text": "SCJDGL",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-182",
+      "text": "SCJDGL",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-183",
+      "text": "2019",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-184",
+      "text": "月2",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-185",
+      "text": "发证日期",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-186",
+      "text": "效2023年3月21日至2028年3月20日",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-187",
+      "text": "国家全息：//ww..o.c",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-188",
+      "text": "国公",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-189",
+      "text": "主当于年1月1日26月30日通",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-190",
+      "text": "国家市场监督管理总监制",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-191",
+      "text": "中华人民共和国",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-192",
+      "text": "公路水运工程监理企业资质证书",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-193",
+      "text": "公路水运工程监理企业资质证书",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-194",
+      "text": "号：蓝公机第029-2008号",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-195",
+      "text": "只化",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-196",
+      "text": "南京市丰富路163号民大厦17层",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-197",
+      "text": "号：交水甲苏第012-2024号",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-198",
+      "text": "企业住所",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-199",
+      "text": "金老非：江界文通工程咨询监理有际公司",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-200",
+      "text": "会业关型",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-201",
+      "text": "有限责任公司",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-202",
+      "text": "定代表人",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-203",
+      "text": "王国华",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-204",
+      "text": "企业名：江苏交通工程资询监理有限公司",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-205",
+      "text": "企业质",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-206",
+      "text": "有限责任公司",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-207",
+      "text": "南代表人",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-208",
+      "text": "王国",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-209",
+      "text": "资客：公路工权电项",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
       "block_id": "page-7-block-210",
-      "text": "发等：水运工程甲级",
+      "text": "统一会用代码",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
         "page": 7
@@ -1704,7 +1704,7 @@
     },
     {
       "block_id": "page-7-block-211",
-      "text": "社会用代码913200001347607633",
+      "text": "913200001347697633",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
         "page": 7
@@ -1712,7 +1712,7 @@
     },
     {
       "block_id": "page-7-block-212",
-      "text": "许可关",
+      "text": "发等：水运工程甲级",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
         "page": 7
@@ -1720,7 +1720,7 @@
     },
     {
       "block_id": "page-7-block-213",
-      "text": "交通远输部",
+      "text": "社会用代码913200001347607633",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
         "page": 7
@@ -1728,30 +1728,6 @@
     },
     {
       "block_id": "page-7-block-214",
-      "text": "准义号",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-215",
-      "text": "2023个814",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-216",
-      "text": "0善",
-      "citation": "company_profile_2025_trial#page-7",
-      "provenance": {
-        "page": 7
-      }
-    },
-    {
-      "block_id": "page-7-block-217",
       "text": "许可关",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
@@ -1759,8 +1735,32 @@
       }
     },
     {
+      "block_id": "page-7-block-215",
+      "text": "交通远输部",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-216",
+      "text": "准义号",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-217",
+      "text": "2023个814",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
       "block_id": "page-7-block-218",
-      "text": "江苏省交通运输厅",
+      "text": "0善",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
         "page": 7
@@ -1768,7 +1768,7 @@
     },
     {
       "block_id": "page-7-block-219",
-      "text": "准文号",
+      "text": "许可关",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
         "page": 7
@@ -1776,7 +1776,7 @@
     },
     {
       "block_id": "page-7-block-220",
-      "text": "寿国：在全范国内从事务美公路机电工程的监业",
+      "text": "江苏省交通运输厅",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
         "page": 7
@@ -1784,7 +1784,7 @@
     },
     {
       "block_id": "page-7-block-221",
-      "text": "业务范围：在全国内从事大、中、小型水运工",
+      "text": "准文号",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
         "page": 7
@@ -1792,7 +1792,7 @@
     },
     {
       "block_id": "page-7-block-222",
-      "text": "我类",
+      "text": "券国：在会范国内从事务美公路机电工程的监理业",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
         "page": 7
@@ -1800,7 +1800,7 @@
     },
     {
       "block_id": "page-7-block-223",
-      "text": "4",
+      "text": "业务围：在全国内从事大、中、小型水运工",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
         "page": 7
@@ -1808,7 +1808,7 @@
     },
     {
       "block_id": "page-7-block-224",
-      "text": "的监理业务",
+      "text": "我类",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
         "page": 7
@@ -1816,7 +1816,7 @@
     },
     {
       "block_id": "page-7-block-225",
-      "text": "变",
+      "text": "享",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
         "page": 7
@@ -1824,7 +1824,7 @@
     },
     {
       "block_id": "page-7-block-226",
-      "text": "更",
+      "text": "的监理业务",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
         "page": 7
@@ -1832,7 +1832,7 @@
     },
     {
       "block_id": "page-7-block-227",
-      "text": "杭",
+      "text": "复",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
         "page": 7
@@ -1840,7 +1840,7 @@
     },
     {
       "block_id": "page-7-block-228",
-      "text": "交通店",
+      "text": "更",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
         "page": 7
@@ -1848,7 +1848,7 @@
     },
     {
       "block_id": "page-7-block-229",
-      "text": "行政审批专用章",
+      "text": "杭",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
         "page": 7
@@ -1856,7 +1856,7 @@
     },
     {
       "block_id": "page-7-block-230",
-      "text": "★",
+      "text": "交通店",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
         "page": 7
@@ -1864,7 +1864,7 @@
     },
     {
       "block_id": "page-7-block-231",
-      "text": "发证许调专用章",
+      "text": "运部",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
         "page": 7
@@ -1872,7 +1872,7 @@
     },
     {
       "block_id": "page-7-block-232",
-      "text": "发机关（）江苏省交通运输厅",
+      "text": "行政审批专用章",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
         "page": 7
@@ -1880,7 +1880,7 @@
     },
     {
       "block_id": "page-7-block-233",
-      "text": "证202221日",
+      "text": "交",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
         "page": 7
@@ -1888,7 +1888,7 @@
     },
     {
       "block_id": "page-7-block-234",
-      "text": "发证日期2024年11月29日",
+      "text": "★",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
         "page": 7
@@ -1896,7 +1896,7 @@
     },
     {
       "block_id": "page-7-block-235",
-      "text": "期2023年3月2日2028年3月20日",
+      "text": "发证许调专用章",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
         "page": 7
@@ -1904,7 +1904,7 @@
     },
     {
       "block_id": "page-7-block-236",
-      "text": "期2024年11月29日至2029年11月29日",
+      "text": "发证机关（）江苏省交通运输厅",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
         "page": 7
@@ -1912,7 +1912,7 @@
     },
     {
       "block_id": "page-7-block-237",
-      "text": "中华人民关和国光通",
+      "text": "证202221",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
         "page": 7
@@ -1920,7 +1920,7 @@
     },
     {
       "block_id": "page-7-block-238",
-      "text": "人民和",
+      "text": "(",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
         "page": 7
@@ -1928,6 +1928,46 @@
     },
     {
       "block_id": "page-7-block-239",
+      "text": "发证日期2024年11月29日",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-240",
+      "text": "期2023年3月2日2028年3月20日",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-241",
+      "text": "期2024年11月29日至2029年11月29日",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-242",
+      "text": "中华人民关和国文通孟到",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-243",
+      "text": "人民",
+      "citation": "company_profile_2025_trial#page-7",
+      "provenance": {
+        "page": 7
+      }
+    },
+    {
+      "block_id": "page-7-block-244",
       "text": "5",
       "citation": "company_profile_2025_trial#page-7",
       "provenance": {
@@ -1935,7 +1975,7 @@
       }
     },
     {
-      "block_id": "page-8-block-240",
+      "block_id": "page-8-block-245",
       "text": "三、资质证书",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
@@ -1943,7 +1983,7 @@
       }
     },
     {
-      "block_id": "page-8-block-241",
+      "block_id": "page-8-block-246",
       "text": "证书息“公",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
@@ -1951,7 +1991,7 @@
       }
     },
     {
-      "block_id": "page-8-block-242",
+      "block_id": "page-8-block-247",
       "text": "工程质",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
@@ -1959,7 +1999,7 @@
       }
     },
     {
-      "block_id": "page-8-block-243",
+      "block_id": "page-8-block-248",
       "text": "机构名称",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
@@ -1967,7 +2007,7 @@
       }
     },
     {
-      "block_id": "page-8-block-244",
+      "block_id": "page-8-block-249",
       "text": "江苏安泰路桥工程检测有限公司",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
@@ -1975,7 +2015,7 @@
       }
     },
     {
-      "block_id": "page-8-block-245",
+      "block_id": "page-8-block-250",
       "text": "工程监理资质证书",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
@@ -1983,7 +2023,7 @@
       }
     },
     {
-      "block_id": "page-8-block-246",
+      "block_id": "page-8-block-251",
       "text": "注册地址",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
@@ -1991,48 +2031,8 @@
       }
     },
     {
-      "block_id": "page-8-block-247",
-      "text": "江苏省南京市江浦街道仁山路1号",
-      "citation": "company_profile_2025_trial#page-8",
-      "provenance": {
-        "page": 8
-      }
-    },
-    {
-      "block_id": "page-8-block-248",
-      "text": "单位名称",
-      "citation": "company_profile_2025_trial#page-8",
-      "provenance": {
-        "page": 8
-      }
-    },
-    {
-      "block_id": "page-8-block-249",
-      "text": "检测场所",
-      "citation": "company_profile_2025_trial#page-8",
-      "provenance": {
-        "page": 8
-      }
-    },
-    {
-      "block_id": "page-8-block-250",
-      "text": "地址",
-      "citation": "company_profile_2025_trial#page-8",
-      "provenance": {
-        "page": 8
-      }
-    },
-    {
-      "block_id": "page-8-block-251",
-      "text": "江苏省南京市江浦街道仁山路1号",
-      "citation": "company_profile_2025_trial#page-8",
-      "provenance": {
-        "page": 8
-      }
-    },
-    {
       "block_id": "page-8-block-252",
-      "text": "详地址：",
+      "text": "江苏省南京市江浦街道仁山路1号",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
         "page": 8
@@ -2040,7 +2040,7 @@
     },
     {
       "block_id": "page-8-block-253",
-      "text": "统一社会信用代：",
+      "text": "单位名称",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
         "page": 8
@@ -2048,7 +2048,7 @@
     },
     {
       "block_id": "page-8-block-254",
-      "text": "机构性质",
+      "text": "检测场所",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
         "page": 8
@@ -2056,7 +2056,7 @@
     },
     {
       "block_id": "page-8-block-255",
-      "text": "企业法人",
+      "text": "地址",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
         "page": 8
@@ -2064,7 +2064,7 @@
     },
     {
       "block_id": "page-8-block-256",
-      "text": "民营",
+      "text": "江苏省南京市江浦街道仁山路1号",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
         "page": 8
@@ -2072,7 +2072,7 @@
     },
     {
       "block_id": "page-8-block-257",
-      "text": "法定代表人",
+      "text": "详地址：",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
         "page": 8
@@ -2080,7 +2080,7 @@
     },
     {
       "block_id": "page-8-block-258",
-      "text": "法定代表人",
+      "text": "统一社会信用代：",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
         "page": 8
@@ -2088,7 +2088,7 @@
     },
     {
       "block_id": "page-8-block-259",
-      "text": "王国华",
+      "text": "机构性质",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
         "page": 8
@@ -2096,7 +2096,7 @@
     },
     {
       "block_id": "page-8-block-260",
-      "text": "技术负责人",
+      "text": "企业法人-",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
         "page": 8
@@ -2104,7 +2104,7 @@
     },
     {
       "block_id": "page-8-block-261",
-      "text": "注册资本：",
+      "text": "民营",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
         "page": 8
@@ -2112,7 +2112,7 @@
     },
     {
       "block_id": "page-8-block-262",
-      "text": "经济美型",
+      "text": "法定代表人",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
         "page": 8
@@ -2120,7 +2120,7 @@
     },
     {
       "block_id": "page-8-block-263",
-      "text": "邮",
+      "text": "王国华",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
         "page": 8
@@ -2128,7 +2128,7 @@
     },
     {
       "block_id": "page-8-block-264",
-      "text": "编",
+      "text": "法定代表人-",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
         "page": 8
@@ -2136,150 +2136,6 @@
     },
     {
       "block_id": "page-8-block-265",
-      "text": "211899",
-      "citation": "company_profile_2025_trial#page-8",
-      "provenance": {
-        "page": 8
-      }
-    },
-    {
-      "block_id": "page-8-block-266",
-      "text": "联系电话",
-      "citation": "company_profile_2025_trial#page-8",
-      "provenance": {
-        "page": 8
-      }
-    },
-    {
-      "block_id": "page-8-block-267",
-      "text": "025-58185952",
-      "citation": "company_profile_2025_trial#page-8",
-      "provenance": {
-        "page": 8
-      }
-    },
-    {
-      "block_id": "page-8-block-268",
-      "text": "证书编号：",
-      "citation": "company_profile_2025_trial#page-8",
-      "provenance": {
-        "page": 8
-      }
-    },
-    {
-      "block_id": "page-8-block-269",
-      "text": "有",
-      "citation": "company_profile_2025_trial#page-8",
-      "provenance": {
-        "page": 8
-      }
-    },
-    {
-      "block_id": "page-8-block-270",
-      "text": "效",
-      "citation": "company_profile_2025_trial#page-8",
-      "provenance": {
-        "page": 8
-      }
-    },
-    {
-      "block_id": "page-8-block-271",
-      "text": "期1",
-      "citation": "company_profile_2025_trial#page-8",
-      "provenance": {
-        "page": 8
-      }
-    },
-    {
-      "block_id": "page-8-block-272",
-      "text": "机构行政、技术和质量负责人",
-      "citation": "company_profile_2025_trial#page-8",
-      "provenance": {
-        "page": 8
-      }
-    },
-    {
-      "block_id": "page-8-block-273",
-      "text": "资质等级：",
-      "citation": "company_profile_2025_trial#page-8",
-      "provenance": {
-        "page": 8
-      }
-    },
-    {
-      "block_id": "page-8-block-274",
-      "text": "姓名",
-      "citation": "company_profile_2025_trial#page-8",
-      "provenance": {
-        "page": 8
-      }
-    },
-    {
-      "block_id": "page-8-block-275",
-      "text": "职务",
-      "citation": "company_profile_2025_trial#page-8",
-      "provenance": {
-        "page": 8
-      }
-    },
-    {
-      "block_id": "page-8-block-276",
-      "text": "职称",
-      "citation": "company_profile_2025_trial#page-8",
-      "provenance": {
-        "page": 8
-      }
-    },
-    {
-      "block_id": "page-8-block-277",
-      "text": "从业证书编号",
-      "citation": "company_profile_2025_trial#page-8",
-      "provenance": {
-        "page": 8
-      }
-    },
-    {
-      "block_id": "page-8-block-278",
-      "text": "李梅",
-      "citation": "company_profile_2025_trial#page-8",
-      "provenance": {
-        "page": 8
-      }
-    },
-    {
-      "block_id": "page-8-block-279",
-      "text": "行政负责人",
-      "citation": "company_profile_2025_trial#page-8",
-      "provenance": {
-        "page": 8
-      }
-    },
-    {
-      "block_id": "page-8-block-280",
-      "text": "高级工程师",
-      "citation": "company_profile_2025_trial#page-8",
-      "provenance": {
-        "page": 8
-      }
-    },
-    {
-      "block_id": "page-8-block-281",
-      "text": "（公）称0601595DQ",
-      "citation": "company_profile_2025_trial#page-8",
-      "provenance": {
-        "page": 8
-      }
-    },
-    {
-      "block_id": "page-8-block-282",
-      "text": "徐磊",
-      "citation": "company_profile_2025_trial#page-8",
-      "provenance": {
-        "page": 8
-      }
-    },
-    {
-      "block_id": "page-8-block-283",
       "text": "技术负责人",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
@@ -2287,31 +2143,143 @@
       }
     },
     {
-      "block_id": "page-8-block-284",
-      "text": "高级工程师",
+      "block_id": "page-8-block-266",
+      "text": "注册资本：",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
         "page": 8
       }
     },
     {
-      "block_id": "page-8-block-285",
-      "text": "（公）检4571170",
+      "block_id": "page-8-block-267",
+      "text": "经济美型",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
         "page": 8
       }
     },
     {
-      "block_id": "page-8-block-286",
-      "text": "20171100858",
+      "block_id": "page-8-block-268",
+      "text": "邮",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
         "page": 8
       }
     },
     {
-      "block_id": "page-8-block-287",
+      "block_id": "page-8-block-269",
+      "text": "编",
+      "citation": "company_profile_2025_trial#page-8",
+      "provenance": {
+        "page": 8
+      }
+    },
+    {
+      "block_id": "page-8-block-270",
+      "text": "211899",
+      "citation": "company_profile_2025_trial#page-8",
+      "provenance": {
+        "page": 8
+      }
+    },
+    {
+      "block_id": "page-8-block-271",
+      "text": "联系电话",
+      "citation": "company_profile_2025_trial#page-8",
+      "provenance": {
+        "page": 8
+      }
+    },
+    {
+      "block_id": "page-8-block-272",
+      "text": "025-58185952",
+      "citation": "company_profile_2025_trial#page-8",
+      "provenance": {
+        "page": 8
+      }
+    },
+    {
+      "block_id": "page-8-block-273",
+      "text": "证书编号：",
+      "citation": "company_profile_2025_trial#page-8",
+      "provenance": {
+        "page": 8
+      }
+    },
+    {
+      "block_id": "page-8-block-274",
+      "text": "有",
+      "citation": "company_profile_2025_trial#page-8",
+      "provenance": {
+        "page": 8
+      }
+    },
+    {
+      "block_id": "page-8-block-275",
+      "text": "效",
+      "citation": "company_profile_2025_trial#page-8",
+      "provenance": {
+        "page": 8
+      }
+    },
+    {
+      "block_id": "page-8-block-276",
+      "text": "期1",
+      "citation": "company_profile_2025_trial#page-8",
+      "provenance": {
+        "page": 8
+      }
+    },
+    {
+      "block_id": "page-8-block-277",
+      "text": "机构行政、技术和质量负责人",
+      "citation": "company_profile_2025_trial#page-8",
+      "provenance": {
+        "page": 8
+      }
+    },
+    {
+      "block_id": "page-8-block-278",
+      "text": "资质等级：1",
+      "citation": "company_profile_2025_trial#page-8",
+      "provenance": {
+        "page": 8
+      }
+    },
+    {
+      "block_id": "page-8-block-279",
+      "text": "姓名",
+      "citation": "company_profile_2025_trial#page-8",
+      "provenance": {
+        "page": 8
+      }
+    },
+    {
+      "block_id": "page-8-block-280",
+      "text": "职务",
+      "citation": "company_profile_2025_trial#page-8",
+      "provenance": {
+        "page": 8
+      }
+    },
+    {
+      "block_id": "page-8-block-281",
+      "text": "职称",
+      "citation": "company_profile_2025_trial#page-8",
+      "provenance": {
+        "page": 8
+      }
+    },
+    {
+      "block_id": "page-8-block-282",
+      "text": "从业证书编号",
+      "citation": "company_profile_2025_trial#page-8",
+      "provenance": {
+        "page": 8
+      }
+    },
+    {
+      "block_id": "page-8-block-283",
       "text": "李梅",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
@@ -2319,8 +2287,40 @@
       }
     },
     {
+      "block_id": "page-8-block-284",
+      "text": "行政负责人",
+      "citation": "company_profile_2025_trial#page-8",
+      "provenance": {
+        "page": 8
+      }
+    },
+    {
+      "block_id": "page-8-block-285",
+      "text": "高级工程师",
+      "citation": "company_profile_2025_trial#page-8",
+      "provenance": {
+        "page": 8
+      }
+    },
+    {
+      "block_id": "page-8-block-286",
+      "text": "（公）称0601595DQ",
+      "citation": "company_profile_2025_trial#page-8",
+      "provenance": {
+        "page": 8
+      }
+    },
+    {
+      "block_id": "page-8-block-287",
+      "text": "徐磊",
+      "citation": "company_profile_2025_trial#page-8",
+      "provenance": {
+        "page": 8
+      }
+    },
+    {
       "block_id": "page-8-block-288",
-      "text": "质量负责人",
+      "text": "技术负责人",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
         "page": 8
@@ -2336,7 +2336,7 @@
     },
     {
       "block_id": "page-8-block-290",
-      "text": "（公路）检师060159502",
+      "text": "（公）检4571170",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
         "page": 8
@@ -2344,7 +2344,7 @@
     },
     {
       "block_id": "page-8-block-291",
-      "text": "农房租发",
+      "text": "20171100858",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
         "page": 8
@@ -2352,7 +2352,7 @@
     },
     {
       "block_id": "page-8-block-292",
-      "text": "发证",
+      "text": "李梅",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
         "page": 8
@@ -2360,7 +2360,7 @@
     },
     {
       "block_id": "page-8-block-293",
-      "text": "资质类型",
+      "text": "质量负责人",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
         "page": 8
@@ -2368,7 +2368,7 @@
     },
     {
       "block_id": "page-8-block-294",
-      "text": "公路工程-乙级",
+      "text": "高级工程师",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
         "page": 8
@@ -2376,7 +2376,7 @@
     },
     {
       "block_id": "page-8-block-295",
-      "text": "证书编号",
+      "text": "（公路）检060159502",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
         "page": 8
@@ -2384,7 +2384,7 @@
     },
     {
       "block_id": "page-8-block-296",
-      "text": "苏GJC乙级2024-033",
+      "text": "发证",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
         "page": 8
@@ -2392,7 +2392,7 @@
     },
     {
       "block_id": "page-8-block-297",
-      "text": "发证日期",
+      "text": "资质类型",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
         "page": 8
@@ -2400,7 +2400,7 @@
     },
     {
       "block_id": "page-8-block-298",
-      "text": "202",
+      "text": "公路工程-乙级",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
         "page": 8
@@ -2408,7 +2408,7 @@
     },
     {
       "block_id": "page-8-block-299",
-      "text": "有效期至",
+      "text": "证书编号",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
         "page": 8
@@ -2416,7 +2416,7 @@
     },
     {
       "block_id": "page-8-block-300",
-      "text": "029-91",
+      "text": "苏GJC乙级2024-033",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
         "page": 8
@@ -2424,7 +2424,7 @@
     },
     {
       "block_id": "page-8-block-301",
-      "text": "发证机关",
+      "text": "发证日期",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
         "page": 8
@@ -2432,7 +2432,7 @@
     },
     {
       "block_id": "page-8-block-302",
-      "text": "江苏省交通",
+      "text": "202",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
         "page": 8
@@ -2440,7 +2440,7 @@
     },
     {
       "block_id": "page-8-block-303",
-      "text": "行政市批专用章",
+      "text": "有效期至",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
         "page": 8
@@ -2448,14 +2448,46 @@
     },
     {
       "block_id": "page-8-block-304",
-      "text": "9",
+      "text": "029-9-1",
       "citation": "company_profile_2025_trial#page-8",
       "provenance": {
         "page": 8
       }
     },
     {
-      "block_id": "page-9-block-305",
+      "block_id": "page-8-block-305",
+      "text": "发证机关",
+      "citation": "company_profile_2025_trial#page-8",
+      "provenance": {
+        "page": 8
+      }
+    },
+    {
+      "block_id": "page-8-block-306",
+      "text": "江苏省交通",
+      "citation": "company_profile_2025_trial#page-8",
+      "provenance": {
+        "page": 8
+      }
+    },
+    {
+      "block_id": "page-8-block-307",
+      "text": "行政市批专用章",
+      "citation": "company_profile_2025_trial#page-8",
+      "provenance": {
+        "page": 8
+      }
+    },
+    {
+      "block_id": "page-8-block-308",
+      "text": "6",
+      "citation": "company_profile_2025_trial#page-8",
+      "provenance": {
+        "page": 8
+      }
+    },
+    {
+      "block_id": "page-9-block-309",
       "text": "四",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
@@ -2463,7 +2495,7 @@
       }
     },
     {
-      "block_id": "page-9-block-306",
+      "block_id": "page-9-block-310",
       "text": "体系认证",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
@@ -2471,7 +2503,7 @@
       }
     },
     {
-      "block_id": "page-9-block-307",
+      "block_id": "page-9-block-311",
       "text": "I",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
@@ -2479,15 +2511,7 @@
       }
     },
     {
-      "block_id": "page-9-block-308",
-      "text": "The Certificate Of Environmental",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-309",
+      "block_id": "page-9-block-312",
       "text": "环境管理体系认证证书",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
@@ -2495,32 +2519,8 @@
       }
     },
     {
-      "block_id": "page-9-block-310",
-      "text": "ManagementSystem",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-311",
-      "text": "证书编号：36723EZ0548CM",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-312",
-      "text": "CertificateNo:36723EZ0548ROM",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
       "block_id": "page-9-block-313",
-      "text": "江苏交通工程咨询监理有限公司",
+      "text": "The Certificate Of Environmental",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
@@ -2528,7 +2528,7 @@
     },
     {
       "block_id": "page-9-block-314",
-      "text": "Jiangsu Traffic Engineering Consultingand Supervision Co.LTD",
+      "text": "ManagementSystem",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
@@ -2536,7 +2536,7 @@
     },
     {
       "block_id": "page-9-block-315",
-      "text": "注地址：京市丰路3号代大厦17",
+      "text": "证书编号：36723EZ0548RCM",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
@@ -2544,7 +2544,7 @@
     },
     {
       "block_id": "page-9-block-316",
-      "text": "O",
+      "text": "CertificateNo:36723EZ0548ROM",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
@@ -2552,454 +2552,6 @@
     },
     {
       "block_id": "page-9-block-317",
-      "text": "NrgBN",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-318",
-      "text": "编210000",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-319",
-      "text": "Lip Cole 21000o",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-320",
-      "text": "编：21180",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-321",
-      "text": "Datrie, Naajing",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-322",
-      "text": "编211800",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-323",
-      "text": "Lip Cade 21200",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-324",
-      "text": "一社会代码：912601373",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-325",
-      "text": "Paloe Divie Nanjing",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-326",
-      "text": "Tig Cde 2119e",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-327",
-      "text": "根据贵组织的申请，本公司依据《环境管理体系要求及使",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-328",
-      "text": "Acoingttiplitord",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-329",
-      "text": "用指南》（GB/T24001-2016/1S014001：2015）规定实施认",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-330",
-      "text": "crtfititrrEit",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-331",
-      "text": "证审核，经评定符合要求，特此发证。",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-332",
-      "text": "SystmGB/241-2016O1400:215)itacrdswiththerequremes",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-333",
-      "text": "环流管理体系覆盖范围为",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-334",
-      "text": "toughsTooecertiMS",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-335",
-      "text": "Highwayengineeringspevisinhighwayengieeingmechanical and",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-336",
-      "text": "资质范围内的公路工程监理、公路工程机电监理、",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-337",
-      "text": "clectricalsupervisionwtertasprtationengieeringsupervo",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-338",
-      "text": "水运工程监理、市政公用工程监理服务及相关环境管理活动",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-339",
-      "text": "manicipalpublicengieringsupervisionerviewithitheopof",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-340",
-      "text": "qualificationandrelatedenvironmetalmanagementaetiis",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-341",
-      "text": "首次发证日期：2023年06月06日监警证日期：2025年06月20日证书有效日期至：2026年06月04日",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-342",
-      "text": "第一次",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-343",
-      "text": "第二次",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-344",
-      "text": "第三次",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-345",
-      "text": "标处",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-346",
-      "text": "First",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-347",
-      "text": "Second",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-348",
-      "text": "Third",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-349",
-      "text": "监",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-350",
-      "text": "温",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-351",
-      "text": "Labelling",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-352",
-      "text": "S.A",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-353",
-      "text": "S.A.",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-354",
-      "text": "S.A.",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-355",
-      "text": "5，",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-356",
-      "text": "IAF",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-357",
-      "text": "CNAS",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-358",
-      "text": "IAF",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-359",
-      "text": "CNAS",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-360",
-      "text": "中标华远（北京）认证中心有限公司",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-361",
-      "text": "证书专用章",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-362",
-      "text": "证书专用章",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-363",
-      "text": "：100070",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-364",
-      "text": "ZHONGOHUNBEGRIICAONETRCO",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-365",
-      "text": "PC.T- M 2m",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-366",
-      "text": "Wtec",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-367",
-      "text": "职业健康安全管理",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-368",
-      "text": "Occupational Health and Safety",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-369",
-      "text": "体系认证证书",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-370",
-      "text": "ManagementSystemCertificate",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-371",
-      "text": "证书编号：36723S205490M",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-372",
-      "text": "Certificate No.:36723SZ0549RM",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-373",
       "text": "江苏交通工程咨询监理有限公司",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
@@ -3007,215 +2559,183 @@
       }
     },
     {
-      "block_id": "page-9-block-374",
-      "text": "JiangsuTraffiEngieeringConsultingandSupervisionCLD",
+      "block_id": "page-9-block-318",
+      "text": "Jiangsu Traffic Engineering Consultingand Supervision CoLTD",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
       }
     },
     {
-      "block_id": "page-9-block-375",
-      "text": "址：丰路13民大17",
+      "block_id": "page-9-block-319",
+      "text": "注地址：京市丰路3号代线大厦17号",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
       }
     },
     {
-      "block_id": "page-9-block-376",
-      "text": "g",
+      "block_id": "page-9-block-320",
+      "text": "O",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
       }
     },
     {
-      "block_id": "page-9-block-377",
-      "text": "邮编：210000",
+      "block_id": "page-9-block-321",
+      "text": "NrgBN",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
       }
     },
     {
-      "block_id": "page-9-block-378",
-      "text": "rPR",
+      "block_id": "page-9-block-322",
+      "text": "编210000",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
       }
     },
     {
-      "block_id": "page-9-block-379",
-      "text": "Tig Cule 210",
+      "block_id": "page-9-block-323",
+      "text": "Zip Cole 2100o",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
       }
     },
     {
-      "block_id": "page-9-block-380",
-      "text": "办公地址，南京市浦口区仁山路：号科工号楼5",
+      "block_id": "page-9-block-324",
+      "text": "编：21180",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
       }
     },
     {
-      "block_id": "page-9-block-381",
-      "text": "生产地址：南京市浦口区仁山路号工园：号楼东5楼",
+      "block_id": "page-9-block-325",
+      "text": "Datrie, Naajing",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
       }
     },
     {
-      "block_id": "page-9-block-382",
-      "text": "邮编：211800",
+      "block_id": "page-9-block-326",
+      "text": "编211800",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
       }
     },
     {
-      "block_id": "page-9-block-383",
-      "text": "邮编：211800",
+      "block_id": "page-9-block-327",
+      "text": "Lip Cade 212900",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
       }
     },
     {
-      "block_id": "page-9-block-384",
-      "text": "PB",
+      "block_id": "page-9-block-328",
+      "text": "一社会代码：91260013733",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
       }
     },
     {
-      "block_id": "page-9-block-385",
-      "text": "Dariet, Naajng",
+      "block_id": "page-9-block-329",
+      "text": "Paloe Divie Nanjing",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
       }
     },
     {
-      "block_id": "page-9-block-386",
-      "text": "Tip Cde 21e",
+      "block_id": "page-9-block-330",
+      "text": "Tig Ce 2119",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
       }
     },
     {
-      "block_id": "page-9-block-387",
-      "text": "一社代码：9130000137733",
+      "block_id": "page-9-block-331",
+      "text": "根据贵组织的申请，本公司依据《环境管理体系要求及使",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
       }
     },
     {
-      "block_id": "page-9-block-388",
-      "text": "Dalne Dht, Nnig",
+      "block_id": "page-9-block-332",
+      "text": "Accoingttiplitornrdon",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
       }
     },
     {
-      "block_id": "page-9-block-389",
-      "text": "D",
+      "block_id": "page-9-block-333",
+      "text": "用指南》（GB/T24001-2016/1S014001:2015）规定实施认",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
       }
     },
     {
-      "block_id": "page-9-block-390",
-      "text": "Za Code 211",
+      "block_id": "page-9-block-334",
+      "text": "certificatininaccordancewith therequirementsforEnvironmetal Management",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
       }
     },
     {
-      "block_id": "page-9-block-391",
-      "text": "根据贵组织的申请，本公司依据《职业健康安全管理体系",
+      "block_id": "page-9-block-335",
+      "text": "证审核，经评定符合要求，特此发证。",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
       }
     },
     {
-      "block_id": "page-9-block-392",
-      "text": "要求》（GB/T45001-2020/IS045001:2018）规定实施认证",
+      "block_id": "page-9-block-336",
+      "text": "SystmGB/241-201O40:215)itacoswiththerequremens",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
       }
     },
     {
-      "block_id": "page-9-block-393",
-      "text": "Acingtugapliciouorredt",
+      "block_id": "page-9-block-337",
+      "text": "环流管理体系覆盖范围为",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
       }
     },
     {
-      "block_id": "page-9-block-394",
-      "text": "审核，经评定符合要求，特此发证。",
+      "block_id": "page-9-block-338",
+      "text": "toughssessTecoofthecertifedMSi",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
       }
     },
     {
-      "block_id": "page-9-block-395",
-      "text": "cerificatinicccewittereeforOccupinalHethnd",
+      "block_id": "page-9-block-339",
+      "text": "Highwayengieringspeviinigwayengieeingmcacln",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
       }
     },
     {
-      "block_id": "page-9-block-396",
-      "text": "职业健康安全管理体系现盖范围为",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-397",
-      "text": "SafetyMm(GB0-O450:28)csWih",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-398",
-      "text": "heRegTtif",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-399",
-      "text": "Higygipigici",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-400",
+      "block_id": "page-9-block-340",
       "text": "资质范围内的公路工程监理、公路工程机电监理、",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
@@ -3223,47 +2743,47 @@
       }
     },
     {
-      "block_id": "page-9-block-401",
-      "text": "cletricalpeswetnsptiengigpvisiucpal",
+      "block_id": "page-9-block-341",
+      "text": "clectricalupervisionwtertrasportationengineeringsupervison",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
       }
     },
     {
-      "block_id": "page-9-block-402",
-      "text": "水运工程监理、市政公用工程监理服务及相关职业健康安全管理活动",
+      "block_id": "page-9-block-342",
+      "text": "水运工程监理、市政公用工程监理服务及相关环境管理活动",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
       }
     },
     {
-      "block_id": "page-9-block-403",
-      "text": "puliciofii",
+      "block_id": "page-9-block-343",
+      "text": "manicipalpublicengieringsupervisionervicewithinthesopeof",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
       }
     },
     {
-      "block_id": "page-9-block-404",
-      "text": "relatedaietndetmaag",
+      "block_id": "page-9-block-344",
+      "text": "ualificationandrlatedenviomtalmaagementtivts",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
       }
     },
     {
-      "block_id": "page-9-block-405",
-      "text": "次发证日期：2023年06月05日换证日期：2025年06月20日书有日期至：2026年06月04日",
+      "block_id": "page-9-block-345",
+      "text": "首次发证日期：2023年06月00日监警证日期：2025年06月20日证书有效日期至：2026年06月04日",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
       }
     },
     {
-      "block_id": "page-9-block-406",
+      "block_id": "page-9-block-346",
       "text": "第一次",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
@@ -3271,7 +2791,7 @@
       }
     },
     {
-      "block_id": "page-9-block-407",
+      "block_id": "page-9-block-347",
       "text": "第二次",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
@@ -3279,7 +2799,7 @@
       }
     },
     {
-      "block_id": "page-9-block-408",
+      "block_id": "page-9-block-348",
       "text": "第三次",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
@@ -3287,7 +2807,23 @@
       }
     },
     {
-      "block_id": "page-9-block-409",
+      "block_id": "page-9-block-349",
+      "text": "温",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-350",
+      "text": "标处",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-351",
       "text": "First",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
@@ -3295,15 +2831,7 @@
       }
     },
     {
-      "block_id": "page-9-block-410",
-      "text": "©",
-      "citation": "company_profile_2025_trial#page-9",
-      "provenance": {
-        "page": 9
-      }
-    },
-    {
-      "block_id": "page-9-block-411",
+      "block_id": "page-9-block-352",
       "text": "Second",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
@@ -3311,15 +2839,15 @@
       }
     },
     {
-      "block_id": "page-9-block-412",
-      "text": "监审",
+      "block_id": "page-9-block-353",
+      "text": "Third",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
       }
     },
     {
-      "block_id": "page-9-block-413",
+      "block_id": "page-9-block-354",
       "text": "监",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
@@ -3327,8 +2855,480 @@
       }
     },
     {
+      "block_id": "page-9-block-355",
+      "text": "5.A",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-356",
+      "text": "S.A.",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-357",
+      "text": "Labelling",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-358",
+      "text": "S.A.",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-359",
+      "text": "IAF",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-360",
+      "text": "CNAS",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-361",
+      "text": "IAF",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-362",
+      "text": "CNAS",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-363",
+      "text": "中标华远（北京）认证中心有限公司",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-364",
+      "text": "证书专用章",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-365",
+      "text": "证书专用章",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-366",
+      "text": "：100070",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-367",
+      "text": "ZHONGHUNBEGCRICONCEERO,",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-368",
+      "text": "PC.T-M2m",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-369",
+      "text": "Wete/co",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-370",
+      "text": "职业健康安全管理",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-371",
+      "text": "Occupational Health and Safety",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-372",
+      "text": "体系认证证书",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-373",
+      "text": "ManagementSystemCerificate",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-374",
+      "text": "证书编号：36723S20549R0M",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-375",
+      "text": "Certificate No:36723SZ0549R0M",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-376",
+      "text": "江苏交通工程咨询监理有限公司",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-377",
+      "text": "JiangsuTraffiEngieeringConsultingandSupervisionCLD",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-378",
+      "text": "址：丰路13民大17",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-379",
+      "text": "g",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-380",
+      "text": "邮编：210000",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-381",
+      "text": "R",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-382",
+      "text": "Zig Cule 1100",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-383",
+      "text": "办公地址，南京市浦口区仁山路：号科工楼东5楼",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-384",
+      "text": "生产地址：南京市浦口区仁山路号工园：号楼东侧5楼",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-385",
+      "text": "邮编：211800",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-386",
+      "text": "D.Nojng",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-387",
+      "text": "ZipCoke 21186",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-388",
+      "text": "一社业代码：9130000137733",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-389",
+      "text": "邮编：211800",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-390",
+      "text": "Dae D, Nang",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-391",
+      "text": "Da",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-392",
+      "text": "Zo Cade 21100",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-393",
+      "text": "根据贵组织的申请，本公司依据（职业健康安全管理体系",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-394",
+      "text": "要求》（GB/T45001-2020/1S045001:2018）规定实施认证",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-395",
+      "text": "Acdingtyugtinapliciouomarredtaud",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-396",
+      "text": "审核，经评定符合要求，特此发证。",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-397",
+      "text": "crfciiccittefoOccuHt",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-398",
+      "text": "职业健康安全管理体系现盖范围为",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-399",
+      "text": "SafetyMm(GB5-O450:28)csWich",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-400",
+      "text": "heR",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-401",
+      "text": "Higygpigicl",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-402",
+      "text": "资质范围内的公路工程监理、公路工程机电监理、",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-403",
+      "text": "liceetnsptgpisi",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-404",
+      "text": "水运工程监理、市政公用工程监理服务及相关职业健康安全管理活动",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-405",
+      "text": "publicngiiofifi",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-406",
+      "text": "relatedcpatietndetymaagntativites",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-407",
+      "text": "次发日期：2023年06月05日换证日期：2025年06月20日书有日期至：2026年06月04日",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-408",
+      "text": "第一次",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-409",
+      "text": "第二次",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-410",
+      "text": "第三次",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-411",
+      "text": "first",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-412",
+      "text": "©",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-413",
+      "text": "Second",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
       "block_id": "page-9-block-414",
-      "text": "贴标处",
+      "text": "监审",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
@@ -3336,7 +3336,7 @@
     },
     {
       "block_id": "page-9-block-415",
-      "text": "SA.",
+      "text": "贴标处",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
@@ -3352,7 +3352,7 @@
     },
     {
       "block_id": "page-9-block-417",
-      "text": "®",
+      "text": "SA.",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
@@ -3360,7 +3360,7 @@
     },
     {
       "block_id": "page-9-block-418",
-      "text": "Third",
+      "text": "©",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
@@ -3368,7 +3368,7 @@
     },
     {
       "block_id": "page-9-block-419",
-      "text": "监审",
+      "text": "Third",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
@@ -3376,7 +3376,7 @@
     },
     {
       "block_id": "page-9-block-420",
-      "text": "SA",
+      "text": "监",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
@@ -3384,7 +3384,7 @@
     },
     {
       "block_id": "page-9-block-421",
-      "text": "Labelling",
+      "text": "监",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
@@ -3392,7 +3392,7 @@
     },
     {
       "block_id": "page-9-block-422",
-      "text": "IAF",
+      "text": "SA",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
@@ -3400,7 +3400,7 @@
     },
     {
       "block_id": "page-9-block-423",
-      "text": "CNAS",
+      "text": "Labelling",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
@@ -3408,7 +3408,7 @@
     },
     {
       "block_id": "page-9-block-424",
-      "text": "1",
+      "text": "，，",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
@@ -3432,7 +3432,7 @@
     },
     {
       "block_id": "page-9-block-427",
-      "text": "三",
+      "text": "4",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
@@ -3440,7 +3440,7 @@
     },
     {
       "block_id": "page-9-block-428",
-      "text": "中标华远（北京）认证中心有限公司",
+      "text": "IAF",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
@@ -3448,7 +3448,7 @@
     },
     {
       "block_id": "page-9-block-429",
-      "text": "证书专用章",
+      "text": "CNAS",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
@@ -3456,7 +3456,7 @@
     },
     {
       "block_id": "page-9-block-430",
-      "text": "ZHONGBADHUAYUAN(BLINGICERTFICATONCENTERCO.LTD",
+      "text": "三",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
@@ -3464,7 +3464,7 @@
     },
     {
       "block_id": "page-9-block-431",
-      "text": "证书专用章",
+      "text": "中标华远（北京）认证中心有限公司",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
@@ -3472,7 +3472,7 @@
     },
     {
       "block_id": "page-9-block-432",
-      "text": "：1000",
+      "text": "证书专用章",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
@@ -3480,7 +3480,7 @@
     },
     {
       "block_id": "page-9-block-433",
-      "text": "PC.002",
+      "text": "ZHONGBAOHUA YUANBLINGICERTIFICIONCENTERCOLD",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
@@ -3488,7 +3488,7 @@
     },
     {
       "block_id": "page-9-block-434",
-      "text": "fOg",
+      "text": "证书专用章",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
@@ -3496,7 +3496,7 @@
     },
     {
       "block_id": "page-9-block-435",
-      "text": "0104000213.",
+      "text": "14641",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
@@ -3504,7 +3504,7 @@
     },
     {
       "block_id": "page-9-block-436",
-      "text": ":/c",
+      "text": "PC.00 T9 m",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
         "page": 9
@@ -3512,6 +3512,22 @@
     },
     {
       "block_id": "page-9-block-437",
+      "text": "fg",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-438",
+      "text": "010-0000020143.0",
+      "citation": "company_profile_2025_trial#page-9",
+      "provenance": {
+        "page": 9
+      }
+    },
+    {
+      "block_id": "page-9-block-439",
       "text": "7",
       "citation": "company_profile_2025_trial#page-9",
       "provenance": {
@@ -3519,7 +3535,7 @@
       }
     },
     {
-      "block_id": "page-10-block-438",
+      "block_id": "page-10-block-440",
       "text": "The Certificate Of Quality",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
@@ -3527,7 +3543,7 @@
       }
     },
     {
-      "block_id": "page-10-block-439",
+      "block_id": "page-10-block-441",
       "text": "质量管理体系认证证书",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
@@ -3535,7 +3551,7 @@
       }
     },
     {
-      "block_id": "page-10-block-440",
+      "block_id": "page-10-block-442",
       "text": "ManagementSystem",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
@@ -3543,24 +3559,8 @@
       }
     },
     {
-      "block_id": "page-10-block-441",
-      "text": "证书编号：36723020649",
-      "citation": "company_profile_2025_trial#page-10",
-      "provenance": {
-        "page": 10
-      }
-    },
-    {
-      "block_id": "page-10-block-442",
-      "text": "Certificate No.:36723QZ0649R0M",
-      "citation": "company_profile_2025_trial#page-10",
-      "provenance": {
-        "page": 10
-      }
-    },
-    {
       "block_id": "page-10-block-443",
-      "text": "江苏交通工程咨询监理有限公司",
+      "text": "证书编号：36723020649M",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3568,7 +3568,7 @@
     },
     {
       "block_id": "page-10-block-444",
-      "text": "Jiangsu Traffic Engineering Consulting and Supervision Co.LTD",
+      "text": "Certificate No.:36723QZ0649R0M",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3576,7 +3576,7 @@
     },
     {
       "block_id": "page-10-block-445",
-      "text": "NgFMngFgNgC",
+      "text": "江苏交通工程咨询监理有限公司",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3584,7 +3584,7 @@
     },
     {
       "block_id": "page-10-block-446",
-      "text": "Tip Cade 21000e",
+      "text": "Jiangsu Traffic Engineering Consulting and Supervision Co.LTD",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3592,7 +3592,7 @@
     },
     {
       "block_id": "page-10-block-447",
-      "text": "注地址：南京1号民大量17届",
+      "text": "NggFgN",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3600,7 +3600,7 @@
     },
     {
       "block_id": "page-10-block-448",
-      "text": "邮编210000",
+      "text": "Tip Cade21000e",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3608,7 +3608,7 @@
     },
     {
       "block_id": "page-10-block-449",
-      "text": "办公地址：南京市浦口区仁山路：号海城岸科工园：号楼东5楼",
+      "text": "注地址：南京：号民大量17",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3616,7 +3616,7 @@
     },
     {
       "block_id": "page-10-block-450",
-      "text": "年2110",
+      "text": "邮编210000",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3624,7 +3624,7 @@
     },
     {
       "block_id": "page-10-block-451",
-      "text": "Diattles, Nanjiag",
+      "text": "办公地址：南京市浦口区仁山路：号海城岸科工园号楼东5楼",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3632,7 +3632,7 @@
     },
     {
       "block_id": "page-10-block-452",
-      "text": "Tip Cafe: 211800",
+      "text": "年2110",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3640,7 +3640,7 @@
     },
     {
       "block_id": "page-10-block-453",
-      "text": "产址：南市浦口仁山路：新工园：号楼东5楼",
+      "text": "Diies, Nasjing",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3648,7 +3648,7 @@
     },
     {
       "block_id": "page-10-block-454",
-      "text": "编2100",
+      "text": "Tip Cafe: 211800",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3656,7 +3656,7 @@
     },
     {
       "block_id": "page-10-block-455",
-      "text": "一社会代：9133",
+      "text": "产址：南浦口仁山路：新工园：号楼东5楼",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3664,7 +3664,7 @@
     },
     {
       "block_id": "page-10-block-456",
-      "text": "Talve Batries Naeping",
+      "text": "编2100",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3672,7 +3672,7 @@
     },
     {
       "block_id": "page-10-block-457",
-      "text": "Zip Cade:211",
+      "text": "社会代：9133",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3680,7 +3680,7 @@
     },
     {
       "block_id": "page-10-block-458",
-      "text": "根据贵组织的中请，本公司依据《质量管理体系要求》",
+      "text": "Tlve Batries Naeping",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3688,7 +3688,7 @@
     },
     {
       "block_id": "page-10-block-459",
-      "text": "Acodigtougitiplictiuacarredod",
+      "text": "Zip Cade:211e",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3696,7 +3696,7 @@
     },
     {
       "block_id": "page-10-block-460",
-      "text": "（/T19001-2016/1S09001：2015）规定实施认证审核，经",
+      "text": "根据贵组织的中请，本公司依据《质量管理体系要求》",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3704,7 +3704,7 @@
     },
     {
       "block_id": "page-10-block-461",
-      "text": "ci",
+      "text": "Acodigtugtiplituared",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3712,7 +3712,7 @@
     },
     {
       "block_id": "page-10-block-462",
-      "text": "评定符合要求，特此发证",
+      "text": "（/T19001-2016/1809001：2015）规定实施认证审核，经",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3720,7 +3720,7 @@
     },
     {
       "block_id": "page-10-block-463",
-      "text": "s(0025",
+      "text": "ci",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3728,7 +3728,7 @@
     },
     {
       "block_id": "page-10-block-464",
-      "text": "质管理体系覆盖范围为",
+      "text": "评定符合要求，特此发证",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3736,7 +3736,7 @@
     },
     {
       "block_id": "page-10-block-465",
-      "text": "ReureetougTeoci",
+      "text": "Syst1902:05)",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3744,7 +3744,7 @@
     },
     {
       "block_id": "page-10-block-466",
-      "text": "Higwg",
+      "text": "质管理体系覆盖范围为",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3752,7 +3752,7 @@
     },
     {
       "block_id": "page-10-block-467",
-      "text": "资质范围内的公路工程监理、公路工程机电监理、",
+      "text": "RequreeougTeoci",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3760,7 +3760,7 @@
     },
     {
       "block_id": "page-10-block-468",
-      "text": "cletrialueitertrortnuvsinuial",
+      "text": "Higwg",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3768,7 +3768,7 @@
     },
     {
       "block_id": "page-10-block-469",
-      "text": "水运工程监理、市政公用工程监理服务",
+      "text": "资质范围内的公路工程监理、公路工程机电监理、",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3776,7 +3776,7 @@
     },
     {
       "block_id": "page-10-block-470",
-      "text": "pblo",
+      "text": "cletiluitetrtincl",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3784,7 +3784,7 @@
     },
     {
       "block_id": "page-10-block-471",
-      "text": "重次发日期2023年06月051日证日期：2025年06月20日证有日期至：2026年0月04日",
+      "text": "水运工程监理、市政公用工程监理服务",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3792,7 +3792,7 @@
     },
     {
       "block_id": "page-10-block-472",
-      "text": "第一次",
+      "text": "pblio",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3800,7 +3800,7 @@
     },
     {
       "block_id": "page-10-block-473",
-      "text": "第二次",
+      "text": "重次发日期2023年06月05日证日期：2025年06月20日证有日期至：2026年0月04日",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3808,7 +3808,7 @@
     },
     {
       "block_id": "page-10-block-474",
-      "text": "第三次",
+      "text": "第一次",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3816,7 +3816,7 @@
     },
     {
       "block_id": "page-10-block-475",
-      "text": "贴标处",
+      "text": "第二次",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3824,7 +3824,7 @@
     },
     {
       "block_id": "page-10-block-476",
-      "text": "First",
+      "text": "第三次",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3832,7 +3832,7 @@
     },
     {
       "block_id": "page-10-block-477",
-      "text": "Second",
+      "text": "贴标处",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3840,7 +3840,7 @@
     },
     {
       "block_id": "page-10-block-478",
-      "text": "Third",
+      "text": "First",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3848,7 +3848,7 @@
     },
     {
       "block_id": "page-10-block-479",
-      "text": "5.A.",
+      "text": "Second",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3856,7 +3856,7 @@
     },
     {
       "block_id": "page-10-block-480",
-      "text": "Labelling",
+      "text": "Third",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3864,7 +3864,7 @@
     },
     {
       "block_id": "page-10-block-481",
-      "text": "监审",
+      "text": "5.A.",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3872,7 +3872,7 @@
     },
     {
       "block_id": "page-10-block-482",
-      "text": "监市",
+      "text": "Labelling",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3888,7 +3888,7 @@
     },
     {
       "block_id": "page-10-block-484",
-      "text": "S.A.",
+      "text": "监市",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3896,7 +3896,7 @@
     },
     {
       "block_id": "page-10-block-485",
-      "text": "S.A.",
+      "text": "监审",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3904,7 +3904,7 @@
     },
     {
       "block_id": "page-10-block-486",
-      "text": "E",
+      "text": "S.A.",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3912,7 +3912,7 @@
     },
     {
       "block_id": "page-10-block-487",
-      "text": "IAF",
+      "text": "S.A.",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3920,7 +3920,7 @@
     },
     {
       "block_id": "page-10-block-488",
-      "text": "CNAS",
+      "text": "E.",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3944,7 +3944,7 @@
     },
     {
       "block_id": "page-10-block-491",
-      "text": "0",
+      "text": "IAF",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3952,7 +3952,7 @@
     },
     {
       "block_id": "page-10-block-492",
-      "text": "证书专用章",
+      "text": "CNAS",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3968,7 +3968,7 @@
     },
     {
       "block_id": "page-10-block-494",
-      "text": "中标华远（北京）认证中心有限公司",
+      "text": "证书专用章",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3976,7 +3976,7 @@
     },
     {
       "block_id": "page-10-block-495",
-      "text": "ZHNGUONTCO",
+      "text": "中标华远（北京）认证中心有限公司",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3984,7 +3984,7 @@
     },
     {
       "block_id": "page-10-block-496",
-      "text": "A",
+      "text": "ZHNGONO",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -3992,7 +3992,7 @@
     },
     {
       "block_id": "page-10-block-497",
-      "text": "FengDogig",
+      "text": "：2243437",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -4000,7 +4000,7 @@
     },
     {
       "block_id": "page-10-block-498",
-      "text": "010-533993.cm",
+      "text": "A",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -4008,7 +4008,7 @@
     },
     {
       "block_id": "page-10-block-499",
-      "text": "wacnco",
+      "text": "FengDattDoping",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {
         "page": 10
@@ -4016,6 +4016,22 @@
     },
     {
       "block_id": "page-10-block-500",
+      "text": "010-539953.c",
+      "citation": "company_profile_2025_trial#page-10",
+      "provenance": {
+        "page": 10
+      }
+    },
+    {
+      "block_id": "page-10-block-501",
+      "text": "wautcyn.co",
+      "citation": "company_profile_2025_trial#page-10",
+      "provenance": {
+        "page": 10
+      }
+    },
+    {
+      "block_id": "page-10-block-502",
       "text": "8",
       "citation": "company_profile_2025_trial#page-10",
       "provenance": {

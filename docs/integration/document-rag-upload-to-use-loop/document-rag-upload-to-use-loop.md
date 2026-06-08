@@ -3,7 +3,7 @@
 - Report: `document-rag-upload-to-use-loop-v1`
 - Decision: `go`
 - Reason: `document_rag_upload_to_use_ready`
-- Generated At: `2026-06-07T11:08:05.818267+00:00`
+- Generated At: `2026-06-08T01:32:39.195468+00:00`
 - Document Path: `D:\xwechat_files\wxid_pc6sc451nt9022_dea0\msg\file\2026-06\公司简介2025年10月27日(1).pdf`
 - Parse Mode: `ocr`
 - Source ID: `company_profile_2025_trial`
@@ -14,7 +14,7 @@
 
 | Step | Status | Reason | Artifacts |
 |---|---|---|---|
-| `document_ingestion` | `succeeded` | `document_ingestion_succeeded` | `artifact_id=doc-artifact-7b55392e709a46de9daf4d399bec7530` |
+| `document_ingestion` | `succeeded` | `document_ingestion_succeeded` | `artifact_id=doc-artifact-2516b997157549e8a35c27d7c96976fa` |
 | `rag_handoff_artifact` | `ready` | `normalized_parser_artifact_written` | `parser_artifact=docs\integration\document-rag-upload-to-use-loop\parser-artifacts\document-rag-parser-artifact.json` |
 | `provider_parser_artifact_ingestion` | `ready` | `provider_ingestion_command_ready` | `n/a` |
 | `local_knowledge_provider_corpus_trial` | `go` | `local_corpus_trial_accepted` | `json=docs\integration\document-rag-upload-to-use-loop\local-knowledge-provider-corpus-trial\local-knowledge-provider-corpus-trial.json, markdown=docs\integration\document-rag-upload-to-use-loop\local-knowledge-provider-corpus-trial\local-knowledge-provider-corpus-trial.md` |
@@ -30,7 +30,7 @@
 | `audit_write_status` | `not_written` |
 | `service_start_status` | `not_started` |
 | `graph_execution_status` | `not_executed` |
-| `text_block_count` | `500` |
+| `text_block_count` | `502` |
 | `provider_ingestion_status` | `ready` |
 | `corpus_trial_decision` | `go` |
 | `corpus_trial_reason_code` | `local_corpus_trial_accepted` |

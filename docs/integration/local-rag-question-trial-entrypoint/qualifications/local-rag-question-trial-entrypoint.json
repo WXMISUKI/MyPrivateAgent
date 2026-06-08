@@ -1,0 +1,66 @@
+{
+  "id": "local-rag-question-trial-entrypoint-v1",
+  "generated_at": "2026-06-08T01:34:34.945843+00:00",
+  "provider_base_url": "http://127.0.0.1:8020",
+  "source_id": "company_profile_2025_trial",
+  "question": "公司有哪些资质或能力？",
+  "top_k": 3,
+  "decision": "go",
+  "reason_code": "rag_question_answered",
+  "answer_status": "answered",
+  "answer": "[company_profile_2025_trial#chunk-115] 理专项资质、市政公用工程监理乙级、公路工程综合乙级试验检测资质；公司通过\n[company_profile_2025_trial#chunk-1] <!-- artifact_id: company_profile_2025_trial_ocr_document_upload source_id: company_profile_2025_trial parser_id: myprivateagent-ocr-artifact-handoff-v1 original_file: D:\\xwechat_files\\wxid_pc6sc451nt9022_dea0\\msg\\file\\2026-06\\公司简介2025年10月27日(1).pdf -->\n[company_profile_2025_trial#chunk-3] 江苏交通工程咨询监理有限公司",
+  "citations": [
+    "company_profile_2025_trial#chunk-115",
+    "company_profile_2025_trial#chunk-1",
+    "company_profile_2025_trial#chunk-3"
+  ],
+  "allowed_citations": [
+    "company_profile_2025_trial#chunk-115",
+    "company_profile_2025_trial#chunk-1",
+    "company_profile_2025_trial#chunk-3"
+  ],
+  "invalid_citations": [],
+  "retrieval": {
+    "ok": true,
+    "document_count": 3,
+    "citations": [
+      "company_profile_2025_trial#chunk-115",
+      "company_profile_2025_trial#chunk-1",
+      "company_profile_2025_trial#chunk-3"
+    ],
+    "top_scores": [
+      0.25,
+      0.125,
+      0.125
+    ]
+  },
+  "evidence_pack": {},
+  "summary": {
+    "final_decision": "go",
+    "answer_status": "answered",
+    "retrieved_document_count": 3,
+    "citation_count": 3,
+    "invalid_citation_count": 0,
+    "evidence_status": null,
+    "source_binding_status": "not_created",
+    "default_chat_retrieval_injection": "not_enabled",
+    "memory_write_status": "not_written",
+    "audit_write_status": "not_written",
+    "service_start_status": "not_started",
+    "graph_execution_status": "not_executed"
+  },
+  "recommended_actions": [
+    "use_this_source_id_for_explicit_local_business_rag_trial"
+  ],
+  "non_goals": [
+    "does_not_enable_default_chat_retrieval_injection",
+    "does_not_create_source_to_agent_binding",
+    "does_not_mutate_domain_agent_manifests",
+    "does_not_write_memory_audit_approval_or_governance_records",
+    "does_not_start_external_services",
+    "does_not_execute_graphrag"
+  ],
+  "api_key_configured": false,
+  "json_path": "docs\\integration\\local-rag-question-trial-entrypoint\\qualifications\\local-rag-question-trial-entrypoint.json",
+  "markdown_path": "docs\\integration\\local-rag-question-trial-entrypoint\\qualifications\\local-rag-question-trial-entrypoint.md"
+}

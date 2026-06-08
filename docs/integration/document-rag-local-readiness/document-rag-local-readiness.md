@@ -3,7 +3,7 @@
 - Report: `document-rag-local-readiness-v1`
 - Decision: `go`
 - Reason: `document_rag_local_readiness_ready`
-- Generated At: `2026-06-07T12:23:12.663173+00:00`
+- Generated At: `2026-06-08T01:32:07.689704+00:00`
 - OCR Provider: `http://127.0.0.1:8080`
 - OCR Profile: `gpu`
 - OCR Timeout Seconds: `180.0`
@@ -15,7 +15,7 @@
 
 | Check | Status | Reason | Endpoint | Summary |
 |---|---|---|---|---|
-| `ocr_provider` | `ready` | `ocr_profile_ready` | `http://127.0.0.1:8080/health` | `{"large_pdf_timeout_recommendation_seconds": 120.0, "ocr_profile": "gpu", "ocr_timeout_seconds": 180.0, "raw": {"errorCode": 0, "errorMsg": "Healthy", "logId": "a153c9e0-c706-451c-8167-eec4ed1a1175"}, "status": "ready"}` |
+| `ocr_provider` | `ready` | `ocr_profile_ready` | `http://127.0.0.1:8080/health` | `{"large_pdf_timeout_recommendation_seconds": 120.0, "ocr_profile": "gpu", "ocr_timeout_seconds": 180.0, "raw": {"errorCode": 0, "errorMsg": "Healthy", "logId": "9c2fbfe8-805b-4c57-aafb-866ab9abedcf"}, "status": "ready"}` |
 | `knowledge_provider` | `ready` | `knowledge_provider_health_ready` | `http://127.0.0.1:8020/health` | `{"raw": {"answer": {"backend": "deterministic", "backend_status": "ready", "index_status": null, "reason": null, "status": "ready"}, "graph": {"backend": null, "backend_status": null, "index_status": null, "reason": "Graph query execution is not in slice v1.", "status": "planned"}, "rag": {"backend": "fixture", "backend_status": "ready", "index_status": "ready", "reason": null, "status": "ready"}, "service": "unifiedKnowledgeProvider", "status": "ok"}, "status": "ready"}` |
 | `knowledge_source_catalog` | `ready` | `source_visible` | `http://127.0.0.1:8020/api/rag/sources` | `{"source_id": "company_profile_2025_trial", "visible_source_ids": ["company_profile_2025_trial", "logistics_faq", "refund_policy_docs"]}` |
 | `provider_ingestion_command` | `ready` | `provider_python_command_ready` | `D:\AI\AIcode\unifiedKnowledgeRAG\scripts\export_parser_artifact_local_ingestion_loop.py` | `{"command": ["conda", "run", "-n", "GRAPHRAG", "python", "--version"], "provider_python": "conda run -n GRAPHRAG python", "provider_repo_path": "D:\\AI\\AIcode\\unifiedKnowledgeRAG", "return_code": 0, "stderr": "", "stdout": "Python 3.11.15"}` |

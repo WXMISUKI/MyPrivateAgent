@@ -6,7 +6,7 @@
 - Provider Base URL: `http://127.0.0.1:8020`
 - Source ID: `company_profile_2025_trial`
 - API Key Configured: `False`
-- Generated At: `2026-06-07T11:08:05.817039+00:00`
+- Generated At: `2026-06-08T01:32:39.194225+00:00`
 
 ## Summary
 
