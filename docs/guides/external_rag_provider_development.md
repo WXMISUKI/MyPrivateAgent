@@ -223,6 +223,11 @@ python scripts/export_unified_knowledge_provider_trial_outcome.py `
 
 该 trial outcome 现在会额外导出一个 `provider_feedback_input` 字段。它保留 MyPrivateAgent 本地 repo-side trial 报告结构，同时把 `live_trial_status`、`reason_code`、`provider_base_url`、`agent_id`、`query` 以及 `provider_retrieve.allowed_citations` 等最小字段整理成可直接回传给 `unifiedKnowledgeRAG` Phase 25 feedback 的 caller-owned JSON 负载。这样调用方无需手工重组字段，也不会把 trial 执行职责重新塞回 provider。
 
+当前下一阶段默认不再继续扩 provider 内部策略，而是优先完成真实 caller 闭环。执行顺序、推荐入口和 reopen gate 见：
+
+- `docs/integration/phase26-caller-provider-live-trial-closure/phase26-caller-provider-live-trial-runbook.md`
+- `docs/integration/phase26-caller-provider-live-trial-closure/phase26-caller-provider-live-trial-task-pack.md`
+
 当 provider 已经注册并通过 live HTTP 验收某个本地业务语料后，可以在 MyPrivateAgent 侧跑一个更聚焦的 caller-side corpus trial：
 
 ```powershell

@@ -241,6 +241,14 @@ The unified knowledge capability runtime SHALL treat document RAG upload-to-use 
 - **THEN** MyPrivateAgent may use the generated source id for explicit local RAG trial questions
 - **AND** the success does not enable default `/api/chat` retrieval injection, source-to-agent binding, answer generation policy, or GraphRAG execution
 
+### Requirement: Real caller trial closure takes priority over provider optimization
+The unified knowledge capability runtime SHALL prioritize real caller-side trial closure over further provider retrieval optimization after the provider-side feedback contract is ready.
+
+#### Scenario: Provider feedback contract is already available
+- **WHEN** MyPrivateAgent can already export a provider feedback-compatible trial payload
+- **THEN** the next default step is to run and document a real caller-side live trial closure
+- **AND** the team does not treat retrieval strategy ideas as immediate implementation work
+
 ### Requirement: Repo-side trial outcome can feed provider-side feedback closure
 MyPrivateAgent SHALL export a repo-side unified knowledge provider trial outcome that can be reused as input to provider-side feedback closure without manual field reconstruction.
 

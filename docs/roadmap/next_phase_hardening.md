@@ -37,6 +37,27 @@ Provider-first 能力路线已补充到 `docs/roadmap/provider_capability_gap_as
 
 外部 RAG / GraphRAG provider 仍在开发时，MyPrivateAgent 内部控制面按 `docs/roadmap/internal_agent_control_tasks_2026-06-03.md` 推进；当前 active internal slice 是 `add-agent-grounding-policy-contract`，只做 grounding policy 可见性和合同收口，不改变默认 `/api/chat` 检索行为。
 
+### Provider Post-Closure Rule
+
+`unifiedKnowledgeRAG` provider 收口后，下一阶段默认不是继续扩 provider 内部能力，而是优先完成真实 caller 闭环验证。当前推荐执行入口已经固定为：
+
+- `docs/integration/phase26-caller-provider-live-trial-closure/phase26-caller-provider-live-trial-runbook.md`
+- `docs/integration/phase26-caller-provider-live-trial-closure/phase26-caller-provider-live-trial-task-pack.md`
+
+此阶段把 `D:\AI\AIcode\经验总结与复用目录\知识库与RAG\RAG_Techniques` 视为 strategy candidates，而不是默认 backlog。以下方向在没有真实 trigger 前不进入当前主线：
+
+- query rewrite
+- rerank
+- hybrid retrieval
+- GraphRAG execution
+
+只有满足以下 trigger 之一，才允许 reopen provider enhancement：
+
+- `real_caller_feedback_trigger`
+- `provider_owned_gap_trigger`
+- `repeated_cross_source_failure_class_trigger`
+- `runtime_strategy_evaluation_trigger`
+
 ## 1.1 Phase G：外部参考对齐后的新增方向
 
 已完成第一刀：
