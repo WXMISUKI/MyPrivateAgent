@@ -215,10 +215,13 @@ MyPrivateAgent 仓库侧文档 RAG 试接结果可通过以下命令导出：
 ```powershell
 python scripts/export_unified_knowledge_provider_trial_outcome.py `
   --provider-base-url http://127.0.0.1:8020 `
+  --agent-id ecommerce_support `
   --provider-readiness-path D:\AI\AIcode\unifiedKnowledgeRAG\docs\integration\myprivateagent-document-rag-trial-readiness\phase24-document-rag-trial-readiness.json
 ```
 
 `--provider-readiness-path` 是可选输入，用于把 provider 侧 Phase 24 `decision=go` 的文档 RAG readiness closure 记录到 MyPrivateAgent 侧 trial outcome。它不能替代真实 HTTP 检查；provider 仍需单独启动并通过 health、manifest、preflight、source binding preview 和 RAG retrieve 检查。
+
+该 trial outcome 现在会额外导出一个 `provider_feedback_input` 字段。它保留 MyPrivateAgent 本地 repo-side trial 报告结构，同时把 `live_trial_status`、`reason_code`、`provider_base_url`、`agent_id`、`query` 以及 `provider_retrieve.allowed_citations` 等最小字段整理成可直接回传给 `unifiedKnowledgeRAG` Phase 25 feedback 的 caller-owned JSON 负载。这样调用方无需手工重组字段，也不会把 trial 执行职责重新塞回 provider。
 
 当 provider 已经注册并通过 live HTTP 验收某个本地业务语料后，可以在 MyPrivateAgent 侧跑一个更聚焦的 caller-side corpus trial：
 

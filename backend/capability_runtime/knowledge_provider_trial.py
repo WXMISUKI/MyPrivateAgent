@@ -14,6 +14,7 @@ import httpx
 TRIAL_OUTCOME_ID = "unified-knowledge-provider-repo-side-trial-v1"
 DEFAULT_PROVIDER_BASE_URL = "http://127.0.0.1:8020"
 DEFAULT_TRIAL_QUERY = "refund policy"
+DEFAULT_TRIAL_AGENT_ID = "myprivateagent_repo_side_trial"
 OUTPUT_JSON_FILENAME = "unified-knowledge-provider-trial-outcome.json"
 OUTPUT_MARKDOWN_FILENAME = "unified-knowledge-provider-trial-outcome.md"
 PROVIDER_READINESS_CHECK_ID = "provider_document_rag_readiness"
@@ -36,9 +37,11 @@ class KnowledgeProviderTrialOutcome:
     status: str
     decision: str
     provider_base_url: str
+    agent_id: str
     api_key_configured: bool
     summary: dict[str, Any]
     checks: list[TrialCheck]
+    provider_feedback_input: dict[str, Any]
     notes: list[str] = field(default_factory=list)
     json_path: Path | None = None
     markdown_path: Path | None = None
@@ -49,6 +52,7 @@ def build_knowledge_provider_trial_outcome(
     provider_base_url: str = DEFAULT_PROVIDER_BASE_URL,
     provider_api_key: str | None = None,
     provider_readiness_path: Path | None = None,
+    agent_id: str = DEFAULT_TRIAL_AGENT_ID,
     query: str = DEFAULT_TRIAL_QUERY,
     timeout_seconds: float = 5.0,
     transport: httpx.BaseTransport | None = None,
@@ -74,6 +78,7 @@ def build_knowledge_provider_trial_outcome(
         status=status,
         decision=_decision(status),
         provider_base_url=base_url,
+        agent_id=agent_id,
         api_key_configured=bool(provider_api_key),
         summary={
             "total_checks": len(checks),
@@ -83,16 +88,26 @@ def build_knowledge_provider_trial_outcome(
             "ready_check_ids": [check.id for check in checks if check.status == "ready"],
             "review_check_ids": [check.id for check in checks if check.status == "review"],
             "blocked_check_ids": [check.id for check in checks if check.status == "blocked"],
+            "agent_id": agent_id,
             "query": query,
             "provider_document_rag_readiness": provider_readiness_summary,
             "source_binding_policy_owner": "caller",
             "runtime_promotion_status": "unchanged",
         },
         checks=checks,
+        provider_feedback_input=_build_provider_feedback_input(
+            overall_status=status,
+            decision=_decision(status),
+            provider_base_url=base_url,
+            agent_id=agent_id,
+            query=query,
+            checks=checks,
+        ),
         notes=[
             "This outcome is a read-only MyPrivateAgent repo-side trial over the external knowledge provider contract.",
             "The trial does not create source-to-agent binding, approvals, audit records, runtime promotions, or final answer policy.",
             "Provider API key values are never written to this artifact.",
+            "The provider_feedback_input payload is caller-owned and can be passed into unifiedKnowledgeRAG Phase 25 feedback without manual field reconstruction.",
         ],
     )
 
@@ -103,6 +118,7 @@ def export_knowledge_provider_trial_outcome(
     provider_base_url: str = DEFAULT_PROVIDER_BASE_URL,
     provider_api_key: str | None = None,
     provider_readiness_path: Path | None = None,
+    agent_id: str = DEFAULT_TRIAL_AGENT_ID,
     query: str = DEFAULT_TRIAL_QUERY,
     timeout_seconds: float = 5.0,
     transport: httpx.BaseTransport | None = None,
@@ -112,6 +128,7 @@ def export_knowledge_provider_trial_outcome(
         provider_base_url=provider_base_url,
         provider_api_key=provider_api_key,
         provider_readiness_path=provider_readiness_path,
+        agent_id=agent_id,
         query=query,
         timeout_seconds=timeout_seconds,
         transport=transport,
@@ -124,9 +141,11 @@ def export_knowledge_provider_trial_outcome(
         status=outcome.status,
         decision=outcome.decision,
         provider_base_url=outcome.provider_base_url,
+        agent_id=outcome.agent_id,
         api_key_configured=outcome.api_key_configured,
         summary=outcome.summary,
         checks=outcome.checks,
+        provider_feedback_input=outcome.provider_feedback_input,
         notes=outcome.notes,
         json_path=json_path,
         markdown_path=markdown_path,
@@ -156,6 +175,7 @@ def render_knowledge_provider_trial_outcome_markdown(outcome: KnowledgeProviderT
         f"- Status: `{outcome.status}`",
         f"- Decision: `{outcome.decision}`",
         f"- Provider Base URL: `{outcome.provider_base_url}`",
+        f"- Agent ID: `{outcome.agent_id}`",
         f"- API Key Configured: `{outcome.api_key_configured}`",
         f"- Generated At: `{outcome.generated_at}`",
         "",
@@ -172,6 +192,9 @@ def render_knowledge_provider_trial_outcome_markdown(outcome: KnowledgeProviderT
             f"| `{check.id}` | `{check.endpoint}` | `{check.status}` | "
             f"`{check.recommended_action}` | `{_format_value(check.summary)}` |"
         )
+    lines.extend(["", "## Provider Feedback Input", "", "| Field | Value |", "|---|---|"])
+    for key, value in outcome.provider_feedback_input.items():
+        lines.append(f"| `{key}` | `{_format_value(value)}` |")
     lines.extend(["", "## Notes", ""])
     lines.extend(f"- {note}" for note in outcome.notes)
     lines.append("")
@@ -326,6 +349,9 @@ def _retrieve_check(
             error={"code": "RAG_RETRIEVE_CONTRACT_MISMATCH"},
         )
     pack_status = str(evidence_pack.get("status") or "unknown")
+    allowed_citations = _string_items(
+        evidence_pack.get("allowed_citations") or metadata.get("allowed_citations")
+    )
     ready = pack_status in {"answerable", "insufficient_evidence"}
     return TrialCheck(
         id="rag_retrieve",
@@ -337,6 +363,8 @@ def _retrieve_check(
             "evidence_pack_version": evidence_pack.get("version"),
             "evidence_pack_status": pack_status,
             "citation_policy": evidence_pack.get("citation_policy"),
+            "allowed_citations": allowed_citations,
+            "allowed_citation_count": len(allowed_citations),
         },
         recommended_action="no_action_required" if ready else "review_evidence_pack_status",
     )
@@ -503,6 +531,142 @@ def _decision(status: str) -> str:
     return "resolve_trial_blockers_before_integration"
 
 
+def _build_provider_feedback_input(
+    *,
+    overall_status: str,
+    decision: str,
+    provider_base_url: str,
+    agent_id: str,
+    query: str,
+    checks: list[TrialCheck],
+) -> dict[str, Any]:
+    retrieve_check = next((check for check in checks if check.id == "rag_retrieve"), None)
+    retrieve_summary = retrieve_check.summary if retrieve_check is not None else {}
+    retrieve_error = retrieve_check.error if retrieve_check is not None else None
+    allowed_citations = _string_items(retrieve_summary.get("allowed_citations"))
+    retrieve_status = _phase25_retrieve_status(retrieve_check, allowed_citations)
+    retrieve_reason_code = _phase25_retrieve_reason_code(
+        retrieve_check=retrieve_check,
+        retrieve_status=retrieve_status,
+        allowed_citations=allowed_citations,
+    )
+    blockers = _provider_feedback_blockers(checks, retrieve_check, allowed_citations)
+    warnings = _provider_feedback_warnings(checks, retrieve_check, allowed_citations)
+    evidence_pack_status = str(retrieve_summary.get("evidence_pack_status") or "unknown")
+    citation_policy = str(retrieve_summary.get("citation_policy") or "")
+    payload: dict[str, Any] = {
+        "live_trial_status": _phase25_live_trial_status(overall_status),
+        "reason_code": _phase25_live_trial_reason_code(overall_status, decision),
+        "provider_base_url": provider_base_url,
+        "agent_id": agent_id,
+        "query": query,
+        "provider_retrieve": {
+            "status": retrieve_status,
+            "reason_code": retrieve_reason_code,
+            "document_count": _int(retrieve_summary.get("document_count"), fallback=0) or 0,
+            "evidence_pack_status": evidence_pack_status,
+            "citation_policy": citation_policy,
+            "allowed_citations": allowed_citations,
+            "blockers": blockers,
+            "warnings": warnings,
+            "evidence_pack": {
+                "status": evidence_pack_status,
+                "citation_policy": citation_policy,
+                "allowed_citations": allowed_citations,
+            },
+        },
+        "blockers": blockers,
+        "warnings": warnings,
+    }
+    if retrieve_error is not None:
+        payload["provider_retrieve"]["error"] = retrieve_error
+    return payload
+
+
+def _phase25_live_trial_status(status: str) -> str:
+    if status == "trial_passed":
+        return "go"
+    if status == "trial_review":
+        return "review"
+    return "blocked"
+
+
+def _phase25_live_trial_reason_code(status: str, decision: str) -> str:
+    if status == "trial_passed":
+        return "repo_side_trial_passed"
+    if status == "trial_review":
+        return "repo_side_trial_needs_review"
+    if decision:
+        return "repo_side_trial_blocked"
+    return "repo_side_trial_unclassified"
+
+
+def _phase25_retrieve_status(
+    retrieve_check: TrialCheck | None,
+    allowed_citations: list[str],
+) -> str:
+    if retrieve_check is None:
+        return "blocked"
+    if retrieve_check.status == "blocked":
+        return "blocked"
+    if retrieve_check.status == "review":
+        return "review"
+    if not allowed_citations:
+        return "review"
+    return "ready"
+
+
+def _phase25_retrieve_reason_code(
+    *,
+    retrieve_check: TrialCheck | None,
+    retrieve_status: str,
+    allowed_citations: list[str],
+) -> str:
+    if retrieve_check is None:
+        return "provider_retrieve_check_missing"
+    if retrieve_check.error is not None:
+        return str(retrieve_check.error.get("code") or "provider_retrieve_failed")
+    if retrieve_status == "ready":
+        return "provider_retrieve_ready"
+    if retrieve_check.status == "review":
+        return "provider_retrieve_needs_review"
+    if retrieve_status == "review" and not allowed_citations:
+        return "provider_retrieve_allowed_citations_missing"
+    return "provider_retrieve_blocked"
+
+
+def _provider_feedback_blockers(
+    checks: list[TrialCheck],
+    retrieve_check: TrialCheck | None,
+    allowed_citations: list[str],
+) -> list[str]:
+    blockers = [check.id for check in checks if check.status == "blocked"]
+    if retrieve_check is None:
+        blockers.append("rag_retrieve_check_missing")
+    if retrieve_check is not None and retrieve_check.status == "blocked" and retrieve_check.error is not None:
+        error_code = str(retrieve_check.error.get("code") or "").strip()
+        if error_code:
+            blockers.append(error_code)
+    if retrieve_check is not None and retrieve_check.status == "ready" and not allowed_citations:
+        blockers.append("provider_retrieve_allowed_citations_missing")
+    return blockers
+
+
+def _provider_feedback_warnings(
+    checks: list[TrialCheck],
+    retrieve_check: TrialCheck | None,
+    allowed_citations: list[str],
+) -> list[str]:
+    warnings = [check.id for check in checks if check.status == "review"]
+    if retrieve_check is not None:
+        evidence_pack_status = str(retrieve_check.summary.get("evidence_pack_status") or "")
+        if evidence_pack_status == "insufficient_evidence":
+            warnings.append("provider_retrieve_insufficient_evidence")
+    if retrieve_check is not None and retrieve_check.status == "ready" and not allowed_citations:
+        warnings.append("provider_retrieve_allowed_citations_missing")
+    return warnings
+
+
 def _int(value: Any, *, fallback: int | None) -> int | None:
     try:
         return int(value)
@@ -517,6 +681,12 @@ def _nested(payload: dict[str, Any], *keys: str) -> Any:
             return None
         current = current.get(key)
     return current
+
+
+def _string_items(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [str(item) for item in value if isinstance(item, str) and item.strip()]
 
 
 def _format_value(value: Any) -> str:

@@ -11,6 +11,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from backend.capability_runtime.knowledge_provider_trial import (
     DEFAULT_PROVIDER_BASE_URL,
+    DEFAULT_TRIAL_AGENT_ID,
     DEFAULT_TRIAL_QUERY,
     export_knowledge_provider_trial_outcome,
 )
@@ -39,6 +40,11 @@ def main() -> None:
         help="Optional provider-side Phase 24 document RAG readiness JSON path.",
     )
     parser.add_argument(
+        "--agent-id",
+        default=os.getenv("UNIFIED_KNOWLEDGE_PROVIDER_TRIAL_AGENT_ID", DEFAULT_TRIAL_AGENT_ID),
+        help="Caller-owned agent identifier exported into the provider feedback-compatible payload.",
+    )
+    parser.add_argument(
         "--query",
         default=os.getenv("UNIFIED_KNOWLEDGE_PROVIDER_TRIAL_QUERY", DEFAULT_TRIAL_QUERY),
         help="RAG retrieve query used by the trial.",
@@ -62,6 +68,7 @@ def main() -> None:
         provider_base_url=args.provider_base_url,
         provider_api_key=args.provider_api_key,
         provider_readiness_path=args.provider_readiness_path,
+        agent_id=args.agent_id,
         query=args.query,
         timeout_seconds=args.timeout_seconds,
     )
@@ -69,6 +76,7 @@ def main() -> None:
     print(f"Unified knowledge provider trial outcome Markdown ready: {outcome.markdown_path}")
     print(f"Status: {outcome.status}")
     print(f"Decision: {outcome.decision}")
+    print("Provider feedback-compatible payload: provider_feedback_input")
 
 
 if __name__ == "__main__":

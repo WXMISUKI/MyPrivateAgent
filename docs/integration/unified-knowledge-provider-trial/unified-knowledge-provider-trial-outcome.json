@@ -4,6 +4,7 @@
   "status": "trial_passed",
   "decision": "proceed_with_myprivateagent_integration_hardening",
   "provider_base_url": "http://127.0.0.1:8020",
+  "agent_id": "myprivateagent_repo_side_trial",
   "api_key_configured": false,
   "summary": {
     "total_checks": 6,
@@ -20,6 +21,7 @@
     ],
     "review_check_ids": [],
     "blocked_check_ids": [],
+    "agent_id": "myprivateagent_repo_side_trial",
     "query": "refund policy",
     "provider_document_rag_readiness": {
       "decision": "go",
@@ -113,16 +115,49 @@
         ],
         "evidence_pack_version": "evidence-pack-v1",
         "evidence_pack_status": "answerable",
-        "citation_policy": "use_only_returned_citations"
+        "citation_policy": "use_only_returned_citations",
+        "allowed_citations": [
+          "refund_policy_2026#section-2"
+        ],
+        "allowed_citation_count": 1
       },
       "recommended_action": "no_action_required",
       "error": null
     }
   ],
+  "provider_feedback_input": {
+    "live_trial_status": "go",
+    "reason_code": "repo_side_trial_passed",
+    "provider_base_url": "http://127.0.0.1:8020",
+    "agent_id": "myprivateagent_repo_side_trial",
+    "query": "refund policy",
+    "provider_retrieve": {
+      "status": "ready",
+      "reason_code": "provider_retrieve_ready",
+      "document_count": 1,
+      "evidence_pack_status": "answerable",
+      "citation_policy": "use_only_returned_citations",
+      "allowed_citations": [
+        "refund_policy_2026#section-2"
+      ],
+      "blockers": [],
+      "warnings": [],
+      "evidence_pack": {
+        "status": "answerable",
+        "citation_policy": "use_only_returned_citations",
+        "allowed_citations": [
+          "refund_policy_2026#section-2"
+        ]
+      }
+    },
+    "blockers": [],
+    "warnings": []
+  },
   "notes": [
     "This outcome is a read-only MyPrivateAgent repo-side trial over the external knowledge provider contract.",
     "The trial does not create source-to-agent binding, approvals, audit records, runtime promotions, or final answer policy.",
-    "Provider API key values are never written to this artifact."
+    "Provider API key values are never written to this artifact.",
+    "The provider_feedback_input payload is caller-owned and can be passed into unifiedKnowledgeRAG Phase 25 feedback without manual field reconstruction."
   ],
   "json_path": "docs\\integration\\unified-knowledge-provider-trial\\unified-knowledge-provider-trial-outcome.json",
   "markdown_path": "docs\\integration\\unified-knowledge-provider-trial\\unified-knowledge-provider-trial-outcome.md"

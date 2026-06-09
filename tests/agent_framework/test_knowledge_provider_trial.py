@@ -80,6 +80,7 @@ class KnowledgeProviderTrialTests(unittest.TestCase):
                                     "version": "evidence-pack-v1",
                                     "status": "answerable",
                                     "citation_policy": "use_only_returned_citations",
+                                    "allowed_citations": ["refund_policy_2026#section-2"],
                                 }
                             },
                         },
@@ -108,8 +109,16 @@ class KnowledgeProviderTrialTests(unittest.TestCase):
         self.assertEqual(outcome.status, "trial_passed")
         self.assertEqual(outcome.decision, "proceed_with_myprivateagent_integration_hardening")
         self.assertTrue(outcome.api_key_configured)
+        self.assertEqual(outcome.agent_id, "myprivateagent_repo_side_trial")
         self.assertEqual(outcome.summary["blocked_checks"], 0)
+        self.assertEqual(outcome.summary["agent_id"], "myprivateagent_repo_side_trial")
         self.assertEqual(outcome.summary["provider_document_rag_readiness"]["status"], "not_supplied")
+        self.assertEqual(outcome.provider_feedback_input["live_trial_status"], "go")
+        self.assertEqual(outcome.provider_feedback_input["provider_retrieve"]["status"], "ready")
+        self.assertEqual(
+            outcome.provider_feedback_input["provider_retrieve"]["allowed_citations"],
+            ["refund_policy_2026#section-2"],
+        )
         self.assertEqual(calls, [
             ("GET", "/health"),
             ("GET", "/api/provider/manifest"),
@@ -147,6 +156,9 @@ class KnowledgeProviderTrialTests(unittest.TestCase):
         self.assertEqual(outcome.status, "trial_review")
         self.assertIn("source_bindings", outcome.summary["review_check_ids"])
         self.assertEqual(outcome.summary["source_binding_policy_owner"], "caller")
+        self.assertEqual(outcome.provider_feedback_input["live_trial_status"], "review")
+        self.assertEqual(outcome.provider_feedback_input["provider_retrieve"]["status"], "review")
+        self.assertIn("provider_retrieve_allowed_citations_missing", outcome.provider_feedback_input["warnings"])
 
     def test_trial_records_ready_phase24_provider_readiness_context(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -245,7 +257,9 @@ class KnowledgeProviderTrialTests(unittest.TestCase):
             payload = json.loads(outcome.json_path.read_text(encoding="utf-8"))
             markdown = outcome.markdown_path.read_text(encoding="utf-8")
             self.assertEqual(payload["status"], "trial_passed")
+            self.assertEqual(payload["provider_feedback_input"]["provider_retrieve"]["reason_code"], "provider_retrieve_ready")
             self.assertIn("# Unified Knowledge Provider Trial Outcome", markdown)
+            self.assertIn("## Provider Feedback Input", markdown)
             self.assertIn("Provider API key values are never written", markdown)
             self.assertIn("| `query` | `refund policy` |", markdown)
             self.assertIn("# Unified Knowledge Provider Trial Outcome", render_knowledge_provider_trial_outcome_markdown(outcome))
@@ -291,6 +305,7 @@ def _retrieve_payload(*, pack_status: str = "answerable", documents=None):
                     "version": "evidence-pack-v1",
                     "status": pack_status,
                     "citation_policy": "use_only_returned_citations",
+                    "allowed_citations": [document["citation"] for document in current_documents if document.get("citation")],
                 }
             },
         },
