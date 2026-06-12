@@ -1,18 +1,17 @@
 {
   "id": "unified-knowledge-provider-repo-side-trial-v1",
-  "generated_at": "2026-06-06T05:57:58.456518+00:00",
+  "generated_at": "2026-06-12T07:31:24.265028+00:00",
   "status": "trial_passed",
   "decision": "proceed_with_myprivateagent_integration_hardening",
   "provider_base_url": "http://127.0.0.1:8020",
-  "agent_id": "myprivateagent_repo_side_trial",
+  "agent_id": "company_profile",
   "api_key_configured": false,
   "summary": {
-    "total_checks": 6,
-    "ready_checks": 6,
+    "total_checks": 5,
+    "ready_checks": 5,
     "review_checks": 0,
     "blocked_checks": 0,
     "ready_check_ids": [
-      "provider_document_rag_readiness",
       "provider_health",
       "provider_manifest",
       "provider_preflight",
@@ -21,36 +20,17 @@
     ],
     "review_check_ids": [],
     "blocked_check_ids": [],
-    "agent_id": "myprivateagent_repo_side_trial",
+    "agent_id": "company_profile",
     "query": "refund policy",
     "provider_document_rag_readiness": {
-      "decision": "go",
-      "trial_readiness_state": "ready_for_repo_side_document_rag_trial",
-      "provider_status": "ready",
-      "primitive_gate_status": "ready",
-      "generated_at": "2026-06-05T07:54:27.335439+00:00",
-      "supplied": true,
-      "status": "ready",
-      "recommended_action": "no_action_required"
+      "supplied": false,
+      "status": "not_supplied",
+      "recommended_action": "supply_phase24_provider_readiness_artifact_for_document_rag_trial_context"
     },
     "source_binding_policy_owner": "caller",
     "runtime_promotion_status": "unchanged"
   },
   "checks": [
-    {
-      "id": "provider_document_rag_readiness",
-      "endpoint": "D:\\AI\\AIcode\\unifiedKnowledgeRAG\\docs\\integration\\myprivateagent-document-rag-trial-readiness\\phase24-document-rag-trial-readiness.json",
-      "status": "ready",
-      "summary": {
-        "decision": "go",
-        "trial_readiness_state": "ready_for_repo_side_document_rag_trial",
-        "provider_status": "ready",
-        "primitive_gate_status": "ready",
-        "generated_at": "2026-06-05T07:54:27.335439+00:00"
-      },
-      "recommended_action": "no_action_required",
-      "error": null
-    },
     {
       "id": "provider_health",
       "endpoint": "/health",
@@ -92,11 +72,12 @@
       "status": "ready",
       "summary": {
         "status": "ready",
-        "source_count": 2,
-        "bindable_source_count": 2,
+        "source_count": 6,
+        "bindable_source_count": 6,
         "selected_source_ids": [
           "refund_policy_docs",
-          "logistics_faq"
+          "logistics_faq",
+          "split_refund_policy_docs"
         ],
         "source_binding_policy_owner": "caller"
       },
@@ -108,18 +89,20 @@
       "endpoint": "/api/rag/retrieve",
       "status": "ready",
       "summary": {
-        "document_count": 1,
+        "document_count": 2,
         "knowledge_base_ids": [
           "refund_policy_docs",
-          "logistics_faq"
+          "logistics_faq",
+          "split_refund_policy_docs"
         ],
         "evidence_pack_version": "evidence-pack-v1",
         "evidence_pack_status": "answerable",
         "citation_policy": "use_only_returned_citations",
         "allowed_citations": [
-          "refund_policy_2026#section-2"
+          "refund_policy_2026#exact-refund-code",
+          "split_refund_policy_2026#form-code"
         ],
-        "allowed_citation_count": 1
+        "allowed_citation_count": 2
       },
       "recommended_action": "no_action_required",
       "error": null
@@ -129,16 +112,17 @@
     "live_trial_status": "go",
     "reason_code": "repo_side_trial_passed",
     "provider_base_url": "http://127.0.0.1:8020",
-    "agent_id": "myprivateagent_repo_side_trial",
+    "agent_id": "company_profile",
     "query": "refund policy",
     "provider_retrieve": {
       "status": "ready",
       "reason_code": "provider_retrieve_ready",
-      "document_count": 1,
+      "document_count": 2,
       "evidence_pack_status": "answerable",
       "citation_policy": "use_only_returned_citations",
       "allowed_citations": [
-        "refund_policy_2026#section-2"
+        "refund_policy_2026#exact-refund-code",
+        "split_refund_policy_2026#form-code"
       ],
       "blockers": [],
       "warnings": [],
@@ -146,7 +130,8 @@
         "status": "answerable",
         "citation_policy": "use_only_returned_citations",
         "allowed_citations": [
-          "refund_policy_2026#section-2"
+          "refund_policy_2026#exact-refund-code",
+          "split_refund_policy_2026#form-code"
         ]
       }
     },

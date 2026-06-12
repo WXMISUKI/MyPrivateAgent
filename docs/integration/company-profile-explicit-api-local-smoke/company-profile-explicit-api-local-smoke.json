@@ -1,6 +1,6 @@
 {
   "contract_version": "company-profile-explicit-api-local-smoke-v1",
-  "generated_at": "2026-06-07T04:00:33.219666+00:00",
+  "generated_at": "2026-06-12T07:31:26.272319+00:00",
   "decision": "go",
   "reason_code": "company_profile_explicit_api_ready",
   "recommended_next_action": "use_explicit_api_for_local_business_trials",
@@ -12,13 +12,12 @@
   "http_status_code": 200,
   "ok": true,
   "api_status": "go",
-  "answer_preview": "基于 company_profile_2025_trial#chunk-1, company_profile_2025_trial#chunk-4, company_profile_2025_trial#chunk-5，已为 `company.profile` 生成受控回答预览：公司主营业务是什么？",
+  "answer_preview": "基于 company_profile_2025_trial#chunk-127, company_profile_2025_trial#chunk-203，已为 `company.profile` 生成受控回答预览：公司主营业务是什么？",
   "citations": [
-    "company_profile_2025_trial#chunk-1",
-    "company_profile_2025_trial#chunk-4",
-    "company_profile_2025_trial#chunk-5"
+    "company_profile_2025_trial#chunk-127",
+    "company_profile_2025_trial#chunk-203"
   ],
-  "document_count": 3,
+  "document_count": 2,
   "blockers": [],
   "warnings": [],
   "boundary": {
@@ -42,36 +41,27 @@
     "domain": "company.profile",
     "query": "公司主营业务是什么？",
     "provider_base_url": "http://127.0.0.1:8020",
-    "answer_preview": "基于 company_profile_2025_trial#chunk-1, company_profile_2025_trial#chunk-4, company_profile_2025_trial#chunk-5，已为 `company.profile` 生成受控回答预览：公司主营业务是什么？",
+    "answer_preview": "基于 company_profile_2025_trial#chunk-127, company_profile_2025_trial#chunk-203，已为 `company.profile` 生成受控回答预览：公司主营业务是什么？",
     "citations": [
-      "company_profile_2025_trial#chunk-1",
-      "company_profile_2025_trial#chunk-4",
-      "company_profile_2025_trial#chunk-5"
+      "company_profile_2025_trial#chunk-127",
+      "company_profile_2025_trial#chunk-203"
     ],
     "documents": [
       {
         "source_id": "company_profile_2025_trial",
         "document_id": "company_profile_2025_trial",
-        "title": "公司简介 2025 trial",
-        "snippet": "- Source PDF: `D:\\xwechat_files\\wxid_pc6sc451nt9022_dea0\\msg\\file\\2026-06\\公司简介2025年10月27日(1).pdf` - Trial Query: `公司主营业务是什么？` - Raw PDF ingestion status: `unsupported_by_provider`",
-        "score": 1.0,
-        "citation": "company_profile_2025_trial#chunk-1"
+        "title": "公司简介 2025-10-27",
+        "snippet": "公司主要经营高等级公路、大型桥梁和隧道工程及水运工程的施工监理、技术",
+        "score": 0.25,
+        "citation": "company_profile_2025_trial#chunk-127"
       },
       {
         "source_id": "company_profile_2025_trial",
         "document_id": "company_profile_2025_trial",
-        "title": "公司简介 2025 trial",
-        "snippet": "一、公 司 简 介 江苏交通工程咨询监理有限公司成立于1993年5月，拥有公路工程监理甲级、 水运工程监理甲级、特殊独立大桥监理专项、特殊独立隧道监理专项、机电工程监 理专项资质、市政公用工程监理乙级、公路工程综合乙级试验检测资质；公司通过 了IS09001质量管理体系认证、ISO14001环境管理体系认证、GB/T28001职业健康安 全管理体系认证，是江苏省科委、江苏省工商局和江苏省科协确认的“AAA”级信誉 企业、江苏省文明单位、江苏省交通建设监理协会副理事长单位、中国交通监理常 务理事单位；2016年度监理信用评价交通运输部、上海市“AA”级、江苏省、福建 省、河北省、云南省 “A”级企业。 公司主要经营高等级公路、大型桥梁和隧道工程及水运工程的施工监理、技术 咨询、技术服务,工程项目管理，建设工程的项目管理、技术咨询，市政公用工程 监理。公司设市场开发部、财务审计部、办公室、中心试验室，现有员工478名， 高、中级技术人员285名，有国家注册工程师261名，其中：住建部注册结构师1人、 住建部注册造价工程师5人、住建部注册监理工程师30人、国家注册咨询工程师15 人、国家注册招标师33人、交通运输部注册监理工程师177人（含专业、交通运输 部注册造价工程师8人、交通运输部公路工程试验检测工程师46人、交通运输部公 路工程试验检测员32人；公司现有12个工地试验室，13个试验检测专业、111个参 数1380余台（套）试验检测仪器设备。 公司完成了近2800km高速公路 、450座独立特大桥、大中桥工程 、42km隧道 新建工程、460km高速公路扩建工程施工监理及20余项代建（项目管理工程），年 产值达到2亿元。自成立起，始终秉持“廉洁、尽责、精细、耐劳、分忧”的服务 理念，持续发扬“守法公正、诚信履约、科学管理、创新服务”的公司精神，以诚 信履约为核心，全体员工牢固树立了“细节决定成败、细节决定品牌”的意识,以 “今天的业主是我们永远的业主”为服务宗旨，践行“用诚信和实力塑造公司品牌” 的企业核心价值观，认真履行“公正、科学、诚信、自律”职业准则，形成遵纪、 敬业、爱岗的良好氛围，在激烈的市场竞争中屡创佳绩，连续获得国家、部、省、 市颁发的国家优质工程奖、鲁班奖、詹天佑奖、市政金杯示范奖、公路交通优质奖 （李春奖）、省级优质工程奖等表彰130余项。",
+        "title": "公司简介 2025-10-27",
+        "snippet": "公司主要管理人员：",
         "score": 0.25,
-        "citation": "company_profile_2025_trial#chunk-4"
-      },
-      {
-        "source_id": "company_profile_2025_trial",
-        "document_id": "company_profile_2025_trial",
-        "title": "公司简介 2025 trial",
-        "snippet": "二、组 织 机 构 公司设立了市场开发部、财务审计部、办公室、中心试验室的二部二室管理构 架，并先后成立了江苏安泰路桥工程检测有限公司、江苏茂森工程咨询监理有限 公司（原名：江苏茂盛工程咨询监理有限公司）两个独资子公司。 公司主要管理人员： 董事长：徐金法，硕士，高级工程师，国家注册结构工程师、国家注册监理工 程师，交通运输部监理工程师，注册咨询工程师（投资）、国家注册招标师、江 苏省注册咨询专家； 法定代表人、总经理：王国华，本科，高级工程师，国家注册监理工程师、交 通运输部注册监理工程师、国家注册咨询（投资）工程师，交通运输部交通建设 优秀监理工程师、江苏省交通行业第五届“金桥奖”、2008年度和2009年度上海 市政重大工程赛区立功竞赛先进个人； 总工程师：李兵，工程硕士，高级工程师，交通运输部注册监理工程师、交通 运输部造价工程师、国家注册造价工程师、国家注册监理工程师，国家注册咨询 工程师（投资），南京市交通局十佳监理工程师，南通绕城高速项目先进个人， 2022年度交通建设优秀监理工程师。 各项目组 经营层 董事会 财务 审计 部 办 公 室 市场 开发 部 中心 试验 室",
-        "score": 0.25,
-        "citation": "company_profile_2025_trial#chunk-5"
+        "citation": "company_profile_2025_trial#chunk-203"
       }
     ],
     "blockers": [],
@@ -90,7 +80,7 @@
     },
     "trial": {
       "contract_version": "domain-agent-live-grounded-answer-trial-v1",
-      "generated_at": "2026-06-07T04:00:33.216476+00:00",
+      "generated_at": "2026-06-12T07:31:26.268761+00:00",
       "agent_id": "company_profile",
       "query": "公司主营业务是什么？",
       "domain": "company.profile",
@@ -102,45 +92,36 @@
         "endpoint": "/api/rag/retrieve",
         "status": "ready",
         "reason_code": "provider_retrieve_ready",
-        "document_count": 3,
+        "document_count": 2,
         "knowledge_base_ids": [
           "company_profile_2025_trial"
         ],
         "evidence_pack_status": "answerable",
         "citation_policy": "use_only_returned_citations",
         "allowed_citations": [
-          "company_profile_2025_trial#chunk-1",
-          "company_profile_2025_trial#chunk-4",
-          "company_profile_2025_trial#chunk-5"
+          "company_profile_2025_trial#chunk-127",
+          "company_profile_2025_trial#chunk-203"
         ],
         "documents": [
           {
             "source_id": "company_profile_2025_trial",
             "document_id": "company_profile_2025_trial",
-            "title": "公司简介 2025 trial",
-            "snippet": "- Source PDF: `D:\\xwechat_files\\wxid_pc6sc451nt9022_dea0\\msg\\file\\2026-06\\公司简介2025年10月27日(1).pdf` - Trial Query: `公司主营业务是什么？` - Raw PDF ingestion status: `unsupported_by_provider`",
-            "score": 1.0,
-            "citation": "company_profile_2025_trial#chunk-1"
+            "title": "公司简介 2025-10-27",
+            "snippet": "公司主要经营高等级公路、大型桥梁和隧道工程及水运工程的施工监理、技术",
+            "score": 0.25,
+            "citation": "company_profile_2025_trial#chunk-127"
           },
           {
             "source_id": "company_profile_2025_trial",
             "document_id": "company_profile_2025_trial",
-            "title": "公司简介 2025 trial",
-            "snippet": "一、公 司 简 介 江苏交通工程咨询监理有限公司成立于1993年5月，拥有公路工程监理甲级、 水运工程监理甲级、特殊独立大桥监理专项、特殊独立隧道监理专项、机电工程监 理专项资质、市政公用工程监理乙级、公路工程综合乙级试验检测资质；公司通过 了IS09001质量管理体系认证、ISO14001环境管理体系认证、GB/T28001职业健康安 全管理体系认证，是江苏省科委、江苏省工商局和江苏省科协确认的“AAA”级信誉 企业、江苏省文明单位、江苏省交通建设监理协会副理事长单位、中国交通监理常 务理事单位；2016年度监理信用评价交通运输部、上海市“AA”级、江苏省、福建 省、河北省、云南省 “A”级企业。 公司主要经营高等级公路、大型桥梁和隧道工程及水运工程的施工监理、技术 咨询、技术服务,工程项目管理，建设工程的项目管理、技术咨询，市政公用工程 监理。公司设市场开发部、财务审计部、办公室、中心试验室，现有员工478名， 高、中级技术人员285名，有国家注册工程师261名，其中：住建部注册结构师1人、 住建部注册造价工程师5人、住建部注册监理工程师30人、国家注册咨询工程师15 人、国家注册招标师33人、交通运输部注册监理工程师177人（含专业、交通运输 部注册造价工程师8人、交通运输部公路工程试验检测工程师46人、交通运输部公 路工程试验检测员32人；公司现有12个工地试验室，13个试验检测专业、111个参 数1380余台（套）试验检测仪器设备。 公司完成了近2800km高速公路 、450座独立特大桥、大中桥工程 、42km隧道 新建工程、460km高速公路扩建工程施工监理及20余项代建（项目管理工程），年 产值达到2亿元。自成立起，始终秉持“廉洁、尽责、精细、耐劳、分忧”的服务 理念，持续发扬“守法公正、诚信履约、科学管理、创新服务”的公司精神，以诚 信履约为核心，全体员工牢固树立了“细节决定成败、细节决定品牌”的意识,以 “今天的业主是我们永远的业主”为服务宗旨，践行“用诚信和实力塑造公司品牌” 的企业核心价值观，认真履行“公正、科学、诚信、自律”职业准则，形成遵纪、 敬业、爱岗的良好氛围，在激烈的市场竞争中屡创佳绩，连续获得国家、部、省、 市颁发的国家优质工程奖、鲁班奖、詹天佑奖、市政金杯示范奖、公路交通优质奖 （李春奖）、省级优质工程奖等表彰130余项。",
+            "title": "公司简介 2025-10-27",
+            "snippet": "公司主要管理人员：",
             "score": 0.25,
-            "citation": "company_profile_2025_trial#chunk-4"
-          },
-          {
-            "source_id": "company_profile_2025_trial",
-            "document_id": "company_profile_2025_trial",
-            "title": "公司简介 2025 trial",
-            "snippet": "二、组 织 机 构 公司设立了市场开发部、财务审计部、办公室、中心试验室的二部二室管理构 架，并先后成立了江苏安泰路桥工程检测有限公司、江苏茂森工程咨询监理有限 公司（原名：江苏茂盛工程咨询监理有限公司）两个独资子公司。 公司主要管理人员： 董事长：徐金法，硕士，高级工程师，国家注册结构工程师、国家注册监理工 程师，交通运输部监理工程师，注册咨询工程师（投资）、国家注册招标师、江 苏省注册咨询专家； 法定代表人、总经理：王国华，本科，高级工程师，国家注册监理工程师、交 通运输部注册监理工程师、国家注册咨询（投资）工程师，交通运输部交通建设 优秀监理工程师、江苏省交通行业第五届“金桥奖”、2008年度和2009年度上海 市政重大工程赛区立功竞赛先进个人； 总工程师：李兵，工程硕士，高级工程师，交通运输部注册监理工程师、交通 运输部造价工程师、国家注册造价工程师、国家注册监理工程师，国家注册咨询 工程师（投资），南京市交通局十佳监理工程师，南通绕城高速项目先进个人， 2022年度交通建设优秀监理工程师。 各项目组 经营层 董事会 财务 审计 部 办 公 室 市场 开发 部 中心 试验 室",
-            "score": 0.25,
-            "citation": "company_profile_2025_trial#chunk-5"
+            "citation": "company_profile_2025_trial#chunk-203"
           }
         ],
         "evidence_pack": {
-          "pack_id": "evidence-pack-6296dbabb26a7e10",
+          "pack_id": "evidence-pack-86ada4641b4a90ea",
           "version": "evidence-pack-v1",
           "status": "answerable",
           "reason": "documents_returned",
@@ -151,13 +132,12 @@
           "retrieval_backend": "fixture",
           "citation_policy": "use_only_returned_citations",
           "allowed_citations": [
-            "company_profile_2025_trial#chunk-1",
-            "company_profile_2025_trial#chunk-4",
-            "company_profile_2025_trial#chunk-5"
+            "company_profile_2025_trial#chunk-127",
+            "company_profile_2025_trial#chunk-203"
           ],
-          "evidence_count": 3,
+          "evidence_count": 2,
           "score_summary": {
-            "max_score": 1.0,
+            "max_score": 0.25,
             "min_score": 0.25
           },
           "filter_context": {
@@ -174,43 +154,29 @@
             {
               "source_id": "company_profile_2025_trial",
               "document_id": "company_profile_2025_trial",
-              "title": "公司简介 2025 trial",
-              "citation": "company_profile_2025_trial#chunk-1",
-              "score": 1.0,
-              "snippet": "- Source PDF: `D:\\xwechat_files\\wxid_pc6sc451nt9022_dea0\\msg\\file\\2026-06\\公司简介2025年10月27日(1).pdf` - Trial Query: `公司主营业务是什么？` - Raw PDF ingestion status: `unsupported_by_provider`",
+              "title": "公司简介 2025-10-27",
+              "citation": "company_profile_2025_trial#chunk-127",
+              "score": 0.25,
+              "snippet": "公司主要经营高等级公路、大型桥梁和隧道工程及水运工程的施工监理、技术",
               "provenance": {
                 "source_path": "app\\data\\sources\\company_profile_2025_trial.md",
-                "chunk_id": "chunk-1",
+                "chunk_id": "chunk-127",
                 "chunking_strategy": "fixture-evidence-v1",
-                "citation_anchor": "company_profile_2025_trial#chunk-1"
+                "citation_anchor": "company_profile_2025_trial#chunk-127"
               }
             },
             {
               "source_id": "company_profile_2025_trial",
               "document_id": "company_profile_2025_trial",
-              "title": "公司简介 2025 trial",
-              "citation": "company_profile_2025_trial#chunk-4",
+              "title": "公司简介 2025-10-27",
+              "citation": "company_profile_2025_trial#chunk-203",
               "score": 0.25,
-              "snippet": "一、公 司 简 介 江苏交通工程咨询监理有限公司成立于1993年5月，拥有公路工程监理甲级、 水运工程监理甲级、特殊独立大桥监理专项、特殊独立隧道监理专项、机电工程监 理专项资质、市政公用工程监理乙级、公路工程综合乙级试验检测资质；公司通过 了IS09001质量管理体系认证、ISO14001环境管理体系认证、GB/T28001职业健康安 全管理体系认证，是江苏省科委、江苏省工商局和江苏省科协确认的“AAA”级信誉 企业、江苏省文明单位、江苏省交通建设监理协会副理事长单位、中国交通监理常 务理事单位；2016年度监理信用评价交通运输部、上海市“AA”级、江苏省、福建 省、河北省、云南省 “A”级企业。 公司主要经营高等级公路、大型桥梁和隧道工程及水运工程的施工监理、技术 咨询、技术服务,工程项目管理，建设工程的项目管理、技术咨询，市政公用工程 监理。公司设市场开发部、财务审计部、办公室、中心试验室，现有员工478名， 高、中级技术人员285名，有国家注册工程师261名，其中：住建部注册结构师1人、 住建部注册造价工程师5人、住建部注册监理工程师30人、国家注册咨询工程师15 人、国家注册招标师33人、交通运输部注册监理工程师177人（含专业、交通运输 部注册造价工程师8人、交通运输部公路工程试验检测工程师46人、交通运输部公 路工程试验检测员32人；公司现有12个工地试验室，13个试验检测专业、111个参 数1380余台（套）试验检测仪器设备。 公司完成了近2800km高速公路 、450座独立特大桥、大中桥工程 、42km隧道 新建工程、460km高速公路扩建工程施工监理及20余项代建（项目管理工程），年 产值达到2亿元。自成立起，始终秉持“廉洁、尽责、精细、耐劳、分忧”的服务 理念，持续发扬“守法公正、诚信履约、科学管理、创新服务”的公司精神，以诚 信履约为核心，全体员工牢固树立了“细节决定成败、细节决定品牌”的意识,以 “今天的业主是我们永远的业主”为服务宗旨，践行“用诚信和实力塑造公司品牌” 的企业核心价值观，认真履行“公正、科学、诚信、自律”职业准则，形成遵纪、 敬业、爱岗的良好氛围，在激烈的市场竞争中屡创佳绩，连续获得国家、部、省、 市颁发的国家优质工程奖、鲁班奖、詹天佑奖、市政金杯示范奖、公路交通优质奖 （李春奖）、省级优质工程奖等表彰130余项。",
+              "snippet": "公司主要管理人员：",
               "provenance": {
                 "source_path": "app\\data\\sources\\company_profile_2025_trial.md",
-                "chunk_id": "chunk-4",
+                "chunk_id": "chunk-203",
                 "chunking_strategy": "fixture-evidence-v1",
-                "citation_anchor": "company_profile_2025_trial#chunk-4"
-              }
-            },
-            {
-              "source_id": "company_profile_2025_trial",
-              "document_id": "company_profile_2025_trial",
-              "title": "公司简介 2025 trial",
-              "citation": "company_profile_2025_trial#chunk-5",
-              "score": 0.25,
-              "snippet": "二、组 织 机 构 公司设立了市场开发部、财务审计部、办公室、中心试验室的二部二室管理构 架，并先后成立了江苏安泰路桥工程检测有限公司、江苏茂森工程咨询监理有限 公司（原名：江苏茂盛工程咨询监理有限公司）两个独资子公司。 公司主要管理人员： 董事长：徐金法，硕士，高级工程师，国家注册结构工程师、国家注册监理工 程师，交通运输部监理工程师，注册咨询工程师（投资）、国家注册招标师、江 苏省注册咨询专家； 法定代表人、总经理：王国华，本科，高级工程师，国家注册监理工程师、交 通运输部注册监理工程师、国家注册咨询（投资）工程师，交通运输部交通建设 优秀监理工程师、江苏省交通行业第五届“金桥奖”、2008年度和2009年度上海 市政重大工程赛区立功竞赛先进个人； 总工程师：李兵，工程硕士，高级工程师，交通运输部注册监理工程师、交通 运输部造价工程师、国家注册造价工程师、国家注册监理工程师，国家注册咨询 工程师（投资），南京市交通局十佳监理工程师，南通绕城高速项目先进个人， 2022年度交通建设优秀监理工程师。 各项目组 经营层 董事会 财务 审计 部 办 公 室 市场 开发 部 中心 试验 室",
-              "provenance": {
-                "source_path": "app\\data\\sources\\company_profile_2025_trial.md",
-                "chunk_id": "chunk-5",
-                "chunking_strategy": "fixture-evidence-v1",
-                "citation_anchor": "company_profile_2025_trial#chunk-5"
+                "citation_anchor": "company_profile_2025_trial#chunk-203"
               }
             }
           ]
@@ -231,9 +197,8 @@
           "reason_code": "answerable_evidence_pack",
           "recommended_action": "use_allowed_citations_only",
           "citation_allowlist": [
-            "company_profile_2025_trial#chunk-1",
-            "company_profile_2025_trial#chunk-4",
-            "company_profile_2025_trial#chunk-5"
+            "company_profile_2025_trial#chunk-127",
+            "company_profile_2025_trial#chunk-203"
           ],
           "fallback_policy": "refuse_or_clarify_when_no_evidence",
           "boundary": {
@@ -272,7 +237,7 @@
             "grounding": {
               "decision": "allowed",
               "reason_code": "answerable_evidence_pack",
-              "citation_count": 3,
+              "citation_count": 2,
               "fallback_policy": "refuse_or_clarify_when_no_evidence"
             },
             "promptops": {
@@ -305,9 +270,8 @@
           }
         },
         "citation_allowlist": [
-          "company_profile_2025_trial#chunk-1",
-          "company_profile_2025_trial#chunk-4",
-          "company_profile_2025_trial#chunk-5"
+          "company_profile_2025_trial#chunk-127",
+          "company_profile_2025_trial#chunk-203"
         ],
         "blockers": [],
         "warnings": [],
@@ -324,7 +288,7 @@
           "grounding": {
             "decision": "allowed",
             "reason_code": "answerable_evidence_pack",
-            "citation_count": 3,
+            "citation_count": 2,
             "fallback_policy": "refuse_or_clarify_when_no_evidence"
           },
           "promptops": {
@@ -374,22 +338,17 @@
         "query": "公司主营业务是什么？",
         "domain": "company.profile",
         "allowed_citations": [
-          "company_profile_2025_trial#chunk-1",
-          "company_profile_2025_trial#chunk-4",
-          "company_profile_2025_trial#chunk-5"
+          "company_profile_2025_trial#chunk-127",
+          "company_profile_2025_trial#chunk-203"
         ],
         "evidence_items": [
           {
             "source_type": "citation",
-            "citation": "company_profile_2025_trial#chunk-1"
+            "citation": "company_profile_2025_trial#chunk-127"
           },
           {
             "source_type": "citation",
-            "citation": "company_profile_2025_trial#chunk-4"
-          },
-          {
-            "source_type": "citation",
-            "citation": "company_profile_2025_trial#chunk-5"
+            "citation": "company_profile_2025_trial#chunk-203"
           }
         ],
         "prompt_binding": {
@@ -428,9 +387,8 @@
             "reason_code": "answerable_evidence_pack",
             "recommended_action": "use_allowed_citations_only",
             "citation_allowlist": [
-              "company_profile_2025_trial#chunk-1",
-              "company_profile_2025_trial#chunk-4",
-              "company_profile_2025_trial#chunk-5"
+              "company_profile_2025_trial#chunk-127",
+              "company_profile_2025_trial#chunk-203"
             ],
             "fallback_policy": "refuse_or_clarify_when_no_evidence",
             "boundary": {
@@ -469,7 +427,7 @@
               "grounding": {
                 "decision": "allowed",
                 "reason_code": "answerable_evidence_pack",
-                "citation_count": 3,
+                "citation_count": 2,
                 "fallback_policy": "refuse_or_clarify_when_no_evidence"
               },
               "promptops": {
@@ -502,9 +460,8 @@
             }
           },
           "citation_allowlist": [
-            "company_profile_2025_trial#chunk-1",
-            "company_profile_2025_trial#chunk-4",
-            "company_profile_2025_trial#chunk-5"
+            "company_profile_2025_trial#chunk-127",
+            "company_profile_2025_trial#chunk-203"
           ],
           "blockers": [],
           "warnings": [],
@@ -521,7 +478,7 @@
             "grounding": {
               "decision": "allowed",
               "reason_code": "answerable_evidence_pack",
-              "citation_count": 3,
+              "citation_count": 2,
               "fallback_policy": "refuse_or_clarify_when_no_evidence"
             },
             "promptops": {
@@ -569,11 +526,10 @@
         "agent_id": "company_profile",
         "composition_status": "ready",
         "reason_code": "grounded_answer_composition_ready",
-        "answer_preview": "基于 company_profile_2025_trial#chunk-1, company_profile_2025_trial#chunk-4, company_profile_2025_trial#chunk-5，已为 `company.profile` 生成受控回答预览：公司主营业务是什么？",
+        "answer_preview": "基于 company_profile_2025_trial#chunk-127, company_profile_2025_trial#chunk-203，已为 `company.profile` 生成受控回答预览：公司主营业务是什么？",
         "used_citations": [
-          "company_profile_2025_trial#chunk-1",
-          "company_profile_2025_trial#chunk-4",
-          "company_profile_2025_trial#chunk-5"
+          "company_profile_2025_trial#chunk-127",
+          "company_profile_2025_trial#chunk-203"
         ],
         "composition_policy": {
           "mode": "deterministic_preview",
@@ -604,22 +560,17 @@
           "query": "公司主营业务是什么？",
           "domain": "company.profile",
           "allowed_citations": [
-            "company_profile_2025_trial#chunk-1",
-            "company_profile_2025_trial#chunk-4",
-            "company_profile_2025_trial#chunk-5"
+            "company_profile_2025_trial#chunk-127",
+            "company_profile_2025_trial#chunk-203"
           ],
           "evidence_items": [
             {
               "source_type": "citation",
-              "citation": "company_profile_2025_trial#chunk-1"
+              "citation": "company_profile_2025_trial#chunk-127"
             },
             {
               "source_type": "citation",
-              "citation": "company_profile_2025_trial#chunk-4"
-            },
-            {
-              "source_type": "citation",
-              "citation": "company_profile_2025_trial#chunk-5"
+              "citation": "company_profile_2025_trial#chunk-203"
             }
           ],
           "prompt_binding": {
@@ -658,9 +609,8 @@
               "reason_code": "answerable_evidence_pack",
               "recommended_action": "use_allowed_citations_only",
               "citation_allowlist": [
-                "company_profile_2025_trial#chunk-1",
-                "company_profile_2025_trial#chunk-4",
-                "company_profile_2025_trial#chunk-5"
+                "company_profile_2025_trial#chunk-127",
+                "company_profile_2025_trial#chunk-203"
               ],
               "fallback_policy": "refuse_or_clarify_when_no_evidence",
               "boundary": {
@@ -699,7 +649,7 @@
                 "grounding": {
                   "decision": "allowed",
                   "reason_code": "answerable_evidence_pack",
-                  "citation_count": 3,
+                  "citation_count": 2,
                   "fallback_policy": "refuse_or_clarify_when_no_evidence"
                 },
                 "promptops": {
@@ -732,9 +682,8 @@
               }
             },
             "citation_allowlist": [
-              "company_profile_2025_trial#chunk-1",
-              "company_profile_2025_trial#chunk-4",
-              "company_profile_2025_trial#chunk-5"
+              "company_profile_2025_trial#chunk-127",
+              "company_profile_2025_trial#chunk-203"
             ],
             "blockers": [],
             "warnings": [],
@@ -751,7 +700,7 @@
               "grounding": {
                 "decision": "allowed",
                 "reason_code": "answerable_evidence_pack",
-                "citation_count": 3,
+                "citation_count": 2,
                 "fallback_policy": "refuse_or_clarify_when_no_evidence"
               },
               "promptops": {

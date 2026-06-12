@@ -8,7 +8,7 @@
 - Agent: `company_profile`
 - Domain: `company.profile`
 - Provider: `http://127.0.0.1:8020`
-- Generated At: `2026-06-07T04:00:33.219666+00:00`
+- Generated At: `2026-06-12T07:31:26.272319+00:00`
 
 ## Result
 
@@ -17,12 +17,12 @@
 | `http_status_code` | `200` |
 | `ok` | `True` |
 | `api_status` | `go` |
-| `document_count` | `3` |
-| `citations` | `["company_profile_2025_trial#chunk-1", "company_profile_2025_trial#chunk-4", "company_profile_2025_trial#chunk-5"]` |
+| `document_count` | `2` |
+| `citations` | `["company_profile_2025_trial#chunk-127", "company_profile_2025_trial#chunk-203"]` |
 
 ## Answer Preview
 
-基于 company_profile_2025_trial#chunk-1, company_profile_2025_trial#chunk-4, company_profile_2025_trial#chunk-5，已为 `company.profile` 生成受控回答预览：公司主营业务是什么？
+基于 company_profile_2025_trial#chunk-127, company_profile_2025_trial#chunk-203，已为 `company.profile` 生成受控回答预览：公司主营业务是什么？
 
 ## Boundary
 
