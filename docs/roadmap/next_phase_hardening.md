@@ -63,6 +63,7 @@ Provider-first 能力路线已补充到 `docs/roadmap/provider_capability_gap_as
 - Knowledge Provider capability health / heartbeat 已新增只读 `governance_readiness`，可区分显式 RAG ready、source catalog degraded、GraphRAG gated 与 default chat grounding gated。
 - Domain-agent grounded-answer promotion gate 已优先消费 `provider_evidence.governance_readiness`：显式 RAG ready 可进入文档 RAG trial 判断，source catalog degraded 进入 review，provider unreachable blocked，GraphRAG gated 继续阻止 graph trial。
 - Domain-agent grounded-answer trial surface 已把 provider readiness 提升为顶层 compact `provider_readiness` 摘要，显式保留 ready/review/blocked 与 GraphRAG gated 解释，供后续 package dry-run / composition trial 使用。
+- Grounded-answer package dry-run 已继续保留 trial report 的 compact `provider_readiness`，形成未来答案组合前的受治理输入包；该输入包仍不调用 provider/model/chat，不执行 GraphRAG，也不创建 source binding。
 - 该 readiness 不改变默认 `/api/chat` 行为，不创建 source binding，不执行 GraphRAG，也不修改答案策略。
 - 后续若继续推进，应优先进入 grounding policy / eval-backed promotion，而不是继续扩 provider-side RAG 策略。
 

@@ -56,6 +56,8 @@ Domain-agent grounded-answer promotion gate 当前会优先消费 `provider_evid
 
 Domain-agent grounded-answer trial surface 当前会把 promotion gate 的 provider readiness 结果提升为顶层 compact `provider_readiness` 摘要，包含 provider 状态、RAG/source catalog/Graph/default chat grounding posture、provider/graph blockers、warnings 与 promotion boundary。该摘要只保留 caller-supplied readiness 的治理解释，不复制 raw provider payload，不调用 provider，不生成答案，也不改变默认 chat 行为。
 
+Grounded-answer package dry-run 当前会从 trial report 继续保留 compact `provider_readiness`，让后续 composition trial 或治理消费者可以读取同一份 provider readiness 摘要。package 仍只构造未来答案路径的输入包，不重新裁决 readiness，不调用 provider/model/chat，不执行 GraphRAG，也不创建 source binding、memory、audit 或 trace 状态。
+
 当前运行时作用域契约补充：
 
 - `runtime-profile` 当前已支持显式 run scope 输入（`run_id / parent_run_id / child_run_id / scheduler_run_id`）；当上游已知当前作用域时，后端应优先采信显式 scope，而不是依赖前端推导。

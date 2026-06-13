@@ -29,6 +29,7 @@ class GroundedAnswerPackageDryRun:
     fallback_policy: str | None = None
     blockers: list[dict[str, Any]] = field(default_factory=list)
     warnings: list[dict[str, Any]] = field(default_factory=list)
+    provider_readiness: dict[str, Any] = field(default_factory=dict)
     boundary: dict[str, Any] = field(default_factory=dict)
     trial_report: dict[str, Any] = field(default_factory=dict)
 
@@ -80,6 +81,7 @@ class DomainAgentGroundedAnswerPackageService:
         evidence_summary = trial.get("evidence_summary") if isinstance(trial.get("evidence_summary"), dict) else {}
         prompt_summary = evidence_summary.get("promptops") if isinstance(evidence_summary.get("promptops"), dict) else {}
         memory_summary = evidence_summary.get("memoryops") if isinstance(evidence_summary.get("memoryops"), dict) else {}
+        provider_readiness = trial.get("provider_readiness") if isinstance(trial.get("provider_readiness"), dict) else {}
         citations = [str(item).strip() for item in (trial.get("citation_allowlist") or []) if str(item).strip()]
 
         return GroundedAnswerPackageDryRun(
@@ -103,6 +105,7 @@ class DomainAgentGroundedAnswerPackageService:
             fallback_policy=grounding.get("fallback_policy"),
             blockers=list(trial.get("blockers") or []),
             warnings=list(trial.get("warnings") or []),
+            provider_readiness=dict(provider_readiness),
             boundary={
                 "provider_invocation": "not_performed",
                 "model_invocation": "not_performed",
