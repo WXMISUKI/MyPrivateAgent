@@ -8,6 +8,12 @@
 
 `MyPrivateAgent real caller trial -> caller outcome artifact -> provider_feedback_input -> unifiedKnowledgeRAG Phase 25 feedback`
 
+当前 MyPrivateAgent 侧最小执行入口已收口到：
+
+`docs/integration/knowledge-provider-caller-loop/knowledge-provider-caller-loop.md`
+
+该入口负责说明 provider 启动、MyPrivateAgent 环境变量、显式 caller smoke、provider feedback payload 和边界解释。本文保留 Phase 26 的阶段语义与失败分流规则。
+
 ## 2. 当前收口对象
 
 - 真实 caller trial 是否可稳定跑通
@@ -36,6 +42,12 @@
 python backend/scripts/company_profile_explicit_api_local_smoke.py `
   --provider-base-url http://127.0.0.1:8020
 ```
+
+如果需要从零执行本地 caller 闭环，先按 `docs/integration/knowledge-provider-caller-loop/knowledge-provider-caller-loop.md` 配置并确认：
+
+- `unifiedKnowledgeRAG` 已启动并通过 health / preflight / source-bindings 检查。
+- MyPrivateAgent 当前进程设置了 `ENABLE_KNOWLEDGE_CAPABILITY_PROVIDER=true`。
+- MyPrivateAgent 当前进程设置了 `KNOWLEDGE_CAPABILITY_PROVIDER_BASE_URL=http://127.0.0.1:8020`。
 
 原因：
 

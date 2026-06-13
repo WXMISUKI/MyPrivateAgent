@@ -1,6 +1,6 @@
 {
   "contract_version": "company-profile-explicit-api-local-smoke-v1",
-  "generated_at": "2026-06-12T07:31:26.272319+00:00",
+  "generated_at": "2026-06-13T13:26:46.916271+00:00",
   "decision": "go",
   "reason_code": "company_profile_explicit_api_ready",
   "recommended_next_action": "use_explicit_api_for_local_business_trials",
@@ -80,7 +80,7 @@
     },
     "trial": {
       "contract_version": "domain-agent-live-grounded-answer-trial-v1",
-      "generated_at": "2026-06-12T07:31:26.268761+00:00",
+      "generated_at": "2026-06-13T13:26:46.913516+00:00",
       "agent_id": "company_profile",
       "query": "公司主营业务是什么？",
       "domain": "company.profile",

@@ -6,7 +6,7 @@
 - Provider Base URL: `http://127.0.0.1:8020`
 - Agent ID: `company_profile`
 - API Key Configured: `False`
-- Generated At: `2026-06-12T07:31:24.265028+00:00`
+- Generated At: `2026-06-13T13:26:45.194465+00:00`
 
 ## Summary
 

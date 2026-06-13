@@ -1,6 +1,6 @@
 {
   "id": "unified-knowledge-provider-repo-side-trial-v1",
-  "generated_at": "2026-06-12T07:31:24.265028+00:00",
+  "generated_at": "2026-06-13T13:26:45.194465+00:00",
   "status": "trial_passed",
   "decision": "proceed_with_myprivateagent_integration_hardening",
   "provider_base_url": "http://127.0.0.1:8020",

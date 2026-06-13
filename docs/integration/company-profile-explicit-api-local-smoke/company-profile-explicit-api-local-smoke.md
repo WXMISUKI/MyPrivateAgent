@@ -8,7 +8,7 @@
 - Agent: `company_profile`
 - Domain: `company.profile`
 - Provider: `http://127.0.0.1:8020`
-- Generated At: `2026-06-12T07:31:26.272319+00:00`
+- Generated At: `2026-06-13T13:26:46.916271+00:00`
 
 ## Result
 

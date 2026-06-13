@@ -6,12 +6,24 @@
 
 ## 2. 推荐执行顺序
 
+### Step 0：读取 MyPrivateAgent caller-loop 入口
+
+执行前先读取：
+
+```text
+docs/integration/knowledge-provider-caller-loop/knowledge-provider-caller-loop.md
+```
+
+该入口固定本地 provider 启动、MyPrivateAgent 环境变量、显式 caller smoke、provider feedback payload 和非目标边界。
+
 ### Step 1：确认 provider 本地可访问
 
 确认：
 
 - `unifiedKnowledgeRAG` 已启动
 - `http://127.0.0.1:8020/health` 可用
+- 当前 MyPrivateAgent 进程已设置 `ENABLE_KNOWLEDGE_CAPABILITY_PROVIDER=true`
+- 当前 MyPrivateAgent 进程已设置 `KNOWLEDGE_CAPABILITY_PROVIDER_BASE_URL=http://127.0.0.1:8020`
 
 ### Step 2：运行最小 caller 显式 smoke
 

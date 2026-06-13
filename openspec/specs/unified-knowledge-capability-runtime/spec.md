@@ -249,6 +249,16 @@ The unified knowledge capability runtime SHALL prioritize real caller-side trial
 - **THEN** the next default step is to run and document a real caller-side live trial closure
 - **AND** the team does not treat retrieval strategy ideas as immediate implementation work
 
+#### Scenario: Provider local use loop is already closed
+- **WHEN** the external provider reports local usable evidence and MyPrivateAgent has Phase 26 caller closure docs
+- **THEN** MyPrivateAgent refreshes caller-owned smoke and provider feedback artifacts instead of reopening provider-readiness phases
+- **AND** the closure keeps default `/api/chat` retrieval injection, source binding automation, GraphRAG execution, and provider runtime promotion disabled
+
+#### Scenario: Caller closure documents local enablement
+- **WHEN** the Phase 26 caller closure is completed
+- **THEN** MyPrivateAgent documents the local provider enablement settings and explicit caller verification commands
+- **AND** successful explicit verification does not imply default chat grounding or final answer policy promotion
+
 ### Requirement: Repo-side trial outcome can feed provider-side feedback closure
 MyPrivateAgent SHALL export a repo-side unified knowledge provider trial outcome that can be reused as input to provider-side feedback closure without manual field reconstruction.
 
@@ -261,3 +271,4 @@ MyPrivateAgent SHALL export a repo-side unified knowledge provider trial outcome
 - **WHEN** the repo-side trial outcome lacks enough evidence to prove a caller-side success state for provider follow-up
 - **THEN** the feedback-compatible payload stays conservative
 - **AND** it does not imply `no_provider_action_required` unless the required retrieve evidence, including citation allowlist, is present
+
