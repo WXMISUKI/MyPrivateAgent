@@ -212,6 +212,14 @@ KNOWLEDGE_CAPABILITY_PROVIDER_TIMEOUT_SECONDS=5
 
 启用后，`knowledge.rag.retrieve` 和 `knowledge.graph.query` 会以 `transport=http` 注册。MyPrivateAgent 通过 provider 的 `/health` 读取健康状态，通过 `/api/rag/retrieve` 和 `/api/graph/query` 执行调用。具体外部项目开发规范见 [external_rag_provider_development.md](./external_rag_provider_development.md)。
 
+能力 health / heartbeat 会在 `provider_health.governance_readiness` 下暴露只读治理 readiness：
+
+- `rag_retrieve.status=ready` 只表示可用于显式 RAG 调用。
+- `graph_query.status=gated` 表示 GraphRAG 执行仍需单独 promotion gate。
+- `default_chat_grounding.status=gated` 表示默认 `/api/chat` 检索注入仍关闭。
+- `source_catalog` 只用于展示 source catalog 数量和 degraded source，不创建 source-to-agent binding。
+- readiness payload 不包含 API key、检索正文、完整 provider raw payload 或生成答案。
+
 ## 对接 PaddleOCR OCR/Layout
 
 `.env` 中启用基础 OCR 与 layout 解析服务：

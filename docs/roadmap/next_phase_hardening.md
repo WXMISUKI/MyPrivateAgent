@@ -58,6 +58,12 @@ Provider-first 能力路线已补充到 `docs/roadmap/provider_capability_gap_as
 - `repeated_cross_source_failure_class_trigger`
 - `runtime_strategy_evaluation_trigger`
 
+当前 MyPrivateAgent 侧补充收口：
+
+- Knowledge Provider capability health / heartbeat 已新增只读 `governance_readiness`，可区分显式 RAG ready、source catalog degraded、GraphRAG gated 与 default chat grounding gated。
+- 该 readiness 不改变默认 `/api/chat` 行为，不创建 source binding，不执行 GraphRAG，也不修改答案策略。
+- 后续若继续推进，应优先进入 grounding policy / eval-backed promotion，而不是继续扩 provider-side RAG 策略。
+
 ## 1.1 Phase G：外部参考对齐后的新增方向
 
 已完成第一刀：

@@ -125,13 +125,21 @@ def _metadata(
 
 def _provider_health(client: HttpCapabilityClient):
     def check() -> dict[str, Any]:
+        provider_configured = bool(str(getattr(client, "base_url", "") or "").strip())
         try:
             health = client.get_json("/health")
         except CapabilityProviderError as exc:
+            error_payload = exc.to_payload()
             return {
                 "status": "unreachable",
                 "reason": exc.message,
-                "error": exc.to_payload(),
+                "error": error_payload,
+                "governance_readiness": _build_governance_readiness(
+                    provider_status="unreachable",
+                    provider_configured=provider_configured,
+                    reason=exc.message,
+                    error=error_payload,
+                ),
             }
         status = str(health.get("status") or "unknown")
         if status == "ok":
@@ -176,9 +184,88 @@ def _provider_health(client: HttpCapabilityClient):
             "raw": health,
             "catalog": source_catalog,
             "catalog_summary": catalog_summary,
+            "governance_readiness": _build_governance_readiness(
+                provider_status=status,
+                provider_configured=provider_configured,
+                reason=reason,
+                catalog_summary=catalog_summary,
+            ),
         }
 
     return check
+
+
+def _build_governance_readiness(
+    *,
+    provider_status: str,
+    provider_configured: bool,
+    reason: str = "",
+    catalog_summary: dict[str, Any] | None = None,
+    error: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    normalized_status = str(provider_status or "unknown").strip() or "unknown"
+    catalog = dict(catalog_summary or {})
+    catalog_status = str(catalog.get("status") or "unknown").strip() or "unknown"
+    source_count = int(catalog.get("source_count") or 0)
+    degraded_sources = [
+        str(source_id or "").strip()
+        for source_id in (catalog.get("degraded_sources") or [])
+        if str(source_id or "").strip()
+    ]
+    if normalized_status == "unreachable":
+        overall_status = "unreachable"
+        rag_status = "unreachable"
+    elif normalized_status == "ready" and catalog_status in {"ready", "ok"} and source_count > 0 and not degraded_sources:
+        overall_status = "ready"
+        rag_status = "ready"
+    elif normalized_status == "ready" and catalog_status in {"ready", "ok"} and source_count == 0:
+        overall_status = "degraded"
+        rag_status = "degraded"
+        reason = reason or "Provider source catalog has no ready sources."
+    elif normalized_status in {"ready", "degraded"}:
+        overall_status = "degraded"
+        rag_status = "ready" if source_count > 0 and catalog_status in {"ready", "ok", "degraded"} else "degraded"
+    else:
+        overall_status = normalized_status
+        rag_status = normalized_status
+
+    readiness = {
+        "contract_version": "knowledge-provider-governance-readiness-v1",
+        "provider_id": EXTERNAL_PROVIDER_ID,
+        "provider_configured": provider_configured,
+        "overall_status": overall_status,
+        "reason": str(reason or "").strip(),
+        "rag_retrieve": {
+            "status": rag_status,
+            "capability_id": "knowledge.rag.retrieve",
+            "usable_for_explicit_calls": rag_status == "ready",
+        },
+        "source_catalog": {
+            "status": catalog_status,
+            "source_count": source_count,
+            "knowledge_base_count": int(catalog.get("knowledge_base_count") or 0),
+            "graph_count": int(catalog.get("graph_count") or 0),
+            "degraded_sources": degraded_sources,
+        },
+        "graph_query": {
+            "status": "gated",
+            "capability_id": "knowledge.graph.query",
+            "reason": "GraphRAG execution remains separately gated.",
+        },
+        "default_chat_grounding": {
+            "status": "gated",
+            "reason": "Default /api/chat retrieval injection remains disabled.",
+        },
+        "boundaries": {
+            "source_binding_automation": "disabled",
+            "graphrag_execution": "not_promoted",
+            "default_chat_retrieval_injection": "disabled",
+            "answer_policy_change": "not_changed",
+        },
+    }
+    if error:
+        readiness["error"] = dict(error)
+    return readiness
 
 
 def _invoke(client: HttpCapabilityClient, path: str, capability_id: str):

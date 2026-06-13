@@ -163,6 +163,14 @@ class CapabilityHttpProviderTests(unittest.TestCase):
         self.assertEqual(rag["transport"], "http")
         self.assertEqual(rag["status"], "ready")
         self.assertEqual(rag["metadata"]["provider_base_url"], "http://knowledge.test")
+        health = service.get_capability_health("knowledge.rag.retrieve")
+        readiness = health["provider_health"]["governance_readiness"]
+        self.assertEqual(readiness["overall_status"], "ready")
+        self.assertEqual(readiness["rag_retrieve"]["status"], "ready")
+        self.assertTrue(readiness["rag_retrieve"]["usable_for_explicit_calls"])
+        self.assertEqual(readiness["graph_query"]["status"], "gated")
+        self.assertEqual(readiness["default_chat_grounding"]["status"], "gated")
+        self.assertEqual(readiness["source_catalog"]["source_count"], 1)
 
     def test_http_knowledge_capabilities_surface_catalog_readiness(self):
         def handler(request):
@@ -204,6 +212,12 @@ class CapabilityHttpProviderTests(unittest.TestCase):
         self.assertEqual(capability_health["provider_health"]["catalog_summary"]["source_count"], 3)
         self.assertIn("kb-claims", capability_health["provider_health"]["catalog_summary"]["degraded_sources"])
         self.assertEqual(capability_health["provider_health"]["catalog"]["knowledge_bases"][0]["id"], "kb-refunds")
+        readiness = capability_health["provider_health"]["governance_readiness"]
+        self.assertEqual(readiness["overall_status"], "degraded")
+        self.assertEqual(readiness["rag_retrieve"]["status"], "ready")
+        self.assertEqual(readiness["source_catalog"]["status"], "degraded")
+        self.assertIn("kb-claims", readiness["source_catalog"]["degraded_sources"])
+        self.assertEqual(readiness["boundaries"]["source_binding_automation"], "disabled")
 
     def test_http_knowledge_rag_invocation_preserves_citations(self):
         def handler(request):
@@ -350,6 +364,11 @@ class CapabilityHttpProviderTests(unittest.TestCase):
 
         self.assertEqual(heartbeat["providers"][0]["status"], "unreachable")
         self.assertEqual(heartbeat["providers"][0]["error"]["code"], "CAPABILITY_PROVIDER_UNREACHABLE")
+        readiness = heartbeat["providers"][0]["capabilities"][0]["provider_health"]["governance_readiness"]
+        self.assertEqual(readiness["overall_status"], "unreachable")
+        self.assertEqual(readiness["rag_retrieve"]["status"], "unreachable")
+        self.assertEqual(readiness["error"]["code"], "CAPABILITY_PROVIDER_UNREACHABLE")
+        self.assertEqual(readiness["default_chat_grounding"]["status"], "gated")
 
     def test_heartbeat_opens_circuit_after_repeated_failures(self):
         call_count = {"health": 0}

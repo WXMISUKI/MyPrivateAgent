@@ -50,6 +50,8 @@ Runtime Surface 的当前聚合入口是：
 
 `rag_source_registry` 与 `knowledge_graph_registry` 同样由 `DomainAgentRegistryService` 从 `capabilities.rag_sources` 和 `capabilities.graph_sources` 派生。它们只表达“哪个垂域 agent 允许看哪些知识源/图谱”，不创建索引、不上传文档、不编辑 ontology，也不自动把检索结果注入主 chat。外部知识执行由 capability runtime 的 `knowledge.rag.retrieve` 和 `knowledge.graph.query` 代理到 `unifiedKnowledgeProvider`。
 
+`unifiedKnowledgeProvider` 的 capability health / heartbeat 当前会暴露 compact `governance_readiness`，用于说明 provider 是否配置、显式 RAG 是否可用、source catalog 是否 degraded，以及 `graph_query` / default chat grounding 为什么仍保持 `gated`。该 readiness 只读、fail-open，不执行 GraphRAG、不创建 source binding、不启用 `/api/chat` 检索注入，也不改变答案策略。
+
 当前运行时作用域契约补充：
 
 - `runtime-profile` 当前已支持显式 run scope 输入（`run_id / parent_run_id / child_run_id / scheduler_run_id`）；当上游已知当前作用域时，后端应优先采信显式 scope，而不是依赖前端推导。
