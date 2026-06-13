@@ -48,6 +48,7 @@
 - **THEN** 系统 SHALL 返回 `main_chat_query_detail` 对应的 query 级 read model
 - **AND** 返回字段至少包含：
   - `query_id`
+  - `associated_run_ids`
   - `recording_state`
   - `stage_chain`
   - `recent_events`
@@ -65,6 +66,12 @@
 - **WHEN** `query_id` 缺失或未命中
 - **THEN** 系统 SHALL 返回可解释的空态 contract
 - **AND** 不得返回前端无法区分的模糊空对象
+
+#### Scenario: Associated run ids do not replace query identity
+
+- **WHEN** `main_chat_query_detail` includes `associated_run_ids`
+- **THEN** those values SHALL describe execution instances associated with the query lifecycle
+- **AND** they SHALL NOT replace `query_id` as the detail contract identity
 
 ### Requirement: Dedicated Query Detail Endpoint
 
@@ -92,6 +99,12 @@
 - **THEN** 它们 SHALL 共享同一份 contract normalization 逻辑
 - **AND** 不得各自维护一套字段解释规则
 - **AND** 所使用的 `query / run / child run / approval / trace / audit` 术语 SHALL 与 Runtime Core 术语收口保持一致
+
+#### Scenario: Shared metadata interpretation remains canonical
+
+- **WHEN** Runtime Surface and Governance Timeline display `read_model_layer`, `source_channel`, `identity_kind`, `recording_state`, or `associated_run_ids`
+- **THEN** they SHALL consume the shared governance interpretation/read-model helper
+- **AND** component-local fallbacks SHALL preserve the same query/run terminology
 
 ### Requirement: Progressive History Expansion
 

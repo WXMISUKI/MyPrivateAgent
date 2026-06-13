@@ -1175,7 +1175,7 @@ II-1 第一刀当前未做：
 - Governance Timeline 当前以前端 domain 识别方式支持 `main_chat` 过滤；若后续新增其他 query control channel，应明确决定是否也提升为一等治理 domain。
 - `main_chat_trace_overview` 当前已暴露 `stage_counts / last_success_stage / last_warning_stage`；若后续引入 error/failure 专用 stage，应同步修正这些字段的判定语义。
 - `main_chat_trace_overview.recent_queries` 当前提供最近 N 次 `query_id` 摘要列表；若后续扩展为分页/完整历史，应保持现有列表字段的后向兼容。
-- `main_chat_query_detail` 当前已在 contract 内显式携带 `read_model_layer / source_channel / identity_kind`，用于让 Runtime Surface 与 Governance Timeline 共享同一份自描述 read model 解释语义。
+- `main_chat_query_detail` 当前已在 contract 内显式携带 `read_model_layer / source_channel / identity_kind`，用于让 Runtime Surface 与 Governance Timeline 共享同一份自描述 read model 解释语义；`associated_run_ids` 只表示该 query 生命周期关联到的执行实例集合，不替代 `query_id` 作为 detail 主身份。
 - Runtime Surface、Governance Timeline、Query Detail 与 Query History 面板当前已轻量展示 query read model metadata；后续前端扩展这些视图时，应继续消费 shared interpretation 结果，不要直接从原始 payload 重新拼 metadata。
 - `main_chat_query_history` 当前已作为 dedicated history read model 暴露于 `/api/runtime-profile/main-chat-query-history`；其职责是提供分页/长历史摘要，不替代 `recent_queries` 或单 query `main_chat_query_detail`。
 - `RuntimeSurfaceService.get_runtime_profile()` 当前已拆出独立 profile assembler；顶层 profile shell 位于 `backend/services/runtime_surface_profile_assembler.py::RuntimeSurfaceProfileAssembler`，profile request context / runtime scope / recovery target 推导位于 `backend/services/runtime_surface_profile_context.py::RuntimeSurfaceProfileContextAssembler`，`runtime_core` shell 与 scoped overlay 位于 `backend/services/runtime_core_contract_builder.py::RuntimeCoreContractBuilder`，`governance_overview.run` run-state assembly 位于 `backend/services/governance_overview_run_state_builder.py::GovernanceOverviewRunStateBuilder`，模型/提供方聚合已进一步下沉到 `ProviderCatalogBuilder`。后续新增 profile 组装能力时，应优先延续 concern-specific builder 边界，而不是继续把逻辑堆回 service 主方法或 assembler 主流程。
@@ -1187,7 +1187,7 @@ II-1 第一刀当前未做：
 - `main_chat_query_detail` 当前已作为后端正式 contract 暴露；若后续 query 级详情继续扩展，应优先扩这个 contract，而不是重新把复杂度推回前端。
 - `main_chat_query_detail` 当前已同时支持内嵌在 `/api/runtime-profile` 中返回，以及通过 dedicated endpoint `/api/runtime-profile/main-chat-query-detail` 单独读取；后续若继续解耦 query 级 read model，应优先沿 dedicated endpoint 扩展。
 - `main_chat_query_history` 当前采用 page/page_size + next_cursor 的兼容形态；后续若改为更强 cursor 模式，应保持现有 item 字段集合的兼容映射。
-- 前端若需要解释 `main_chat_query_detail` 或 `main_chat_query_history`，应尽量共享同一份 contract helper；当前 `frontend-vue/src/services/governanceViewInterpretation.js` 已作为 `RuntimeSurfacePanel` 与 `GovernanceTimelinePanel` 的共同解释入口，避免两边各自维护字段归一化逻辑。
+- 前端若需要解释 `main_chat_query_detail` 或 `main_chat_query_history`，应尽量共享同一份 contract helper；当前 `frontend-vue/src/services/governanceViewInterpretation.js` 已作为 `RuntimeSurfacePanel` 与 `GovernanceTimelinePanel` 的共同解释入口，避免两边各自维护字段归一化逻辑。涉及 `associated_run_ids` 这类 query/run 边界字段时，也必须通过该共享解释入口保持“query 是生命周期、run 是执行实例”的语义。
 - 若后续扩展 `subagent_lane recent summary` 或其他 channel 的 query 只读模型，也应优先复用 shared interpretation facade，而不是为每个 channel 再发明一套独立前端解释逻辑。
 - `main_chat_query_history` 当前是 `main_chat` 专用 read model；非 `main_chat` channel 若要扩展历史能力，应另行立项，不得默认复用当前治理面板语义。
 - `subagent_lane_recent_summary` 当前已作为轻量试点 contract 暴露于 `/api/runtime-profile/subagent-lane-recent-summary`；其职责仅限 `recent summary` 候选验证，不得越级承担 detail/history/workspace 语义。

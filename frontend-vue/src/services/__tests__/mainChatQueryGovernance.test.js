@@ -100,6 +100,7 @@ describe('mainChatQueryGovernance', () => {
       sourceChannel: '',
       identityKind: '',
       queryId: '',
+      associatedRunIds: [],
       recordingState: 'unavailable',
       stageChain: [],
       dedupeKeys: [],
@@ -139,6 +140,7 @@ describe('mainChatQueryGovernance', () => {
       source_channel: 'main_chat',
       identity_kind: 'query_id',
       query_id: 'manual-chat-1',
+      associated_run_ids: ['run-1', 'run-2'],
       recording_state: 'recorded',
       latest_stage: 'planning',
       latest_summary: 'Main chat planning',
@@ -156,6 +158,8 @@ describe('mainChatQueryGovernance', () => {
     expect(detail.readModelLayer).toBe('query_detail')
     expect(detail.sourceChannel).toBe('main_chat')
     expect(detail.identityKind).toBe('query_id')
+    expect(detail.queryId).toBe('manual-chat-1')
+    expect(detail.associatedRunIds).toEqual(['run-1', 'run-2'])
 
     const history = buildMainChatQueryHistoryContract({
       read_model_layer: 'query_history',

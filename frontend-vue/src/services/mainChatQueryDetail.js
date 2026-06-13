@@ -14,6 +14,9 @@ export function normalizeMainChatQueryDetailContract(value) {
     sourceChannel: normalizeText(value.source_channel),
     identityKind: normalizeText(value.identity_kind),
     queryId: normalizeText(value.query_id),
+    associatedRunIds: Array.isArray(value.associated_run_ids)
+      ? value.associated_run_ids.map(item => normalizeText(item)).filter(Boolean)
+      : [],
     latestStage: normalizeText(value.latest_stage),
     latestSummary: normalizeText(value.latest_summary),
     latestSnapshotId: normalizeText(value.latest_snapshot_id),

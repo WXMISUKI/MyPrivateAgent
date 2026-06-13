@@ -639,6 +639,7 @@ class MainChatQueryReadModelBuilder:
             "source_channel": "main_chat",
             "identity_kind": "query_id",
             "query_id": str(query_id or "").strip(),
+            "associated_run_ids": [],
             "recording_state": "unavailable",
             "stage_chain": [],
             "dedupe_keys": [],
@@ -755,6 +756,7 @@ class MainChatQueryReadModelBuilder:
 
         ordered_events = sorted(query_events, key=lambda entry: str(entry.get("timestamp") or ""))
         stage_chain: list[str] = []
+        associated_run_ids: list[str] = []
         dedupe_keys: list[str] = []
         recent_events: list[dict[str, Any]] = []
         latest_snapshot_id = ""
@@ -764,6 +766,9 @@ class MainChatQueryReadModelBuilder:
         warning_count = 0
         for entry in ordered_events:
             payload = dict(entry.get("payload") or {})
+            run_id = str(payload.get("run_id") or "").strip()
+            if run_id and run_id not in associated_run_ids:
+                associated_run_ids.append(run_id)
             stage = str(payload.get("stage") or "").strip()
             if stage and (not stage_chain or stage_chain[-1] != stage):
                 stage_chain.append(stage)
@@ -789,6 +794,7 @@ class MainChatQueryReadModelBuilder:
             })
 
         detail["recording_state"] = "recorded"
+        detail["associated_run_ids"] = associated_run_ids
         detail["stage_chain"] = stage_chain
         detail["dedupe_keys"] = dedupe_keys
         detail["dedupe_key_count"] = len(dedupe_keys)

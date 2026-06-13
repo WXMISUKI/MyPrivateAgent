@@ -1265,6 +1265,7 @@ class RuntimeSurfaceServiceTests(unittest.TestCase):
                     "channel": "main_chat",
                     "stage": "planning",
                     "query_id": "manual-chat-1",
+                    "run_id": "run-main-chat-1",
                     "snapshot_ref": {"snapshot_id": "QUER-PLAN-321-20260516100000"},
                     "dedupe_key": "query_control:main_chat:planning:321:manual-chat-1",
                 },
@@ -1342,6 +1343,7 @@ class RuntimeSurfaceServiceTests(unittest.TestCase):
         self.assertEqual(detail_profile["main_chat_query_detail"]["source_channel"], "main_chat")
         self.assertEqual(detail_profile["main_chat_query_detail"]["identity_kind"], "query_id")
         self.assertEqual(detail_profile["main_chat_query_detail"]["query_id"], "manual-chat-1")
+        self.assertEqual(detail_profile["main_chat_query_detail"]["associated_run_ids"], ["run-main-chat-1"])
         self.assertEqual(detail_profile["main_chat_query_detail"]["stage_chain"], ["planning"])
         self.assertEqual(detail_profile["main_chat_query_detail"]["latest_summary"], "Main chat planning")
         self.assertEqual(detail_profile["main_chat_query_detail"]["stage_count"], 1)
@@ -1359,6 +1361,7 @@ class RuntimeSurfaceServiceTests(unittest.TestCase):
             query_id="manual-chat-1",
         )
         self.assertEqual(dedicated_detail["query_id"], "manual-chat-1")
+        self.assertEqual(dedicated_detail["associated_run_ids"], ["run-main-chat-1"])
         self.assertEqual(dedicated_detail["latest_summary"], "Main chat planning")
         self.assertEqual(dedicated_detail["stage_count"], 1)
         self.assertEqual(dedicated_detail["recent_event_count"], 1)

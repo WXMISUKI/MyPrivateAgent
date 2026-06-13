@@ -16,6 +16,7 @@ const EMPTY_MAIN_CHAT_QUERY_DETAIL = {
   sourceChannel: '',
   identityKind: '',
   queryId: '',
+  associatedRunIds: [],
   recordingState: 'unavailable',
   stageChain: [],
   dedupeKeys: [],

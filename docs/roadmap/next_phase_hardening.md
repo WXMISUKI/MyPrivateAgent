@@ -228,6 +228,7 @@ Provider-first 能力路线已补充到 `docs/roadmap/provider_capability_gap_as
   - Governance 侧 `main_chat history` 页码已进入视图复制/恢复链路，可恢复“已加载到第几页”的历史浏览状态
   - `MainChatQueryHistoryPanel` 已补齐历史指标、当前聚焦提示与就地清理动作，开始具备更独立的治理历史面板体验
   - `GovernanceTimelinePanel` 已把 query history 与 query detail 收进同一 `Main Chat Query Workspace`，开始形成更完整的治理历史工作区
+  - `main_chat_query_detail` 已新增 `associated_run_ids` 关联执行实例集合，明确 `query_id` 仍是 query detail 主身份，`run_id` 只作为关联执行实例语义进入 read model
 - 未开始：
   - 更完整的 query history 独立治理交互壳
 
@@ -241,7 +242,7 @@ Provider-first 能力路线已补充到 `docs/roadmap/provider_capability_gap_as
 - 评估是否要为独立历史面板补更明确的分页状态区、双栏布局或更强的 query/detail 联动。
 - 评估是否要继续把 workspace 做成更明显的双栏治理台交互，而不只是当前最小分区收口。
 - 当前结论：`main_chat` query history 已经完成独立 read model、前端浏览壳和 workspace 收口，后续不再优先扩展到非 `main_chat` channel。若未来要扩展，应先复用当前 `query_history / query_detail / recent_queries` 三层边界，再单独立项评估。
-- 当前优先级：把治理时间线继续瘦身、把 query/read model 的边界写死，而不是继续给 history 追加新 channel。
+- 当前优先级：把 query/read model 的边界写死，并维护共享解释 helper；不要继续给 history 追加新 channel，也不要把 `associated_run_ids` 误读成 run 级 detail promotion。
 
 是否继续优化：
 
