@@ -55,6 +55,22 @@ The promotion gate SHALL block repo-side grounded-answer trial when provider rea
 - **THEN** the promotion decision is `blocked`
 - **AND** the blockers identify provider readiness as the missing prerequisite
 
+#### Scenario: Governance readiness allows document RAG trial promotion
+- **WHEN** provider evidence includes `governance_readiness.rag_retrieve.status = ready`
+- **AND** grounding, PromptOps, MemoryOps, and eval evidence satisfy the existing promotion requirements
+- **THEN** the promotion gate SHALL treat provider readiness as ready for document RAG trial promotion
+- **AND** the promotion gate SHALL preserve `default_chat_grounding.status = gated` as a behavior boundary rather than a blocker for repo-side trial
+
+#### Scenario: Governance readiness blocks unreachable provider
+- **WHEN** provider evidence includes `governance_readiness.overall_status = unreachable`
+- **THEN** the promotion decision SHALL be `blocked`
+- **AND** the blockers SHALL identify provider readiness as unreachable
+
+#### Scenario: Governance readiness reviews degraded source catalog
+- **WHEN** provider evidence includes `governance_readiness.source_catalog.status = degraded`
+- **THEN** the promotion decision SHALL be `review` or `blocked`
+- **AND** the output SHALL preserve a machine-readable provider catalog reason
+
 #### Scenario: Grounding decision is blocked
 - **WHEN** grounding policy decision is `blocked`
 - **THEN** the promotion decision is `blocked`
@@ -92,3 +108,10 @@ The promotion gate SHALL NOT treat document RAG readiness as GraphRAG execution 
 - **WHEN** a promotion decision requests graph usage
 - **THEN** the promotion decision is `blocked`
 - **AND** the output identifies GraphRAG execution as not promoted
+
+#### Scenario: Graph request is blocked despite RAG readiness
+- **WHEN** a promotion decision requests graph usage
+- **AND** provider evidence includes `governance_readiness.rag_retrieve.status = ready`
+- **AND** `governance_readiness.graph_query.status = gated`
+- **THEN** the promotion decision SHALL be `blocked`
+- **AND** the blockers SHALL identify GraphRAG execution as not promoted

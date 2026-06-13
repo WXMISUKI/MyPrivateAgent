@@ -34,6 +34,94 @@ class DomainAgentGroundedAnswerPromotionServiceTests(unittest.TestCase):
         self.assertEqual(decision["boundary"]["default_chat_retrieval_injection"], "disabled")
         self.assertFalse(decision["boundary"]["runtime_behavior_changed"])
 
+    def test_go_when_provider_governance_readiness_reports_rag_ready(self):
+        service = DomainAgentGroundedAnswerPromotionService(self._registry_service())
+
+        decision = service.evaluate(
+            agent_id="ecommerce_support",
+            domain="refund.policy",
+            provider_evidence=self._provider_governance_readiness(),
+            evidence_pack={
+                "status": "answerable",
+                "allowed_citations": ["refund_policy_2026#section-3"],
+            },
+            promptops_evidence={"prompt_key": "refund_policy", "version": "2", "status": "active"},
+            memoryops_evidence={"retrieved_knowledge_promotion_mode": "explicit_only"},
+            eval_evidence={"overall_status": "passed"},
+        ).to_dict()
+
+        self.assertEqual(decision["decision"], "go")
+        self.assertEqual(decision["evidence_summary"]["provider"]["reason_code"], "provider_rag_ready")
+        self.assertEqual(decision["evidence_summary"]["provider"]["readiness_source"], "governance_readiness")
+        self.assertEqual(decision["evidence_summary"]["provider"]["default_chat_grounding_status"], "gated")
+
+    def test_blocks_when_provider_governance_readiness_is_unreachable(self):
+        service = DomainAgentGroundedAnswerPromotionService(self._registry_service())
+
+        decision = service.evaluate(
+            agent_id="ecommerce_support",
+            domain="refund.policy",
+            provider_evidence=self._provider_governance_readiness(overall_status="unreachable", rag_status="unreachable"),
+            evidence_pack={
+                "status": "answerable",
+                "allowed_citations": ["refund_policy_2026#section-3"],
+            },
+            promptops_evidence={"prompt_key": "refund_policy", "version": "2", "status": "active"},
+            memoryops_evidence={"retrieved_knowledge_promotion_mode": "explicit_only"},
+            eval_evidence={"overall_status": "passed"},
+        ).to_dict()
+
+        self.assertEqual(decision["decision"], "blocked")
+        self.assertIn(
+            {"component": "provider", "status": "unreachable", "reason_code": "provider_unreachable"},
+            decision["blockers"],
+        )
+
+    def test_reviews_when_provider_governance_readiness_has_degraded_catalog(self):
+        service = DomainAgentGroundedAnswerPromotionService(self._registry_service())
+
+        decision = service.evaluate(
+            agent_id="ecommerce_support",
+            domain="refund.policy",
+            provider_evidence=self._provider_governance_readiness(overall_status="degraded", source_catalog_status="degraded"),
+            evidence_pack={
+                "status": "answerable",
+                "allowed_citations": ["refund_policy_2026#section-3"],
+            },
+            promptops_evidence={"prompt_key": "refund_policy", "version": "2", "status": "active"},
+            memoryops_evidence={"retrieved_knowledge_promotion_mode": "explicit_only"},
+            eval_evidence={"overall_status": "passed"},
+        ).to_dict()
+
+        self.assertEqual(decision["decision"], "review")
+        self.assertIn(
+            {"component": "provider", "status": "review", "reason_code": "provider_source_catalog_degraded"},
+            decision["warnings"],
+        )
+
+    def test_blocks_graph_request_when_provider_graph_query_is_gated(self):
+        service = DomainAgentGroundedAnswerPromotionService(self._registry_service())
+
+        decision = service.evaluate(
+            agent_id="ecommerce_support",
+            domain="refund.policy",
+            graph_requested=True,
+            provider_evidence=self._provider_governance_readiness(),
+            evidence_pack={
+                "status": "answerable",
+                "allowed_citations": ["refund_policy_2026#section-3"],
+            },
+            promptops_evidence={"prompt_key": "refund_policy", "version": "2", "status": "active"},
+            memoryops_evidence={"retrieved_knowledge_promotion_mode": "explicit_only"},
+            eval_evidence={"overall_status": "passed"},
+        ).to_dict()
+
+        self.assertEqual(decision["decision"], "blocked")
+        self.assertIn(
+            {"component": "graph", "status": "blocked", "reason_code": "graphrag_not_promoted_by_provider_readiness"},
+            decision["blockers"],
+        )
+
     def test_blocks_when_provider_is_not_ready(self):
         service = DomainAgentGroundedAnswerPromotionService(self._registry_service())
 
@@ -156,6 +244,24 @@ class DomainAgentGroundedAnswerPromotionServiceTests(unittest.TestCase):
             encoding="utf-8",
         )
         return DomainAgentRegistryService(root)
+
+    def _provider_governance_readiness(
+        self,
+        *,
+        overall_status="ready",
+        rag_status="ready",
+        source_catalog_status="ready",
+        graph_status="gated",
+    ):
+        return {
+            "governance_readiness": {
+                "overall_status": overall_status,
+                "rag_retrieve": {"status": rag_status},
+                "source_catalog": {"status": source_catalog_status},
+                "graph_query": {"status": graph_status},
+                "default_chat_grounding": {"status": "gated"},
+            }
+        }
 
 
 if __name__ == "__main__":

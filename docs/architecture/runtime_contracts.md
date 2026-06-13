@@ -52,6 +52,8 @@ Runtime Surface 的当前聚合入口是：
 
 `unifiedKnowledgeProvider` 的 capability health / heartbeat 当前会暴露 compact `governance_readiness`，用于说明 provider 是否配置、显式 RAG 是否可用、source catalog 是否 degraded，以及 `graph_query` / default chat grounding 为什么仍保持 `gated`。该 readiness 只读、fail-open，不执行 GraphRAG、不创建 source binding、不启用 `/api/chat` 检索注入，也不改变答案策略。
 
+Domain-agent grounded-answer promotion gate 当前会优先消费 `provider_evidence.governance_readiness`：`rag_retrieve.status = ready` 可作为文档 RAG trial 的 provider readiness，`source_catalog.status = degraded` 会进入 review，`overall_status = unreachable` 会 blocked，`graph_query.status = gated` 会继续阻止 graph grounded-answer trial。该消费仍然 side-effect-free，不调用 provider。
+
 当前运行时作用域契约补充：
 
 - `runtime-profile` 当前已支持显式 run scope 输入（`run_id / parent_run_id / child_run_id / scheduler_run_id`）；当上游已知当前作用域时，后端应优先采信显式 scope，而不是依赖前端推导。

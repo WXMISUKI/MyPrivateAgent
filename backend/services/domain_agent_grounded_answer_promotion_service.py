@@ -76,7 +76,15 @@ class DomainAgentGroundedAnswerPromotionService:
 
         provider_summary = self._provider_summary(provider_evidence)
         if not provider_summary["ready"]:
-            blockers.append(_issue("provider", provider_summary["reason_code"], status=provider_summary["status"]))
+            issue = _issue("provider", provider_summary["reason_code"], status=provider_summary["status"])
+            if provider_summary["status"] == "review":
+                warnings.append(issue)
+            else:
+                blockers.append(issue)
+        if graph_requested and provider_summary.get("graph_query_status") == "gated":
+            graph_issue = _issue("graph", "graphrag_not_promoted_by_provider_readiness", status="blocked")
+            if graph_issue not in blockers:
+                blockers.append(graph_issue)
 
         grounding_summary = self._grounding_summary(
             clean_agent_id,
@@ -182,6 +190,40 @@ class DomainAgentGroundedAnswerPromotionService:
     @staticmethod
     def _provider_summary(provider_evidence: Mapping[str, Any] | None) -> dict[str, Any]:
         evidence = dict(provider_evidence or {})
+        readiness = evidence.get("governance_readiness") if isinstance(evidence.get("governance_readiness"), Mapping) else {}
+        if readiness:
+            rag = readiness.get("rag_retrieve") if isinstance(readiness.get("rag_retrieve"), Mapping) else {}
+            graph = readiness.get("graph_query") if isinstance(readiness.get("graph_query"), Mapping) else {}
+            default_chat = readiness.get("default_chat_grounding") if isinstance(readiness.get("default_chat_grounding"), Mapping) else {}
+            source_catalog = readiness.get("source_catalog") if isinstance(readiness.get("source_catalog"), Mapping) else {}
+            overall_status = _first_clean(readiness.get("overall_status"))
+            rag_status = _first_clean(rag.get("status"))
+            source_catalog_status = _first_clean(source_catalog.get("status"))
+            graph_query_status = _first_clean(graph.get("status"))
+            default_chat_status = _first_clean(default_chat.get("status"))
+            summary = {
+                "ready": False,
+                "status": overall_status or rag_status or "unknown",
+                "reason_code": "provider_readiness_unknown",
+                "readiness_source": "governance_readiness",
+                "rag_retrieve_status": rag_status or "unknown",
+                "graph_query_status": graph_query_status or "unknown",
+                "default_chat_grounding_status": default_chat_status or "unknown",
+                "source_catalog_status": source_catalog_status or "unknown",
+            }
+            if overall_status == "unreachable" or rag_status == "unreachable":
+                summary.update({"status": "unreachable", "reason_code": "provider_unreachable"})
+                return summary
+            if rag_status == "ready":
+                if source_catalog_status == "degraded" or overall_status == "degraded":
+                    summary.update({"status": "review", "reason_code": "provider_source_catalog_degraded"})
+                    return summary
+                summary.update({"ready": True, "status": "ready", "reason_code": "provider_rag_ready"})
+                return summary
+            if rag_status in BLOCKED_STATUSES:
+                summary.update({"status": rag_status, "reason_code": "provider_rag_not_ready"})
+                return summary
+            return summary
         status = _first_clean(
             evidence.get("status"),
             evidence.get("decision"),
@@ -192,10 +234,10 @@ class DomainAgentGroundedAnswerPromotionService:
         if not evidence:
             return {"ready": False, "status": "missing", "reason_code": "provider_readiness_missing"}
         if status in READY_STATUSES:
-            return {"ready": True, "status": status, "reason_code": "provider_ready"}
+            return {"ready": True, "status": status, "reason_code": "provider_ready", "readiness_source": "legacy_status"}
         if status in BLOCKED_STATUSES:
-            return {"ready": False, "status": status, "reason_code": "provider_not_ready"}
-        return {"ready": False, "status": status or "unknown", "reason_code": "provider_readiness_unknown"}
+            return {"ready": False, "status": status, "reason_code": "provider_not_ready", "readiness_source": "legacy_status"}
+        return {"ready": False, "status": status or "unknown", "reason_code": "provider_readiness_unknown", "readiness_source": "legacy_status"}
 
     @staticmethod
     def _promptops_summary(promptops_evidence: Mapping[str, Any] | None) -> dict[str, Any]:
