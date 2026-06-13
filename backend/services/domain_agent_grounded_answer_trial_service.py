@@ -31,6 +31,7 @@ class DomainAgentGroundedAnswerTrialReport:
     blockers: list[dict[str, Any]] = field(default_factory=list)
     warnings: list[dict[str, Any]] = field(default_factory=list)
     evidence_summary: dict[str, Any] = field(default_factory=dict)
+    provider_readiness: dict[str, Any] = field(default_factory=dict)
     boundary: dict[str, Any] = field(default_factory=dict)
     request_summary: dict[str, Any] = field(default_factory=dict)
 
@@ -93,6 +94,8 @@ class DomainAgentGroundedAnswerTrialService:
             warnings.append(_issue("grounding", grounding.get("reason_code"), status="review"))
         if grounding.get("decision") == "blocked" and not any(item.get("component") == "grounding" for item in blockers):
             blockers.append(_issue("grounding", grounding.get("reason_code"), status="blocked"))
+        evidence_summary = promotion.get("evidence_summary") or {}
+        provider_readiness = _provider_readiness_summary(evidence_summary, blockers=blockers, warnings=warnings)
 
         return DomainAgentGroundedAnswerTrialReport(
             contract_version=TRIAL_SURFACE_CONTRACT_VERSION,
@@ -105,7 +108,8 @@ class DomainAgentGroundedAnswerTrialService:
             citation_allowlist=list(grounding.get("citation_allowlist") or []),
             blockers=blockers,
             warnings=warnings,
-            evidence_summary=promotion.get("evidence_summary") or {},
+            evidence_summary=evidence_summary,
+            provider_readiness=provider_readiness,
             boundary={
                 "default_chat_retrieval_injection": DEFAULT_CHAT_RETRIEVAL_INJECTION,
                 "provider_invocation": "not_performed",
@@ -199,6 +203,42 @@ def _issue(component: str, reason_code: Any, *, status: str) -> dict[str, Any]:
         "component": component,
         "status": status,
         "reason_code": _clean(reason_code) or "unknown",
+    }
+
+
+def _provider_readiness_summary(
+    evidence_summary: Mapping[str, Any],
+    *,
+    blockers: list[dict[str, Any]],
+    warnings: list[dict[str, Any]],
+) -> dict[str, Any]:
+    provider = evidence_summary.get("provider") if isinstance(evidence_summary.get("provider"), Mapping) else {}
+    if not provider:
+        return {}
+    provider_blockers = [dict(item) for item in blockers if item.get("component") == "provider"]
+    provider_warnings = [dict(item) for item in warnings if item.get("component") == "provider"]
+    graph_blockers = [
+        dict(item)
+        for item in blockers
+        if item.get("component") == "graph"
+        and _clean(provider.get("graph_query_status")) == "gated"
+    ]
+    return {
+        "status": _clean(provider.get("status")) or "unknown",
+        "ready": bool(provider.get("ready")),
+        "reason_code": _clean(provider.get("reason_code")) or "provider_readiness_unknown",
+        "readiness_source": _clean(provider.get("readiness_source")) or "unknown",
+        "rag_retrieve_status": _clean(provider.get("rag_retrieve_status")) or "unknown",
+        "source_catalog_status": _clean(provider.get("source_catalog_status")) or "unknown",
+        "graph_query_status": _clean(provider.get("graph_query_status")) or "unknown",
+        "default_chat_grounding_status": _clean(provider.get("default_chat_grounding_status")) or "unknown",
+        "blockers": provider_blockers + graph_blockers,
+        "warnings": provider_warnings,
+        "promotion_boundary": {
+            "default_chat_grounding": "not_promoted",
+            "graphrag_execution": "not_promoted",
+            "provider_invocation": "not_performed",
+        },
     }
 
 
