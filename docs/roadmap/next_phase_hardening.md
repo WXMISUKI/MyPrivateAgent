@@ -1225,6 +1225,7 @@ Provider-first 能力路线已补充到 `docs/roadmap/provider_capability_gap_as
 - reflector callable 反思与 revise iteration
 - reviewer callable 质量门禁
 - fallback handler callable 降级 seam
+- model step callable generating 阶段模型生成 seam（opt-in，compact evidence，复用 fallback/fail-closed）
 
 建议下一刀：
 
@@ -1240,7 +1241,7 @@ Provider-first 能力路线已补充到 `docs/roadmap/provider_capability_gap_as
 - `EmbeddedAgentRuntimeSDK` 的 approved tool continuation 现在会给 facade runtime-service executor 提供临时 approved marker；ToolRuntimeService 只对原本 `approval_required` 的工具接受 approved override，审批通过后的 `ask / high_risk` 工具可恢复执行，`deny` 仍 fail-closed
 - 上述 approved runtime-service tool execution 已进入 `runtime_contract_smoke.py`，quality gate artifact 可持续捕获 `approved_policy_original_status / approved_policy_override_status / deny_override_status`
 - Query Control mapper 已新增 compact `tool_runtime_observation` read model，可把 tool result 的 policy / schema / retry / timeout 状态带入治理 trace payload，同时避免复制完整工具结果正文
-- 继续评估 `ExecutionLoopController` 如何接入真实 LLM step、ToolRuntimeService、LLM reflector/reviewer、retry policy 和 model degrade policy。
+- model step callable contract 已完成，后续可接入真实 LLM provider adapter，把 provider 调用结果映射为 `ExecutionModelStepResult`；继续评估 `ExecutionLoopController` 如何接入 ToolRuntimeService、LLM reflector/reviewer、retry policy 和 model degrade policy。
 - 继续推进 `ii3-durable-runtime-checkpoint-resume`：把当前 checkpoint/cursor probe 第一刀接入 runtime contract smoke、quality gate summary、Runtime Contract Gate 和 Snapshot 守护。
 - 继续评估 `resume_run(..., continue_loop=True)` 是否需要支持更完整的持久化 continuation descriptor、跨进程恢复和失败重试；持久化姿态已由 `persistence_interface` 表达，不再新增平行 durable flag。
 - 评估 tool continuation 是否需要持久化 descriptor，避免跨进程或服务重启后丢失待恢复工具。

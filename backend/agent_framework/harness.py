@@ -12,6 +12,7 @@ from typing import Any, Callable, Dict, Iterable
 
 from .execution_loop import (
     FallbackCallable,
+    ModelStepCallable,
     ReflectionCallable,
     ReviewCallable,
     ToolExecutorCallable,
@@ -449,6 +450,7 @@ class AgentHarnessFacade:
         self,
         run_id: str,
         *,
+        model_step: ModelStepCallable | None = None,
         tool_policy: ToolPolicyCallable | None = None,
         tool_executor: ToolExecutorCallable | None = None,
         reflector: ReflectionCallable | None = None,
@@ -466,6 +468,7 @@ class AgentHarnessFacade:
             tool_executor = self._build_registered_tool_executor(decision_holder)
         return self.sdk.execute_run(
             run_id,
+            model_step=model_step,
             tool_policy=effective_tool_policy,
             tool_executor=tool_executor,
             reflector=reflector,

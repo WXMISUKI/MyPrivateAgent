@@ -102,9 +102,11 @@ def build_loop_continuation_descriptor(
     has_reflector: bool | None = None,
     has_reviewer: bool | None = None,
     has_fallback_handler: bool | None = None,
+    has_model_step: bool | None = None,
     reflector_binding_id: str | None = None,
     reviewer_binding_id: str | None = None,
     fallback_handler_binding_id: str | None = None,
+    model_step_binding_id: str | None = None,
     max_iterations: int | None = None,
     recovery: Dict[str, Any] | None = None,
 ) -> Dict[str, Any]:
@@ -126,12 +128,16 @@ def build_loop_continuation_descriptor(
         descriptor["has_reviewer"] = bool(has_reviewer)
     if has_fallback_handler is not None:
         descriptor["has_fallback_handler"] = bool(has_fallback_handler)
+    if has_model_step is not None:
+        descriptor["has_model_step"] = bool(has_model_step)
     if reflector_binding_id:
         descriptor["reflector_binding_id"] = str(reflector_binding_id).strip()
     if reviewer_binding_id:
         descriptor["reviewer_binding_id"] = str(reviewer_binding_id).strip()
     if fallback_handler_binding_id:
         descriptor["fallback_handler_binding_id"] = str(fallback_handler_binding_id).strip()
+    if model_step_binding_id:
+        descriptor["model_step_binding_id"] = str(model_step_binding_id).strip()
     if max_iterations is not None:
         descriptor["max_iterations"] = int(max_iterations)
     if isinstance(recovery, dict) and recovery:

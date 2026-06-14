@@ -58,6 +58,7 @@ from .execution_loop import (
     ExecutionLoopStep,
     ExecutionToolResult,
     FallbackCallable,
+    ModelStepCallable,
     ReflectionCallable,
     ReviewCallable,
     ToolExecutorCallable,
@@ -3159,6 +3160,7 @@ class EmbeddedAgentRuntimeSDK:
         self,
         run_id: str,
         *,
+        model_step: ModelStepCallable | None = None,
         tool_policy: ToolPolicyCallable | None = None,
         tool_executor: ToolExecutorCallable | None = None,
         reflector: ReflectionCallable | None = None,
@@ -3182,6 +3184,7 @@ class EmbeddedAgentRuntimeSDK:
             effective_tool_executor = self._build_tool_runtime_executor(decision_holder)
 
         result = ExecutionLoopController(
+            model_step=model_step,
             tool_policy=effective_tool_policy,
             tool_executor=effective_tool_executor,
             reflector=reflector,
@@ -3197,6 +3200,7 @@ class EmbeddedAgentRuntimeSDK:
             run_context,
             tool_executor=effective_tool_executor,
             loop_continuation={
+                "model_step": model_step,
                 "reflector": reflector,
                 "reviewer": reviewer,
                 "fallback_handler": fallback_handler,
@@ -3369,6 +3373,10 @@ class EmbeddedAgentRuntimeSDK:
             (loop_continuation or {}).get("fallback_handler"),
             binding_kind="fallback_handler",
         )
+        model_step_binding_id = self._ensure_continuation_binding(
+            (loop_continuation or {}).get("model_step"),
+            binding_kind="model_step",
+        )
         request_id = (
             _normalize_optional_str(decision_metadata.get("approval_request_id"))
             or _normalize_optional_str(decision_metadata.get("request_id"))
@@ -3434,9 +3442,11 @@ class EmbeddedAgentRuntimeSDK:
             has_reflector=callable((loop_continuation or {}).get("reflector")),
             has_reviewer=callable((loop_continuation or {}).get("reviewer")),
             has_fallback_handler=callable((loop_continuation or {}).get("fallback_handler")),
+            has_model_step=callable((loop_continuation or {}).get("model_step")),
             reflector_binding_id=reflector_binding_id,
             reviewer_binding_id=reviewer_binding_id,
             fallback_handler_binding_id=fallback_handler_binding_id,
+            model_step_binding_id=model_step_binding_id,
             max_iterations=int((loop_continuation or {}).get("max_iterations") or 1),
         )
         self._persist_loop_continuation_descriptor(
@@ -3779,6 +3789,7 @@ class EmbeddedAgentRuntimeSDK:
                 ExecutionLoopStep("finalizing", AgentState.FINALIZING, "Execution loop resumed finalization", "loop_finalizing"),
                 ExecutionLoopStep("done", AgentState.DONE, "Execution loop completed after resume", "loop_completed"),
             ),
+            model_step=continuation.get("model_step"),
             reflector=continuation.get("reflector"),
             reviewer=continuation.get("reviewer"),
             fallback_handler=continuation.get("fallback_handler"),
@@ -4681,10 +4692,12 @@ class EmbeddedAgentRuntimeSDK:
         has_reflector = bool(descriptor.get("has_reflector"))
         has_reviewer = bool(descriptor.get("has_reviewer"))
         has_fallback_handler = bool(descriptor.get("has_fallback_handler"))
+        has_model_step = bool(descriptor.get("has_model_step"))
         reflector_binding_id = str(descriptor.get("reflector_binding_id") or "").strip()
         reviewer_binding_id = str(descriptor.get("reviewer_binding_id") or "").strip()
         fallback_handler_binding_id = str(descriptor.get("fallback_handler_binding_id") or "").strip()
-        if not any([reflector_binding_id, reviewer_binding_id, fallback_handler_binding_id]):
+        model_step_binding_id = str(descriptor.get("model_step_binding_id") or "").strip()
+        if not any([reflector_binding_id, reviewer_binding_id, fallback_handler_binding_id, model_step_binding_id]):
             return None
 
         reflector = self._resolve_continuation_binding(reflector_binding_id) if reflector_binding_id else None
@@ -4692,6 +4705,7 @@ class EmbeddedAgentRuntimeSDK:
         fallback_handler = (
             self._resolve_continuation_binding(fallback_handler_binding_id) if fallback_handler_binding_id else None
         )
+        model_step = self._resolve_continuation_binding(model_step_binding_id) if model_step_binding_id else None
 
         if has_reflector and not callable(reflector):
             return None
@@ -4699,8 +4713,11 @@ class EmbeddedAgentRuntimeSDK:
             return None
         if has_fallback_handler and not callable(fallback_handler):
             return None
+        if has_model_step and not callable(model_step):
+            return None
 
         continuation = {
+            "model_step": model_step,
             "reflector": reflector,
             "reviewer": reviewer,
             "fallback_handler": fallback_handler,

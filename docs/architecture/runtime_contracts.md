@@ -797,7 +797,7 @@ Grounded-answer package dry-run 当前会从 trial report 继续保留 compact `
 - `child_executor_dispatch_contract`：side-effect-free dispatch boundary，用于表达当前是否具备真实 child executor dispatch 条件。它不会启动 executor；即使 opt-in sandbox dispatch contract 已 ready，`will_dispatch` 仍为 `false`，并嵌套 `child_executor_dispatch_attempt_handoff` 来说明 sandbox attempt envelope validation、unsafe payload guard、audit/idempotency handoff 证据。真实 dispatcher 必须作为后续显式 opt-in boundary 接入；dispatcher 返回的 `dispatch_result_handoff` 则描述 adapter result 的 compact audit handoff，不代表 parent merge 或 retry execution。
 - `create_artifact`：为 run 创建 artifact 引用，写入 run metadata，并在 run 事件流写入 `artifact_created`；如 SDK 注入 `ArtifactStore`，则优先通过 store 创建 artifact。
 - `list_artifacts`：按 run 回放已关联 artifact，优先用 SDK artifact index 补全详情。
-- `execute_run`：通过 `ExecutionLoopController` 驱动 run 进入最小 harness loop，并把状态事件追加到 SDK 事件流；可选接收 tool policy、tool executor、reflector、reviewer、fallback handler callable，作为 permission、act、observing 后反思、finalizing 质量门禁与降级 seam。若没有传入 `tool_executor`，SDK 会使用 ToolRuntimeService 作为默认 tool executor bridge，并在执行前复用 ToolRuntimeService policy probe，把 `ask / high_risk` 映射为 approval request、把 `deny` 映射为 `tool_policy_denied`。
+- `execute_run`：通过 `ExecutionLoopController` 驱动 run 进入最小 harness loop，并把状态事件追加到 SDK 事件流；可选接收 model step、tool policy、tool executor、reflector、reviewer、fallback handler callable，作为 generating 阶段模型生成、permission、act、observing 后反思、finalizing 质量门禁与降级 seam。model step 在 `generating` 阶段执行，输出归一化为 compact `ExecutionModelStepResult` evidence（text、summary、model_name、finish_reason、usage、metadata），写入 `metadata.execution_model_step` 与 `execution_loop_model_step_completed` event；异常复用现有 fallback / fail-closed 路由。若没有传入 `tool_executor`，SDK 会使用 ToolRuntimeService 作为默认 tool executor bridge，并在执行前复用 ToolRuntimeService policy probe，把 `ask / high_risk` 映射为 approval request、把 `deny` 映射为 `tool_policy_denied`。
 - `register_tool`：注册 `ToolSpec` 元数据；当传入 handler 时，会把 handler 包装成 ToolRuntimeService 可执行的 registry tool。返回值包含 `tool_registry_bridge`、`handler_registered` 与 compact `runtime_contract`，用于治理和 smoke 读取。
 - `runtime_dependencies / runtime_factory`：默认 embedded runtime 的依赖与构造入口。`workspace_store / continuation_registry` 已开始通过 `EmbeddedRuntimeDependencies / EmbeddedRuntimeFactory` 统一注入，避免 SDK、Facade、Runtime Surface 各自拼默认 runtime。
 
@@ -1020,6 +1020,7 @@ II-1 第一刀当前未做：
 - reviewer 返回 `status = rejected` 时，默认把 run 转为 `failed`，写入 `execution_loop_review_rejected` error event，并停止后续 done event。
 - reviewer 或后续 callable 抛错时，默认 fail-closed：run 转为 `failed`，`stop_reason = loop_exception`，写入 `execution_loop_failed` error event。
 - 可选 fallback handler 可把异常转为 `ExecutionFallbackResult(status = handled)`，写入 `metadata.execution_fallback` 与 `execution_loop_fallback_applied` event，然后继续后续 loop。
+- 可选 model step 在 `generating` 阶段执行，输出归一化为 compact `ExecutionModelStepResult`（text、summary、model_name、finish_reason、usage、metadata），写入 `metadata.execution_model_step` 与 `execution_loop_model_step_completed` event；unsafe 字段（callable、provider client、stream iterator、raw SDK object）会被 `_sanitize_model_step_payload` 过滤。model step 异常复用现有 fallback / fail-closed 路由：fallback handler 可接管并继续 loop，否则 run 转为 `failed`，`stop_reason = loop_exception`。该 seam 是 opt-in 的 callable contract，不暗示真实 LLM provider、streaming、默认 chat 路由或 provider promotion。
 
 维护约束：
 
