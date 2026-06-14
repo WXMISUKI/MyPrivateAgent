@@ -60,6 +60,28 @@ class ExecutionReflectionResult:
 
 
 @dataclass(frozen=True)
+class ExecutionModelStepResult:
+    """Normalized model-step result emitted by the loop generation stage."""
+
+    text: str = ""
+    summary: str = ""
+    model_name: str = ""
+    finish_reason: str = ""
+    usage: Dict[str, Any] = field(default_factory=dict)
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "text": str(self.text or ""),
+            "summary": str(self.summary or "").strip(),
+            "model_name": str(self.model_name or "").strip(),
+            "finish_reason": str(self.finish_reason or "").strip(),
+            "usage": _sanitize_model_step_payload(dict(self.usage or {})),
+            "metadata": _sanitize_model_step_payload(dict(self.metadata or {})),
+        }
+
+
+@dataclass(frozen=True)
 class ExecutionToolResult:
     """Normalized tool execution result emitted by the loop act stage."""
 
@@ -128,6 +150,7 @@ DEFAULT_MINIMAL_LOOP_STEPS = (
 
 ReviewCallable = Callable[[AgentRunContext], ExecutionReviewResult | Dict[str, Any] | None]
 ReflectionCallable = Callable[[AgentRunContext], ExecutionReflectionResult | Dict[str, Any] | None]
+ModelStepCallable = Callable[[AgentRunContext], ExecutionModelStepResult | Dict[str, Any] | str | None]
 ToolExecutorCallable = Callable[[AgentRunContext], ExecutionToolResult | Dict[str, Any] | None]
 ToolPolicyCallable = Callable[[AgentRunContext], ExecutionToolDecision | Dict[str, Any] | None]
 FallbackCallable = Callable[[Exception, AgentRunContext], ExecutionFallbackResult | Dict[str, Any] | None]
@@ -146,6 +169,7 @@ class ExecutionLoopController:
         self,
         steps: Iterable[ExecutionLoopStep] | None = None,
         *,
+        model_step: ModelStepCallable | None = None,
         tool_policy: ToolPolicyCallable | None = None,
         tool_executor: ToolExecutorCallable | None = None,
         reflector: ReflectionCallable | None = None,
@@ -155,6 +179,7 @@ class ExecutionLoopController:
         max_iterations: int = 1,
     ) -> None:
         self.steps = tuple(steps or DEFAULT_MINIMAL_LOOP_STEPS)
+        self.model_step = model_step
         self.tool_policy = tool_policy
         self.tool_executor = tool_executor
         self.reflector = reflector
@@ -292,6 +317,50 @@ class ExecutionLoopController:
                     iteration=iteration,
                 ).to_dict()
                 self._append(append_event, produced_events, status_event)
+
+            if step.state == AgentState.GENERATING and self.model_step is not None:
+                try:
+                    model_result = self._run_model_step(run_context)
+                except Exception as exc:  # pragma: no cover - exact exception type belongs to caller.
+                    fallback_result = self._handle_exception(
+                        exc,
+                        run_context=run_context,
+                        event_factory=event_factory,
+                        append_event=append_event,
+                        produced_events=produced_events,
+                        iteration=iteration,
+                        loop_step=step.name,
+                    )
+                    completed_steps.append("fallback")
+                    if fallback_result["status"] == "handled":
+                        step_index += 1
+                        continue
+                    run_context.metadata["execution_loop"] = {
+                        "controller": "minimal",
+                        "completed": False,
+                        "steps": list(completed_steps),
+                        "stop_reason": "loop_exception",
+                    }
+                    return {
+                        "run": run_context.snapshot(),
+                        "events": produced_events,
+                    }
+                if model_result is not None:
+                    run_context.metadata["execution_model_step"] = dict(model_result)
+                    model_event = event_factory.build(
+                        AgentEventType.STATUS,
+                        {
+                            "status_kind": "execution_loop_model_step_completed",
+                            "summary": (
+                                model_result.get("summary")
+                                or "Execution loop model step completed"
+                            ),
+                            "loop_step": step.name,
+                            "model_step": dict(model_result),
+                        },
+                        iteration=iteration,
+                    ).to_dict()
+                    self._append(append_event, produced_events, model_event)
 
             if step.state == AgentState.GENERATING and self.tool_executor is not None:
                 tool_decision = self._run_tool_policy(run_context)
@@ -492,6 +561,25 @@ class ExecutionLoopController:
             ).to_dict()
         return ExecutionReflectionResult().to_dict()
 
+    def _run_model_step(self, run_context: AgentRunContext) -> Dict[str, Any] | None:
+        raw_result = self.model_step(run_context) if self.model_step is not None else None
+        if raw_result is None:
+            return None
+        if isinstance(raw_result, ExecutionModelStepResult):
+            return raw_result.to_dict()
+        if isinstance(raw_result, str):
+            return ExecutionModelStepResult(text=raw_result, summary=raw_result[:160]).to_dict()
+        if isinstance(raw_result, dict):
+            return ExecutionModelStepResult(
+                text=str(raw_result.get("text") or raw_result.get("output") or ""),
+                summary=str(raw_result.get("summary") or ""),
+                model_name=str(raw_result.get("model_name") or ""),
+                finish_reason=str(raw_result.get("finish_reason") or ""),
+                usage=dict(raw_result.get("usage") or {}),
+                metadata=dict(raw_result.get("metadata") or {}),
+            ).to_dict()
+        return ExecutionModelStepResult(text=str(raw_result), summary=str(raw_result)[:160]).to_dict()
+
     def _run_tool_policy(self, run_context: AgentRunContext) -> Dict[str, Any] | None:
         raw_result = self.tool_policy(run_context) if self.tool_policy is not None else None
         if raw_result is None:
@@ -623,3 +711,36 @@ def _normalize_tool_decision_status(value: Any) -> str:
     if normalized in {"allowed", "approval_required", "denied"}:
         return normalized
     return "denied"
+
+
+def _sanitize_model_step_payload(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {
+            str(key): _sanitize_model_step_payload(item)
+            for key, item in value.items()
+            if not callable(item) and not _is_unsafe_model_step_object(item)
+        }
+    if isinstance(value, list):
+        return [
+            _sanitize_model_step_payload(item)
+            for item in value
+            if not callable(item) and not _is_unsafe_model_step_object(item)
+        ]
+    if isinstance(value, tuple):
+        return [
+            _sanitize_model_step_payload(item)
+            for item in value
+            if not callable(item) and not _is_unsafe_model_step_object(item)
+        ]
+    if isinstance(value, (str, int, float, bool)) or value is None:
+        return value
+    return str(value)
+
+
+def _is_unsafe_model_step_object(value: Any) -> bool:
+    if value is None or isinstance(value, (str, int, float, bool, dict, list, tuple)):
+        return False
+    module = str(getattr(value.__class__, "__module__", "") or "")
+    if module.startswith(("backend.", "agent_framework.", "sqlalchemy.")):
+        return True
+    return hasattr(value, "__dict__")
