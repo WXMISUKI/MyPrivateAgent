@@ -8,7 +8,7 @@ from backend.agent_framework.continuation_registry import InMemoryEmbeddedContin
 from backend.agent_framework.persistence import InMemoryEmbeddedRunWorkspaceStore
 from backend.agent_framework.harness import create_agent
 from backend.agent_framework.runtime_dependencies import EmbeddedRuntimeDependencies, EmbeddedRuntimeFactory
-from backend.agent_framework.sdk import EmbeddedAgentRuntimeSDK
+from backend.agent_framework.sdk import EmbeddedAgentRuntimeSDK, validate_embedded_sdk_event_payloads
 from backend.agent_framework.tool_policy import build_policy_engine_tool_policy
 from backend.agent_framework.tools import ToolSpec
 from backend.harness.tool_registry import ToolRegistry
@@ -766,7 +766,9 @@ class AgentHarnessFacadeTests(unittest.TestCase):
         self.assertEqual(executed["run"]["state"], "failed")
         self.assertEqual(executed["run"]["stop_reason"], "review_rejected")
         self.assertEqual(executed["run"]["metadata"]["execution_review"]["reviewer"], "risk_quality_gate")
-        self.assertEqual(list(agent.stream(run["run"]["run_id"]))[-1]["status_kind"], "execution_loop_review_rejected")
+        events = list(agent.stream(run["run"]["run_id"]))
+        self.assertEqual(events[-1]["status_kind"], "execution_loop_review_rejected")
+        self.assertTrue(validate_embedded_sdk_event_payloads(events)["valid"])
 
     def test_execute_accepts_fallback_handler_for_reviewer_failures(self):
         sdk = EmbeddedAgentRuntimeSDK()
@@ -789,12 +791,40 @@ class AgentHarnessFacadeTests(unittest.TestCase):
 
         self.assertEqual(executed["run"]["state"], "done")
         self.assertEqual(executed["run"]["metadata"]["execution_fallback"]["status"], "handled")
+        events = list(agent.stream(run["run"]["run_id"]))
         self.assertTrue(
             any(
                 event["status_kind"] == "execution_loop_fallback_applied"
-                for event in agent.stream(run["run"]["run_id"])
+                for event in events
             )
         )
+        self.assertTrue(validate_embedded_sdk_event_payloads(events)["valid"])
+
+    def test_execute_fail_closes_when_reviewer_fallback_is_unhandled(self):
+        sdk = EmbeddedAgentRuntimeSDK()
+        agent = create_agent(name="fraud_assistant", model_name="doubao", sdk=sdk)
+        run = agent.run("初步评估交易")
+
+        def broken_reviewer(_run):
+            raise RuntimeError("review backend timeout")
+
+        executed = agent.execute(
+            run["run"]["run_id"],
+            reviewer=broken_reviewer,
+            fallback_handler=lambda error, _run: {
+                "strategy": "fail_closed",
+                "status": "failed",
+                "summary": f"评审降级失败：{error}",
+                "metadata": {"reason": "review_backend_timeout"},
+            },
+        )
+
+        events = list(agent.stream(run["run"]["run_id"]))
+        self.assertEqual(executed["run"]["state"], "failed")
+        self.assertEqual(executed["run"]["stop_reason"], "loop_exception")
+        self.assertEqual(events[-1]["status_kind"], "execution_loop_failed")
+        self.assertEqual(executed["run"]["metadata"]["execution_fallback"]["status"], "failed")
+        self.assertTrue(validate_embedded_sdk_event_payloads(events)["valid"])
 
     def test_execute_accepts_reflector_and_can_request_revision(self):
         sdk = EmbeddedAgentRuntimeSDK()

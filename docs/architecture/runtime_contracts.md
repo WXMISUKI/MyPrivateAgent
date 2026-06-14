@@ -766,6 +766,7 @@ Grounded-answer package dry-run 当前会从 trial report 继续保留 compact `
 - `register_tool` 现在是 SDK 到 `ToolRuntimeService` 的薄桥接：SDK 不创建第二套工具运行时，只把 `ToolSpec` 元数据和可选 executable handler 注册进配置的 tool runtime registry。
 - `execute_run` 在未显式传入 `tool_executor` 且提供了 `tool_policy` 时，可默认使用 `ToolRuntimeService` 执行已注册工具；`ask / high_risk / deny` 权限仍先通过 SDK policy decision 进入 approval / fail-closed 生命周期。
 - `event_status_kinds` 已暴露 SDK 预览事件面，包含 run、approval、execution_loop、tool、continuation 等核心 status_kind 与关键 `required_payload`。
+- reviewer / fallback 事件已进入 `event_status_kinds.required_payload` 守护：`execution_loop_reviewed` 与 `execution_loop_review_rejected` 必须携带 `review / loop_step`，`execution_loop_fallback_applied` 与 `execution_loop_failed` 必须携带 `fallback / error / loop_step`。
 - contract 还会显式暴露 `volatile_runtime_state`、`persistence_seams`、`recovery_entrypoints` 与 `delegate_preflight`，把 Phase II 的恢复边界和 child executor 前置判断收口成代码真源。
 
 当前方法：
@@ -865,7 +866,7 @@ Phase II 当前前置判断：
 - 在 Phase II 持久化 seam 收口完成前，任何新能力都不应默认依赖 `_runs / _events / _approvals / _tool_continuations / _loop_continuations` 的进程内存在性。
 - 治理台和审计服务应优先读取 `event_status_kinds` 判断可消费事件，不要在前端硬编码猜测运行时事件面。
 - `RuntimeContractSnapshotService` 会检查 `command_contract.embedded_sdk.event_status_kinds`，事件契约缺失时 contract snapshot 应退化为 degraded；同时会校验关键必需 `status_kind`：`approval_created`、`approval_resolved`、`approval_replayed`、`approval_ignored`、`execution_loop_done`、`loop_continuation_registered`、`loop_continuation_consumed`、`loop_continuation_discarded`。
-- `RuntimeContractSnapshotService` 也会校验上述关键事件的 `required_payload`：例如 `approval_created` 必须声明 `approval_request_id / approval_request`，`approval_resolved` 必须声明 `approval_request_id / approval_request / decision`，`approval_replayed / approval_ignored` 必须声明 `approval_request_id / approval_request / original_decision / attempted_decision`，`execution_loop_done` 必须声明 `run / completed_steps`，continuation 生命周期事件必须声明 `loop_continuation`。
+- `RuntimeContractSnapshotService` 也会校验上述关键事件的 `required_payload`：例如 `approval_created` 必须声明 `approval_request_id / approval_request`，`approval_resolved` 必须声明 `approval_request_id / approval_request / decision`，`approval_replayed / approval_ignored` 必须声明 `approval_request_id / approval_request / original_decision / attempted_decision`，`execution_loop_done` 必须声明 `run / completed_steps`，continuation 生命周期事件必须声明 `loop_continuation`。reviewer / fallback 事件消费者应同样通过 `event_status_kinds` 与 `validate_embedded_sdk_event_payloads(...)` 判断 payload 完整性，不在前端或 adapter 中硬编码事件形状。
 - `validate_embedded_sdk_event_payloads(...)` 可用于校验真实 SDK 事件样本是否满足 `event_status_kinds.required_payload`，适合 adapter pilot、治理台健康检查复用；当前 `runtime_contract_smoke` 已把该检查作为 `embedded_sdk_event_payloads` 门禁项。
 - 默认运行时相关依赖不应继续由外部调用方在多个入口各自 new singleton；新增默认构造路径时，应优先复用 `EmbeddedRuntimeFactory`。
 

@@ -1164,6 +1164,7 @@ Provider-first 能力路线已补充到 `docs/roadmap/provider_capability_gap_as
 - Embedded SDK `execute_run(...)` 已在未传入显式 `tool_executor` 时复用 ToolRuntimeService 默认执行桥接；SDK-only 集成现在可以完成 register -> policy -> approval/fail-closed -> execute 的最小闭环。
 - SDK 直连 ToolRuntimeService 执行桥已进入 `runtime_contract_smoke.py` 与质量门禁摘要；`sdk_tool_runtime_execution_bridge` 会覆盖 auto、ask-approved 与 deny fail-closed 三条路径，并汇总为 `runtime_contract_summary.sdk_tool_runtime_execution_coverage`。
 - ToolRuntime timeout/retry contract 已进入 runtime contract smoke、Quality Gate、Runtime Contract Gate 与 Snapshot 守护；`tool_runtime_timeout_retry` 会覆盖 recovered retry、exhausted retry 与 post-call elapsed timeout metadata，并汇总为 `runtime_contract_summary.tool_runtime_timeout_retry_coverage`。该覆盖只证明同步 retry / elapsed timeout 元数据，不表示 hard cancellation、sandbox execution 或 worker-level timeout 已实现。
+- Embedded SDK reviewer / fallback 事件已进入 `event_status_kinds.required_payload`：review approved/rejected 与 fallback handled/fail-closed 现在可通过真实 SDK event sample 做 payload validation，默认仍不接真实 LLM、不改变 `/api/chat`。
 - Runtime Contract Gate 读取质量门禁 artifact 时已对 `runtime_contract_summary` 与 `contract_checks` 计数字段做 fail-closed 归一化；不可解析或负数会回退到推导值或 `None`，避免脏 artifact 拖垮 Runtime Profile
 - Runtime Surface 前端治理台已新增 `Contract Gate` 卡片，展示质量门禁契约检查的整体状态、失败数和 checks 明细
 - Runtime Surface 前端 `Contract Gate` 卡片已展示 `runtime_contract_summary`，可直接看到 payload 缺口与 approval replay/ignored 样本覆盖情况

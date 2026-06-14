@@ -216,6 +216,19 @@ class EmbeddedAgentRuntimeSDKTests(unittest.TestCase):
         self.assertEqual(event_status_kinds["tool_approval_continued"]["category"], "tool")
         self.assertEqual(event_status_kinds["recovery_probe_evaluated"]["required_payload"], ["recovery"])
         self.assertEqual(event_status_kinds["recovery_failed_closed"]["category"], "recovery")
+        self.assertEqual(event_status_kinds["execution_loop_reviewed"]["required_payload"], ["review", "loop_step"])
+        self.assertEqual(
+            event_status_kinds["execution_loop_review_rejected"]["category"],
+            "execution_loop_review",
+        )
+        self.assertEqual(
+            event_status_kinds["execution_loop_fallback_applied"]["required_payload"],
+            ["fallback", "error", "loop_step"],
+        )
+        self.assertEqual(
+            event_status_kinds["execution_loop_failed"]["category"],
+            "execution_loop_fallback",
+        )
         self.assertEqual(
             contract["volatile_runtime_state"],
             [
