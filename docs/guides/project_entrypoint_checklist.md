@@ -43,14 +43,36 @@ python backend/scripts/domain_agent_trial_smoke.py --payload docs/examples/domai
 ## 3. External Provider Boundary
 
 - [ ] Keep RAG/GraphRAG provider logic outside MyPrivateAgent.
+- [ ] Start from the provider onboarding catalog:
+
+```http
+GET /api/provider-onboarding
+GET /api/provider-onboarding/{onboarding_id}/readiness
+```
+
+- [ ] Inspect current live management status:
+
+```http
+GET /api/service-providers
+```
+
+- [ ] Generate acceptance evidence before caller-side use:
+
+```powershell
+python backend/scripts/provider_onboarding_acceptance_smoke.py --onboarding-id knowledge-rag-provider --pretty
+```
+
+- [ ] Treat `accepted` as explicit managed-provider consumption only.
 - [ ] Use provider capability contracts such as `knowledge.rag.retrieve` and `knowledge.graph.query`.
 - [ ] Keep OCR/Layout/VLM, ASR/TTS, vector databases, graph databases, embeddings, and rerankers out of the main backend unless a later OpenSpec explicitly promotes them.
 - [ ] Document provider health, catalog, request/response shape, and failure modes before caller-side promotion.
+- [ ] Do not infer default `/api/chat` RAG, GraphRAG, source binding, or final answer policy promotion from provider acceptance.
 
 ## 4. Runtime / SDK Extension
 
 - [ ] Identify the layer first: Runtime Core, Capability, Governance, Delivery, or Domain Agent.
 - [ ] Read [runtime_contracts.md](../architecture/runtime_contracts.md) before changing contract fields.
+- [ ] For Embedded SDK / Harness work, check the current preview boundary in `backend/agent_framework/sdk.py`, `backend/agent_framework/harness.py`, and the embedded SDK OpenSpec specs before adding new behavior.
 - [ ] If a change affects Embedded SDK, ToolRuntime, Approval, Recovery, Worker Ownership, Query Control, or Runtime Surface, create an OpenSpec change first.
 - [ ] Keep new evidence compact and machine-readable.
 - [ ] Do not copy Python callable, provider client, active stream iterator, or full tool result bodies into governance payloads.
@@ -78,6 +100,6 @@ When no active change exists and no real caller trial is blocked, default back t
 
 1. Embedded SDK durability and recovery maturity.
 2. Execution Loop integration with ToolRuntime, reviewer, fallback, and model degradation policy.
-3. Runtime Surface contract assembler cleanup.
-4. Governance Timeline slimming only when it reduces maintenance cost.
-5. Framework adapter authoring checklist before adding another adapter.
+3. Framework adapter authoring checklist / promotion review before adding another adapter.
+4. Runtime Surface contract assembler cleanup.
+5. Governance Timeline slimming only when it reduces maintenance cost.

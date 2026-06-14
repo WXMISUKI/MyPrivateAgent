@@ -53,3 +53,14 @@ Framework positioning and runtime governance changes SHALL follow the project se
 - **WHEN** all implementation tasks for a runtime or adapter change are complete
 - **THEN** the change MUST be archived only after canonical specs and roadmap/docs are synchronized
 - **AND** git submission MUST happen after verification output and archive location are known
+
+### Requirement: Control-plane positioning is visible from documentation entrypoints
+
+MyPrivateAgent's official Agent Runtime Control Plane positioning SHALL be visible from repository entrypoint documentation.
+
+#### Scenario: Reader checks project positioning
+
+- **WHEN** a reader opens the current docs entrypoint
+- **THEN** the documentation states that MyPrivateAgent owns runtime contracts, governance, permissions, audit, observability, provider contracts, and adapter normalization
+- **AND** it states that external frameworks are adapter candidates rather than replacement implementations
+- **AND** it states that external providers are data-plane services consumed through provider contracts rather than main-backend dependencies

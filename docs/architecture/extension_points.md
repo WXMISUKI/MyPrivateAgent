@@ -103,8 +103,12 @@ POST /api/chat
 主要 seam：
 
 - `backend/capability_runtime/providers/knowledge_http_provider.py`
+- `backend/capability_runtime/provider_onboarding_catalog.py`
+- `backend/capability_runtime/provider_consumption_service.py`
+- `backend/capability_runtime/provider_onboarding_acceptance_gate.py`
 - `backend/services/domain_agent_registry_service.py`
 - `docs/guides/external_rag_provider_development.md`
+- `docs/guides/capability_runtime_registry.md`
 
 最低要求：
 
@@ -112,6 +116,19 @@ POST /api/chat
 - RAG 结果必须包含 `citation`。
 - 图谱结果必须包含 `graph_id / entities / relations / paths / evidence`。
 - MyPrivateAgent 主后端不引入向量库、图数据库、Embedding、OCR、文档解析或重排依赖。
+- 接入 MyPrivateAgent 前先通过 onboarding catalog、service-provider management 和 acceptance gate 证明 explicit managed-provider consumption readiness。
+
+接入验收：
+
+```powershell
+python backend\scripts\provider_onboarding_acceptance_smoke.py --onboarding-id knowledge-rag-provider --pretty
+```
+
+边界：
+
+- `accepted` 不代表默认 `/api/chat` retrieval injection。
+- `accepted` 不代表 GraphRAG execution、source binding automation 或 final answer policy 推广。
+- provider 自身依赖、索引、模型和长任务由 provider 项目管理。
 
 ## 5. 新增外部 Framework Adapter
 
@@ -132,6 +149,7 @@ POST /api/chat
 - `translate_input()`
 - `stream_events()`
 - `translate_output()`
+- `build_adapter_authoring_checklist(...)` 消费所需 identity、lifecycle mapping、readiness、governance timeline、promotion gate 和 non-goals 证据
 
 推荐落点：
 
@@ -146,6 +164,7 @@ POST /api/chat
 - 新 adapter 必须出现在 adapter health contract 中。
 - readiness、precheck、runtime execution、external pilot 不应混为一个开关。
 - external pilot 必须分类错误类型，例如 configuration、connectivity、protocol、upstream runtime。
+- precheck / pilot ready 不等于 default main-chat execution ready；promotion 必须另开 OpenSpec。
 
 ## 6. 新增治理策略
 
@@ -200,7 +219,8 @@ POST /api/chat
 
 - FastAPI service API
 - Vue governance console
-- Embedded SDK draft
+- Embedded SDK preview
+- Agent Harness Facade preview
 
 后续新增 delivery 时必须满足：
 
@@ -208,3 +228,4 @@ POST /api/chat
 - 不绕过 Governance Layer。
 - 不把领域业务写进公共 runtime contract。
 - 能被 doctor / health / runtime surface 观察。
+- 对外说明必须标注 preview / gated / explicit-only 边界。

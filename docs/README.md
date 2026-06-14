@@ -1,3 +1,110 @@
+# MyPrivateAgent Docs
+
+> 当前主入口。MyPrivateAgent 的正式定位是企业级 Agent Runtime Control Plane：它负责 Runtime Core、ToolRuntime、Query Control、Governance Timeline、权限、审计、provider contract、framework adapter normalization 和业务系统集成边界。
+
+## 当前应该先读什么
+
+| 你的目标 | 从这里开始 | 当前完成线 |
+|---|---|---|
+| 理解项目是什么 | [Agent Runtime Control Plane Entrypoint](./architecture/agent_runtime_control_plane_entrypoint.md) | 项目不是单一 chat demo，也不是 LangGraph/CrewAI/Qwen-Agent/OpenAI Agents SDK 等外部框架的替代实现 |
+| 看当前事实架构 | [当前架构总览](./architecture/current_architecture.md) | Runtime Core / Capability / Governance / Delivery 四层已收口为主解释框架 |
+| 查运行时 contract | [Runtime Contracts](./architecture/runtime_contracts.md) | Runtime Surface、Provider、Query Control、SDK、ToolRuntime 等 contract 以代码和 canonical spec 为真源 |
+| 选择扩展路径 | [Extension Points](./architecture/extension_points.md) | 新能力先选 seam，再开 OpenSpec；不要直接改默认 chat 或绕过治理层 |
+| 接入外接 Provider | [Capability Runtime Registry](./guides/capability_runtime_registry.md) | 走 provider onboarding catalog + service-provider management + UI surface + acceptance gate；accepted 只代表显式 managed-provider consumption |
+| 开发垂域 Agent | [Domain Agent Development Guide](./guides/domain_agent_development_guide.md) | manifest 只读登记、capability linkage、trial/package/composition；不自动推广默认 `/api/chat` 检索注入 |
+| 嵌入 SDK / Harness | [Project Entrypoint Checklist](./guides/project_entrypoint_checklist.md) | Embedded SDK 已有 preview + recovery/persistence 第一刀，完整 worker lease / durable continuation 仍 gated |
+| 新增 Framework Adapter | [Extension Points: Framework Adapter](./architecture/extension_points.md#5-新增外部-framework-adapter) | adapter 先走 authoring checklist / precheck / pilot / promotion gate，不直接进默认 main chat |
+| 看下一阶段优先级 | [Next Phase Hardening](./roadmap/next_phase_hardening.md) | Provider 接入链路已收口，默认回到控制面入口、Embedded SDK / Execution Loop 或 adapter checklist |
+
+## 四条接入路径
+
+### 1. 外接 Provider
+
+适用于 `unifiedKnowledgeRAG`、语音、OCR、Layout、VLM 和后续独立能力服务。
+
+当前入口：
+
+- `GET /api/provider-onboarding`
+- `GET /api/provider-onboarding/{onboarding_id}/readiness`
+- `GET /api/service-providers`
+- `python backend\scripts\provider_onboarding_acceptance_smoke.py --onboarding-id knowledge-rag-provider --pretty`
+
+边界：
+
+- `accepted` 只表示显式 managed-provider consumption ready。
+- 不表示默认 `/api/chat` RAG、GraphRAG、source binding automation 或 final answer policy 已启用。
+- 不把向量库、图数据库、OCR/VLM/ASR/TTS 引擎放进 MyPrivateAgent 主后端。
+
+### 2. 垂域 Agent
+
+适用于业务 agent 资产登记、试接和受治理问答路径。
+
+当前入口：
+
+- `backend/domain_agents/<agent_id>/agent.yaml`
+- `GET /api/agents`
+- `python backend\scripts\domain_agent_trial_smoke.py --payload docs\examples\domain_agent_trial_payload.json --pretty`
+
+边界：
+
+- manifest discovery 是只读登记，不自动注册 tool/skill/MCP/RAG。
+- trial/package/composition 是显式控制面试接，不启用默认 chat retrieval injection。
+
+### 3. Embedded SDK / Agent Harness
+
+适用于把 MyPrivateAgent 作为库嵌入垂域 Python 项目。
+
+当前入口：
+
+- `backend/agent_framework/sdk.py`
+- `backend/agent_framework/harness.py`
+- `openspec/specs/agent-harness-facade-v1/spec.md`
+- `openspec/specs/embedded-sdk-recovery-protocol/spec.md`
+
+边界：
+
+- SDK 已有 run/event/approval/tool continuation/recovery evidence 第一刀。
+- 完整 durable continuation、worker ownership、跨进程 lease 和生产恢复仍需后续 gate。
+
+### 4. Framework Adapter
+
+适用于 LangGraph、CrewAI、Qwen-Agent、OpenAI Agents SDK、DeerFlow、Agno 等外部框架接入。
+
+当前入口：
+
+- `backend/agent_framework/framework_adapter_spi/`
+- `backend/services/framework_adapter_runtime_service.py`
+- `openspec/specs/framework-adapter-authoring-checklist/spec.md`
+
+边界：
+
+- 外部框架是 execution adapter candidate，不是项目定位。
+- precheck / pilot ready 不等于默认 main chat execution ready。
+- 任何 promotion 都必须另开 OpenSpec，并保留 local Runtime Core / Governance contracts 为真源。
+
+## 默认工作节奏
+
+```text
+规格 -> 实现 -> 验证 -> 归档
+```
+
+需要先开 OpenSpec 的情况：
+
+- runtime contract、read model、治理语义变化
+- provider/API/adapter 行为变化
+- 默认 chat 行为变化
+- SDK / ToolRuntime / Approval / Recovery 边界变化
+
+最小验证：
+
+```powershell
+openspec validate --all --strict
+```
+
+涉及代码时再加 focused backend/frontend test。不要为了文档入口产品化运行 `npm build`。
+
+---
+
 # Docs 索引
 
 ## 0. 对外介绍与简历话术（新增）

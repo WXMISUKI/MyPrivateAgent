@@ -53,6 +53,23 @@ python backend/scripts/domain_agent_trial_smoke.py --payload docs/examples/domai
 
 This only produces a `go / review / blocked` trial report. It does not call the provider, LLM, tools, MCP, `/api/chat`, memory, audit, trace, or source binding.
 
+For external provider onboarding and acceptance:
+
+```http
+GET /api/provider-onboarding
+GET /api/provider-onboarding/{onboarding_id}/readiness
+GET /api/service-providers
+```
+
+Repository-side acceptance smoke:
+
+```powershell
+python backend/scripts/provider_onboarding_acceptance_smoke.py --onboarding-id knowledge-rag-provider --pretty
+python backend/scripts/provider_onboarding_acceptance_smoke.py --provider-id unifiedKnowledgeProvider --pretty
+```
+
+This only proves explicit managed-provider consumption readiness. It does not invoke provider capabilities, run RAG/OCR/VLM/ASR/TTS/GraphRAG jobs, write `.env`, start services, create source bindings, or promote default chat behavior.
+
 For runtime health and contract inspection:
 
 ```http
@@ -64,6 +81,7 @@ GET /api/runtime-profile
 ## Current Pause Lines
 
 - Domain-agent grounded-answer control chain has reached repo-side trial readiness. Do not keep adding local evidence layers unless a real caller trial exposes a concrete gap.
+- External provider onboarding now has catalog, service-provider management, UI visibility, and acceptance evidence. Do not reopen provider internals unless a real caller trigger exposes a provider-owned gap.
 - Default `/api/chat` retrieval injection remains disabled until provider readiness, representative eval evidence, and behavior promotion are approved through OpenSpec.
 - New framework adapters must start with adapter boundary, lifecycle mapping, readiness, precheck, promotion gate, and non-goals. Do not route a new framework directly into main chat.
 - External knowledge, document, and voice capabilities stay provider-first. Do not put vector databases, graph databases, OCR/layout/VLM engines, or ASR/TTS runtimes into the main backend by default.

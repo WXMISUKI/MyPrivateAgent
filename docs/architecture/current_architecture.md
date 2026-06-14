@@ -4,7 +4,7 @@
 
 ## 1. 当前定位
 
-`MyPrivateAgent` 当前应被视为一个 **企业内部通用智能体底座**，而不是单一聊天 Demo，也不是直接绑定某个外部 agent 框架的业务应用。
+`MyPrivateAgent` 当前应被视为一个 **企业级 Agent Runtime Control Plane**，而不是单一聊天 Demo，也不是直接绑定某个外部 agent 框架的业务应用。
 
 当前推荐路线仍是：
 
@@ -12,6 +12,11 @@
 - 外部框架 Adapter：LangGraph / DeepAgents / CrewAI / Hermes / Manus 风格能力只作为可替换执行引擎或设计参考。
 - 最小治理台并行：前端只承担观察、诊断、回放、调试，不承载业务领域逻辑。
 - 双形态交付：核心能力可作为 embedded SDK 嵌入，也可通过标准服务接口对外暴露。
+
+当前文档入口已经产品化为：
+
+- [Agent Runtime Control Plane Entrypoint](./agent_runtime_control_plane_entrypoint.md)：当前定位和推荐阅读顺序。
+- [Project Entrypoint Checklist](../guides/project_entrypoint_checklist.md)：按接入任务选择 provider、domain agent、SDK、adapter 或 runtime seam。
 
 ## 2. 四层结构
 
@@ -165,6 +170,7 @@
 - MyPrivateAgent 现在具备真实文档上传到 RAG 使用闭环的本地试跑入口：`scripts/export_document_rag_upload_to_use_loop.py` 会复用现有 document ingestion / PaddleOCR 能力，把本地 PDF 或图片解析为 document artifact，再转换成 unifiedKnowledgeRAG parser artifact 并调用 provider-side ingestion command，最后复用本地知识 provider 语料试跑输出 `go / review / blocked`；该入口仍不启用默认 `/api/chat` retrieval injection，不创建 source binding，不写 memory/audit/trace，不启动外部服务，也不执行 GraphRAG。
 - MyPrivateAgent 现在具备真实文档 RAG 本地运行就绪检查：`scripts/export_document_rag_local_readiness.py` 会在正式上传/解析文档前检查 PaddleOCR health、OCR CPU/GPU profile、OCR timeout、unifiedKnowledgeRAG health、source catalog 可见性、provider repo ingestion 脚本和 `GRAPHRAG` Python 命令，输出 `go / review / blocked`；该入口只做本地预检，不上传/解析/ingest 文档，不启动外部服务，不接入默认 `/api/chat`，不创建 source binding，也不执行 GraphRAG。
 - MyPrivateAgent 现在具备本地文档 RAG 操作入口：`POST /api/document-rag/local-trials/readiness` 与 `POST /api/document-rag/local-trials` 会把 readiness 和 upload-to-use loop 包装为本地 operator API，Settings diagnostics 也提供最小操作卡片；trial API 支持浏览器上传文件并落盘到 `.myagent/document-rag-operator-uploads` 后复用既有 path-based loop，同时保留本地文档路径作为调试 fallback；该入口不做完整知识库管理，不接入默认 `/api/chat`，不创建 source binding，不写 memory/audit/trace，不启动外部服务，也不执行 GraphRAG。
+- 外接 provider 现在具备接入目录、live management、设置页只读可见性和 acceptance gate：`/api/provider-onboarding` 回答“如何接入”，`/api/service-providers` 回答“当前是否可用”，`ProviderOnboardingPanel` 展示接入和 live status，`provider_onboarding_acceptance_smoke.py` 输出 explicit managed-provider consumption 验收 evidence；该链路不启用默认 `/api/chat` RAG，不执行 GraphRAG，不创建 source binding，不推广 final answer policy。
 - Domain agent catalog 现在具备最小只读 API：`GET /api/agents` 复用 manifest-driven `domain_agent_registry`，返回更窄的 API-facing catalog contract，便于调用方和治理工具读取 agent 身份、角色、能力摘要、grounding summary 与 capability linkage readiness；该接口只读比对 Tool / Skill / MCP 声明是否能被当前能力层识别，不启停 agent，不自动注册能力，也不改变主 chat 执行路径。
 - Domain agent 现在具备 repo-side minimal integration trial pack：`backend/scripts/domain_agent_trial_smoke.py` 可从 `docs/examples/domain_agent_trial_payload.json` 串联 grounded-answer trial、package dry-run 与 composition trial，输出 `go / review / blocked` 结论；该脚本只用于调用方试接前的本地 smoke，不启动 Web 服务、不调用 provider/LLM/工具/MCP、不写治理状态，也不改变默认 `/api/chat`。
 
@@ -184,6 +190,7 @@
 - 不要让业务项目直接依赖某个外部框架语义。
 - 不要绕过 adapter SPI 直接在业务里调用 LangGraph / CrewAI 等运行时。
 - 不要让前端治理台承担领域判断逻辑。
+- 不要把 provider acceptance、adapter pilot ready 或 domain-agent trial `go` 解读为默认 runtime promotion。
 - `docs/change` 只作为历史审计日志；新接入者应先读 `docs/architecture/`。
 
 ## 6. 推荐阅读顺序
