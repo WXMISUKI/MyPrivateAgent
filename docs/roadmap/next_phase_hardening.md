@@ -1304,7 +1304,7 @@ Provider-first 能力路线已补充到 `docs/roadmap/provider_capability_gap_as
 
 建议动作：
 
-- 提取 adapter authoring checklist。
+- 提取 adapter authoring checklist：已完成第一刀，`FrameworkAdapterRuntimeService.build_adapter_authoring_checklist(...)` 会输出 side-effect-free checklist / conservative promotion review，固定 identity、lifecycle mapping、readiness、governance timeline、promotion gate 和 non-goals。
 - 为新 adapter 增加最小测试模板。
 - 固定 readiness / precheck / pilot / execution gate 命名。
 
@@ -1312,6 +1312,7 @@ Provider-first 能力路线已补充到 `docs/roadmap/provider_capability_gap_as
 
 - 不要立刻把外部 adapter 接入主 chat。
 - 不要为了覆盖多个框架提前抽象过度。
+- checklist ready 不等于 adapter 已进入生产执行；`default_chat_entry` 仍固定为 `disabled`。
 
 ## 7. 当前不建议做的事
 

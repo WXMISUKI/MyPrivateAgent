@@ -108,6 +108,69 @@ class FrameworkAdapterRuntimeServiceTests(unittest.TestCase):
                 messages=[{"role": "user", "content": "test"}],
             )
 
+    def test_adapter_authoring_checklist_reports_ready_pilot_candidate(self):
+        result = self.service.build_adapter_authoring_checklist(
+            adapter_id="local_fake_framework",
+        )
+
+        self.assertEqual(result["contract_version"], "framework-adapter-authoring-checklist-v1")
+        self.assertEqual(result["adapter_id"], "local_fake_framework")
+        self.assertEqual(result["checklist_status"], "ready")
+        self.assertEqual(result["promotion_review"]["status"], "pilot_candidate")
+        self.assertEqual(result["promotion_review"]["will_execute"], False)
+        self.assertEqual(result["promotion_review"]["default_chat_entry"], "disabled")
+        self.assertEqual(result["authoring_sections"]["lifecycle_mapping"]["query_control_channel"], "external_adapter")
+        self.assertIn("framework_adapter_status", result["authoring_sections"]["lifecycle_mapping"]["required_events"])
+        self.assertEqual(result["boundary"]["adapter_execution"], "not_performed")
+        self.assertEqual(result["boundary"]["trace_write"], "not_performed")
+        self.assertEqual(result["boundary"]["audit_write"], "not_performed")
+        self.assertFalse(_StubRunTraceService.trace_calls)
+        self.assertFalse(_StubRunTraceService.audit_calls)
+
+    @patch("backend.agent_framework.framework_adapters._is_python_package_available", return_value=False)
+    @patch("backend.agent_framework.framework_adapters.LANGGRAPH_RUNTIME_ENDPOINT", "")
+    @patch("backend.agent_framework.framework_adapters.LANGGRAPH_ASSISTANT_ID", "")
+    @patch("backend.agent_framework.framework_adapters.ENABLE_LANGGRAPH_RUNTIME_EXECUTION", False)
+    def test_adapter_authoring_checklist_blocks_on_precheck_evidence(self, *_mocks):
+        service = FrameworkAdapterRuntimeService(
+            framework_adapter_registry=AgentFrameworkAdapterRegistry([LangGraphDraftAdapter()])
+        )
+
+        result = service.build_adapter_authoring_checklist(adapter_id="langgraph_draft")
+
+        self.assertEqual(result["checklist_status"], "blocked")
+        self.assertEqual(result["promotion_review"]["status"], "blocked")
+        self.assertEqual(result["promotion_review"]["default_chat_entry"], "disabled")
+        self.assertIn("langgraph", result["precheck_summary"]["missing_packages"])
+        self.assertIn("LANGGRAPH_RUNTIME_ENDPOINT", result["precheck_summary"]["missing_env"])
+        self.assertIn(
+            {
+                "component": "readiness",
+                "status": "blocked",
+                "reason_code": "missing_package",
+                "detail": "langgraph",
+            },
+            result["promotion_review"]["blockers"],
+        )
+
+    def test_adapter_authoring_checklist_blocks_unknown_adapter(self):
+        result = self.service.build_adapter_authoring_checklist(adapter_id="missing_adapter")
+
+        self.assertEqual(result["checklist_status"], "blocked")
+        self.assertEqual(result["promotion_review"]["status"], "blocked")
+        self.assertEqual(result["promotion_review"]["will_execute"], False)
+        self.assertEqual(result["promotion_review"]["default_chat_entry"], "disabled")
+        self.assertIn(
+            {
+                "component": "adapter_registry",
+                "status": "blocked",
+                "reason_code": "adapter_not_registered",
+                "detail": "missing_adapter",
+            },
+            result["promotion_review"]["blockers"],
+        )
+        self.assertEqual(result["boundary"]["external_framework_call"], "not_performed")
+
     def test_execute_adapter_run_rejects_registered_placeholder_adapter(self):
         service = FrameworkAdapterRuntimeService(
             framework_adapter_registry=AgentFrameworkAdapterRegistry([

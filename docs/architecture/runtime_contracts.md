@@ -737,6 +737,7 @@ Grounded-answer package dry-run 当前会从 trial report 继续保留 compact `
 - `translate_input()`
 - `stream_events()`
 - `translate_output()`
+- `FrameworkAdapterRuntimeService.build_adapter_authoring_checklist(...)`
 
 当前 adapter：
 
@@ -749,6 +750,7 @@ Grounded-answer package dry-run 当前会从 trial report 继续保留 compact `
 - `framework_adapters.py` 是 public facade，不应删除。
 - 新外部框架优先新增 adapter，不要把逻辑写进 Runtime Surface。
 - external pilot 只能走受控 pilot 路径，不应直接进入主 chat 路径。
+- `build_adapter_authoring_checklist(...)` 当前是 side-effect-free authoring / promotion review contract：它读取 adapter registry 与 precheck evidence，返回 identity、lifecycle mapping、readiness checks、governance timeline、promotion gate、non-goals 与 conservative `promotion_review`。该 checklist 不执行 adapter、不调用外部 framework、不写 trace/audit、不注册 tool、不启动 worker，且 `default_chat_entry` 必须保持 `disabled`。
 
 ## 7. Embedded SDK Contract
 

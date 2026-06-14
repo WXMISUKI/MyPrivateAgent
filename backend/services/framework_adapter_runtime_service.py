@@ -210,12 +210,181 @@ class FrameworkAdapterRuntimeService:
             result["timeline_recording"] = timeline_recording
         return result
 
+    def build_adapter_authoring_checklist(
+        self,
+        *,
+        adapter_id: str,
+    ) -> Dict[str, Any]:
+        normalized_id = str(adapter_id or "").strip()
+        try:
+            adapter = self._get_adapter(normalized_id)
+        except ValueError:
+            return self._build_unknown_adapter_checklist(normalized_id)
+
+        precheck = self.precheck_adapter(adapter_id=normalized_id)
+        ready = bool(precheck.get("ready"))
+        promotion_status = "pilot_candidate" if ready else "blocked"
+        blockers = self._build_authoring_blockers(precheck)
+        return {
+            "contract_version": "framework-adapter-authoring-checklist-v1",
+            "adapter_id": precheck.get("adapter_id") or normalized_id,
+            "framework_name": precheck.get("framework_name") or getattr(adapter, "framework_name", ""),
+            "checklist_status": "ready" if ready else "blocked",
+            "authoring_sections": self._build_authoring_sections(adapter=adapter, precheck=precheck),
+            "promotion_review": {
+                "status": promotion_status,
+                "will_execute": False,
+                "default_chat_entry": "disabled",
+                "next_allowed_action": "controlled_pilot_review" if ready else "resolve_precheck_blockers",
+                "blockers": blockers,
+            },
+            "precheck_summary": {
+                "ready": ready,
+                "status": precheck.get("status") or "unknown",
+                "configuration_status": precheck.get("configuration_status") or "unknown",
+                "execution_mode": precheck.get("execution_mode") or "",
+                "missing_packages": list(precheck.get("missing_packages") or []),
+                "missing_env": list(precheck.get("missing_env") or []),
+                "execution_block_reason": str(precheck.get("execution_block_reason") or "").strip(),
+            },
+            "boundary": self._adapter_authoring_boundary(),
+        }
+
     def _get_adapter(self, adapter_id: str) -> Any:
         normalized_id = str(adapter_id or "").strip()
         for adapter in self.framework_adapter_registry.list_adapters():
             if str(getattr(adapter, "adapter_id", "")).strip() == normalized_id:
                 return adapter
         raise ValueError(f"framework adapter `{normalized_id}` is not registered")
+
+    @staticmethod
+    def _build_authoring_sections(*, adapter: Any, precheck: Mapping[str, Any]) -> Dict[str, Any]:
+        return {
+            "identity": {
+                "adapter_id": precheck.get("adapter_id") or getattr(adapter, "adapter_id", ""),
+                "framework_name": precheck.get("framework_name") or getattr(adapter, "framework_name", ""),
+                "supported_run_kinds": list(getattr(adapter, "supported_run_kinds", ()) or []),
+                "capability_requirements": list(getattr(adapter, "capability_requirements", ()) or []),
+            },
+            "lifecycle_mapping": {
+                "required_events": [
+                    "framework_adapter_status",
+                    "framework_adapter_reasoning",
+                    "framework_adapter_output",
+                    "framework_adapter_external_error",
+                ],
+                "query_control_channel": "external_adapter",
+                "default_chat_entry": "disabled",
+            },
+            "readiness_checks": {
+                "package_installed": bool(precheck.get("package_installed")),
+                "runtime_enabled": bool(precheck.get("runtime_enabled")),
+                "required_packages": list(precheck.get("required_packages") or []),
+                "missing_packages": list(precheck.get("missing_packages") or []),
+                "required_env": list(precheck.get("required_env") or []),
+                "missing_env": list(precheck.get("missing_env") or []),
+            },
+            "governance_timeline": {
+                "precheck_event": "framework_adapter_precheck_completed",
+                "run_events": [
+                    "framework_adapter_status",
+                    "framework_adapter_reasoning",
+                    "framework_adapter_output",
+                    "framework_adapter_external_error",
+                ],
+                "trace_write": "not_performed_by_checklist",
+                "audit_write": "not_performed_by_checklist",
+            },
+            "promotion_gate": {
+                "pilot_ready_requires": [
+                    "adapter_registered",
+                    "precheck_ready",
+                    "lifecycle_mapping_declared",
+                    "governance_boundary_declared",
+                ],
+                "default_chat_entry": "disabled",
+                "main_chat_promotion_requires_future_change": True,
+            },
+            "non_goals": [
+                "default_main_chat_execution",
+                "new_framework_dependency",
+                "tool_runtime_changes",
+                "worker_execution",
+                "query_detail_history_workspace_promotion",
+            ],
+        }
+
+    @staticmethod
+    def _build_authoring_blockers(precheck: Mapping[str, Any]) -> list[Dict[str, Any]]:
+        blockers: list[Dict[str, Any]] = []
+        for package_name in precheck.get("missing_packages") or []:
+            blockers.append({
+                "component": "readiness",
+                "status": "blocked",
+                "reason_code": "missing_package",
+                "detail": str(package_name),
+            })
+        for env_name in precheck.get("missing_env") or []:
+            blockers.append({
+                "component": "readiness",
+                "status": "blocked",
+                "reason_code": "missing_env",
+                "detail": str(env_name),
+            })
+        block_reason = str(precheck.get("execution_block_reason") or "").strip()
+        if block_reason:
+            blockers.append({
+                "component": "execution_gate",
+                "status": "blocked",
+                "reason_code": "execution_blocked",
+                "detail": block_reason,
+            })
+        return blockers
+
+    @classmethod
+    def _build_unknown_adapter_checklist(cls, adapter_id: str) -> Dict[str, Any]:
+        return {
+            "contract_version": "framework-adapter-authoring-checklist-v1",
+            "adapter_id": adapter_id or None,
+            "framework_name": "",
+            "checklist_status": "blocked",
+            "authoring_sections": {},
+            "promotion_review": {
+                "status": "blocked",
+                "will_execute": False,
+                "default_chat_entry": "disabled",
+                "next_allowed_action": "register_adapter_before_review",
+                "blockers": [{
+                    "component": "adapter_registry",
+                    "status": "blocked",
+                    "reason_code": "adapter_not_registered",
+                    "detail": adapter_id or "missing_adapter_id",
+                }],
+            },
+            "precheck_summary": {
+                "ready": False,
+                "status": "missing",
+                "configuration_status": "missing",
+                "execution_mode": "",
+                "missing_packages": [],
+                "missing_env": [],
+                "execution_block_reason": "adapter_not_registered",
+            },
+            "boundary": cls._adapter_authoring_boundary(),
+        }
+
+    @staticmethod
+    def _adapter_authoring_boundary() -> Dict[str, Any]:
+        return {
+            "adapter_execution": "not_performed",
+            "external_framework_call": "not_performed",
+            "default_chat_entry": "disabled",
+            "trace_write": "not_performed",
+            "audit_write": "not_performed",
+            "tool_registration": "not_performed",
+            "worker_execution": "not_performed",
+            "runtime_behavior_changed": False,
+        }
 
     def _build_final_content(self, *, messages: Sequence[Mapping[str, Any]]) -> str:
         last_user_message = ""
