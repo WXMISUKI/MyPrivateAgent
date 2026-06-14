@@ -66,6 +66,8 @@ Grounded-answer package dry-run 当前会从 trial report 继续保留 compact `
 
 `provider-onboarding-catalog-v1` 当前作为已知外接项目的静态接入目录暴露在 `/api/provider-onboarding`。它列出 `unifiedKnowledgeProvider / unifiedTTSandASR / paddleOCRProvider / paddleLayoutProvider / documentVlmProvider` 的 provider id、默认本地 URL、env var 名称、capability ids、文档入口、smoke command、readiness checklist 和 runtime boundaries。该 catalog 只做 setup guidance 与当前进程配置项检查，不访问外部 provider、不启动服务、不写 `.env`、不提交 OCR/VLM job、不执行 RAG，也不改变 chat、memory、audit 或 provider promotion。live readiness 仍以 `/api/service-providers` 与 `/api/capabilities/heartbeat` 为准。
 
+前端设置页的 `provider-onboarding-ui-surface` 只读消费 onboarding catalog、onboarding readiness 和 service-provider list。它可以把静态接入说明与 live provider status 按 `provider_id` 关联展示，但不得调用 provider capability invoke/test、不得写配置、不得启动外部服务，也不得把 `ready` 展示为 default chat grounding、GraphRAG、source binding automation 或 final answer policy 的推广信号。
+
 当前运行时作用域契约补充：
 
 - `runtime-profile` 当前已支持显式 run scope 输入（`run_id / parent_run_id / child_run_id / scheduler_run_id`）；当上游已知当前作用域时，后端应优先采信显式 scope，而不是依赖前端推导。

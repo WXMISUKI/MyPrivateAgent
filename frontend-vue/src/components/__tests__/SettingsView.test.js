@@ -50,6 +50,13 @@ vi.mock('../../api', () => ({
         top_provider_failover_pairs: []
       }
     })
+  },
+  providerOnboardingApi: {
+    list: vi.fn().mockResolvedValue({ data: { entries: [] } }),
+    readiness: vi.fn().mockResolvedValue({ data: {} })
+  },
+  serviceProviderApi: {
+    list: vi.fn().mockResolvedValue({ data: { providers: [] } })
   }
 }))
 
@@ -70,6 +77,7 @@ describe('SettingsView', () => {
       global: {
         stubs: {
           ProviderConfigPanel: true,
+          ProviderOnboardingPanel: true,
           RuntimeSurfacePanel: true,
           DoctorPanel: true,
           GovernanceTimelinePanel: true,

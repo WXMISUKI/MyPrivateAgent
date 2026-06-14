@@ -202,6 +202,34 @@ export const providerApi = {
   }
 }
 
+export const providerOnboardingApi = {
+  list() {
+    return api.get('/provider-onboarding')
+  },
+
+  get(onboardingId) {
+    return api.get(`/provider-onboarding/${encodeURIComponent(onboardingId)}`)
+  },
+
+  readiness(onboardingId) {
+    return api.get(`/provider-onboarding/${encodeURIComponent(onboardingId)}/readiness`)
+  }
+}
+
+export const serviceProviderApi = {
+  list() {
+    return api.get('/service-providers')
+  },
+
+  get(providerId) {
+    return api.get(`/service-providers/${encodeURIComponent(providerId)}`)
+  },
+
+  evidencePreview(providerId) {
+    return api.get(`/service-providers/${encodeURIComponent(providerId)}/evidence-preview`)
+  }
+}
+
 // Legacy /api/voice compatibility wrapper. New voice surfaces should prefer
 // capabilityApi with voice.tts.edge and voice.asr.vosk.
 export const voiceApi = {

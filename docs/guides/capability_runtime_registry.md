@@ -387,7 +387,9 @@ const result = await capabilityApi.invoke('voice.tts.edge', { text: '您好' })
 const test = await capabilityApi.test('voice.tts.edge')
 ```
 
-设置页“模型与 Provider”区域提供“能力 Provider 测试”面板，统一展示 `/api/capabilities`、`/api/capabilities/heartbeat` 和主动测试结果。TTS 测试成功后可直接播放返回音频；ASR 默认展示 health-only 结果，如需真实识别可上传已经符合 provider 要求的音频载荷。实时录音、PCM 下采样和 WebSocket 验收仍由 `unifiedTTSandASR/static/index.html` 作为服务自身调试台承担。
+设置页“模型与 Provider”区域提供“外接 Provider 接入”只读面板，消费 `/api/provider-onboarding`、`/api/provider-onboarding/{onboarding_id}/readiness` 与 `/api/service-providers`，用于查看已知外接项目的 env var、默认 URL、capability ids、配置 checklist、live provider status、management/evidence preview path 和 runtime boundaries。该面板只刷新 read model，不写 `.env`，不启动 provider，不调用 capability invoke/test，不改变默认 chat grounding、GraphRAG、source binding 或 final answer policy。
+
+同一区域还提供“能力 Provider 测试”面板，统一展示 `/api/capabilities`、`/api/capabilities/heartbeat` 和主动测试结果。TTS 测试成功后可直接播放返回音频；ASR 默认展示 health-only 结果，如需真实识别可上传已经符合 provider 要求的音频载荷。实时录音、PCM 下采样和 WebSocket 验收仍由 `unifiedTTSandASR/static/index.html` 作为服务自身调试台承担。
 
 ## Legacy local voice fallback
 

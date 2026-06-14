@@ -196,6 +196,7 @@
         </section>
 
         <ProviderConfigPanel />
+        <ProviderOnboardingPanel />
         <CapabilityProviderDiagnosticsPanel />
 
         <div class="tab-footer">
@@ -226,6 +227,7 @@ import McpManagementPanel from '../components/McpManagementPanel.vue'
 import CapabilityGapSummaryPanel from '../components/CapabilityGapSummaryPanel.vue'
 import RuntimeSurfacePanel from '../components/RuntimeSurfacePanel.vue'
 import ProviderConfigPanel from '../components/ProviderConfigPanel.vue'
+import ProviderOnboardingPanel from '../components/ProviderOnboardingPanel.vue'
 import CapabilityProviderDiagnosticsPanel from '../components/CapabilityProviderDiagnosticsPanel.vue'
 import { healthApi, providerApi, runtimeSurfaceApi } from '../api'
 
