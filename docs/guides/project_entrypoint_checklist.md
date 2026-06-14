@@ -73,9 +73,17 @@ python backend/scripts/provider_onboarding_acceptance_smoke.py --onboarding-id k
 - [ ] Identify the layer first: Runtime Core, Capability, Governance, Delivery, or Domain Agent.
 - [ ] Read [runtime_contracts.md](../architecture/runtime_contracts.md) before changing contract fields.
 - [ ] For Embedded SDK / Harness work, check the current preview boundary in `backend/agent_framework/sdk.py`, `backend/agent_framework/harness.py`, and the embedded SDK OpenSpec specs before adding new behavior.
+- [ ] Generate Embedded SDK recovery acceptance evidence before treating registry-backed recovery as explicitly consumable:
+
+```powershell
+python backend/scripts/embedded_sdk_recovery_acceptance_smoke.py --scenario accepted --pretty
+```
+
+- [ ] Treat Embedded SDK recovery `accepted` as explicit SDK consumption readiness only.
 - [ ] If a change affects Embedded SDK, ToolRuntime, Approval, Recovery, Worker Ownership, Query Control, or Runtime Surface, create an OpenSpec change first.
 - [ ] Keep new evidence compact and machine-readable.
 - [ ] Do not copy Python callable, provider client, active stream iterator, or full tool result bodies into governance payloads.
+- [ ] Do not infer worker lease, background auto-recovery, distributed execution, real LLM execution, or default `/api/chat` behavior from Embedded SDK recovery acceptance.
 
 ## 5. Framework Adapter Extension
 

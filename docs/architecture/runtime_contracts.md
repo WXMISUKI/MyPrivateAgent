@@ -857,6 +857,7 @@ Phase II 当前前置判断：
 - `PATCH /api/runtime-profile/embedded-runtime-bootstrap` 在提供 `conversation_id` 时，还会追加 `embedded_runtime_bootstrap_updated` 治理 trace/audit 事件，把默认 runtime 策略热切换正式纳入 runtime control plane 审计链。
 - `post_update_verification` 当前不仅返回前后值，也会直接给出布尔判断：`runtime_mode_changed / recovery_posture_changed / workspace_backend_changed / durable_capability_changed`，用于让调用方以 machine-readable 方式判断此次 bootstrap 热切换的实际影响。
 - `post_update_verification` 现也会返回 `previous_default_recovery_expectation / current_default_recovery_expectation`，用于让调用方直接比较默认恢复能力合同本身，而不只依赖拆散后的派生布尔字段。
+- `embedded-sdk-recovery-acceptance-smoke-v1` 当前作为显式 Embedded SDK 恢复消费验收证据落地于 `backend/agent_framework/recovery_acceptance_smoke.py` 和 `backend/scripts/embedded_sdk_recovery_acceptance_smoke.py`。它会执行受控的 durable workspace + continuation registry + approval continuation + `resume_run(..., continue_loop=True)` 场景，并输出 `accepted / blocked` JSON evidence；memory-only workspace 与缺失 registry binding 都 fail-closed 为 blocked。该验收只证明显式 SDK recovery consumption readiness，不启用 worker lease、后台自动恢复、分布式 executor、真实 LLM 或默认 `/api/chat` 行为。
 - child executor output 当前已不再只保留 `result_type / conclusion`，而是会稳定携带 `entities / focus_points / action_items`，并进入 replay record 与 compact summary。
 - Runtime Surface child executor 读模型当前也已正式消费 `latest_merged_semantics`，包括 `intent_label` 与最小 `merge_behavior`，避免这层语义只停留在 SDK 内部 contract。
 - `parent merged semantics` 当前已额外提升为 dedicated read model，可独立于 child artifact summary 被 Runtime Surface 消费；后续 parent 侧其他治理/执行视图不应继续从 child summary 间接取值。
