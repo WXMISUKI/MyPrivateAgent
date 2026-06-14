@@ -64,6 +64,8 @@ Grounded-answer package dry-run 当前会从 trial report 继续保留 compact `
 
 `/api/service-providers/{provider_id}/evidence-preview` 当前只生成 caller-owned compact evidence，允许包含 provider identity、readiness、capability statuses、gates、warnings、boundaries、recommended action 与 provider reopen gate；不得包含 API key、raw retrieved documents、generated answer text、provider client、active stream 或大块 raw provider payload。`unifiedKnowledgeProvider` 是第一条落地实例：其 `governance_readiness` 会被映射进通用 provider readiness，但 GraphRAG、source binding automation 和 default chat grounding 仍保持 gated/disabled。
 
+`provider-onboarding-catalog-v1` 当前作为已知外接项目的静态接入目录暴露在 `/api/provider-onboarding`。它列出 `unifiedKnowledgeProvider / unifiedTTSandASR / paddleOCRProvider / paddleLayoutProvider / documentVlmProvider` 的 provider id、默认本地 URL、env var 名称、capability ids、文档入口、smoke command、readiness checklist 和 runtime boundaries。该 catalog 只做 setup guidance 与当前进程配置项检查，不访问外部 provider、不启动服务、不写 `.env`、不提交 OCR/VLM job、不执行 RAG，也不改变 chat、memory、audit 或 provider promotion。live readiness 仍以 `/api/service-providers` 与 `/api/capabilities/heartbeat` 为准。
+
 当前运行时作用域契约补充：
 
 - `runtime-profile` 当前已支持显式 run scope 输入（`run_id / parent_run_id / child_run_id / scheduler_run_id`）；当上游已知当前作用域时，后端应优先采信显式 scope，而不是依赖前端推导。

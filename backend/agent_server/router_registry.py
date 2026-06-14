@@ -6,9 +6,9 @@ from dataclasses import dataclass
 from typing import Iterable, Sequence
 
 try:
-    from routers import auth, capabilities, chat, commands, conversations, document_artifacts, document_ingestions, document_rag_local_trials, domain_agents, health, learnings, mcp, memory, permissions, plans, providers, service_providers, skills, voice
+    from routers import auth, capabilities, chat, commands, conversations, document_artifacts, document_ingestions, document_rag_local_trials, domain_agents, health, learnings, mcp, memory, permissions, plans, provider_onboarding, providers, service_providers, skills, voice
 except ModuleNotFoundError:  # pragma: no cover - package import compatibility
-    from backend.routers import auth, capabilities, chat, commands, conversations, document_artifacts, document_ingestions, document_rag_local_trials, domain_agents, health, learnings, mcp, memory, permissions, plans, providers, service_providers, skills, voice
+    from backend.routers import auth, capabilities, chat, commands, conversations, document_artifacts, document_ingestions, document_rag_local_trials, domain_agents, health, learnings, mcp, memory, permissions, plans, provider_onboarding, providers, service_providers, skills, voice
 
 
 @dataclass(frozen=True)
@@ -25,6 +25,7 @@ ROUTER_REGISTRATIONS = (
     RouterRegistration(name="health", groups=("core",), router=health.router),
     RouterRegistration(name="providers", groups=("core",), router=providers.router),
     RouterRegistration(name="service_providers", groups=("core", "capabilities"), router=service_providers.router),
+    RouterRegistration(name="provider_onboarding", groups=("core", "capabilities"), router=provider_onboarding.router),
     RouterRegistration(name="conversations", groups=("core",), router=conversations.router),
     RouterRegistration(name="chat", groups=("core",), router=chat.router),
     RouterRegistration(name="skills", groups=("skills",), router=skills.router),

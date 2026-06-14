@@ -196,6 +196,8 @@ ASR 在传入 `audio_base64` 时只接受 `16kHz / mono / PCM s16le` 原始音�
 }
 ```
 
+已知 provider 会携带 `onboarding_id` 与 `onboarding_path`，用于跳转到静态接入说明。例如 `unifiedKnowledgeProvider` 会引用 `/api/provider-onboarding/knowledge-rag-provider`。
+
 状态词表统一收敛为：
 
 - `ready`
@@ -228,6 +230,42 @@ ASR 在传入 `audio_base64` 时只接受 `16kHz / mono / PCM s16le` 原始音�
 ```
 
 成功调用仍保持显式边界：不启用默认 `/api/chat` grounding，不创建 source-to-agent binding，不写 memory/audit，不改变最终答案策略。
+
+### `GET /api/provider-onboarding`
+读取已知外接项目的接入目录。这个接口是静态/配置导向的 onboarding catalog，不做 live probe，也不启动服务。它用于回答“这个外接项目怎么接入 MyPrivateAgent”：
+
+```json
+{
+  "contract_version": "provider-onboarding-catalog-v1",
+  "entries": [
+    {
+      "onboarding_id": "knowledge-rag-provider",
+      "provider_id": "unifiedKnowledgeProvider",
+      "kind": "knowledge",
+      "default_base_url": "http://127.0.0.1:8020",
+      "capability_ids": ["knowledge.rag.retrieve", "knowledge.graph.query"],
+      "env": {
+        "enable_var": "ENABLE_KNOWLEDGE_CAPABILITY_PROVIDER",
+        "base_url_var": "KNOWLEDGE_CAPABILITY_PROVIDER_BASE_URL"
+      }
+    }
+  ]
+}
+```
+
+当前 catalog 第一批固定：
+
+- `knowledge-rag-provider` -> `unifiedKnowledgeProvider`
+- `voice-asr-tts-provider` -> `unifiedTTSandASR`
+- `document-ocr-provider` -> `paddleOCRProvider`
+- `document-layout-provider` -> `paddleLayoutProvider`
+- `document-vlm-provider` -> `documentVlmProvider`
+
+### `GET /api/provider-onboarding/{onboarding_id}`
+读取单个 provider 接入详情，包括 env var 名称、默认本地 URL、capability ids、文档链接、smoke command、management links 和边界。该接口只返回 env var 名称，不返回 secret 值。
+
+### `GET /api/provider-onboarding/{onboarding_id}/readiness`
+读取当前进程配置下的 onboarding checklist。该 checklist 只判断 enable flag/base URL/timeout 等配置项是否存在，并提示后续用 `/api/service-providers/{provider_id}` 或 `/api/capabilities/heartbeat` 做 live probe；它不访问外部 provider。
 
 ### `WS /api/capabilities/{capability_id}/stream`
 实时流式能力代理。当前用于 `voice.asr.vosk` 主对话麦克风输入。

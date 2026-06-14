@@ -68,6 +68,8 @@ Provider-first 能力路线已补充到 `docs/roadmap/provider_capability_gap_as
 - 后续若继续推进，应优先进入 grounding policy / eval-backed promotion，而不是继续扩 provider-side RAG 策略。
 - 外接 provider 消费管理面已新增 `provider-service-consumption-v1`：`/api/service-providers` 统一暴露 provider list/detail、readiness 归一化、显式 capability invoke 和 compact evidence preview。该层复用 capability runtime，不新建第二套执行链；`unifiedKnowledgeProvider` 是第一条落地实例，后续语音、OCR、VLM 或其他外接项目可按同一管理合同接入。
 - 当前 provider 管理面只证明“可管控、可观测、可显式调用”，不表示默认 chat grounding、GraphRAG、source binding automation、provider runtime promotion 或 final answer policy 已启用。
+- 外接 provider onboarding catalog 已新增 `provider-onboarding-catalog-v1`：`/api/provider-onboarding` 固定已知外接项目的接入目录、env var 名称、默认 URL、capability ids、文档入口、smoke command、readiness checklist 与边界。它与 `/api/service-providers` 分工明确：onboarding catalog 回答“如何接入”，service providers 回答“当前是否可用”。
+- 下一步若继续推进 provider 对接，应优先在前端设置/治理面消费 onboarding + service provider 两层 read model，而不是继续把接入说明散落到单项目文档，或直接做动态 marketplace。
 
 ## 1.1 Phase G：外部参考对齐后的新增方向
 

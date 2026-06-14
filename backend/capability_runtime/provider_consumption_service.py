@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from .contracts import CapabilityDefinition
+from .provider_onboarding_catalog import get_provider_onboarding_catalog_service
 from .service import CapabilityRuntimeService, get_capability_runtime_service
 
 
@@ -175,7 +176,8 @@ class ProviderConsumptionService:
             boundaries.update(self._readiness_boundaries(readiness))
 
         overall_status = self._overall_status(statuses, group)
-        return {
+        onboarding_id = get_provider_onboarding_catalog_service().onboarding_id_for_provider(group["provider_id"])
+        entry = {
             "provider_id": group["provider_id"],
             "kind": group["kind"],
             "transport": group["transport"],
@@ -189,6 +191,10 @@ class ProviderConsumptionService:
             "warnings": warnings,
             "boundaries": boundaries,
         }
+        if onboarding_id:
+            entry["onboarding_id"] = onboarding_id
+            entry["onboarding_path"] = f"/api/provider-onboarding/{onboarding_id}"
+        return entry
 
     @staticmethod
     def _provider_id(capability: CapabilityDefinition) -> str:
