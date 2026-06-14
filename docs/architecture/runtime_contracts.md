@@ -68,6 +68,8 @@ Grounded-answer package dry-run 当前会从 trial report 继续保留 compact `
 
 前端设置页的 `provider-onboarding-ui-surface` 只读消费 onboarding catalog、onboarding readiness 和 service-provider list。它可以把静态接入说明与 live provider status 按 `provider_id` 关联展示，但不得调用 provider capability invoke/test、不得写配置、不得启动外部服务，也不得把 `ready` 展示为 default chat grounding、GraphRAG、source binding automation 或 final answer policy 的推广信号。
 
+`provider-onboarding-acceptance-gate-v1` 当前作为外接 provider 接入验收证据合同落地于 `backend/capability_runtime/provider_onboarding_acceptance_gate.py` 和 `backend/scripts/provider_onboarding_acceptance_smoke.py`。它按 `onboarding_id` 或 `provider_id` 读取 onboarding detail/readiness 与 service-provider management list，输出 compact `accepted / blocked` decision、capability ownership、blockers、warnings 和 boundaries。该 gate 只证明显式 managed-provider consumption readiness，不调用 provider invoke/test，不运行 RAG/OCR/VLM/ASR/TTS/GraphRAG，不写配置，不启动服务，不创建 source binding，也不推广默认 chat grounding 或 final answer policy。
+
 当前运行时作用域契约补充：
 
 - `runtime-profile` 当前已支持显式 run scope 输入（`run_id / parent_run_id / child_run_id / scheduler_run_id`）；当上游已知当前作用域时，后端应优先采信显式 scope，而不是依赖前端推导。

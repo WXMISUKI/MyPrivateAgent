@@ -267,6 +267,18 @@ ASR 在传入 `audio_base64` 时只接受 `16kHz / mono / PCM s16le` 原始音�
 ### `GET /api/provider-onboarding/{onboarding_id}/readiness`
 读取当前进程配置下的 onboarding checklist。该 checklist 只判断 enable flag/base URL/timeout 等配置项是否存在，并提示后续用 `/api/service-providers/{provider_id}` 或 `/api/capabilities/heartbeat` 做 live probe；它不访问外部 provider。
 
+### Provider onboarding acceptance gate
+`backend/scripts/provider_onboarding_acceptance_smoke.py` 可生成外接 provider 接入验收 evidence：
+
+```powershell
+python backend\scripts\provider_onboarding_acceptance_smoke.py --onboarding-id knowledge-rag-provider --pretty
+python backend\scripts\provider_onboarding_acceptance_smoke.py --provider-id unifiedKnowledgeProvider --pretty
+```
+
+该 gate 读取 onboarding detail、onboarding readiness 和 service-provider 管理列表，输出 `provider-onboarding-acceptance-gate-v1` JSON。`decision = accepted` 只表示 provider 可进入显式 managed-provider consumption；`blocked` 会列出配置缺失、未注册、live status 不可用或 capability ownership 不匹配等 blockers。
+
+验收 gate 仍是只读：不调用 capability invoke/test，不执行 RAG/OCR/VLM/ASR/TTS/GraphRAG，不写 `.env`，不启动 provider，不创建 source binding，不改变默认 `/api/chat` grounding 或 final answer policy。
+
 ### `WS /api/capabilities/{capability_id}/stream`
 实时流式能力代理。当前用于 `voice.asr.vosk` 主对话麦克风输入。
 

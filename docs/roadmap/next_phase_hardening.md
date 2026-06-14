@@ -70,6 +70,7 @@ Provider-first 能力路线已补充到 `docs/roadmap/provider_capability_gap_as
 - 当前 provider 管理面只证明“可管控、可观测、可显式调用”，不表示默认 chat grounding、GraphRAG、source binding automation、provider runtime promotion 或 final answer policy 已启用。
 - 外接 provider onboarding catalog 已新增 `provider-onboarding-catalog-v1`：`/api/provider-onboarding` 固定已知外接项目的接入目录、env var 名称、默认 URL、capability ids、文档入口、smoke command、readiness checklist 与边界。它与 `/api/service-providers` 分工明确：onboarding catalog 回答“如何接入”，service providers 回答“当前是否可用”。
 - 前端设置页已新增只读 `provider-onboarding-ui-surface`，把 onboarding catalog、readiness checklist 与 service-provider live status 放在同一运营视图中。该面板只消费 read endpoints，不做 provider invoke/test、配置写入、服务启动或 runtime promotion。
+- 外接 provider 接入验收已新增 `provider-onboarding-acceptance-gate-v1`：`provider_onboarding_acceptance_smoke.py` 可按 onboarding id 或 provider id 生成 compact evidence，判断 provider 是否达到显式 managed-provider consumption readiness。该 gate fail-closed，缺配置、未注册、live status 不可用或 capability ownership 不匹配都会 blocked；accepted 也不代表默认 chat grounding、GraphRAG、source binding 或 final answer policy 推广。
 - 下一步若继续推进 provider 对接，应优先补齐更多外接项目按同一 provider management/onboarding contract 的登记与验收，而不是继续把接入说明散落到单项目文档，或直接做动态 marketplace。
 
 ## 1.1 Phase G：外部参考对齐后的新增方向
