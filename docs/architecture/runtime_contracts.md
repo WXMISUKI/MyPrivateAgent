@@ -58,6 +58,12 @@ Domain-agent grounded-answer trial surface 当前会把 promotion gate 的 provi
 
 Grounded-answer package dry-run 当前会从 trial report 继续保留 compact `provider_readiness`，让后续 composition trial 或治理消费者可以读取同一份 provider readiness 摘要。package 仍只构造未来答案路径的输入包，不重新裁决 readiness，不调用 provider/model/chat，不执行 GraphRAG，也不创建 source binding、memory、audit 或 trace 状态。
 
+`provider-service-consumption-v1` 当前作为外接能力服务的通用管理合同暴露在 `/api/service-providers`。该合同位于 capability runtime 之上，统一 provider list/detail、readiness 归一化、显式 capability invoke 包装和 evidence preview。状态词表固定为 `ready / review / blocked / unreachable / gated / disabled / unconfigured / unknown`。`backend/capability_runtime/provider_consumption_service.py` 只读取现有 capability registry/health/invoke，不创建第二套 provider 执行链。
+
+`/api/service-providers/{provider_id}/capabilities/{capability_id}/invoke` 必须先校验 provider 是否拥有该 capability，再委托 `CapabilityRuntimeService.invoke(...)`。ownership 不匹配时返回 `SERVICE_PROVIDER_CAPABILITY_NOT_OWNED` 并 fail closed。调用成功也只代表显式 capability invocation，不启用默认 `/api/chat` grounding，不创建 source-to-agent binding，不写 memory/audit，也不改变 final answer policy。
+
+`/api/service-providers/{provider_id}/evidence-preview` 当前只生成 caller-owned compact evidence，允许包含 provider identity、readiness、capability statuses、gates、warnings、boundaries、recommended action 与 provider reopen gate；不得包含 API key、raw retrieved documents、generated answer text、provider client、active stream 或大块 raw provider payload。`unifiedKnowledgeProvider` 是第一条落地实例：其 `governance_readiness` 会被映射进通用 provider readiness，但 GraphRAG、source binding automation 和 default chat grounding 仍保持 gated/disabled。
+
 当前运行时作用域契约补充：
 
 - `runtime-profile` 当前已支持显式 run scope 输入（`run_id / parent_run_id / child_run_id / scheduler_run_id`）；当上游已知当前作用域时，后端应优先采信显式 scope，而不是依赖前端推导。

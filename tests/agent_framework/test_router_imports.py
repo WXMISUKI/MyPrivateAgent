@@ -10,6 +10,7 @@ class RouterImportTests(unittest.TestCase):
         self.assertTrue(hasattr(module, "mcp"))
         self.assertTrue(hasattr(module, "permissions"))
         self.assertTrue(hasattr(module, "capabilities"))
+        self.assertTrue(hasattr(module, "service_providers"))
         self.assertTrue(hasattr(module, "domain_agents"))
 
 

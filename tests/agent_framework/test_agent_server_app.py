@@ -39,7 +39,7 @@ from backend.agent_server.router_registry import get_api_router_registrations, g
 class AgentServerAppTests(unittest.TestCase):
     def test_router_registry_returns_expected_count(self):
         routers = tuple(get_api_routers())
-        self.assertEqual(len(routers), 17)
+        self.assertEqual(len(routers), 19)
 
     def test_router_registry_can_filter_by_group(self):
         registrations = get_api_router_registrations(route_groups=("admin",))
@@ -73,6 +73,7 @@ class AgentServerAppTests(unittest.TestCase):
         self.assertIn("/api/agents", route_paths)
         self.assertIn("/api/chat", route_paths)
         self.assertIn("/api/conversations", route_paths)
+        self.assertIn("/api/service-providers", route_paths)
         self.assertIn("/api/domain-agents/{agent_id}/grounded-answer-trial", route_paths)
         self.assertIn("/api/admin/memory/stats", route_paths)
         if spa_index.exists():

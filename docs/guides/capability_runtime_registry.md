@@ -3,6 +3,8 @@
 ## 定位
 `capability_runtime` 是 MyPrivateAgent 面向 OCR、ASR、TTS、RAG、知识图谱、多模态、视频生成等 AI 能力的统一注册和调用层。它不替代具体模型或工具服务，而是把不同运行环境的能力收口到统一合同里，供前端、垂域智能体、ToolRuntime、MCP、治理台共同使用。
 
+外接能力服务的管理面由 `provider-service-consumption-v1` 承接。它位于 `capability_runtime` 之上，只负责 provider 注册视图、readiness 归一化、显式 invoke 包装和 compact evidence preview；真实执行仍委托给 `/api/capabilities/{capability_id}/invoke`，不会新建第二套 provider 调用链。
+
 ## 当前实现
 当前能力注册中心已注册语音能力，并可按配置接入外部知识能力：
 
@@ -19,6 +21,7 @@ knowledge.graph.query
 ```text
 backend/capability_runtime/
   contracts.py
+  provider_consumption_service.py
   registry.py
   service.py
   providers/
@@ -26,6 +29,7 @@ backend/capability_runtime/
     voice_http_provider.py
     knowledge_http_provider.py
 backend/routers/capabilities.py
+backend/routers/service_providers.py
 ```
 
 ## 统一接口
@@ -154,6 +158,76 @@ ASR 在传入 `audio_base64` 时只接受 `16kHz / mono / PCM s16le` 原始音�
   ]
 }
 ```
+
+### `GET /api/service-providers`
+读取外接服务 provider 管理列表。该接口面向治理台、设置页和集成调试，返回 provider 级别 readiness，而不是模型 provider 配置。
+
+```json
+{
+  "contract_version": "provider-service-consumption-v1",
+  "providers": [
+    {
+      "provider_id": "unifiedKnowledgeProvider",
+      "kind": "knowledge",
+      "transport": "http",
+      "base_url": "http://127.0.0.1:8020",
+      "configured": true,
+      "enabled": true,
+      "overall_status": "ready",
+      "capabilities": [
+        {
+          "capability_id": "knowledge.rag.retrieve",
+          "kind": "rag",
+          "transport": "http",
+          "status": "ready",
+          "invocation_boundary": "explicit_only"
+        }
+      ],
+      "gates": [],
+      "warnings": [],
+      "boundaries": {
+        "default_chat_grounding": "disabled",
+        "source_binding_automation": "disabled",
+        "graphrag_execution": "not_promoted",
+        "final_answer_policy": "not_changed"
+      }
+    }
+  ]
+}
+```
+
+状态词表统一收敛为：
+
+- `ready`
+- `review`
+- `blocked`
+- `unreachable`
+- `gated`
+- `disabled`
+- `unconfigured`
+- `unknown`
+
+### `GET /api/service-providers/{provider_id}`
+读取单个 provider 的 compact readiness 与 capability health 摘要。它可以包含 `governance_readiness`、catalog summary、gates 和 warnings，但不得包含 API key、检索正文、完整 provider raw payload 或生成答案。
+
+### `GET /api/service-providers/{provider_id}/evidence-preview`
+生成 caller-owned provider evidence preview，用于接入审查和治理诊断。该 preview 包含 provider identity、readiness、capability statuses、gates、warnings、boundaries、recommended action 和 provider reopen gate，不创建 audit/memory/source binding。
+
+### `POST /api/service-providers/{provider_id}/capabilities/{capability_id}/invoke`
+显式调用 provider 拥有的 capability。该接口先校验 provider 是否拥有 `capability_id`，再委托给现有 capability runtime；若 capability 不属于该 provider，则 fail-closed：
+
+```json
+{
+  "ok": false,
+  "provider_id": "unifiedKnowledgeProvider",
+  "capability_id": "voice.tts.edge",
+  "error": {
+    "code": "SERVICE_PROVIDER_CAPABILITY_NOT_OWNED"
+  }
+}
+```
+
+成功调用仍保持显式边界：不启用默认 `/api/chat` grounding，不创建 source-to-agent binding，不写 memory/audit，不改变最终答案策略。
 
 ### `WS /api/capabilities/{capability_id}/stream`
 实时流式能力代理。当前用于 `voice.asr.vosk` 主对话麦克风输入。

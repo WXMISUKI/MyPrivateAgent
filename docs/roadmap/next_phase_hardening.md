@@ -66,6 +66,8 @@ Provider-first 能力路线已补充到 `docs/roadmap/provider_capability_gap_as
 - Grounded-answer package dry-run 已继续保留 trial report 的 compact `provider_readiness`，形成未来答案组合前的受治理输入包；该输入包仍不调用 provider/model/chat，不执行 GraphRAG，也不创建 source binding。
 - 该 readiness 不改变默认 `/api/chat` 行为，不创建 source binding，不执行 GraphRAG，也不修改答案策略。
 - 后续若继续推进，应优先进入 grounding policy / eval-backed promotion，而不是继续扩 provider-side RAG 策略。
+- 外接 provider 消费管理面已新增 `provider-service-consumption-v1`：`/api/service-providers` 统一暴露 provider list/detail、readiness 归一化、显式 capability invoke 和 compact evidence preview。该层复用 capability runtime，不新建第二套执行链；`unifiedKnowledgeProvider` 是第一条落地实例，后续语音、OCR、VLM 或其他外接项目可按同一管理合同接入。
+- 当前 provider 管理面只证明“可管控、可观测、可显式调用”，不表示默认 chat grounding、GraphRAG、source binding automation、provider runtime promotion 或 final answer policy 已启用。
 
 ## 1.1 Phase G：外部参考对齐后的新增方向
 
