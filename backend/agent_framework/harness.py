@@ -451,6 +451,7 @@ class AgentHarnessFacade:
         run_id: str,
         *,
         model_step: ModelStepCallable | None = None,
+        model_name: str | None = None,
         tool_policy: ToolPolicyCallable | None = None,
         tool_executor: ToolExecutorCallable | None = None,
         reflector: ReflectionCallable | None = None,
@@ -458,6 +459,10 @@ class AgentHarnessFacade:
         fallback_handler: FallbackCallable | None = None,
         max_iterations: int = 1,
     ) -> Dict[str, Any]:
+        effective_model_step = model_step
+        if effective_model_step is None and model_name is not None:
+            from .provider_model_step import build_provider_model_step
+            effective_model_step = build_provider_model_step(model_name)
         effective_tool_policy = tool_policy
         if tool_policy is not None and self.tool_runtime_service is not None:
             effective_tool_policy = self._bridge_tool_runtime_policy(tool_policy)
@@ -468,7 +473,7 @@ class AgentHarnessFacade:
             tool_executor = self._build_registered_tool_executor(decision_holder)
         return self.sdk.execute_run(
             run_id,
-            model_step=model_step,
+            model_step=effective_model_step,
             tool_policy=effective_tool_policy,
             tool_executor=tool_executor,
             reflector=reflector,

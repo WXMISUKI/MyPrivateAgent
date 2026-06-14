@@ -1021,6 +1021,7 @@ II-1 第一刀当前未做：
 - reviewer 或后续 callable 抛错时，默认 fail-closed：run 转为 `failed`，`stop_reason = loop_exception`，写入 `execution_loop_failed` error event。
 - 可选 fallback handler 可把异常转为 `ExecutionFallbackResult(status = handled)`，写入 `metadata.execution_fallback` 与 `execution_loop_fallback_applied` event，然后继续后续 loop。
 - 可选 model step 在 `generating` 阶段执行，输出归一化为 compact `ExecutionModelStepResult`（text、summary、model_name、finish_reason、usage、metadata），写入 `metadata.execution_model_step` 与 `execution_loop_model_step_completed` event；unsafe 字段（callable、provider client、stream iterator、raw SDK object）会被 `_sanitize_model_step_payload` 过滤。model step 异常复用现有 fallback / fail-closed 路由：fallback handler 可接管并继续 loop，否则 run 转为 `failed`，`stop_reason = loop_exception`。该 seam 是 opt-in 的 callable contract，不暗示真实 LLM provider、streaming、默认 chat 路由或 provider promotion。
+- `build_provider_model_step(model_name, *, provider=None)` 是 provider model-step adapter 的工厂函数，返回一个 `ModelStepCallable`；该 callable 从 `AgentRunContext` 提取 `model_name`，通过 `ModelProviderRegistry` 解析 LangChain 模型实例，同步调用 `model.invoke()`，并把响应归一化为 `ExecutionModelStepResult`。`AgentHarnessFacade.execute()` 可接受 `model_name` 字符串参数自动构建 model_step，显式 `model_step` 优先于 `model_name`。
 
 维护约束：
 
