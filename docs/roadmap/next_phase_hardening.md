@@ -1244,6 +1244,7 @@ Provider-first 能力路线已补充到 `docs/roadmap/provider_capability_gap_as
 - model step callable contract 已完成，后续可接入真实 LLM provider adapter，把 provider 调用结果映射为 `ExecutionModelStepResult`；继续评估 `ExecutionLoopController` 如何接入 ToolRuntimeService、LLM reflector/reviewer、retry policy 和 model degrade policy。
 - provider model-step adapter 已完成第一刀：`build_provider_model_step()` 工厂函数可把 `ModelProviderRegistry` 解析的 LangChain 模型包装为 `ModelStepCallable`；`AgentHarnessFacade.execute()` 已支持 `model_name` 字符串参数自动构建 model_step。后续可扩展为 async adapter、streaming adapter、或接入更丰富的消息构造逻辑。
 - Embedded SDK 端到端集成烟雾测试已完成：确定性集成测试（6 个场景，mock provider）和实时烟雾测试脚本（`sdk_e2e_smoke.py`，真实 LLM）已验证 SDK 路径可完成完整循环（model_step → tool_executor → reviewer → governance trace）。SDK 路径已被证明可用，后续可接入 persistence/recovery、child executor、domain agent 等下游能力。
+- 参考域 agent（天气助手）已完成：`examples/weather_sdk_agent.py` 展示了域项目如何使用 SDK 路径构建 agent（register_tool → execute(model_name) → governance trace），5 个确定性测试验证了模式可用。后续可作为域项目接入的参考模板。
 - 继续推进 `ii3-durable-runtime-checkpoint-resume`：把当前 checkpoint/cursor probe 第一刀接入 runtime contract smoke、quality gate summary、Runtime Contract Gate 和 Snapshot 守护。
 - 继续评估 `resume_run(..., continue_loop=True)` 是否需要支持更完整的持久化 continuation descriptor、跨进程恢复和失败重试；持久化姿态已由 `persistence_interface` 表达，不再新增平行 durable flag。
 - 评估 tool continuation 是否需要持久化 descriptor，避免跨进程或服务重启后丢失待恢复工具。
