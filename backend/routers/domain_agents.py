@@ -28,6 +28,52 @@ def list_domain_agents() -> dict[str, Any]:
     return get_domain_agent_catalog_service().build_catalog()
 
 
+@router.post("/agents/{agent_id}/execute")
+def execute_domain_agent(agent_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    """Execute a domain agent through the SDK path.
+
+    Request body:
+        {"input": "user message", "model_name": "optional model override"}
+
+    Response:
+        {"ok": true, "output": "...", "events": [...], "run": {...}, "run_id": "..."}
+    """
+    try:
+        from services.domain_agent_execution_service import get_domain_agent_execution_service
+    except ModuleNotFoundError:
+        from backend.services.domain_agent_execution_service import get_domain_agent_execution_service
+
+    return get_domain_agent_execution_service().execute(
+        agent_id=agent_id,
+        input_text=str(payload.get("input") or ""),
+        model_name=payload.get("model_name"),
+        metadata=payload.get("metadata"),
+    )
+
+
+@router.post("/agents/{agent_id}/execute")
+def execute_domain_agent(agent_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    """Execute a domain agent through the SDK path.
+
+    Request body:
+        {"input": "user message", "model_name": "optional model override"}
+
+    Response:
+        {"ok": true, "output": "...", "events": [...], "run": {...}, "run_id": "..."}
+    """
+    try:
+        from services.domain_agent_execution_service import get_domain_agent_execution_service
+    except ModuleNotFoundError:
+        from backend.services.domain_agent_execution_service import get_domain_agent_execution_service
+
+    return get_domain_agent_execution_service().execute(
+        agent_id=agent_id,
+        input_text=str(payload.get("input") or ""),
+        model_name=payload.get("model_name"),
+        metadata=payload.get("metadata"),
+    )
+
+
 @router.post("/domain-agents/{agent_id}/grounded-answer-trial")
 def run_grounded_answer_trial(agent_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     trial = get_domain_agent_grounded_answer_trial_service().run_trial(

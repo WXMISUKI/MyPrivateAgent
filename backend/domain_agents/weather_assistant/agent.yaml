@@ -1,0 +1,26 @@
+id: weather_assistant
+name: Weather Assistant Agent
+version: 0.1.0
+description: Domain agent for weather queries and forecasts. Demonstrates the SDK execution path pattern for domain agents.
+roles:
+  - id: weather_specialist
+    name: Weather Specialist
+    default: true
+runtime:
+  default_model: doubao
+  enable_query_control_timeline: true
+  response_mode: sync
+capabilities:
+  tools:
+    - query_weather
+    - query_forecast
+grounding_policy:
+  require_citations: false
+  allow_ungrounded: true
+  fallback_policy: respond_with_available_data
+governance:
+  approval_required: []
+  audit_tags:
+    - weather
+    - demo
+    - sdk_reference
