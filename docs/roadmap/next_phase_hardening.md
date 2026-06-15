@@ -1247,6 +1247,7 @@ Provider-first 能力路线已补充到 `docs/roadmap/provider_capability_gap_as
 - 参考域 agent（天气助手）已完成：`examples/weather_sdk_agent.py` 展示了域项目如何使用 SDK 路径构建 agent（register_tool → execute(model_name) → governance trace），5 个确定性测试验证了模式可用。后续可作为域项目接入的参考模板。
 - 域 agent SDK 执行集成已完成：`DomainAgentExecutionService` 把 agent.yaml 清单映射为 `AgentHarnessFacade` 实例，`POST /api/agents/{agent_id}/execute` 端点通过 SDK 路径执行域 agent 并返回 governance trace。天气助手已注册为第一个参考域 agent。后续可扩展到 MCP 工具解析、skill 注入、streaming 响应。
 - 域 agent 端到端烟雾测试已完成：8 个测试验证了完整链路（catalog listing → execution service → SDK path → governance trace）。发现并记录了 catalog service 的预存 circular import 问题。后续可作为 persistence/recovery 改动的回归安全网。
+- Phase II 收束评估已完成（`docs/change/phase-ii-exit-gate-assessment.md`）：四项收束标准均未完全达标（SDK persistence 60%、governance 前端拆分 50%、Runtime Surface assembler 40%、团队判断标准 50%），但 SDK 路径已证明可用。建议采用混合方案：完成 governance 前端拆分和 Runtime Surface assembler 提取后关闭 Phase II，进入 Phase III。
 - 继续推进 `ii3-durable-runtime-checkpoint-resume`：把当前 checkpoint/cursor probe 第一刀接入 runtime contract smoke、quality gate summary、Runtime Contract Gate 和 Snapshot 守护。
 - 继续评估 `resume_run(..., continue_loop=True)` 是否需要支持更完整的持久化 continuation descriptor、跨进程恢复和失败重试；持久化姿态已由 `persistence_interface` 表达，不再新增平行 durable flag。
 - 评估 tool continuation 是否需要持久化 descriptor，避免跨进程或服务重启后丢失待恢复工具。
