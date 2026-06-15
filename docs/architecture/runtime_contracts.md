@@ -1027,6 +1027,7 @@ II-1 第一刀当前未做：
 - 域 agent SDK 执行集成已通过 `DomainAgentExecutionService` 实现：该服务读取 `agent.yaml` 清单，动态导入 `tools.py` 工具模块，创建 `AgentHarnessFacade` 并注册工具。`POST /api/agents/{agent_id}/execute` 端点通过 SDK 路径执行域 agent，返回 output、events（governance trace）和 run 快照。天气助手（`weather_assistant`）是第一个注册的参考域 agent。
 - 域 agent 端到端烟雾测试已验证完整链路：catalog listing → `DomainAgentExecutionService` → `AgentHarnessFacade` → SDK path → governance trace。7 个测试通过，1 个因 catalog service 预存 circular import 跳过。
 - Phase II 收束评估已完成（`docs/change/phase-ii-exit-gate-assessment.md`）：四项收束标准均未完全达标，但 SDK 路径已证明可用。建议完成 governance 前端拆分和 Runtime Surface assembler 提取后关闭 Phase II。
+- Governance Timeline 前端拆分已完成：`GovernanceTimelinePanel.vue` CSS 提取到 `GovernanceTimelinePanel.css`，组件从 1,208 行降到 884 行。
 
 维护约束：
 
