@@ -1025,6 +1025,7 @@ II-1 第一刀当前未做：
 - Embedded SDK 端到端集成已通过确定性测试（mock provider，6 个场景）和实时烟雾测试（`backend/scripts/sdk_e2e_smoke.py`，真实 LLM provider）验证。完整循环：`AgentHarnessFacade.execute(model_name)` → `build_provider_model_step` → `ExecutionLoopController` → `model.invoke()` → `tool_executor` → `reviewer` → governance trace 已被证明可用。
 - 参考域 agent（`examples/weather_sdk_agent.py`）展示了域项目使用 SDK 路径构建 agent 的标准模式：创建 `AgentHarnessFacade` → `register_tool()` 注册域工具 → `execute(model_name="doubao")` 执行 → governance trace 捕获完整证据。该模式已被 5 个确定性测试验证。
 - 域 agent SDK 执行集成已通过 `DomainAgentExecutionService` 实现：该服务读取 `agent.yaml` 清单，动态导入 `tools.py` 工具模块，创建 `AgentHarnessFacade` 并注册工具。`POST /api/agents/{agent_id}/execute` 端点通过 SDK 路径执行域 agent，返回 output、events（governance trace）和 run 快照。天气助手（`weather_assistant`）是第一个注册的参考域 agent。
+- 域 agent 端到端烟雾测试已验证完整链路：catalog listing → `DomainAgentExecutionService` → `AgentHarnessFacade` → SDK path → governance trace。7 个测试通过，1 个因 catalog service 预存 circular import 跳过。
 
 维护约束：
 
