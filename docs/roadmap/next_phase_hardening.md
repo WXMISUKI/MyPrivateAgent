@@ -1305,6 +1305,7 @@ Provider-first 能力路线已补充到 `docs/roadmap/provider_capability_gap_as
 - `GovernanceOverviewRunStateBuilder`：已先承接 `governance_overview.run` 的 run-state assembly，作为完整 `GovernanceOverviewContractBuilder` 前的安全拆分点。
 - `GovernanceOverviewContractBuilder`
 - `ProviderCatalogBuilder`：已承接模型过滤、provider 汇总和 `provider_resolution` 组装，并有 focused 单测守护。
+- `EmbeddedSdkRuntimeSurfaceBuilder`：已承接 Embedded SDK / Harness 的 factory、bootstrap、default recovery、run recovery 与 recovery alignment read-model 组装；该层只做 contract assembly，不改变 SDK 执行、provider、worker 或默认 chat 行为。
 
 验收标准：
 

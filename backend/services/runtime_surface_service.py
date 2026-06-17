@@ -34,16 +34,15 @@ try:
     from services.runtime_core_contract_builder import RuntimeCoreContractBuilder
     from services.runtime_surface_config_service import get_runtime_surface_config_service
     from services.runtime_surface_builders import (
-        EmbeddedRuntimeContractBundleBuilder,
         ChannelPromotionGateBuilder,
         ExternalAdapterRecentSummaryBuilder,
         MainChatGovernanceOverviewBuilder,
         MainChatQueryReadModelBuilder,
-        RuntimeRecoveryContractBuilder,
         SubagentLaneQueryDetailBuilder,
         SubagentLaneQueryDetailReadinessBuilder,
         SubagentLaneRecentSummaryBuilder,
     )
+    from services.runtime_surface_embedded_sdk_builder import EmbeddedSdkRuntimeSurfaceBuilder
     from services.runtime_surface_profile_assembler import RuntimeSurfaceProfileAssembler
     from services.skill_runtime_service import get_skill_runtime_service
     from services.subagent_service import get_subagent_runtime_service
@@ -72,16 +71,15 @@ except ModuleNotFoundError:  # pragma: no cover - package import compatibility
     from backend.services.runtime_core_contract_builder import RuntimeCoreContractBuilder
     from backend.services.runtime_surface_config_service import get_runtime_surface_config_service
     from backend.services.runtime_surface_builders import (
-        EmbeddedRuntimeContractBundleBuilder,
         ChannelPromotionGateBuilder,
         ExternalAdapterRecentSummaryBuilder,
         MainChatGovernanceOverviewBuilder,
         MainChatQueryReadModelBuilder,
-        RuntimeRecoveryContractBuilder,
         SubagentLaneQueryDetailBuilder,
         SubagentLaneQueryDetailReadinessBuilder,
         SubagentLaneRecentSummaryBuilder,
     )
+    from backend.services.runtime_surface_embedded_sdk_builder import EmbeddedSdkRuntimeSurfaceBuilder
     from backend.services.runtime_surface_profile_assembler import RuntimeSurfaceProfileAssembler
     from backend.services.skill_runtime_service import get_skill_runtime_service
     from backend.services.subagent_service import get_subagent_runtime_service
@@ -342,7 +340,7 @@ class RuntimeSurfaceService:
     def get_embedded_runtime_bootstrap(self) -> Dict[str, Any]:
         factory_contract = self.runtime_factory.build_runtime_contract()
         bootstrap_recovery_validation = self._validate_embedded_runtime_bootstrap_recovery(factory_contract)
-        return EmbeddedRuntimeContractBundleBuilder.build_bootstrap_contract(
+        return EmbeddedSdkRuntimeSurfaceBuilder.build_bootstrap_contract(
             factory_contract,
             bootstrap_recovery_validation=bootstrap_recovery_validation,
         )
@@ -373,7 +371,7 @@ class RuntimeSurfaceService:
         contract["hot_reload_applied"] = "embedded_workspace_store_mode" in update_payload
         contract["restart_required"] = False
         contract["restart_required_changes"] = []
-        contract["post_update_verification"] = EmbeddedRuntimeContractBundleBuilder.build_post_update_verification(
+        contract["post_update_verification"] = EmbeddedSdkRuntimeSurfaceBuilder.build_post_update_verification(
             previous_contract=previous_contract,
             current_contract=contract,
             requested_workspace_mode=requested_workspace_mode,
@@ -508,7 +506,7 @@ class RuntimeSurfaceService:
         )
         reader = EmbeddedAgentRuntimeSDK(workspace_store=store, continuation_registry=registry)
         probe = reader.probe_run_recovery(result["run"]["run_id"])
-        return RuntimeRecoveryContractBuilder.build_bootstrap_validation_contract(
+        return EmbeddedSdkRuntimeSurfaceBuilder.build_bootstrap_validation_contract(
             expected=expected,
             requested_mode=requested_mode,
             probe=probe,
@@ -529,10 +527,10 @@ class RuntimeSurfaceService:
         return self._build_run_recovery_contract(probe)
 
     def _build_run_recovery_contract(self, probe: Dict[str, Any] | None = None) -> Dict[str, Any]:
-        return RuntimeRecoveryContractBuilder.build_run_recovery_contract(probe)
+        return EmbeddedSdkRuntimeSurfaceBuilder.build_run_recovery_contract(probe)
 
     def _build_default_runtime_recovery_contract(self, factory_contract: Dict[str, Any] | None = None) -> Dict[str, Any]:
-        return RuntimeRecoveryContractBuilder.build_default_runtime_recovery_contract(factory_contract)
+        return EmbeddedSdkRuntimeSurfaceBuilder.build_default_runtime_recovery_contract(factory_contract)
 
     def _build_child_merge_state_contract(self, runtime_scope: Dict[str, Any] | None = None) -> Dict[str, Any]:
         return RuntimeCoreContractBuilder.build_child_merge_state_contract(runtime_scope)
@@ -754,7 +752,7 @@ class RuntimeSurfaceService:
         preflight = dict(child_executor_preflight or {})
         gate = dict(child_executor_promotion_gate or {})
         dispatch = dict(child_executor_dispatch_contract or {})
-        recovery_alignment_summary = RuntimeRecoveryContractBuilder.build_recovery_alignment_summary(
+        recovery_alignment_summary = EmbeddedSdkRuntimeSurfaceBuilder.build_recovery_alignment_summary(
             expected_entrypoints=list(default_recovery.get("recovery_entrypoints") or []),
             current_entrypoints=list(recovery.get("recovery_entrypoints") or []),
         )

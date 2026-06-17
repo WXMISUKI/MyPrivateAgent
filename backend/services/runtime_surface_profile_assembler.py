@@ -5,10 +5,12 @@ from __future__ import annotations
 from typing import Any, Dict
 
 try:
-    from services.runtime_surface_builders import EmbeddedRuntimeContractBundleBuilder, ProviderCatalogBuilder
+    from services.runtime_surface_builders import ProviderCatalogBuilder
+    from services.runtime_surface_embedded_sdk_builder import EmbeddedSdkRuntimeSurfaceBuilder
     from services.runtime_surface_profile_context import RuntimeSurfaceProfileContextAssembler
 except ModuleNotFoundError:  # pragma: no cover - package import compatibility
-    from backend.services.runtime_surface_builders import EmbeddedRuntimeContractBundleBuilder, ProviderCatalogBuilder
+    from backend.services.runtime_surface_builders import ProviderCatalogBuilder
+    from backend.services.runtime_surface_embedded_sdk_builder import EmbeddedSdkRuntimeSurfaceBuilder
     from backend.services.runtime_surface_profile_context import RuntimeSurfaceProfileContextAssembler
 
 
@@ -100,7 +102,7 @@ class RuntimeSurfaceProfileAssembler:
             child_executor_promotion_gate,
         )
         embedded_runtime_factory = service.runtime_factory.build_runtime_contract()
-        embedded_runtime_bundle = EmbeddedRuntimeContractBundleBuilder.build_profile_bundle(embedded_runtime_factory)
+        embedded_runtime_bundle = EmbeddedSdkRuntimeSurfaceBuilder.build_profile_bundle(embedded_runtime_factory)
 
         profile = {
             "agent_mode": "general_demo",

@@ -17,6 +17,7 @@ from backend.models import Base
 from backend.services.governance_overview_run_state_builder import GovernanceOverviewRunStateBuilder
 from backend.services.runtime_core_contract_builder import RuntimeCoreContractBuilder
 from backend.services.runtime_surface_builders import ProviderCatalogBuilder, RuntimeRecoveryContractBuilder
+from backend.services.runtime_surface_embedded_sdk_builder import EmbeddedSdkRuntimeSurfaceBuilder
 from backend.services.runtime_surface_profile_context import RuntimeSurfaceProfileContextAssembler
 from backend.services.runtime_surface_profile_assembler import RuntimeSurfaceProfileAssembler
 from backend.services.runtime_surface_service import RuntimeSurfaceService
@@ -28,6 +29,23 @@ class RuntimeSurfaceServiceTests(unittest.TestCase):
             runtime_surface_service_module.RuntimeSurfaceProfileAssembler,
             RuntimeSurfaceProfileAssembler,
         )
+
+    def test_runtime_surface_embedded_sdk_builder_facade_delegates_default_recovery(self):
+        factory_contract = {
+            "default_runtime_profile": {"recovery_posture": "cross_process_candidate", "persistence_posture": "durable_ready"},
+            "default_recovery_capabilities": {"recovery_mode": "registry_backed", "requires_durable_workspace": True, "requires_registry_bindings": True},
+            "default_recovery_expectation": {"cross_process_candidate": True, "cross_process_block_reason": ""},
+            "workspace_backend": {"backend_kind": "sqlalchemy", "backend_mode": "strict_sql"},
+            "persistence_interface": {"contract_version": "phase-ii-embedded-sdk-persistence-interface-v1", "persistence_posture": "durable_ready"},
+        }
+
+        contract = EmbeddedSdkRuntimeSurfaceBuilder.build_default_runtime_recovery_contract(factory_contract)
+
+        self.assertEqual(contract["contract_version"], "phase-ii-default-runtime-recovery-v1")
+        self.assertEqual(contract["recovery_mode"], "registry_backed")
+        self.assertEqual(contract["recovery_posture"], "cross_process_candidate")
+        self.assertTrue(contract["expected_cross_process_candidate"])
+        self.assertEqual(contract["recovery_entrypoints"][1]["recovery_reason"], "ready_via_registry")
 
     def test_runtime_surface_profile_context_prefers_parent_run_for_recovery_target(self):
         self.assertEqual(
