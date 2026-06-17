@@ -1306,6 +1306,7 @@ Provider-first 能力路线已补充到 `docs/roadmap/provider_capability_gap_as
 - `GovernanceOverviewContractBuilder`
 - `ProviderCatalogBuilder`：已承接模型过滤、provider 汇总和 `provider_resolution` 组装，并有 focused 单测守护。
 - `EmbeddedSdkRuntimeSurfaceBuilder`：已承接 Embedded SDK / Harness 的 factory、bootstrap、default recovery、run recovery 与 recovery alignment read-model 组装；该层只做 contract assembly，不改变 SDK 执行、provider、worker 或默认 chat 行为。
+- Query/Run read model hardening：`main_chat_query_detail`、`main_chat_query_history` 与 `recent_queries` 已继续收口到自描述 metadata 字段，Runtime Surface 与 Governance Timeline 可通过共享解释入口消费 query/run 语义。
 
 验收标准：
 

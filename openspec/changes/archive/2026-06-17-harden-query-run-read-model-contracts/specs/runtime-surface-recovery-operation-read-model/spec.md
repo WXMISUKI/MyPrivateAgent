@@ -1,10 +1,4 @@
-# runtime-surface-recovery-operation-read-model Specification
-
-## Purpose
-
-Define how Runtime Surface exposes Embedded SDK recovery operation evidence through the `run_recovery` read model.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Runtime Surface MUST expose recovery operation evidence through run_recovery
 
@@ -65,12 +59,3 @@ The Runtime Surface recovery read model MUST expose retry summary evidence deriv
 - **THEN** `run_recovery.recovery_operation_history` MUST preserve the normalized retry fields
 - **AND** `run_recovery.recovery_audit_summary.retry_status_counts` MUST count those retry statuses
 - **AND** latest retry fields MUST be derived from the SDK-produced operation evidence
-
-### Requirement: run_recovery Read Model Remains Compact and Self Describing
-The system MUST keep `run_recovery` compact while preserving stable metadata needed for read-side interpretation.
-
-#### Scenario: Recovery read model stays descriptive
-
-- **WHEN** `run_recovery` is assembled
-- **THEN** the contract MUST remain read-side only and non-executable
-- **AND** it MUST preserve the compact evidence shape needed by Runtime Surface and Governance Timeline consumers

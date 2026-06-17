@@ -1,22 +1,5 @@
-# Query / Run Read Model Specification
+## MODIFIED Requirements
 
-## Purpose
-
-本规格定义 `MyPrivateAgent` 当前与 `query / run` 治理视图相关的主规格真源。  
-它不负责描述所有 Runtime Core 行为，而是重点约束：
-
-- `query_id` 与 `run_id` 的语义边界
-- `main_chat` 的 query 级 read model
-- dedicated endpoint 与 `runtime-profile` 的职责分层
-- 前端治理视图对 query detail contract 的一致消费方式
-- query history / query workspace 的扩展边界
-
-本规格应与以下文档共同阅读：
-
-- `docs/architecture/runtime_contracts.md`
-- `docs/roadmap/next_phase_hardening.md`
-- `.specify/memory/constitution.md`
-## Requirements
 ### Requirement: Query and Run Are Distinct First-Class Objects
 系统 SHALL 保持 `query` 与 `run` 的语义边界清晰，并将其定义与 `runtime-core-terms-model` 对齐，不得把两者视为同一个对象的不同叫法。
 
@@ -137,15 +120,6 @@
 - **WHEN** 后续实现 dedicated query history endpoint
 - **THEN** contract SHALL 支持分页或 cursor 扩展
 - **AND** history item 字段应尽量与现有 `recent_queries` 做兼容映射
-
-### Requirement: Query Summary Items Carry Stable Read-Model Metadata
-The system MUST ensure `recent_queries` and `main_chat_query_history` items carry stable self-describing metadata for shared query/run interpretation.
-
-#### Scenario: Summary items stay self describing
-
-- **WHEN** Runtime Surface exposes `recent_queries` or `main_chat_query_history.items`
-- **THEN** each item MUST carry `read_model_layer`, `source_channel`, and `identity_kind`
-- **AND** the metadata MUST keep `recent_queries` and history items aligned with the shared query/run interpretation helper
 
 ### Requirement: subagent_lane Recent Summary Trial
 

@@ -167,7 +167,15 @@ describe('mainChatQueryGovernance', () => {
       identity_kind: 'query_id',
       pagination_mode: 'page_plus_cursor',
       recording_state: 'recorded',
-      items: [],
+      items: [
+        {
+          read_model_layer: 'recent_summary',
+          source_channel: 'main_chat',
+          identity_kind: 'query_id',
+          query_id: 'manual-chat-1',
+          latest_stage: 'planning',
+        },
+      ],
       page: 1,
       page_size: 20,
       total_items: 0,
@@ -180,5 +188,8 @@ describe('mainChatQueryGovernance', () => {
     expect(history.sourceChannel).toBe('main_chat')
     expect(history.identityKind).toBe('query_id')
     expect(history.paginationMode).toBe('page_plus_cursor')
+    expect(history.items[0].readModelLayer).toBe('recent_summary')
+    expect(history.items[0].sourceChannel).toBe('main_chat')
+    expect(history.items[0].identityKind).toBe('query_id')
   })
 })

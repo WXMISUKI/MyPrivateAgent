@@ -29,6 +29,9 @@ export function normalizeMainChatQueryHistoryContract(value) {
     recordingState: normalizeText(contract.recording_state) || 'unavailable',
     items: Array.isArray(contract.items)
       ? contract.items.map((item) => ({
+        readModelLayer: normalizeText(item?.read_model_layer),
+        sourceChannel: normalizeText(item?.source_channel),
+        identityKind: normalizeText(item?.identity_kind),
         queryId: normalizeText(item?.query_id),
         latestStage: normalizeText(item?.latest_stage),
         latestSummary: normalizeText(item?.latest_summary),

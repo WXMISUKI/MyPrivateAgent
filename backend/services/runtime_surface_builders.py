@@ -698,6 +698,9 @@ class MainChatQueryReadModelBuilder:
             stage = str(entry_payload.get("stage") or "").strip()
             severity = str(entry.get("severity") or "info").strip().lower()
             query_entry = recent_queries_map.setdefault(query_id, {
+                "read_model_layer": "recent_summary",
+                "source_channel": str(entry_payload.get("channel") or "").strip() or "main_chat",
+                "identity_kind": "query_id",
                 "query_id": query_id,
                 "latest_stage": "",
                 "latest_summary": "",

@@ -1218,7 +1218,7 @@ II-1 第一刀当前未做：
 - 当前 `Query Detail` 已优先消费 dedicated contract；若后续 query 级视图继续复杂化，应继续优先扩 dedicated read model，而不是回到前端本地推导。
 - `main_chat_query_detail` 当前已作为后端正式 contract 暴露；若后续 query 级详情继续扩展，应优先扩这个 contract，而不是重新把复杂度推回前端。
 - `main_chat_query_detail` 当前已同时支持内嵌在 `/api/runtime-profile` 中返回，以及通过 dedicated endpoint `/api/runtime-profile/main-chat-query-detail` 单独读取；后续若继续解耦 query 级 read model，应优先沿 dedicated endpoint 扩展。
-- `main_chat_query_history` 当前采用 page/page_size + next_cursor 的兼容形态；后续若改为更强 cursor 模式，应保持现有 item 字段集合的兼容映射。
+- `main_chat_query_history` 当前采用 page/page_size + next_cursor 的兼容形态；后续若改为更强 cursor 模式，应保持现有 item 字段集合的兼容映射。`recent_queries` 与 history item 已统一携带 `read_model_layer = recent_summary`、`source_channel = main_chat`、`identity_kind = query_id`，用于让 Runtime Surface 与 Governance Timeline 共享同一套 query/run 解释入口。
 - 前端若需要解释 `main_chat_query_detail` 或 `main_chat_query_history`，应尽量共享同一份 contract helper；当前 `frontend-vue/src/services/governanceViewInterpretation.js` 已作为 `RuntimeSurfacePanel` 与 `GovernanceTimelinePanel` 的共同解释入口，避免两边各自维护字段归一化逻辑。涉及 `associated_run_ids` 这类 query/run 边界字段时，也必须通过该共享解释入口保持“query 是生命周期、run 是执行实例”的语义。
 - 若后续扩展 `subagent_lane recent summary` 或其他 channel 的 query 只读模型，也应优先复用 shared interpretation facade，而不是为每个 channel 再发明一套独立前端解释逻辑。
 - `main_chat_query_history` 当前是 `main_chat` 专用 read model；非 `main_chat` channel 若要扩展历史能力，应另行立项，不得默认复用当前治理面板语义。
