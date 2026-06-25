@@ -1,0 +1,84 @@
+id: example_workflow
+name: Example Coze Workflow Migration
+version: 0.1.0
+status: draft
+owner:
+  team: example-team
+  primary: owner@example.com
+  reviewers:
+    - reviewer@example.com
+
+source:
+  platform: coze
+  workspace: example-workspace
+  workflow_id: coze-workflow-id
+  workflow_name: Original Coze Workflow Name
+  export_ref: docs-or-ticket-link
+  migration_notes: >
+    Summarize the original Coze workflow shape, important nodes, and known gaps.
+  unsupported_nodes: []
+
+entrypoint:
+  mode: local
+  adapter: none
+  handler: null
+  default_timeout_ms: 30000
+
+inputs:
+  schema:
+    type: object
+    required:
+      - user_request
+    properties:
+      user_request:
+        type: string
+        description: User request or migrated Coze workflow input.
+
+outputs:
+  schema:
+    type: object
+    required:
+      - answer
+    properties:
+      answer:
+        type: string
+      evidence:
+        type: array
+        items:
+          type: object
+
+prompts:
+  system: prompts/system.md
+  task: prompts/task.md
+
+dependencies:
+  tools: []
+  mcp_capabilities: []
+  skills: []
+  providers: []
+  knowledge_sources: []
+
+governance:
+  permission_level: low
+  trace_required: true
+  approval_required: false
+  data_sensitivity: internal
+  allowed_callers:
+    - runtime
+  policy_notes: >
+    Describe risk boundaries, manual approval needs, or production rollout notes.
+
+acceptance:
+  examples:
+    - id: happy_path
+      path: examples/happy_path.json
+      required: true
+  smoke:
+    deterministic: true
+    live_model_required: false
+
+metadata:
+  tags:
+    - coze-migration
+  domain: example
+  business_owner: business-owner@example.com

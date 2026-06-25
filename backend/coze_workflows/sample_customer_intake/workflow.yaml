@@ -1,0 +1,101 @@
+id: sample_customer_intake
+name: Sample Customer Intake
+version: 0.1.0
+status: draft
+owner:
+  team: agent-platform
+  primary: platform-owner@example.com
+  reviewers:
+    - runtime-reviewer@example.com
+
+source:
+  platform: coze
+  workspace: sample-workspace
+  workflow_id: sample-coze-customer-intake
+  workflow_name: Customer Intake Demo
+  export_ref: docs/guides/coze_migration_workflow_authoring.md
+  migration_notes: >
+    Demonstrates how a Coze intake workflow records prompts, schemas,
+    dependencies, governance, and acceptance examples before execution wiring.
+  unsupported_nodes:
+    - coze_form_component
+
+entrypoint:
+  mode: local
+  adapter: none
+  handler: null
+  default_timeout_ms: 30000
+
+inputs:
+  schema:
+    type: object
+    required:
+      - customer_message
+    properties:
+      customer_message:
+        type: string
+        description: Raw customer request collected from the original Coze workflow.
+      channel:
+        type: string
+        enum:
+          - web
+          - wechat
+          - internal
+
+outputs:
+  schema:
+    type: object
+    required:
+      - summary
+      - next_action
+    properties:
+      summary:
+        type: string
+      next_action:
+        type: string
+        enum:
+          - ask_followup
+          - create_ticket
+          - route_to_human
+      extracted_fields:
+        type: object
+
+prompts:
+  system: prompts/system.md
+  task: prompts/task.md
+
+dependencies:
+  tools: []
+  mcp_capabilities: []
+  skills: []
+  providers: []
+  knowledge_sources: []
+
+governance:
+  permission_level: low
+  trace_required: true
+  approval_required: false
+  data_sensitivity: internal
+  allowed_callers:
+    - runtime
+  policy_notes: >
+    Sample workflow is draft-only and must not be exposed as production callable.
+
+acceptance:
+  examples:
+    - id: happy_path
+      path: examples/happy_path.json
+      required: true
+    - id: unsupported_component
+      path: examples/unsupported_component.json
+      required: false
+  smoke:
+    deterministic: true
+    live_model_required: false
+
+metadata:
+  tags:
+    - coze-migration
+    - sample
+  domain: customer-support
+  business_owner: customer-success@example.com

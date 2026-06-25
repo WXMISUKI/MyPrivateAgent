@@ -1,0 +1,10 @@
+{
+  "id": "unsupported_component",
+  "input": {
+    "customer_message": "The original Coze form component collected extra fields that are not available yet.",
+    "channel": "internal"
+  },
+  "expected": {
+    "readiness_note": "unsupported_nodes should keep this workflow in draft or review until replacement input handling exists"
+  }
+}

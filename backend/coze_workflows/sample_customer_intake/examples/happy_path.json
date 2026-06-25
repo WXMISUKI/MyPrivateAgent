@@ -1,0 +1,11 @@
+{
+  "id": "happy_path",
+  "input": {
+    "customer_message": "I need help upgrading my enterprise plan and want someone to contact me this week.",
+    "channel": "web"
+  },
+  "expected": {
+    "summary_contains": ["upgrade", "enterprise plan", "contact"],
+    "next_action": "create_ticket"
+  }
+}
