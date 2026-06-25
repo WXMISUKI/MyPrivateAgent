@@ -706,6 +706,7 @@ Provider-first 能力路线已补充到 `docs/roadmap/provider_capability_gap_as
 - Phase I 已按 query workspace promotion boundary 收束。
 - 下一刀默认从 Phase II 中选择，不再默认扩展 channel query 能力。
 - 若后续重新打开 channel promotion，必须先回到 `channel-promotion-gate` 写明 reopen decision。
+- 2026-06-17 Phase II exit gate 复评已完成：Phase II 可关闭，后续默认进入 Phase III 准备，不再用 Phase II 名义继续追加局部优化。
 
 ### 阶段目标
 
@@ -1067,6 +1068,17 @@ Provider-first 能力路线已补充到 `docs/roadmap/provider_capability_gap_as
 - 治理前端拆分出更稳定边界。
 - Runtime Surface assembler 思路明确并开始落地。
 - 团队可以清楚判断：何时再回到 channel 级实现，何时继续留在底座主线。
+
+### Phase II 关闭决策
+
+- Decision：Phase II 已达到关闭条件。
+- 关闭依据：
+  - Embedded SDK recovery 已达到 explicit readiness / controlled consumption 线，生产自动化后置到 Phase III。
+  - Governance Timeline 已完成主边界拆分，不再按局部 UI 瘦身继续阻塞阶段关闭。
+  - Runtime Surface profile/context/core/provider/embedded SDK builder 已落地，治理 overview shell 抽取不再自动阻塞。
+  - Query/Run read model 已完成 detail/history/recent summary 自描述 metadata hardening。
+- Phase III 默认入口：`Embedded SDK production recovery authorization` 的最小受控切片。
+- 暂停项：provider evidence piling、main_chat query workspace 细节、多 channel history/workspace、UI 微优化、按行数驱动的 Runtime Surface refactor、默认 chat grounding / GraphRAG / source binding promotion。
 
 ### 继续优化判断规则
 
