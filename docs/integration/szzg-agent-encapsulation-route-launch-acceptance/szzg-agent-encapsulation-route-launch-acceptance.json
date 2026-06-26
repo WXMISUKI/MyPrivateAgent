@@ -1,0 +1,100 @@
+{
+  "contract_version": "szzg-agent-encapsulation-route-launch-acceptance-v1",
+  "generated_at": "2026-06-26T17:43:00+08:00",
+  "decision": "go",
+  "reason_code": "szzg_agent_encapsulation_route_resolved",
+  "recommended_next_action": "use_route_workflow_for_agent_jump_trials",
+  "workflow_id": "szzg_agent_encapsulation_route",
+  "capability_id": "coze.workflow.szzg_agent_encapsulation_route",
+  "domain": "agent-orchestration",
+  "owner": "szzg-owner@example.com",
+  "cases": [
+    {
+      "name": "示例1：单个智能体跳转",
+      "input": {
+        "user_input": "打开代码调试助手",
+        "data": [
+          {
+            "agentId": "7",
+            "agentName": "代码调试助手"
+          }
+        ]
+      },
+      "output": {
+        "command": "route_agent",
+        "params": [
+          "ROUTE://agent_detail?id=7"
+        ],
+        "message": "我马上为你打开代码调试助手智能体"
+      }
+    },
+    {
+      "name": "示例2：广场收藏页跳转",
+      "input": {
+        "user_input": "查看我的收藏"
+      },
+      "output": {
+        "command": "route_square",
+        "params": [
+          "ROUTE://square_page?page=collect"
+        ],
+        "message": "这就为你打开收藏列表页面"
+      }
+    },
+    {
+      "name": "示例3：多匹配反问",
+      "input": {
+        "user_input": "当前有哪些适合监理的智能体",
+        "data": [
+          {
+            "agentId": "11",
+            "agentName": "监理日志编写助手"
+          },
+          {
+            "agentId": "12",
+            "agentName": "施工方案审查"
+          }
+        ]
+      },
+      "output": {
+        "command": "clarify_multi",
+        "params": [
+          "监理日志编写助手",
+          "施工方案审查"
+        ],
+        "message": "为你找到以下匹配的智能体，请告诉我具体要打开哪一个"
+      }
+    },
+    {
+      "name": "示例4：无匹配智能体",
+      "input": {
+        "user_input": "打开图片处理大师",
+        "data": []
+      },
+      "output": {
+        "command": "clarify_none",
+        "params": [],
+        "message": "未找到对应智能体，请确认名称后再试哦"
+      }
+    }
+  ],
+  "boundary": {
+    "registry_read_only": true,
+    "invoke_path": "active",
+    "default_chat_invocation": "not_performed",
+    "model_invocation": "workflow_scoped_only",
+    "tool_execution": "workflow_scoped_only",
+    "source_binding_creation": "not_performed",
+    "memory_write": "not_performed",
+    "audit_write": "not_performed",
+    "trace_write": "performed"
+  },
+  "blockers": [],
+  "warnings": [],
+  "acceptance_notes": [
+    "The workflow is a reusable template for agent-plaza routing and square-page jump scenarios.",
+    "Input format is user_input plus optional data array, and output format is command plus params plus message.",
+    "Registry and invocation both passed after promoting the workflow to active.",
+    "This workflow can be used as a standard sample for future route-type Coze migrations."
+  ]
+}

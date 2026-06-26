@@ -217,11 +217,34 @@ metadata:
         assert workflow["prompts"]["system"]["exists"] is True
         assert workflow["prompts"]["task"]["exists"] is True
 
+    def test_szzg_agent_encapsulation_route_is_discovered_as_draft(self):
+        from backend.services.coze_workflow_registry_service import CozeWorkflowRegistryService
+
+        service = CozeWorkflowRegistryService()
+        contract = service.build_runtime_contract()
+
+        workflows = {w["id"]: w for w in contract["workflows"]}
+        assert "szzg_agent_encapsulation_route" in workflows
+
+        workflow = workflows["szzg_agent_encapsulation_route"]
+        assert workflow["name"] == "SZZG Agent Encapsulation Route"
+        assert workflow["version"] == "0.1.0"
+        assert workflow["status"] == "active"
+        assert workflow["capability_id"] == "coze.workflow.szzg_agent_encapsulation_route"
+        assert workflow["readiness"]["status"] == "ready"
+        assert workflow["prompts"]["system"]["exists"] is True
+        assert workflow["prompts"]["task"]["exists"] is True
+        assert len(workflow["acceptance"]["examples"]) == 4
+
         examples = workflow["acceptance"]["examples"]
-        assert len(examples) == 1
-        assert examples[0]["id"] == "hazardous_project_list_sample"
-        assert examples[0]["path_exists"] is True
-        assert examples[0]["expected_exists"] is True
+        assert [item["id"] for item in examples] == [
+            "route_agent_single_match",
+            "route_square_collect",
+            "clarify_multi_match",
+            "clarify_none_match",
+        ]
+        assert all(item["path_exists"] is True for item in examples)
+        assert all(item["expected_exists"] is True for item in examples)
 
     def test_get_workflow_by_id(self):
         from backend.services.coze_workflow_registry_service import CozeWorkflowRegistryService

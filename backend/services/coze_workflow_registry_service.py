@@ -12,6 +12,7 @@ DEFAULT_COZE_WORKFLOW_ROOT = Path(__file__).resolve().parents[1] / "coze_workflo
 SUPPORTED_STATUSES = {"draft", "review", "active", "deprecated", "archived"}
 SUPPORTED_RUNTIME_CAPABILITIES = {
     "document.file_type.detect",
+    "http.request",
     "spreadsheet.table.extract",
     "llm.structured_json.generate",
     "json_schema.validate",
@@ -376,6 +377,8 @@ class CozeWorkflowRegistryService:
         workflow_id = str(workflow.get("id") or "")
         if workflow_id == "hazardous_project_list_recognition":
             return self._execute_hazardous_project_list_recognition(workflow, payload)
+        if workflow_id == "szzg_agent_encapsulation_route":
+            return self._execute_szzg_agent_encapsulation_route(workflow, payload)
         raise RuntimeError(f"No executor registered for workflow: {workflow_id}")
 
     def _execute_hazardous_project_list_recognition(
@@ -428,6 +431,75 @@ class CozeWorkflowRegistryService:
             "msg": "文件解析成功",
             "data": records,
         }
+
+    def _execute_szzg_agent_encapsulation_route(
+        self,
+        workflow: Mapping[str, Any],
+        payload: Mapping[str, Any],
+    ) -> Dict[str, Any]:
+        if not isinstance(payload, Mapping):
+            raise ValueError("Workflow payload must be an object")
+
+        user_input = str(payload.get("user_input") or "").strip()
+        candidates = self._normalize_route_candidates(payload.get("data"))
+
+        if self._looks_like_collection_route(user_input):
+            return {
+                "command": "route_square",
+                "params": ["ROUTE://square_page?page=collect"],
+                "message": "这就为你打开收藏列表页面",
+            }
+
+        if not candidates:
+            return {
+                "command": "clarify_none",
+                "params": [],
+                "message": "未找到对应智能体，请确认名称后再试哦",
+            }
+
+        if len(candidates) == 1:
+            candidate = candidates[0]
+            agent_name = str(candidate.get("agentName") or candidate.get("name") or "").strip()
+            agent_id = str(candidate.get("agentId") or candidate.get("id") or "").strip()
+            if not agent_name or not agent_id:
+                raise ValueError("Workflow payload candidate missing agentId or agentName")
+            return {
+                "command": "route_agent",
+                "params": [f"ROUTE://agent_detail?id={agent_id}"],
+                "message": f"我马上为你打开{agent_name}智能体",
+            }
+
+        agent_names = [str(item.get("agentName") or item.get("name") or "").strip() for item in candidates]
+        agent_names = [name for name in agent_names if name]
+        return {
+            "command": "clarify_multi",
+            "params": agent_names,
+            "message": "为你找到以下匹配的智能体，请告诉我具体要打开哪一个",
+        }
+
+    @staticmethod
+    def _normalize_route_candidates(raw_candidates: Any) -> List[Dict[str, Any]]:
+        if not isinstance(raw_candidates, list):
+            return []
+        candidates: List[Dict[str, Any]] = []
+        for item in raw_candidates:
+            if isinstance(item, Mapping):
+                normalized = {
+                    "agentId": str(item.get("agentId") or item.get("id") or "").strip(),
+                    "agentName": str(item.get("agentName") or item.get("name") or "").strip(),
+                }
+                if normalized["agentId"] or normalized["agentName"]:
+                    candidates.append(normalized)
+            elif isinstance(item, str):
+                text = item.strip()
+                if text:
+                    candidates.append({"agentId": "", "agentName": text})
+        return candidates
+
+    @staticmethod
+    def _looks_like_collection_route(user_input: str) -> bool:
+        normalized = user_input.strip()
+        return "收藏" in normalized or "收藏列表" in normalized
 
     @staticmethod
     def _normalize_hazardous_project_name(originname: str) -> str:

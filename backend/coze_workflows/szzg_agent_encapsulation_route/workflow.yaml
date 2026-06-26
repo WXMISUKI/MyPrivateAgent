@@ -1,0 +1,136 @@
+id: szzg_agent_encapsulation_route
+name: SZZG Agent Encapsulation Route
+version: 0.1.0
+status: active
+owner:
+  team: szzg-agent-migration
+  primary: szzg-owner@example.com
+  reviewers:
+    - runtime-reviewer@example.com
+
+source:
+  platform: coze
+  workspace: szzg
+  workflow_id: "7651795710460313652"
+  workflow_name: SZZG_Agent_Encapsulation_ROUTE
+  workflow_description: 智能体广场协议跳转
+  export_ref: source/coze_export
+  migration_notes: >
+    Migrated from Coze, this workflow acts as a smart encapsulation router for
+    agent plaza protocol jumps and collection-page jumps. The original export
+    included HTTP routing nodes, and the project runtime now supports
+    http.request as a registry capability even though this sample currently uses
+    deterministic route decision rules.
+  unsupported_nodes:
+    - HTTP 请求节点 should be replaced by a managed route adapter or explicit runtime capability.
+
+entrypoint:
+  mode: capability
+  adapter: myprivateagent
+  handler: null
+  capability_id: coze.workflow.szzg_agent_encapsulation_route
+  default_timeout_ms: 120000
+
+inputs:
+  schema:
+    type: object
+    required:
+      - user_input
+    properties:
+      user_input:
+        type: string
+        description: User intent text such as opening an agent or jumping to a square page.
+      data:
+        type: array
+        description: Optional candidate agent list returned by the caller.
+        items:
+          type: object
+          required:
+            - agentId
+            - agentName
+          properties:
+            agentId:
+              type: string
+            agentName:
+              type: string
+
+outputs:
+  schema:
+    type: object
+    required:
+      - command
+      - params
+      - message
+    properties:
+      command:
+        type: string
+        enum:
+          - route_agent
+          - route_square
+          - clarify_multi
+          - clarify_none
+      params:
+        type: array
+        items:
+          type: string
+      message:
+        type: string
+
+prompts:
+  system: prompts/system.md
+  task: prompts/task.md
+
+dependencies:
+  tools: []
+  mcp_capabilities: []
+  skills: []
+  providers:
+    - doubao-1.5-pro-32k-compatible
+  knowledge_sources: []
+  runtime_capabilities:
+    - http.request
+    - llm.structured_json.generate
+
+governance:
+  permission_level: medium
+  trace_required: true
+  approval_required: false
+  data_sensitivity: internal
+  allowed_callers:
+    - runtime
+    - capability_runtime
+  policy_notes: >
+    This workflow routes agent requests and interacts with LLMs. Trace metadata must preserve
+    routing decisions, HTTP request/response, and LLM output before production rollout.
+
+acceptance:
+  examples:
+    - id: route_agent_single_match
+      path: examples/route_agent_single_match.json
+      expected_path: examples/route_agent_single_match_expected.json
+      required: true
+    - id: route_square_collect
+      path: examples/route_square_collect.json
+      expected_path: examples/route_square_collect_expected.json
+      required: true
+    - id: clarify_multi_match
+      path: examples/clarify_multi_match.json
+      expected_path: examples/clarify_multi_match_expected.json
+      required: true
+    - id: clarify_none_match
+      path: examples/clarify_none_match.json
+      expected_path: examples/clarify_none_match_expected.json
+      required: true
+  smoke:
+    deterministic: false
+    live_model_required: true
+    fixture_row_count: 4
+
+metadata:
+  tags:
+    - coze-migration
+    - szzg
+    - agent-routing
+    - protocol-jump
+  domain: agent-orchestration
+  business_owner: szzg-business-owner@example.com

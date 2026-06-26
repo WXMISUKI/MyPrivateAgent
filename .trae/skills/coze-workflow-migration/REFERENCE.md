@@ -14,6 +14,7 @@
 - Add prompt files under `prompts/`.
 - Add acceptance fixtures under `examples/`.
 - Preserve original Coze export material under `source/coze_export/` when available.
+- For route workflows, express the business contract as `user_input` plus optional `data[]` candidates and return `command`, `params`, and `message` in a stable envelope.
 
 ### Stage 2: Registry
 
@@ -38,6 +39,7 @@
 - Validate request payloads against the workflow input schema.
 - Return `run_id`, `status`, `result`, `error`, and trace references.
 - Reject unknown workflows, blocked workflows, and invalid manifests with fail-closed errors.
+- For route workflows, verify the scenario matrix includes single match, collection-page jump, multi-match clarification, and no-match clarification before promotion.
 
 ## Test Matrix
 
@@ -52,6 +54,10 @@
 - Draft workflow excluded from production callable listing
 - Successful deterministic invocation
 - Blocked invocation on missing dependency
+- Route workflow single match
+- Route workflow collection-page jump
+- Route workflow multi-match clarification
+- Route workflow no-match clarification
 
 ## Launch Acceptance
 
@@ -60,4 +66,4 @@
 - Capability id is stable and documented.
 - Related docs and OpenSpec tasks are updated.
 - Test evidence is captured before promoting to active usage.
-
+- Route workflows should have a published scenario matrix so future migrations can copy the exact command and message contracts.

@@ -21,3 +21,9 @@
 3. Invoke flow is documented and tested.
 4. Acceptance evidence is linked in docs or task notes.
 
+## Example 4: Route Workflow Template
+
+1. Define the input as `user_input` plus optional `data[]` candidate list.
+2. Lock the output contract to `command`, `params`, and `message`.
+3. Cover the four scenario types in acceptance examples: single match, square-page jump, multi-match clarification, and no-match clarification.
+4. Publish a `docs/integration/*-launch-acceptance` record so the next team can replay the same matrix.

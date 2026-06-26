@@ -1,0 +1,7 @@
+{
+  "command": "route_square",
+  "params": [
+    "ROUTE://square_page?page=collect"
+  ],
+  "message": "这就为你打开收藏列表页面"
+}

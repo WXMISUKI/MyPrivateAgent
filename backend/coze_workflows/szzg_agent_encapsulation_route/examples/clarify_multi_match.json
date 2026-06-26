@@ -1,0 +1,13 @@
+{
+  "user_input": "当前有哪些适合监理的智能体",
+  "data": [
+    {
+      "agentId": "11",
+      "agentName": "监理日志编写助手"
+    },
+    {
+      "agentId": "12",
+      "agentName": "施工方案审查"
+    }
+  ]
+}

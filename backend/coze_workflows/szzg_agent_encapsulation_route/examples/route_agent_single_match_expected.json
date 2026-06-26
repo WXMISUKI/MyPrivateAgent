@@ -1,0 +1,7 @@
+{
+  "command": "route_agent",
+  "params": [
+    "ROUTE://agent_detail?id=7"
+  ],
+  "message": "我马上为你打开代码调试助手智能体"
+}

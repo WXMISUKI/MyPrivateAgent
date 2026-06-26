@@ -22,6 +22,21 @@ description: Provides a repeatable workflow for migrating Coze workflows into My
 5. Verify invoke boundaries only after registry and capability checks pass.
 6. Run launch acceptance and capture evidence before any `active` promotion.
 
+## Workflow Patterns
+
+### Spreadsheet Recognition
+
+- Typical input: `file`
+- Typical output: normalized JSON records
+- Typical smoke focus: row count, field mapping, and blocked dependency handling
+
+### Route Orchestration
+
+- Typical input: `user_input` plus optional `data[]` candidate list
+- Typical output: `command`, `params`, and `message`
+- Typical smoke focus: single-match routing, square-page routing, multi-match clarification, and no-match clarification
+- If the route workflow uses HTTP steps in the original Coze export, keep the original intent in `source.migration_notes` and make sure the runtime capability list matches the actual executor support before promotion
+
 ## Recommended Validation Sequence
 
 1. Check `backend/coze_workflows/<workflow_id>/workflow.yaml` exists and is parseable.
@@ -31,6 +46,7 @@ description: Provides a repeatable workflow for migrating Coze workflows into My
 5. If the workflow is still `review`, expect invoke to fail closed with `COZE_WORKFLOW_BLOCKED`.
 6. If the workflow is `active` and ready, run a real fixture-based invoke and compare the structured JSON output to the expected example.
 7. Record the smoke result, blocker reason, and promotion decision in docs or change notes.
+8. For route workflows, verify the returned command set matches the scenario matrix before treating the workflow as a shared template.
 
 ## Operating Rules
 
@@ -40,6 +56,7 @@ description: Provides a repeatable workflow for migrating Coze workflows into My
 - Prefer `draft` or `review` while migration evidence is still being collected.
 - Promote to `active` only after prompts, dependencies, examples, and trace expectations are verified.
 - Keep launch evidence stable: same fixture, same expected JSON, same structured error codes for blocked states.
+- For route workflows, keep `route_agent`, `route_square`, `clarify_multi`, and `clarify_none` examples in the acceptance matrix when they are part of the original business behavior.
 
 ## Test And Launch Checklist
 
