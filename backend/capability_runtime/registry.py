@@ -73,6 +73,10 @@ def get_default_capability_registry() -> CapabilityRegistry:
             VOICE_CAPABILITY_PROVIDER_BASE_URL,
             VOICE_CAPABILITY_PROVIDER_TIMEOUT_SECONDS,
         )
+    try:
+        from services.coze_workflow_registry_service import get_coze_workflow_registry_service
+    except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+        from backend.services.coze_workflow_registry_service import get_coze_workflow_registry_service
     capabilities: list[CapabilityDefinition]
     if ENABLE_EXTERNAL_VOICE_CAPABILITY_PROVIDER and VOICE_CAPABILITY_PROVIDER_BASE_URL:
         capabilities = build_http_voice_capabilities(
@@ -113,4 +117,5 @@ def get_default_capability_registry() -> CapabilityRegistry:
                 async_status_path_template=VLM_CAPABILITY_PROVIDER_ASYNC_STATUS_PATH_TEMPLATE,
             )
         )
+    capabilities.extend(get_coze_workflow_registry_service().build_capability_definitions())
     return CapabilityRegistry(capabilities)

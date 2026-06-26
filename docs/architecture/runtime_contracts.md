@@ -50,6 +50,8 @@ Runtime Surface 的当前聚合入口是：
 
 `rag_source_registry` 与 `knowledge_graph_registry` 同样由 `DomainAgentRegistryService` 从 `capabilities.rag_sources` 和 `capabilities.graph_sources` 派生。它们只表达“哪个垂域 agent 允许看哪些知识源/图谱”，不创建索引、不上传文档、不编辑 ontology，也不自动把检索结果注入主 chat。外部知识执行由 capability runtime 的 `knowledge.rag.retrieve` 和 `knowledge.graph.query` 代理到 `unifiedKnowledgeProvider`。
 
+`coze_workflow_registry` 当前通过 `backend/coze_workflows/<workflow_id>/workflow.yaml` 的只读扫描和 `GET /api/coze-workflows` 暴露。`DomainAgentRegistryService` 会保留 `capabilities.coze_workflows` 的紧凑引用与缺失引用状态，`CapabilityRuntimeService` 会把 `active + ready` 的 workflow 映射为 `coze.workflow.<workflow_id>` capability contract。`POST /api/coze-workflows/{workflow_id}/invoke` 与 `POST /api/capabilities/{capability_id}/invoke` 共享同一统一 envelope；`draft` / `review` workflow 仍可在注册面可见，但默认不可作为生产可调用 capability 暴露。
+
 `unifiedKnowledgeProvider` 的 capability health / heartbeat 当前会暴露 compact `governance_readiness`，用于说明 provider 是否配置、显式 RAG 是否可用、source catalog 是否 degraded，以及 `graph_query` / default chat grounding 为什么仍保持 `gated`。该 readiness 只读、fail-open，不执行 GraphRAG、不创建 source binding、不启用 `/api/chat` 检索注入，也不改变答案策略。
 
 Domain-agent grounded-answer promotion gate 当前会优先消费 `provider_evidence.governance_readiness`：`rag_retrieve.status = ready` 可作为文档 RAG trial 的 provider readiness，`source_catalog.status = degraded` 会进入 review，`overall_status = unreachable` 会 blocked，`graph_query.status = gated` 会继续阻止 graph grounded-answer trial。该消费仍然 side-effect-free，不调用 provider。

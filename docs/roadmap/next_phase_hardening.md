@@ -12,6 +12,7 @@
 - LangGraph、OpenAI Agents SDK、Qwen-Agent、CrewAI、DeerFlow、Agno 等成熟框架后续只能作为 execution adapter、lifecycle mapping、tool/handoff/tracing 参考进入项目。
 - 本项目继续保有 Runtime Core、ToolRuntime、Query Control、Runtime Contract Gate、Governance Timeline、审计、权限和业务系统集成的稳定控制面职责。
 - 垂域智能体资产已开始通过 `backend/domain_agents/*/agent.yaml` 和 Runtime Surface `domain_agent_registry` 进入只读登记面，执行路由仍沿用现有 chat/runtime seam。
+- Coze 工作流迁移资产已开始通过 `backend/coze_workflows/<workflow_id>/workflow.yaml` 和 `GET /api/coze-workflows` 进入只读登记面；后续协作应沿 manifest -> registry -> capability -> invoke -> acceptance 的顺序推进，不要把迁移流程拆成多个平行入口。
 - 任何外部框架接入默认先走 OpenSpec adapter proposal 与 promotion gate，不直接进入主 chat 执行链。
 
 下一阶段应优先做三件事：
@@ -19,6 +20,13 @@
 1. Self-Improvement Ledger 从能力契约推进到健康摘要。
 2. Query Control Plane 设计与最小后端 contract。
 3. Embedded SDK / Execution Loop 继续向真实 LLM、ToolRuntimeService、reviewer、fallback 接线。
+
+当前 Coze 迁移轨道的推荐顺序是：
+
+1. 先完成 workflow asset authoring contract。
+2. 再完成 side-effect-free registry 和 domain agent linkage。
+3. 再把 ready workflow 暴露为 capability。
+4. 最后才开放 invoke 与上线验收。
 
 同时可以在不改变主执行链的前提下，继续补齐垂域 agent catalog 的治理能力：下一步宜围绕 agent enable/disable、`GET /api/agents` 只读包装接口、manifest 驱动的 Tool/Skill/MCP 关联校验逐个开小 change，而不是一次性做完整 agent marketplace。
 

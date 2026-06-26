@@ -1,0 +1,104 @@
+{
+  "code": 200,
+  "msg": "文件解析成功",
+  "data": [
+    {
+      "id": "1",
+      "originname": "实施性施工组织设计",
+      "name": "实施性施工组织设计",
+      "category": "施工方案管理",
+      "isExdanger": false
+    },
+    {
+      "id": "2",
+      "originname": "临时用电施工组织设计方案",
+      "name": "临时用电施工",
+      "category": "临时用电工程",
+      "isExdanger": true
+    },
+    {
+      "id": "3",
+      "originname": "现浇箱梁专项施工方案",
+      "name": "现浇箱梁施工",
+      "category": "模板工程和支架体系",
+      "isExdanger": false
+    },
+    {
+      "id": "4",
+      "originname": "预制墩柱及盖梁吊装专项施工方案",
+      "name": "预制墩柱及盖梁吊装",
+      "category": "起重吊装及起重机械安拆工程",
+      "isExdanger": false
+    },
+    {
+      "id": "5",
+      "originname": "履带吊安拆专项施工方案",
+      "name": "履带吊安拆施工",
+      "category": "起重吊装及起重机械安拆工程",
+      "isExdanger": true
+    },
+    {
+      "id": "6",
+      "originname": "55#现浇盖梁（支架搭设）专项施工方案",
+      "name": "55#现浇盖梁（支架搭设）施工",
+      "category": "模板工程和支架体系",
+      "isExdanger": true
+    },
+    {
+      "id": "7",
+      "originname": "主线桥、七乡河桥箱梁架设专项施工方案",
+      "name": "主线桥、七乡河桥箱梁架设施工",
+      "category": "起重吊装及起重机械安拆工程",
+      "isExdanger": false
+    },
+    {
+      "id": "8",
+      "originname": "40-180架桥机安拆专项施工方案",
+      "name": "40-180架桥机安拆施工",
+      "category": "起重吊装及起重机械安拆工程",
+      "isExdanger": false
+    },
+    {
+      "id": "9",
+      "originname": "七乡河桥、罗山嘴桥桥梁拆除专项施工方案",
+      "name": "七乡河桥、罗山嘴桥桥梁拆除施工",
+      "category": "拆除、爆破工程",
+      "isExdanger": true
+    },
+    {
+      "id": "10",
+      "originname": "31-34#、37#、39#基坑支护专项施工方案",
+      "name": "31-34#、37#、39#基坑支护施工",
+      "category": "基坑工程",
+      "isExdanger": true
+    },
+    {
+      "id": "11",
+      "originname": "25-33#、35#、39#现浇盖梁（少支点钢管支架）专项施工方案",
+      "name": "25-33#、35#、39#现浇盖梁（少支点钢管支架）施工",
+      "category": "模板工程和支架体系",
+      "isExdanger": false
+    },
+    {
+      "id": "12",
+      "originname": "钢混叠合梁钢梁及桥面板安装方案",
+      "name": "钢混叠合梁钢梁及桥面板安装",
+      "category": "起重吊装及起重机械安拆工程",
+      "isExdanger": true
+    },
+    {
+      "id": "13",
+      "originname": "预应力小箱梁架设专项方案（履带吊）",
+      "name": "预应力小箱梁架设（履带吊）",
+      "category": "起重吊装及起重机械安拆工程",
+      "isExdanger": true
+    },
+    {
+      "id": "14",
+      "originname": "钢箱梁专项施工方案",
+      "name": "钢箱梁施工",
+      "category": "其他类别",
+      "isExdanger": false
+    }
+  ]
+}

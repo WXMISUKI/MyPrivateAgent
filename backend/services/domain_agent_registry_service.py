@@ -6,6 +6,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
 
+try:
+    from services.coze_workflow_registry_service import get_coze_workflow_registry_service
+except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+    from backend.services.coze_workflow_registry_service import get_coze_workflow_registry_service
+
 
 CONTRACT_VERSION = "domain-agent-registry-v1"
 GROUNDING_POLICY_CONTRACT_VERSION = "agent-grounding-policy-v1"
@@ -39,6 +44,12 @@ class DomainAgentRegistryService:
     def build_runtime_contract(self) -> Dict[str, Any]:
         agents: List[Dict[str, Any]] = []
         errors: List[Dict[str, Any]] = []
+        coze_workflow_registry = get_coze_workflow_registry_service().build_runtime_contract()
+        self._coze_workflow_index = {
+            str(workflow.get("id") or ""): dict(workflow)
+            for workflow in coze_workflow_registry.get("workflows", [])
+            if str(workflow.get("id") or "").strip()
+        }
 
         for manifest_path in self._iter_manifest_paths():
             result = self._load_manifest(manifest_path)
@@ -135,6 +146,10 @@ class DomainAgentRegistryService:
             retrieval_value=manifest.get("retrieval"),
             capabilities=capabilities,
         )
+        coze_workflow_linkage = _build_coze_workflow_linkage(
+            capabilities.get("coze_workflows") or [],
+            getattr(self, "_coze_workflow_index", {}),
+        )
         return {
             "id": _clean_string(manifest.get("id")),
             "name": _clean_string(manifest.get("name")),
@@ -147,6 +162,7 @@ class DomainAgentRegistryService:
             "grounding_policy": grounding_policy["policy"],
             "grounding_policy_status": grounding_policy["readiness"],
             "governance": governance,
+            "coze_workflow_linkage": coze_workflow_linkage,
             "agent_dir": str(manifest_path.parent),
             "manifest_path": str(manifest_path),
         }
@@ -193,7 +209,37 @@ def _normalize_capabilities(value: Any) -> Dict[str, List[str]]:
         "mcp_servers": _normalize_string_list(mapping.get("mcp_servers")),
         "rag_sources": _normalize_string_list(mapping.get("rag_sources")),
         "graph_sources": _normalize_string_list(mapping.get("graph_sources")),
+        "coze_workflows": _normalize_coze_workflow_references(mapping.get("coze_workflows")),
     }
+
+
+def _normalize_coze_workflow_references(value: Any) -> List[Dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    references: List[Dict[str, Any]] = []
+    for item in value:
+        if isinstance(item, Mapping):
+            workflow_id = _clean_string(item.get("workflow_id") or item.get("id"))
+            capability_id = _clean_string(item.get("capability_id"))
+            if not workflow_id and capability_id.startswith("coze.workflow."):
+                workflow_id = capability_id.split("coze.workflow.", 1)[1]
+            references.append(
+                {
+                    "workflow_id": workflow_id,
+                    "capability_id": capability_id or (f"coze.workflow.{workflow_id}" if workflow_id else ""),
+                }
+            )
+            continue
+        workflow_id = _clean_string(item)
+        if not workflow_id:
+            continue
+        references.append(
+            {
+                "workflow_id": workflow_id,
+                "capability_id": f"coze.workflow.{workflow_id}",
+            }
+        )
+    return references
 
 
 def _normalize_grounding_policy(
@@ -343,6 +389,68 @@ def _build_knowledge_source_registry(
         "status": "ready" if entries else "empty",
         "total_entries": len(entries),
         "entries": entries,
+    }
+
+
+def _build_coze_workflow_linkage(
+    references: List[Dict[str, Any]],
+    workflow_index: Mapping[str, Mapping[str, Any]],
+) -> Dict[str, Any]:
+    resolved: List[Dict[str, Any]] = []
+    blockers: List[str] = []
+    warnings: List[str] = []
+
+    for reference in references:
+        workflow_id = _clean_string(reference.get("workflow_id"))
+        capability_id = _clean_string(reference.get("capability_id"))
+        workflow = workflow_index.get(workflow_id) if workflow_id else None
+        if workflow is None and capability_id.startswith("coze.workflow."):
+            workflow_id = workflow_id or capability_id.split("coze.workflow.", 1)[1]
+            workflow = workflow_index.get(workflow_id)
+        if workflow is None:
+            blockers.append(workflow_id or capability_id or "unknown_workflow")
+            resolved.append(
+                {
+                    "workflow_id": workflow_id,
+                    "capability_id": capability_id or (f"coze.workflow.{workflow_id}" if workflow_id else ""),
+                    "status": "missing",
+                    "reason": "workflow_manifest_not_found",
+                }
+            )
+            continue
+        readiness = dict(workflow.get("readiness") or {})
+        resolved.append(
+            {
+                "workflow_id": _clean_string(workflow.get("id")),
+                "capability_id": _clean_string(workflow.get("capability_id")) or f"coze.workflow.{_clean_string(workflow.get('id'))}",
+                "status": str(readiness.get("status") or "unknown"),
+                "reason": str(readiness.get("reason") or ""),
+                "blockers": list(readiness.get("blockers") or []),
+                "workflow_status": _clean_string(workflow.get("status")),
+                "workflow_version": _clean_string(workflow.get("version")),
+            }
+        )
+        if readiness.get("status") != "ready":
+            warnings.append(_clean_string(workflow.get("id")) or "unknown_workflow")
+
+    if blockers:
+        status = "blocked"
+    elif warnings:
+        status = "warned"
+    elif resolved:
+        status = "ready"
+    else:
+        status = "empty"
+
+    return {
+        "contract_version": "coze-workflow-linkage-v1",
+        "status": status,
+        "workflow_count": len(resolved),
+        "blocker_count": len(blockers),
+        "warning_count": len(warnings),
+        "blockers": blockers,
+        "warnings": warnings,
+        "entries": resolved,
     }
 
 

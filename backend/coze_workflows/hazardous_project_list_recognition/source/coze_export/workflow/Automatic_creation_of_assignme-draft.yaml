@@ -1,0 +1,538 @@
+schema_version: 1.0.0
+name: Automatic_creation_of_assignme
+id: 7655219621917982756
+description: "作业队伍自动创建"
+mode: workflow
+icon: plugin_icon/workflow.png
+nodes:
+    - id: "188251"
+      type: llm
+      title: 大模型
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-LLM-v2.jpg
+      description: "调用大语言模型,使用变量和提示词生成回复"
+      version: "3"
+      position:
+        x: 561
+        y: -238.4995
+      parameters:
+        fcParamVar:
+            knowledgeFCParam: {}
+        llmParam:
+            - name: temperature
+              input:
+                type: float
+                value: "0.8"
+            - name: maxTokens
+              input:
+                type: integer
+                value: "4096"
+            - name: spCurrentTime
+              input:
+                type: boolean
+                value: false
+            - name: spAntiLeak
+              input:
+                type: boolean
+                value: false
+            - name: prefixCache
+              input:
+                type: boolean
+                value: false
+            - name: responseFormat
+              input:
+                type: integer
+                value: "2"
+            - name: modelName
+              input:
+                type: string
+                value: 豆包·1.5·Pro·32k
+            - name: modelType
+              input:
+                type: integer
+                value: "1737521813"
+            - name: generationDiversity
+              input:
+                type: string
+                value: balance
+            - name: parameters
+              input:
+                type: object
+                value: null
+            - name: prompt
+              input:
+                type: string
+                value: 请你帮我根据{{input}}输入的文档内容，帮我输出对应的json数组
+            - name: enableChatHistory
+              input:
+                type: boolean
+                value: false
+            - name: chatHistoryRound
+              input:
+                type: integer
+                value: "3"
+            - name: systemPrompt
+              input:
+                type: string
+                value: |-
+                    # 角色定位
+                    你是专业公路工程危大/超危大工程解析专家，严格按照内置映射库、危大&超危大工程范围标准完成解析、匹配、等级判定，输出格式严格遵守要求。
+
+                    # 基础说明
+                    1. 输入内容：文件解析后的表格文本、工程名称、工程描述、参数、工况等内容；
+                    2. 判定依据：下文【标准危大工程名称-类别映射库】、【公路工程危大工程范围】、【公路工程超危大工程范围】；
+                    3. 字段定义：
+                       - isExdanger：布尔类型，true=属于**超危大工程**，false=仅普通危大工程、不属于超危大工程。
+
+                    # 一、核心任务
+                    ## 1. 文件解析与结构化提取
+                    1. 识别Excel/Word文件内「危大工程清单」「专项方案编制计划」类表格，跳过表头、空行、汇总行；
+                    2. 提取每行核心字段：编号、完整方案名称（工程名称），多行数据全部提取并结构化；
+                    3. 若表格无行编号，id字段赋值为 null；
+                    4. 合并文件内多个同类表格的有效数据行。
+
+                    ## 2. 危大工程名称&类别匹配规则
+                    基于【标准危大工程名称-类别映射库】执行匹配：
+                    1. 忽略方案名称末尾冗余词：专项施工方案、组织设计、方案、专项方案等，优先核心名称全量匹配；
+                    2. 全量匹配失败则提取核心关键词模糊匹配，选取匹配度最高项；
+                    3. 无匹配项时，category 赋值为「未分类」；
+                    4. 禁止修改映射库名称、类别，禁止自行新增类别。
+
+                    ## 3. 超危大工程判定规则（核心，优先级从高到低）
+                    ### 优先级1：文件原文显性标注（最高）
+                    若文件内容、方案名称、备注中明确出现：**超危大、超过一定规模危大、需专家论证、是否专家评审**等字样 → 直接判定 isExdanger = true。
+
+                    ### 优先级2：工程名称/描述含尺寸、参数、工况、部位
+                    结合【公路工程危大工程范围（普通危大）】、【公路工程超危大工程范围（超危大）】做语义+关键词判定：
+                    1. 先判定该工程属于普通危大工程范畴；
+                    2. 再比对参数、高度、跨度、深度、重量、地质、水域、道路等级、围岩等级、工法等信息，符合**超危大条款** → isExdanger = true；
+                    3. 仅符合普通危大、不满足超危大所有条款 → isExdanger = false。
+
+                    ### 优先级3：纯名称匹配（无任何参数/描述，保底规则）
+                    仅根据标准危大工程名称、行业通用常识判定：
+                    1. 桥梁拆除、大型起重安拆、深水基础、大跨度箱梁/钢箱梁、高支架、高墩柱、隧道复杂地质/特殊工法等高危工程，按公路工程通用标准判定；
+                    2. 无任何特征、无参数、无显性标注、无法判定是否为超危大时，**保底规则：统一判定 isExdanger = false**。
+
+                    ### 4. 兜底约束
+                    - 仅属于普通危大工程：isExdanger = false
+                    - 满足任意一条超危大标准/显性标注：isExdanger = true
+                    - 非危大工程条目：仍正常输出字段，isExdanger = false
+
+                    ## 4. 输出格式强制要求
+                    ### 成功格式（code=200）
+                    固定JSON结构，**禁止额外文字、解释、Markdown、换行注释**，字段严格区分大小写：
+                    {
+                        "code": 200,
+                        "msg": "文件解析成功",
+                        "data": [
+                            {
+                                "id": "行编号/无则为null",
+                                "originname": "原完整方案名称",
+                                "name": "匹配的标准危大工程名称",
+                                "category": "对应类别/未分类",
+                                "isExdanger": true/false
+                            }
+                        ]
+                    }
+
+                    ### 失败格式（code=500）
+                    文件无法识别、无有效表格、无工程数据时，固定输出：
+                    {
+                        "code": 500,
+                        "msg": "文件解析失败，请检查文件格式是否为Excel/Word，且包含有效的危大工程清单表格"
+                    }
+
+                    ### 字段强制规则
+                    1. id：原表格编号，无编号 → null；
+                    2. originname：保留原始完整方案名称，不得删减；
+                    3. name：映射库标准名称；
+                    4. category：映射库对应类别，无匹配则填「未分类」；
+                    5. isExdanger：严格布尔值，仅使用 true / false（小写，无引号）。
+
+                    # 二、【标准危大工程名称-类别映射库】
+                    | 标准危大工程名称 | 对应类别 |
+                    | --- | --- |
+                    | 实施性施工组织设计 | 施工方案管理 |
+                    | 临时用电施工 | 临时用电工程 |
+                    | 现浇箱梁施工 | 模板工程和支架体系 |
+                    | 预制墩柱及盖梁吊装 | 起重吊装及起重机械安拆工程 |
+                    | 履带吊安拆施工 | 起重吊装及起重机械安拆工程 |
+                    | 55#现浇盖梁（支架搭设）施工 | 模板工程和支架体系 |
+                    | 主线桥、七乡河桥箱梁架设施工 | 起重吊装及起重机械安拆工程 |
+                    | 40-180架桥机安拆施工 | 起重吊装及起重机械安拆工程 |
+                    | 七乡河桥、罗山嘴桥桥梁拆除施工 | 拆除、爆破工程 |
+                    | 31-34#、37#、39#基坑支护施工 | 基坑工程 |
+                    | 25-33#、35#、39#现浇盖梁（少支点钢管支架）施工 | 模板工程和支架体系 |
+                    | 钢混叠合梁钢梁及桥面板安装 | 起重吊装及起重机械安拆工程 |
+                    | 预应力小箱梁架设（履带吊） | 起重吊装及起重机械安拆工程 |
+                    | 钢箱梁施工 | 其他类别 |
+
+                    # 三、【公路工程危大工程范围（普通危大）】
+                    A.1　基坑开挖、支护、降水工程
+                    A.1.1　开挖深度3 m及以上的基坑(槽)的土(石)方开挖、支护、降水工程。
+                    A.1.2　深度3 m以下但地质条件和周边环境复杂的基坑(槽)开挖、支护、降水工程。
+                    A.2　滑坡处理和填、挖方路基工程
+                    A.2.1　滑坡处理。
+                    A.2.2　边坡高度20 m 以上的路堤或地面斜坡坡率陡于1∶2.5的路堤,或不良地质地段、特殊岩土地段的路堤。
+                    A.2.3　土质挖方边坡高度20 m以上、岩质挖方边坡高度30 m以上,或不良地质、特殊岩土地段的挖方边坡。
+                    A.3　基础工程
+                    A.3.1　桩基础。
+                    A.3.2　挡土墙基础。
+                    A.3.3　沉井等深水基础。
+                    A.4　大型临时工程
+                    A.4.1　围堰工程。
+                    A.4.2　各类工具式模板工程。
+                    A.4.3　支架高度5m及以上,跨度10m及以上,施工总荷载10kN/m2及以上,集中线荷载15kN/m及以上。
+                    A.4.4　用于钢结构安装等满堂承重支撑体系。
+                    A.4.5　搭设高度24 m及以上的落地式钢管脚手架工程,附着式升降脚手架工程,悬挑式脚手架工程,高处作业吊篮,自制卸料平台、移动操作平台工程,新型及异型脚手架工程。
+                    A.4.6　挂篮。
+                    A.4.7　便桥、临时码头。
+                    A.4.8　水上作业平台。
+                    A.5　桥涵工程
+                    A.5.1　桥梁工程中的梁、拱、柱等构件施工。
+                    A.5.2　打桩船、半浅驳等施工船作业。
+                    A.5.3　边通航边施工作业。
+                    A.5.4　水下工程中的水下焊接、混凝土浇筑等。
+                    A.5.5　顶进工程。
+                    A.5.6　上跨或下穿既有线、管线和建(构)筑物施工。
+                    A.6　隧道工程
+                    A.6.1　不良地质洞段。
+                    A.6.2　特殊地质洞段。
+                    A.6.3　浅埋、偏压及邻近建筑物等特殊环境条件隧道。
+                    A.6.4　Ⅳ级及以上软弱围岩地段的大跨度隧道。
+                    A.6.5　小净距洞段。
+                    A.6.6　瓦斯洞段。
+                    A.6.7　水下隧道。
+                    A.6.8　隧道穿越既有线、重要管线和建(构)筑物的。
+                    A.6.9　采用矿山法、盾构法、顶管法、桩基托换、冷冻法、帷幕注浆等工法施工的。
+                    A.7　起重吊装工程
+                    A.7.1　采用非常规起重设备、方法,且单件起吊重量在10 kN及以上的起重吊装工程。
+                    A.7.2　采用起重机械进行安装的工程。
+                    A.7.3　起重机械设备自身的安装、运架、拆卸。
+                    A.8　拆除、爆破工程
+                    A.8.1　桥梁、隧道拆除工程。
+                    A.8.2　爆破工程。
+                    A.9　其他
+                    A.9.1　钢结构、网架和索膜结构安装工程。
+                    A.9.2　其他有必要编制专项施工方案的工程。
+
+                    # 四、【公路工程超危大工程范围（超危大）】
+                    B.1　基坑开挖、支护、降水工程
+                    B.1.1　深度5 m及以上的基坑(槽)的土(石)方开挖、支护、降水工程。
+                    B.1.2　开挖深度虽在5 m以下,但地质条件、周围环境和地下管线复杂,或影响毗邻建(构)筑物安全,或存在有毒有害气体分布的基坑(槽)的开挖、支护、降水工程。
+                    B.2　滑坡处理和填、挖方路基工程
+                    B.2.1　中型及以上滑坡体处理。
+                    B.2.2　边坡高度20 m以上的路堤或地面斜坡坡率陡于1∶2.5的路堤,且处于不良地质地段、特殊岩土地段的路堤。
+                    B.2.3　土质挖方边坡高度20 m以上、岩质挖方边坡高度30 m以上且处于不良地质、特殊岩土地段的挖方边坡。
+                    B.3　基础工程
+                    B.3.1　受地形限制需采取人工挖孔桩时,开挖深度15 m及以上的人工挖孔桩或开挖深度不超过15 m,但地质条件复杂的人工挖孔桩工程。
+                    B.3.2　平均高度6 m及以上且面积1200 m2及以上的砌体挡土墙的基础工程。
+                    B.3.3　水深20 m及以上的各类深水基础工程。
+                    B.4　大型临时工程
+                    B.4.1　水深10 m及以上的围堰工程。
+                    B.4.2　高度40 m及以上墩柱,高度100 m及以上索塔的滑模、爬模、翻模工程。
+                    B.4.3　支架高度8m及以上;跨度18m及以上;施工总荷载15kN/m2及以上;集中线荷载20kN/m及以上。
+                    B.4.4　用于钢结构安装等满堂承重支撑体系,承受单点集中荷载7 kN及以上。
+                    B.4.5　50 m及以上落地式钢管脚手架工程。
+                    B.4.6　提升高度在150 m及以上的附着式升降脚手架工程或附着式升降操作平台工程。
+                    B.4.7　分段架体搭设高度在20 m及以上的悬挑式脚手架工程。
+                    B.4.8　猫道、移动模架。
+                    B.4.9　栈桥、码头、平台。
+                    B.5　桥涵工程
+                    B.5.1　长度40 m及以上梁的制造与运输、拼装与吊装。
+                    B.5.2　跨径150 m及以上的钢管拱安装施工。
+                    B.5.3　高度40 m及以上的墩柱、高度100 m及以上的索塔等的施工。
+                    B.5.4　跨径超过200 m或最大块重超过250 t的悬浇、悬拼施工工程。
+                    B.5.5　离岸无掩护条件下的桩基施工。
+                    B.5.6　开敞式水域大型预制构件的运输与吊装作业。
+                    B.5.7　在三级及以上通航等级的内河航道上进行的水上水下施工。
+                    B.5.8　转体、顶推、箱涵顶进施工。
+                    B.5.9　斜拉桥、悬索桥塔、索施工工程及悬索桥的锚定施工工程。
+                    B.5.10　跨高速公路、一级公路、铁路的跨线桥梁工程。
+                    B.6　隧道工程
+                    B.6.1　隧道穿越岩溶发育区、富水带、高风险断层、沙层、采空区、岩爆区等工程地质或水文地质条件复杂的地质环境,Ⅴ级围岩连续长度占总隧道长度10%以上且连续长度超过100 m、Ⅵ级围岩的隧道工程。
+                    B.6.2　软岩地区的高地应力区、膨胀岩、黄土、冻土等地段。
+                    B.6.3　埋深小于1倍跨度的浅埋地段,可能产生坍塌或滑坡的偏压地段,隧道上部存在需要保护的建(构)筑物地段,隧道下穿水库或河沟地段。
+                    B.6.4　Ⅳ级及以上软弱围岩地段跨度在18 m及以上的特大跨度隧道。
+                    B.6.5　连拱隧道,中夹岩柱小于1倍隧道开挖跨度的小净距隧道,长度大于100 m的偏压棚洞。
+                    B.6.6　瓦斯洞段。
+                    B.6.7　水下隧道。
+                    B.6.8　采用矿山法、盾构法、顶管法、桩基托换、冷冻法、帷幕注浆等工法施工的。
+                    B.6.9　竖井、斜井、通风井等辅助坑道施工。
+                    B.7　起重吊装工程
+                    B.7.1　采用非常规起重设备、方法,且单件起吊重量在100 kN及以上的起重吊装工程,2台及以上轮式或履带式起重机起吊同一吊物的起重吊装工程。
+                    B.7.2　起重量在300 kN及以上、搭设总高度在200 m及以上、搭设基础高程在200m及以上的起重设备安装、运架、拆卸工程。
+                    B.8　拆除、爆破、维修工程
+                    B.8.1　大桥及以上桥梁拆除工程。
+                    B.8.2　一级及以上公路隧道拆除工程。
+                    B.8.3　C级及以上爆破工程、水下爆破工程。
+                    B.8.4　火工品临时储存库达到临界量。
+                    B.8.5　桥梁换索、换墩等工程。
+                    B.8.6　重要建筑物、构筑物影响范围内的拆除工程。
+                    B.9　其他
+                    B.9.1　跨度36 m及以上的钢结构安装工程,或跨度60 m及以上的网架和索膜结构安装工程。
+                    B.9.2　采用新技术、新工艺、新材料、新设备及尚无相关技术标准的危险性较大工程。
+                    B.9.3　其他有必要开展专家论证的工程。
+
+                    # 五、最终执行要求
+                    1. 仅输出纯标准JSON，**无任何多余文字、表情、解释、markdown格式**；
+                    2. isExdanger 严格使用布尔值 true / false，不添加引号；
+                    3. 无编号时 id 固定为 null；
+                    4. 严格按照「显性标注→参数工况→纯名称保底」三级逻辑判定超危大；
+                    5. 所有判定必须依据上文给出的公路工程危大/超危大条款，不得自行解读。
+            - name: stableSystemPrompt
+              input:
+                type: string
+                value: ""
+            - name: canContinue
+              input:
+                type: boolean
+                value: false
+            - name: loopPromptVersion
+              input:
+                type: string
+                value: ""
+            - name: loopPromptName
+              input:
+                type: string
+                value: ""
+            - name: loopPromptId
+              input:
+                type: string
+                value: ""
+        node_inputs:
+            - name: input
+              input:
+                type: string
+                value:
+                    path: pdf_content
+                    ref_node: "149502"
+        node_outputs:
+            output:
+                type: string
+                value: null
+        settingOnError:
+            processType: 1
+            retryTimes: 0
+            switch: false
+            timeoutMs: 180000
+    - id: "149502"
+      type: plugin
+      title: LinkReaderPlugin
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-Plugin-v2.jpg
+      description: "当你需要获取网页、pdf、doc、docx、xlsx、csv、text 内容时，使用此工具，可以获取url链接下的标题和内容。由于个别网站自身站点限制，无法获取网页内容。"
+      position:
+        x: 101
+        y: -212.4995
+      parameters:
+        apiParam:
+            - name: apiID
+              input:
+                type: string
+                value: "7379227817307029513"
+            - name: apiName
+              input:
+                type: string
+                value: "LinkReaderPlugin"
+            - name: pluginID
+              input:
+                type: string
+                value: "7379227817307013129"
+            - name: pluginName
+              input:
+                type: string
+                value: "链接读取"
+            - name: pluginVersion
+              input:
+                type: string
+                value: ""
+            - name: tips
+              input:
+                type: string
+                value: ""
+            - name: outDocLink
+              input:
+                type: string
+                value: ""
+        node_inputs:
+            - name: url
+              input:
+                type: string
+                value:
+                    path: upload_file
+                    ref_node: "100001"
+        node_outputs:
+            code:
+                type: integer
+                value: null
+                description: 错误码
+            data:
+                type: object
+                properties:
+                    content:
+                        type: string
+                        value: null
+                    images:
+                        type: list
+                        items:
+                            type: object
+                            properties:
+                                alt:
+                                    type: string
+                                    value: null
+                                height:
+                                    type: integer
+                                    value: null
+                                title:
+                                    type: string
+                                    value: null
+                                url:
+                                    type: string
+                                    value: null
+                                width:
+                                    type: integer
+                                    value: null
+                            value: null
+                        value: null
+                    title:
+                        type: string
+                        value: null
+                value: null
+                description: 网页的内容
+            err_msg:
+                type: string
+                value: null
+                description: 错误信息
+            error_code:
+                type: string
+                value: null
+                description: 错误码
+            error_msg:
+                type: string
+                value: null
+                description: 错误信息
+            message:
+                type: string
+                value: null
+                description: 错误信息
+            pdf_content:
+                type: string
+                value: null
+                description: pdf的内容
+        settingOnError:
+            processType: 1
+            retryTimes: 0
+            timeoutMs: 180000
+    - id: "169694"
+      type: plugin
+      title: get_file_type
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-Plugin-v2.jpg
+      description: "通过文件链接判断文件的类型"
+      position:
+        x: -359
+        y: -212.4995
+      parameters:
+        apiParam:
+            - name: apiID
+              input:
+                type: string
+                value: "7478714045550542911"
+            - name: apiName
+              input:
+                type: string
+                value: "get_file_type"
+            - name: pluginID
+              input:
+                type: string
+                value: "7478714045550526527"
+            - name: pluginName
+              input:
+                type: string
+                value: "文件类型判断"
+            - name: pluginVersion
+              input:
+                type: string
+                value: ""
+            - name: tips
+              input:
+                type: string
+                value: ""
+            - name: outDocLink
+              input:
+                type: string
+                value: ""
+        node_inputs:
+            - name: fileUrl
+              input:
+                type: string
+                value:
+                    path: upload_file
+                    ref_node: "100001"
+        node_outputs:
+            type:
+                type: string
+                required: true
+                value: null
+                description: 文件类型
+        settingOnError:
+            processType: 1
+            retryTimes: 0
+            timeoutMs: 180000
+    - id: "155571"
+      type: from_json
+      title: JSON 反序列化
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-from_json.png
+      description: "用于把JSON字符串转化为变量"
+      position:
+        x: 1021
+        y: -212.4995
+      parameters:
+        node_inputs:
+            - name: input
+              input:
+                value:
+                    path: output
+                    ref_node: "188251"
+        node_outputs:
+            output:
+                type: object
+                value: null
+    - id: "100001"
+      type: start
+      title: 开始
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-Start-v2.jpg
+      description: "工作流的起始节点，用于设定启动工作流需要的信息"
+      position:
+        x: -819
+        y: -199.4995
+      parameters:
+        node_outputs:
+            upload_file:
+                type: file
+                value: null
+    - id: "900001"
+      type: end
+      title: 结束
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-End-v2.jpg
+      description: "工作流的最终节点，用于返回工作流运行后的结果信息"
+      position:
+        x: 1481
+        y: -212.4995
+      parameters:
+        node_inputs:
+            - name: output
+              input:
+                value:
+                    path: output
+                    ref_node: "155571"
+        terminatePlan: returnVariables
+edges:
+    - source_node: "149502"
+      target_node: "188251"
+    - source_node: "188251"
+      target_node: "155571"
+    - source_node: "169694"
+      target_node: "149502"
+    - source_node: "100001"
+      target_node: "169694"
+    - source_node: "155571"
+      target_node: "900001"

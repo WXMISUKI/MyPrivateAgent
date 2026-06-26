@@ -1,0 +1,143 @@
+id: hazardous_project_list_recognition
+name: Hazardous Project List Recognition
+version: 0.1.0
+status: active
+owner:
+  team: szzg-agent-migration
+  primary: szzg-owner@example.com
+  reviewers:
+    - runtime-reviewer@example.com
+
+source:
+  platform: coze
+  workspace: szzg
+  workflow_id: "7655219621917982756"
+  workflow_name: Automatic_creation_of_assignme
+  workflow_description: 作业队伍自动创建
+  export_ref: source/coze_export
+  migration_notes: >
+    Business migration target is hazardous construction project checklist
+    recognition. The Coze export name is preserved as source evidence only.
+  unsupported_nodes:
+    - LinkReaderPlugin must be replaced by managed spreadsheet extraction.
+    - get_file_type must be replaced by managed file type detection.
+
+entrypoint:
+  mode: capability
+  adapter: myprivateagent
+  handler: null
+  capability_id: coze.workflow.hazardous_project_list_recognition
+  default_timeout_ms: 120000
+
+inputs:
+  schema:
+    type: object
+    required:
+      - file
+    properties:
+      file:
+        type: object
+        required:
+          - filename
+          - media_type
+          - content_ref
+        properties:
+          filename:
+            type: string
+          media_type:
+            type: string
+            enum:
+              - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+              - application/vnd.ms-excel
+              - text/csv
+          content_ref:
+            type: string
+            description: Runtime-managed file reference or artifact id.
+
+outputs:
+  schema:
+    type: object
+    required:
+      - code
+      - msg
+    properties:
+      code:
+        type: integer
+        enum:
+          - 200
+          - 500
+      msg:
+        type: string
+      data:
+        type: array
+        items:
+          type: object
+          required:
+            - id
+            - originname
+            - name
+            - category
+            - isExdanger
+          properties:
+            id:
+              type:
+                - string
+                - "null"
+            originname:
+              type: string
+            name:
+              type: string
+            category:
+              type: string
+            isExdanger:
+              type: boolean
+
+prompts:
+  system: prompts/system.md
+  task: prompts/task.md
+
+dependencies:
+  tools: []
+  mcp_capabilities: []
+  skills: []
+  providers:
+    - doubao-1.5-pro-32k-compatible
+  knowledge_sources: []
+  runtime_capabilities:
+    - document.file_type.detect
+    - spreadsheet.table.extract
+    - llm.structured_json.generate
+    - json_schema.validate
+
+governance:
+  permission_level: medium
+  trace_required: true
+  approval_required: false
+  data_sensitivity: internal
+  allowed_callers:
+    - runtime
+    - capability_runtime
+  policy_notes: >
+    This workflow processes business spreadsheet files. Runtime must preserve
+    file provenance, dependency readiness, model output, and JSON validation
+    evidence in trace metadata before production rollout.
+
+acceptance:
+  examples:
+    - id: hazardous_project_list_sample
+      path: examples/hazardous_project_list_sample.xlsx
+      expected_path: examples/hazardous_project_list_expected.json
+      required: true
+  smoke:
+    deterministic: false
+    live_model_required: true
+    fixture_row_count: 14
+
+metadata:
+  tags:
+    - coze-migration
+    - szzg
+    - hazardous-project
+    - spreadsheet
+  domain: construction-safety
+  business_owner: szzg-business-owner@example.com
