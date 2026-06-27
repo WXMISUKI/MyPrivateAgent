@@ -8,8 +8,10 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 
 try:
+    from services.coze_workflow_lab_service import get_coze_workflow_lab_service
     from services.coze_workflow_registry_service import get_coze_workflow_registry_service
 except ModuleNotFoundError:
+    from backend.services.coze_workflow_lab_service import get_coze_workflow_lab_service
     from backend.services.coze_workflow_registry_service import get_coze_workflow_registry_service
 
 
@@ -19,6 +21,49 @@ router = APIRouter(prefix="/api", tags=["coze-workflows"])
 @router.get("/coze-workflows")
 def list_coze_workflows() -> dict[str, Any]:
     return get_coze_workflow_registry_service().build_runtime_contract()
+
+
+@router.get("/coze-workflow-lab")
+def list_coze_workflow_lab() -> dict[str, Any]:
+    return get_coze_workflow_lab_service().list_workflows()
+
+
+@router.get("/coze-workflow-lab/{workflow_id}")
+def get_coze_workflow_lab_detail(workflow_id: str) -> dict[str, Any]:
+    workflow = get_coze_workflow_lab_service().get_workflow_detail(workflow_id)
+    if workflow is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Coze workflow not found: {workflow_id}",
+            headers={"X-Workflow-Error": "COZE_WORKFLOW_NOT_FOUND"},
+        )
+    return workflow
+
+
+@router.get("/coze-workflow-lab/{workflow_id}/examples/{example_id}")
+def get_coze_workflow_lab_example(workflow_id: str, example_id: str) -> dict[str, Any]:
+    example = get_coze_workflow_lab_service().load_example(workflow_id, example_id)
+    if example is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Coze workflow example not found: {workflow_id}/{example_id}",
+            headers={"X-Workflow-Error": "COZE_WORKFLOW_EXAMPLE_NOT_FOUND"},
+        )
+    return example
+
+
+@router.post("/coze-workflow-lab/{workflow_id}/examples/{example_id}/invoke")
+def invoke_coze_workflow_lab_example(workflow_id: str, example_id: str) -> dict[str, Any]:
+    replay = get_coze_workflow_lab_service().invoke_example(workflow_id, example_id)
+    if replay is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Coze workflow example not found: {workflow_id}/{example_id}",
+            headers={"X-Workflow-Error": "COZE_WORKFLOW_EXAMPLE_NOT_FOUND"},
+        )
+    if replay.get("status") == "completed":
+        return replay
+    return JSONResponse(status_code=503, content=replay)
 
 
 @router.get("/coze-workflows/{workflow_id}")

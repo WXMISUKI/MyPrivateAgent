@@ -1,29 +1,23 @@
 # Coze Workflow Migration Examples
 
-## Example 1: New Workflow Landing
+## Example 1: Spreadsheet Migration
 
-1. Create `backend/coze_workflows/customer_intake/`.
+1. Create `backend/coze_workflows/hazardous_project_list_recognition/`.
 2. Add `workflow.yaml`, `prompts/system.md`, `prompts/task.md`, and `examples/*.json`.
-3. Keep `status: draft` until registry checks pass.
-4. Update owner, dependency, and acceptance fields.
+3. Keep the workflow in `review` until registry checks and fixture validation pass.
+4. Promote to `active` only after invoke and smoke evidence are complete.
 
-## Example 2: Migration Review
+## Example 2: Route Migration
 
-1. Confirm the manifest is discoverable by the registry.
-2. Confirm prompt references point to existing files.
-3. Confirm acceptance examples exist and are deterministic.
-4. Confirm domain agent references use `capabilities.coze_workflows`.
+1. Create `backend/coze_workflows/szzg_agent_encapsulation_route/`.
+2. Use `user_input` plus optional `data[]` candidates as the input contract.
+3. Cover `route_agent`, `route_square`, `clarify_multi`, and `clarify_none` in acceptance.
+4. Publish a `docs/integration/*-launch-acceptance` record with the exact input/output matrix.
 
-## Example 3: Launch Readiness
+## Example 3: Missing Capability
 
-1. Registry status is `ready` or `degraded` with understood blockers.
-2. Capability exposure is aligned with workflow status.
-3. Invoke flow is documented and tested.
-4. Acceptance evidence is linked in docs or task notes.
+1. A manifest references `http.request`.
+2. The runtime does not support it yet.
+3. Surface the blocker explicitly.
+4. Either add the executor support or keep the workflow blocked and explain why.
 
-## Example 4: Route Workflow Template
-
-1. Define the input as `user_input` plus optional `data[]` candidate list.
-2. Lock the output contract to `command`, `params`, and `message`.
-3. Cover the four scenario types in acceptance examples: single match, square-page jump, multi-match clarification, and no-match clarification.
-4. Publish a `docs/integration/*-launch-acceptance` record so the next team can replay the same matrix.

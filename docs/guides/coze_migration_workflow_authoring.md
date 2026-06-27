@@ -2,6 +2,19 @@
 
 This guide defines how teams migrate Coze workflows into MyPrivateAgent without creating scattered runtime entrypoints.
 
+## Migration Roadmap
+
+1. Read the original Coze export and identify the workflow type.
+2. Decide whether the workflow is a spreadsheet extractor, route orchestrator, or another capability pattern.
+3. Create a single workflow directory under `backend/coze_workflows/<workflow_id>/`.
+4. Write `workflow.yaml` as the only registration source.
+5. Move prompt text into `prompts/system.md` and `prompts/task.md`.
+6. Add deterministic acceptance fixtures under `examples/`.
+7. Run the registry read-only contract check.
+8. Resolve missing dependencies or document blockers explicitly.
+9. Promote to `active` only after invoke and smoke evidence both pass.
+10. Publish a `docs/integration/*-launch-acceptance` record for team reuse.
+
 ## Standard Directory
 
 Every migrated workflow lives under:
@@ -30,6 +43,8 @@ backend/coze_workflows/<workflow_id>/
   README.md
 ```
 
+The `source/coze_export/` directory is the audit trail. The `workflow.yaml`, prompts, examples, and README are the maintainable project assets.
+
 ## Manifest Is The Registry Entry
 
 `workflow.yaml` is the only registration source. A workflow is not considered migrated until this file exists and declares:
@@ -49,6 +64,8 @@ backend/coze_workflows/<workflow_id>/
 - `acceptance`
 
 Do not register workflows with ad hoc Python imports, local scripts, or custom API routes.
+
+If the original Coze export contains behavior that is not supported by the current runtime, keep the manifest honest. Do not pretend a capability exists just to make the registry green.
 
 ## Capability Id
 
@@ -76,6 +93,8 @@ The capability id is the stable handle for future model calls, tests, governance
 
 New migrations should start as `draft` or `review`. Do not mark a workflow `active` until dependencies, prompts, acceptance examples, and runtime behavior are verified.
 
+For route workflows, `active` means the scenario matrix has been exercised and the returned command contract is stable.
+
 ## Dependency Declaration
 
 All dependencies must be explicit in `workflow.yaml`.
@@ -88,6 +107,21 @@ For document and spreadsheet workflows, prefer managed capability names:
 - `json_schema.validate`
 
 Do not keep Coze plugin names as runtime dependencies unless they are wrapped by a MyPrivateAgent provider or MCP capability.
+
+### Missing Capability Handling
+
+If a workflow references a capability that the project does not currently support, do not silently skip it.
+
+1. Surface the missing capability clearly in the registry or smoke result.
+2. Try to map it to an existing supported capability or shared service when that is the intended runtime behavior.
+3. If the project needs the capability, add the executor or contract support explicitly and re-run the validation.
+4. If the gap cannot be closed yet, keep the workflow blocked or draft and document the blocker in the acceptance notes.
+
+Typical examples:
+
+- Spreadsheet workflows usually depend on `document.file_type.detect`, `spreadsheet.table.extract`, `llm.structured_json.generate`, and `json_schema.validate`.
+- Route workflows may depend on `http.request` if the runtime is expected to support route-capability compatibility, but they can also be implemented with deterministic local routing rules when that matches the current contract.
+- If a dependency is missing in a future migration, call it out immediately and do not bury it inside a passing test log.
 
 ## Prompt Migration
 
@@ -109,6 +143,22 @@ examples/<case>_expected.json
 
 The expected result should be compact and deterministic enough for review. If a live model is required, mark `acceptance.smoke.live_model_required = true`.
 
+For route workflows, acceptance should include:
+
+- single-match routing
+- collection/square-page routing
+- multi-match clarification
+- no-match clarification
+
+For spreadsheet workflows, acceptance should include:
+
+- row count
+- field normalization
+- category mapping
+- blocked dependency handling
+
+If the workflow needs a live model or an external capability, the acceptance record should say so explicitly.
+
 ## Collaboration Rules
 
 - Each workflow has a primary owner and reviewers.
@@ -116,6 +166,8 @@ The expected result should be compact and deterministic enough for review. If a 
 - Cross-workflow direct imports are not allowed.
 - Shared behavior must move into capability runtime, ToolRuntime, MCP Runtime, Skill Runtime, or a documented shared service.
 - Production rollout requires registry readiness, acceptance evidence, and governance trace support.
+- Teams should publish a `docs/integration/<workflow>-launch-acceptance` record so the next contributor can replay the same input/output matrix.
+- When a missing capability is discovered, the implementation notes should say what was missing, what was attempted, and why the issue was left blocked or resolved.
 
 ## First Sample
 
@@ -126,3 +178,11 @@ backend/coze_workflows/hazardous_project_list_recognition/
 ```
 
 It migrates a Coze workflow that reads a dangerous construction project checklist and returns normalized JSON.
+
+## Route Workflow Example
+
+```text
+backend/coze_workflows/szzg_agent_encapsulation_route/
+```
+
+It migrates a Coze routing workflow that resolves agent jumps and square-page jumps through a stable `command + params + message` contract.

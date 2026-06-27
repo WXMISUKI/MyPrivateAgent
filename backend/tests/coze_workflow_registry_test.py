@@ -371,9 +371,18 @@ acceptance:
 
             service = CozeWorkflowRegistryService(root_path=tmp_dir)
             capability_runtime = CapabilityRuntimeService(CapabilityRegistry(service.build_capability_definitions()))
-            capability_ids = {item["capability_id"] for item in capability_runtime.list_capabilities()["capabilities"]}
+            capabilities = capability_runtime.list_capabilities()["capabilities"]
+            capability_ids = {item["capability_id"] for item in capabilities}
 
             assert "coze.workflow.hazardous_project_list_recognition" in capability_ids
+            capability = next(
+                item for item in capabilities if item["capability_id"] == "coze.workflow.hazardous_project_list_recognition"
+            )
+            assert capability["metadata"]["workflow_version"] == "0.1.0"
+            assert capability["metadata"]["workflow_status"] == "active"
+            assert capability["metadata"]["readiness"]["status"] == "ready"
+            assert capability["metadata"]["asset_paths"]["manifest_path"].endswith("workflow.yaml")
+            assert capability["metadata"]["invocation_policy"]["placeholder"] is True
 
             response = capability_runtime.invoke(
                 "coze.workflow.hazardous_project_list_recognition",
@@ -387,9 +396,48 @@ acceptance:
             )
 
             assert response["ok"] is True
+            assert response["workflow_id"] == "hazardous_project_list_recognition"
+            assert response["workflow_version"] == "0.1.0"
+            assert response["status"] == "completed"
+            assert response["authorization"]["status"] == "not_evaluated"
+            assert response["invocation_policy"]["placeholder"] is True
+            assert response["trace_summary"]["workflow_version"] == "0.1.0"
             assert response["result"]["code"] == 200
             assert len(response["result"]["data"]) == 14
             assert response["result"]["data"][12]["name"] == "预应力小箱梁架设（履带吊）"
+
+    def test_not_ready_workflow_invocation_fails_closed_with_version_metadata(self):
+        from backend.services.coze_workflow_registry_service import CozeWorkflowRegistryService
+
+        repo_root = Path(__file__).resolve().parents[2]
+        source_dir = repo_root / "backend" / "coze_workflows" / "szzg_agent_encapsulation_route"
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            workflow_dir = Path(tmp_dir) / "szzg_agent_encapsulation_route"
+            (workflow_dir / "prompts").mkdir(parents=True)
+            (workflow_dir / "examples").mkdir(parents=True)
+
+            manifest_text = (source_dir / "workflow.yaml").read_text(encoding="utf-8")
+            manifest_text = manifest_text.replace("status: active", "status: review")
+            (workflow_dir / "workflow.yaml").write_text(manifest_text, encoding="utf-8")
+            shutil.copy2(source_dir / "prompts" / "system.md", workflow_dir / "prompts" / "system.md")
+            shutil.copy2(source_dir / "prompts" / "task.md", workflow_dir / "prompts" / "task.md")
+            for example_path in (source_dir / "examples").iterdir():
+                shutil.copy2(example_path, workflow_dir / "examples" / example_path.name)
+
+            service = CozeWorkflowRegistryService(root_path=tmp_dir)
+            response = service.invoke_workflow(
+                "szzg_agent_encapsulation_route",
+                {"user_input": "查看我的收藏"},
+            )
+
+            assert response["ok"] is False
+            assert response["status"] == "review"
+            assert response["workflow_version"] == "0.1.0"
+            assert response["error"]["code"] == "COZE_WORKFLOW_BLOCKED"
+            assert response["authorization"]["status"] == "not_evaluated"
+            assert response["invocation_policy"]["placeholder"] is True
+            assert response["trace_summary"]["workflow_version"] == "0.1.0"
 
     def test_missing_runtime_dependency_blocks_invocation(self):
         from backend.services.coze_workflow_registry_service import CozeWorkflowRegistryService

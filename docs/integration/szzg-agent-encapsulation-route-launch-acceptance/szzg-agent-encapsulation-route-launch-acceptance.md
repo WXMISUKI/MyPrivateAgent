@@ -139,6 +139,23 @@ Output:
 - Registry and invocation both passed after promoting the workflow to `active`.
 - This workflow can be used as a standard sample for future route-type Coze migrations.
 
+## Re-run Command
+
+Run the same four cases in `myenv`:
+
+```powershell
+conda run -n myenv python -m pytest backend/tests/coze_workflow_registry_test.py -q
+```
+
+For direct invocation checks, the route scenarios should return:
+
+- `route_agent` for a single matched agent
+- `route_square` for the collection page jump
+- `clarify_multi` for multiple matches
+- `clarify_none` for no matches
+
+If a dependency such as `http.request` is missing in a future workflow, record the blocker explicitly and either map it to a supported executor or keep the workflow blocked until the runtime contract is updated.
+
 ## Blockers
 
 None.

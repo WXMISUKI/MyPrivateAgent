@@ -116,16 +116,19 @@ class CozeWorkflowRegistryService:
             return self._build_error_envelope(
                 workflow_id=workflow_id,
                 capability_id=f"coze.workflow.{workflow_id}",
+                workflow_version="",
                 status="not_found",
                 code="COZE_WORKFLOW_NOT_FOUND",
                 message=f"Coze workflow not found: {workflow_id}",
             )
 
+        workflow_version = str(workflow.get("version") or "")
         readiness = dict(workflow.get("readiness") or {})
         if readiness.get("status") == "invalid" or workflow.get("status") == "invalid":
             return self._build_error_envelope(
                 workflow_id=workflow_id,
                 capability_id=str(workflow.get("capability_id") or f"coze.workflow.{workflow_id}"),
+                workflow_version=workflow_version,
                 status="invalid",
                 code="COZE_WORKFLOW_INVALID_MANIFEST",
                 message="Workflow manifest is invalid.",
@@ -140,6 +143,7 @@ class CozeWorkflowRegistryService:
             return self._build_error_envelope(
                 workflow_id=workflow_id,
                 capability_id=str(workflow.get("capability_id") or f"coze.workflow.{workflow_id}"),
+                workflow_version=workflow_version,
                 status=str(readiness.get("status") or "blocked"),
                 code=code,
                 message="Workflow is not ready for invocation.",
@@ -156,6 +160,7 @@ class CozeWorkflowRegistryService:
             return self._build_error_envelope(
                 workflow_id=workflow_id,
                 capability_id=str(workflow.get("capability_id") or f"coze.workflow.{workflow_id}"),
+                workflow_version=workflow_version,
                 status="invalid_input",
                 code="COZE_WORKFLOW_SCHEMA_VALIDATION_FAILED",
                 message="Workflow input payload failed schema validation.",
@@ -167,6 +172,7 @@ class CozeWorkflowRegistryService:
             return self._build_error_envelope(
                 workflow_id=workflow_id,
                 capability_id=str(workflow.get("capability_id") or f"coze.workflow.{workflow_id}"),
+                workflow_version=workflow_version,
                 status="blocked",
                 code="COZE_WORKFLOW_DEPENDENCY_UNAVAILABLE",
                 message="Workflow dependencies are unavailable.",
@@ -180,6 +186,7 @@ class CozeWorkflowRegistryService:
             return self._build_error_envelope(
                 workflow_id=workflow_id,
                 capability_id=str(workflow.get("capability_id") or f"coze.workflow.{workflow_id}"),
+                workflow_version=workflow_version,
                 status="blocked",
                 code="COZE_WORKFLOW_DEPENDENCY_UNAVAILABLE",
                 message=str(exc),
@@ -189,6 +196,7 @@ class CozeWorkflowRegistryService:
             return self._build_error_envelope(
                 workflow_id=workflow_id,
                 capability_id=str(workflow.get("capability_id") or f"coze.workflow.{workflow_id}"),
+                workflow_version=workflow_version,
                 status="blocked",
                 code="COZE_WORKFLOW_EXECUTOR_UNAVAILABLE",
                 message=str(exc),
@@ -198,6 +206,7 @@ class CozeWorkflowRegistryService:
             return self._build_error_envelope(
                 workflow_id=workflow_id,
                 capability_id=str(workflow.get("capability_id") or f"coze.workflow.{workflow_id}"),
+                workflow_version=workflow_version,
                 status="invalid_input",
                 code="COZE_WORKFLOW_EXECUTION_FAILED",
                 message=str(exc),
@@ -205,22 +214,28 @@ class CozeWorkflowRegistryService:
             )
 
         run_id = f"run_{uuid4().hex}"
+        dependency_summary = self._build_dependency_summary(workflow)
+        trace_summary = {
+            "workflow_id": workflow_id,
+            "workflow_version": workflow_version,
+            "owner": str(workflow.get("owner", {}).get("primary") or ""),
+            "source": "coze_migration",
+            "dependency_summary": dependency_summary,
+            "manifest_path": workflow.get("manifest_path"),
+            "workflow_dir": workflow.get("workflow_dir"),
+        }
         return {
             "ok": True,
             "workflow_id": workflow_id,
             "capability_id": str(workflow.get("capability_id") or f"coze.workflow.{workflow_id}"),
+            "workflow_version": workflow_version,
             "run_id": run_id,
             "status": "completed",
             "result": result,
-            "trace": {
-                "workflow_id": workflow_id,
-                "workflow_version": str(workflow.get("version") or ""),
-                "owner": str(workflow.get("owner", {}).get("primary") or ""),
-                "source": "coze_migration",
-                "dependency_summary": self._build_dependency_summary(workflow),
-                "manifest_path": workflow.get("manifest_path"),
-                "workflow_dir": workflow.get("workflow_dir"),
-            },
+            "authorization": self._build_authorization_placeholder(workflow),
+            "invocation_policy": self._build_invocation_policy(workflow),
+            "trace_summary": trace_summary,
+            "trace": trace_summary,
         }
 
     def _build_capability_contract(self, workflow: Mapping[str, Any]) -> Dict[str, Any]:
@@ -235,6 +250,7 @@ class CozeWorkflowRegistryService:
             "input_schema": dict(workflow.get("inputs", {}).get("schema") or {}),
             "output_schema": dict(workflow.get("outputs", {}).get("schema") or {}),
             "owner": workflow.get("owner", {}).get("primary"),
+            "version": str(workflow.get("version") or ""),
             "workflow_status": str(workflow.get("status") or ""),
             "governance": dict(workflow.get("governance") or {}),
             "readiness": {
@@ -246,6 +262,7 @@ class CozeWorkflowRegistryService:
                 "workflow_dir": workflow.get("workflow_dir"),
                 "manifest_path": workflow.get("manifest_path"),
             },
+            "invocation_policy": self._build_invocation_policy(workflow),
         }
 
     def _build_capability_description(self, workflow: Mapping[str, Any]) -> str:
@@ -266,7 +283,12 @@ class CozeWorkflowRegistryService:
             "acceptance": dict(workflow.get("acceptance") or {}),
             "workflow_dir": workflow.get("workflow_dir"),
             "manifest_path": workflow.get("manifest_path"),
+            "asset_paths": {
+                "workflow_dir": workflow.get("workflow_dir"),
+                "manifest_path": workflow.get("manifest_path"),
+            },
             "readiness": dict(workflow.get("readiness") or {}),
+            "invocation_policy": self._build_invocation_policy(workflow),
         }
 
     def _build_error_envelope(
@@ -274,6 +296,7 @@ class CozeWorkflowRegistryService:
         *,
         workflow_id: str,
         capability_id: str,
+        workflow_version: str,
         status: str,
         code: str,
         message: str,
@@ -284,6 +307,7 @@ class CozeWorkflowRegistryService:
             "ok": False,
             "workflow_id": workflow_id,
             "capability_id": capability_id,
+            "workflow_version": workflow_version,
             "run_id": None,
             "status": status,
             "error": {
@@ -292,10 +316,49 @@ class CozeWorkflowRegistryService:
                 "blockers": list(blockers or []),
                 "details": dict(details or {}),
             },
-            "trace": {
+            "authorization": {
+                "status": "not_evaluated",
+                "policy": "placeholder",
+                "reason": "Workflow API authorization is not implemented in this change.",
+            },
+            "invocation_policy": {
+                "allowed_callers": [],
+                "approval_required": False,
+                "permission_level": "",
+                "placeholder": True,
+            },
+            "trace_summary": {
                 "workflow_id": workflow_id,
+                "workflow_version": workflow_version,
                 "source": "coze_migration",
             },
+            "trace": {
+                "workflow_id": workflow_id,
+                "workflow_version": workflow_version,
+                "source": "coze_migration",
+            },
+        }
+
+    @staticmethod
+    def _build_authorization_placeholder(workflow: Mapping[str, Any]) -> Dict[str, Any]:
+        governance = dict(workflow.get("governance") or {})
+        return {
+            "status": "not_evaluated",
+            "policy": "placeholder",
+            "allowed_callers": list(governance.get("allowed_callers") or []),
+            "reason": "Workflow API authorization is not implemented in this change.",
+        }
+
+    @staticmethod
+    def _build_invocation_policy(workflow: Mapping[str, Any]) -> Dict[str, Any]:
+        governance = dict(workflow.get("governance") or {})
+        return {
+            "allowed_callers": list(governance.get("allowed_callers") or []),
+            "approval_required": bool(governance.get("approval_required")),
+            "permission_level": str(governance.get("permission_level") or ""),
+            "data_sensitivity": str(governance.get("data_sensitivity") or ""),
+            "placeholder": True,
+            "auth_system": "not_implemented_in_this_change",
         }
 
     def _build_dependency_summary(self, workflow: Mapping[str, Any]) -> Dict[str, Any]:

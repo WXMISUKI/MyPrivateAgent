@@ -1,74 +1,195 @@
 ---
 name: coze-workflow-migration
-description: Provides a repeatable workflow for migrating Coze workflows into MyPrivateAgent with asset authoring, read-only registry validation, runtime surface promotion, capability exposure, invocation checks, and go-live acceptance. Use when teams migrate Coze workflows into backend/coze_workflows, need end-to-end test and launch checklists, or want a shared authoring standard for multi-person migration work.
+description: Checklist-style migration skill for moving Coze workflows into MyPrivateAgent with asset authoring, dependency resolution, registry validation, capability promotion, invocation checks, and launch acceptance. Use when teams need a repeatable, step-by-step workflow for spreadsheet, route, or other Coze migration patterns under backend/coze_workflows.
 ---
 
-# Coze Workflow Migration
+# Coze Workflow Migration Checklist
 
-## Quick Start
+## 0. Use This Skill When
 
-1. Put each workflow under `backend/coze_workflows/<workflow_id>/`.
-2. Keep prompt bodies in `prompts/*.md` and reference them from `workflow.yaml`.
-3. Use the sample guide in [docs/guides/coze_migration_workflow_authoring.md](../../../docs/guides/coze_migration_workflow_authoring.md) as the authoring baseline.
-4. Keep the migration contract aligned with [openspec/changes/define-coze-migration-capability-runtime/tasks.md](../../../openspec/changes/define-coze-migration-capability-runtime/tasks.md).
-5. Treat `status: review` as non-callable by default; only promote to `active` after launch evidence is complete.
+- You are migrating a Coze workflow into `backend/coze_workflows/<workflow_id>/`.
+- You need to keep the registry contract, runtime dependency contract, and acceptance evidence aligned.
+- You want a repeatable checklist for spreadsheet workflows, route workflows, or other workflow patterns.
+- You need to verify launch readiness without silently skipping missing dependencies.
 
-## End-to-End Flow
+## 1. Before You Start
 
-1. Author assets under one workflow directory.
-2. Validate `workflow.yaml`, prompt references, and acceptance fixtures.
-3. Confirm the read-only registry reports the expected readiness and blockers.
-4. Expose the workflow through runtime surface and capability contracts.
-5. Verify invoke boundaries only after registry and capability checks pass.
-6. Run launch acceptance and capture evidence before any `active` promotion.
+- Read the original Coze export and identify the workflow type.
+- Confirm whether the workflow is mainly:
+  - spreadsheet recognition
+  - route orchestration
+  - another capability pattern
+- Decide the intended runtime behavior before editing files.
+- If the workflow needs a capability the project does not support yet, stop and mark that dependency explicitly.
 
-## Workflow Patterns
+## 2. Create The Workflow Directory
 
-### Spreadsheet Recognition
+- Create exactly one directory under `backend/coze_workflows/<workflow_id>/`.
+- Do not place multiple workflows in one directory.
+- Keep the original export under `source/coze_export/` when available.
+- Treat the original export as audit evidence, not as the maintainable runtime asset.
 
-- Typical input: `file`
-- Typical output: normalized JSON records
-- Typical smoke focus: row count, field mapping, and blocked dependency handling
+Required layout:
 
-### Route Orchestration
+```text
+backend/coze_workflows/<workflow_id>/
+  workflow.yaml
+  prompts/
+    system.md
+    task.md
+  examples/
+    <case>.json
+    <case>_expected.json
+  source/
+    coze_export/
+      MANIFEST.yml
+      workflow/
+  README.md
+```
 
-- Typical input: `user_input` plus optional `data[]` candidate list
-- Typical output: `command`, `params`, and `message`
-- Typical smoke focus: single-match routing, square-page routing, multi-match clarification, and no-match clarification
-- If the route workflow uses HTTP steps in the original Coze export, keep the original intent in `source.migration_notes` and make sure the runtime capability list matches the actual executor support before promotion
+## 3. Write The Manifest
 
-## Recommended Validation Sequence
+- Use `workflow.yaml` as the only registration source.
+- Do not register workflows with ad hoc Python imports, custom routes, or local scripts.
+- Keep the manifest honest about unsupported behavior.
+- Use stable capability ids in the form `coze.workflow.<workflow_id>`.
 
-1. Check `backend/coze_workflows/<workflow_id>/workflow.yaml` exists and is parseable.
-2. Confirm `prompts/system.md` and `prompts/task.md` exist and are referenced by manifest.
+Checklist:
+
+- `id`
+- `name`
+- `version`
+- `status`
+- `owner`
+- `source`
+- `entrypoint`
+- `inputs`
+- `outputs`
+- `prompts`
+- `dependencies`
+- `governance`
+- `acceptance`
+
+## 4. Set The Status Correctly
+
+- `draft` means asset exists but is not callable by default.
+- `review` means ready for registry and acceptance review.
+- `active` means callable only after readiness and validation pass.
+- `deprecated` means kept for compatibility.
+- `archived` means retained as historical evidence.
+
+Rules:
+
+- Start new work as `draft` or `review`.
+- Do not mark a workflow `active` until dependencies, prompts, acceptance examples, and runtime behavior are verified.
+- For route workflows, `active` means the scenario matrix has been exercised and the returned command contract is stable.
+
+## 5. Declare Dependencies
+
+- Declare every dependency explicitly in `workflow.yaml`.
+- For spreadsheet workflows, prefer managed capability names:
+  - `document.file_type.detect`
+  - `spreadsheet.table.extract`
+  - `llm.structured_json.generate`
+  - `json_schema.validate`
+- For route workflows, use `http.request` only if the runtime contract actually supports it.
+- Do not keep Coze plugin names as runtime dependencies unless they are wrapped by a MyPrivateAgent provider or MCP capability.
+
+### Missing Capability Rule
+
+- Never ignore a missing capability just because the workflow can still be registered.
+- If a manifest references an unsupported capability such as `http.request`, explicitly surface the gap.
+- First try to resolve the gap by:
+  - mapping it to an existing supported capability or shared service, or
+  - adding the executor or contract support when that is the intended project direction.
+- If the gap cannot be closed yet, keep the workflow blocked or draft and explain why in the acceptance notes.
+- Do not silently downgrade, skip, or hand-wave missing dependencies in docs, tests, or execution results.
+
+## 6. Migrate Prompts
+
+- Move Coze prompt content into:
+  - `prompts/system.md`
+  - `prompts/task.md`
+- Keep the prompt files maintainable.
+- Keep the original export only as audit evidence.
+
+## 7. Prepare Acceptance Fixtures
+
+- Add at least one fixture and expected result.
+- Keep the expected result compact and deterministic enough for review.
+- If a live model is required, mark `acceptance.smoke.live_model_required = true`.
+
+### Spreadsheet Workflow Acceptance
+
+- Row count
+- Field normalization
+- Category mapping
+- Blocked dependency handling
+
+### Route Workflow Acceptance
+
+- Single-match routing
+- Collection/square-page routing
+- Multi-match clarification
+- No-match clarification
+
+## 8. Run The Checks
+
+Run checks in this order:
+
+1. Confirm `workflow.yaml` exists and parses.
+2. Confirm prompt files exist and are referenced by the manifest.
 3. Confirm every `acceptance.examples[*].expected_path` file exists.
-4. Run the registry inspection path first and confirm it stays side-effect free.
-5. If the workflow is still `review`, expect invoke to fail closed with `COZE_WORKFLOW_BLOCKED`.
-6. If the workflow is `active` and ready, run a real fixture-based invoke and compare the structured JSON output to the expected example.
-7. Record the smoke result, blocker reason, and promotion decision in docs or change notes.
-8. For route workflows, verify the returned command set matches the scenario matrix before treating the workflow as a shared template.
+4. Run the registry read-only contract check.
+5. Confirm the workflow shows the expected readiness state.
+6. If the workflow is `review`, expect invoke to fail closed.
+7. If the workflow is `active`, run a real fixture-based invoke.
+8. Compare the returned JSON to the expected example.
+9. Record the smoke result, blocker reason, and promotion decision.
 
-## Operating Rules
+## 9. Handle Route Workflows Carefully
 
-- Treat `workflow.yaml` as the only registration source.
-- Do not import one workflow directory directly from another.
-- Keep the registry side-effect free until the explicit invoke slice is approved.
-- Prefer `draft` or `review` while migration evidence is still being collected.
-- Promote to `active` only after prompts, dependencies, examples, and trace expectations are verified.
-- Keep launch evidence stable: same fixture, same expected JSON, same structured error codes for blocked states.
-- For route workflows, keep `route_agent`, `route_square`, `clarify_multi`, and `clarify_none` examples in the acceptance matrix when they are part of the original business behavior.
+- Typical input: `user_input` plus optional `data[]` candidate list.
+- Typical output: `command`, `params`, and `message`.
+- Keep the scenario matrix aligned with the actual business behavior.
+- If the route workflow uses HTTP steps in the original Coze export, keep that intent in `source.migration_notes`.
+- Make sure the runtime capability list matches the actual executor support before promotion.
 
-## Test And Launch Checklist
+## 10. Publish The Evidence
 
-1. Confirm the workflow directory exists and contains `workflow.yaml`.
-2. Confirm `prompts/system.md`, `prompts/task.md`, and acceptance example files exist.
-3. Run the registry read-only contract check.
-4. Verify domain agent references, capability exposure, and invoke envelope alignment.
-5. For `review` workflows, verify blocked cases fail closed with stable error codes.
-6. For `active` workflows, run a real end-to-end smoke test against a representative fixture and compare the response to the expected JSON.
-7. Record go-live evidence in docs and OpenSpec tasks.
+- Add a `docs/integration/<workflow>-launch-acceptance` record.
+- Record the exact input payloads and returned outputs.
+- Record the runtime boundary: what was performed and what was not performed.
+- Document blockers explicitly if any capability is still missing.
 
-## References
+## 11. Collaboration Rules
+
+- Each workflow has a primary owner and reviewers.
+- Owners should edit only their workflow directory unless a shared runtime contract change is agreed.
+- Cross-workflow direct imports are not allowed.
+- Shared behavior must move into capability runtime, ToolRuntime, MCP Runtime, Skill Runtime, or a documented shared service.
+- Production rollout requires registry readiness, acceptance evidence, and governance trace support.
+
+## 12. Re-Run Template
+
+Use this when you need to prove the workflow really executed:
+
+1. Run focused tests in the project conda env, not `base`.
+2. Capture the exact input payload used for the workflow invocation.
+3. Capture the exact returned JSON, including `command`, `params`, `message`, `run_id`, `status`, and trace metadata when present.
+4. Compare the returned values against the acceptance example matrix.
+5. If a dependency or capability is missing, name it explicitly, show the blocker, and explain the attempted fix.
+6. For route workflows, verify all four scenario types before treating the workflow as a reusable sample.
+
+## 13. When Something Is Missing
+
+- Say it clearly.
+- Identify the missing capability or file.
+- Explain what you tried.
+- Explain what remains blocked.
+- Do not skip the problem and pretend the workflow is fine.
+
+## 14. References
 
 - [REFERENCE.md](REFERENCE.md)
 - [EXAMPLES.md](EXAMPLES.md)
