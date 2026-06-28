@@ -21,6 +21,40 @@ vi.mock('../../api', () => ({
       }
     })
   },
+  providerApi: {
+    list: vi.fn().mockResolvedValue({
+      data: [
+        {
+          name: 'ollama',
+          display_name: 'Ollama (本地)',
+          requires_api_key: false,
+          configured: true,
+          api_key_masked: null,
+          base_url: 'http://localhost:11434',
+          model_name: '',
+          config_source: 'env'
+        }
+      ]
+    }),
+    update: vi.fn().mockResolvedValue({ data: { status: 'saved' } }),
+    test: vi.fn().mockResolvedValue({
+      data: {
+        status: 'ok',
+        message: '连接成功，发现 3 个模型',
+        model_count: 3,
+        latency_ms: 12
+      }
+    }),
+    getFailoverAnalytics: vi.fn().mockResolvedValue({
+      data: {
+        switch_rate: 0.25,
+        switched_children: 5,
+        total_children: 20,
+        total_switches: 7,
+        top_provider_failover_pairs: []
+      }
+    })
+  },
   runtimeSurfaceApi: {
     getProfile: vi.fn().mockResolvedValue({
       data: {
@@ -37,17 +71,6 @@ vi.mock('../../api', () => ({
         scope: 'startup',
         status: 'ok',
         exit_code: 0
-      }
-    })
-  },
-  providerApi: {
-    getFailoverAnalytics: vi.fn().mockResolvedValue({
-      data: {
-        switch_rate: 0.25,
-        switched_children: 5,
-        total_children: 20,
-        total_switches: 7,
-        top_provider_failover_pairs: []
       }
     })
   },
@@ -76,7 +99,6 @@ describe('SettingsView', () => {
     const wrapper = mount(SettingsView, {
       global: {
         stubs: {
-          ProviderConfigPanel: true,
           ProviderOnboardingPanel: true,
           RuntimeSurfacePanel: true,
           DoctorPanel: true,
@@ -91,8 +113,12 @@ describe('SettingsView', () => {
     await wrapper.findAll('.tab-btn')[1].trigger('click')
     await flushPromises()
 
+    expect(wrapper.text()).toContain('Provider Failover 看板')
+    expect(wrapper.text()).toContain('切换率')
+    expect(wrapper.text()).toContain('5/20')
     expect(wrapper.text()).toContain('高风险')
     expect(wrapper.text()).toContain('已超过高风险阈值')
     expect(wrapper.text()).toContain('健康数据更新时间')
+    expect(wrapper.text()).toContain('Provider 配置')
   })
 })
