@@ -15,6 +15,17 @@ This guide defines how teams migrate Coze workflows into MyPrivateAgent without 
 9. Promote to `active` only after invoke and smoke evidence both pass.
 10. Publish a `docs/integration/*-launch-acceptance` record for team reuse.
 
+## Workflow Lab Usage
+
+After the workflow is registered, use the Workflow Lab to verify the migration before treating it as reusable.
+
+1. Open the workflow list and confirm the workflow appears with the expected status, readiness, owner, capability id, and launch evidence.
+2. Open the workflow detail and inspect input schema, output schema, prompt metadata, governance, and dependency mapping.
+3. Replay each acceptance example through the lab invocation action.
+4. Compare the returned JSON against the expected fixture.
+5. If the replay is blocked, record the blocker and keep the workflow in `draft` or `review` until the blocker is resolved.
+6. Keep Workflow Lab separate from default chat and provider settings. It is a migration verification surface, not a user-facing execution entrypoint.
+
 ## Standard Directory
 
 Every migrated workflow lives under:
@@ -66,6 +77,8 @@ The `source/coze_export/` directory is the audit trail. The `workflow.yaml`, pro
 Do not register workflows with ad hoc Python imports, local scripts, or custom API routes.
 
 If the original Coze export contains behavior that is not supported by the current runtime, keep the manifest honest. Do not pretend a capability exists just to make the registry green.
+
+When the registry shows a gap, surface it in Workflow Lab dependency mapping so reviewers can see whether the node maps to a local capability, a provider-backed capability, an artifact input, or an explicit blocker.
 
 ## Capability Id
 
@@ -123,6 +136,14 @@ Typical examples:
 - Route workflows may depend on `http.request` if the runtime is expected to support route-capability compatibility, but they can also be implemented with deterministic local routing rules when that matches the current contract.
 - If a dependency is missing in a future migration, call it out immediately and do not bury it inside a passing test log.
 
+Dependency mapping example:
+
+- `http.request` -> `status: ready`, `target_capability_id: http.request`
+- `llm.structured_json.generate` -> `status: ready`
+- Provider-backed capabilities -> include `provider_id`, `onboarding_path`, and `service_provider_detail_path`
+- `inputs.file` -> `kind: artifact_input`, accepted reference types `content_ref`, `artifact_id`, `runtime_file_ref`
+- Unsupported Coze node -> explicit blocker
+
 ## Prompt Migration
 
 Move Coze prompt content into prompt files:
@@ -168,6 +189,7 @@ If the workflow needs a live model or an external capability, the acceptance rec
 - Production rollout requires registry readiness, acceptance evidence, and governance trace support.
 - Teams should publish a `docs/integration/<workflow>-launch-acceptance` record so the next contributor can replay the same input/output matrix.
 - When a missing capability is discovered, the implementation notes should say what was missing, what was attempted, and why the issue was left blocked or resolved.
+- When possible, reference the Workflow Lab replay result in the launch acceptance record so the fixture, returned JSON, and capability envelope stay tied together.
 
 ## First Sample
 

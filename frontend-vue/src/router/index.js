@@ -47,6 +47,12 @@ const routes = [
     name: 'FeedbackAnalytics',
     component: () => import('../views/FeedbackAnalyticsView.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/workflow-lab',
+    name: 'WorkflowLab',
+    component: () => import('../views/WorkflowLabView.vue'),
+    meta: { requiresAuth: true }
   }
 ]
 

@@ -39,4 +39,4 @@
   - multi-match clarification
   - no-match clarification
 - Always publish a `docs/integration/<workflow>-launch-acceptance` record for handoff.
-
+- Workflow Lab should be used to inspect the registry list, detail view, dependency mapping, and replay result before promotion.

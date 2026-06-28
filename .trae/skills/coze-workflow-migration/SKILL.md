@@ -147,6 +147,13 @@ Run checks in this order:
 8. Compare the returned JSON to the expected example.
 9. Record the smoke result, blocker reason, and promotion decision.
 
+### Workflow Lab Replay
+
+- Use `/workflow-lab` to inspect the registry list, detail view, dependency mapping, and acceptance examples.
+- Replay each acceptance example from the lab instead of relying on ad hoc shell commands.
+- Confirm the lab replay result shows the returned JSON, expected diff, run id, status, and trace summary.
+- If the lab replay is blocked, record the blocker and keep the workflow in `draft` or `review`.
+
 ## 9. Handle Route Workflows Carefully
 
 - Typical input: `user_input` plus optional `data[]` candidate list.
@@ -180,6 +187,7 @@ Use this when you need to prove the workflow really executed:
 4. Compare the returned values against the acceptance example matrix.
 5. If a dependency or capability is missing, name it explicitly, show the blocker, and explain the attempted fix.
 6. For route workflows, verify all four scenario types before treating the workflow as a reusable sample.
+7. Prefer Workflow Lab replay output as the canonical handoff artifact for other contributors.
 
 ## 13. When Something Is Missing
 

@@ -49,6 +49,10 @@
           <span class="icon">🧠</span>
           <span class="text">学习记录</span>
         </button>
+        <button class="footer-btn" @click="$emit('open-workflow-lab')">
+          <span class="icon">🧪</span>
+          <span class="text">Workflow Lab</span>
+        </button>
         <button class="footer-btn" @click="$emit('open-feedback-analytics')">
           <span class="icon">📊</span>
           <span class="text">反馈分析</span>
@@ -92,6 +96,7 @@ const emit = defineEmits([
   'new-chat',
   'select-conversation',
   'open-learnings',
+  'open-workflow-lab',
   'open-feedback-analytics',
   'open-skills',
   'open-settings',

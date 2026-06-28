@@ -76,6 +76,24 @@
 - The acceptance sample is suitable as a reusable migration template for future Coze workflow onboarding.
 - The repository-side regression suite passed after the status promotion.
 
+## Workflow Lab Replay
+
+This launch evidence can be replayed from `/workflow-lab` using `hazardous_project_list_sample`.
+
+| Replay Item | Value |
+|---|---|
+| Workflow Id | `hazardous_project_list_recognition` |
+| Capability Id | `coze.workflow.hazardous_project_list_recognition` |
+| Example Id | `hazardous_project_list_sample` |
+| Expected Comparison | `match` |
+| Replay Boundary | `capability_runtime` |
+
+Replay notes:
+
+- The lab invocation should return the same normalized JSON contract as the production capability invoke path.
+- The input reference should stay runtime-managed (`content_ref` / `artifact_id`) rather than a hard-coded local path.
+- If the replay is blocked, the workflow should remain in `review` until the missing dependency or blocker is resolved.
+
 ## Blockers
 
 None.

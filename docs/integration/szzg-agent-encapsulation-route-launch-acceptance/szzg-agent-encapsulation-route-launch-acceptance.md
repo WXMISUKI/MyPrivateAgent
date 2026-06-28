@@ -139,6 +139,23 @@ Output:
 - Registry and invocation both passed after promoting the workflow to `active`.
 - This workflow can be used as a standard sample for future route-type Coze migrations.
 
+## Workflow Lab Replay
+
+The same four cases can be replayed from `/workflow-lab` using the exact input payloads above.
+
+| Example | Replay Source | Expected Comparison |
+|---|---|---|
+| 示例1 | `route_agent_single_match` | `match` |
+| 示例2 | `route_square_collect` | `match` |
+| 示例3 | `clarify_multi_match` | `match` |
+| 示例4 | `clarify_none_match` | `match` |
+
+Replay boundary:
+
+- The lab uses the `coze.workflow.szzg_agent_encapsulation_route` capability envelope.
+- The replay result should include `run_id`, `status`, `trace_summary`, and `expected_comparison`.
+- A blocked replay means the workflow is not ready for promotion and should remain in `draft` or `review`.
+
 ## Re-run Command
 
 Run the same four cases in `myenv`:

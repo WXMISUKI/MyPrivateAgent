@@ -23,6 +23,7 @@
           @select-conversation="selectConversation"
           @delete-conversation="deleteConversation"
           @open-learnings="goToLearnings"
+          @open-workflow-lab="goToWorkflowLab"
           @open-feedback-analytics="goToFeedbackAnalytics"
           @open-skills="goToSkills"
           @open-settings="goToSettings"
@@ -133,6 +134,10 @@ async function handleLogout() {
 
 function goToLearnings() {
   router.push('/learnings')
+}
+
+function goToWorkflowLab() {
+  router.push('/workflow-lab')
 }
 
 function goToSkills() {

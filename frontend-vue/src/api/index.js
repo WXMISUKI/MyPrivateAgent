@@ -277,6 +277,24 @@ export const capabilityApi = {
   }
 }
 
+export const workflowLabApi = {
+  list() {
+    return api.get('/coze-workflow-lab')
+  },
+
+  get(workflowId) {
+    return api.get(`/coze-workflow-lab/${encodeURIComponent(workflowId)}`)
+  },
+
+  getExample(workflowId, exampleId) {
+    return api.get(`/coze-workflow-lab/${encodeURIComponent(workflowId)}/examples/${encodeURIComponent(exampleId)}`)
+  },
+
+  invokeExample(workflowId, exampleId) {
+    return api.post(`/coze-workflow-lab/${encodeURIComponent(workflowId)}/examples/${encodeURIComponent(exampleId)}/invoke`)
+  }
+}
+
 export const documentArtifactApi = {
   list(params = {}) {
     return api.get('/document-artifacts', { params })

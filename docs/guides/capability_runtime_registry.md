@@ -279,6 +279,36 @@ python backend\scripts\provider_onboarding_acceptance_smoke.py --provider-id uni
 
 验收 gate 仍是只读：不调用 capability invoke/test，不执行 RAG/OCR/VLM/ASR/TTS/GraphRAG，不写 `.env`，不启动 provider，不创建 source binding，不改变默认 `/api/chat` grounding 或 final answer policy。
 
+### Coze Workflow Capability Invocation
+已迁移的 Coze 工作流通过 `coze.workflow.<workflow_id>` capability id 暴露，并共享现有 capability runtime envelope。生产调用仍然走：
+
+- `POST /api/coze-workflows/{workflow_id}/invoke`
+- `POST /api/capabilities/{capability_id}/invoke`
+
+Workflow Lab 只做只读诊断和示例回放：
+
+- `GET /api/coze-workflow-lab`
+- `GET /api/coze-workflow-lab/{workflow_id}`
+- `GET /api/coze-workflow-lab/{workflow_id}/examples/{example_id}`
+- `POST /api/coze-workflow-lab/{workflow_id}/examples/{example_id}/invoke`
+
+Workflow Lab 结果应展示 workflow version、trace summary、dependency mapping、expected comparison 和 replay blockers，但不得绕过 capability runtime，也不得把 draft/review workflow 伪装成生产 ready callable。
+
+对于文件类工作流，调用方应优先传 `content_ref`、`artifact_id` 或 runtime-managed file reference；不要把本地文件路径当成外部调用 contract 的默认输入。
+
+### Separate Follow-up: Model Provider Registry
+
+模型 provider registry 仍然是独立的后续变更，不属于本次 Coze Workflow Lab 交付范围。后续变化应该显式覆盖：
+
+- model list
+- base URL
+- API key
+- modality tags
+- fallback policy
+- provider health checks
+
+在该变更落地之前，Workflow Lab 只能读取现有 runtime/profile/provider contract，不应把模型配置、模型切换或 provider marketplace 误当成已完成能力。
+
 ### `WS /api/capabilities/{capability_id}/stream`
 实时流式能力代理。当前用于 `voice.asr.vosk` 主对话麦克风输入。
 
