@@ -14,6 +14,7 @@ This guide defines how teams migrate Coze workflows into MyPrivateAgent without 
 8. Resolve missing dependencies or document blockers explicitly.
 9. Promote to `active` only after invoke and smoke evidence both pass.
 10. Publish a `docs/integration/*-launch-acceptance` record for team reuse.
+11. Use the Workflow Lab verification runbook for backend, frontend, and replay checks.
 
 ## Workflow Lab Usage
 
@@ -25,6 +26,7 @@ After the workflow is registered, use the Workflow Lab to verify the migration b
 4. Compare the returned JSON against the expected fixture.
 5. If the replay is blocked, record the blocker and keep the workflow in `draft` or `review` until the blocker is resolved.
 6. Keep Workflow Lab separate from default chat and provider settings. It is a migration verification surface, not a user-facing execution entrypoint.
+7. Treat dependency mapping as the migration truth source. Each node should be classified as `runtime_capability`, `provider_backed`, `artifact_input`, or `explicit_blocker` before the workflow is promoted.
 
 ## Standard Directory
 
@@ -138,11 +140,13 @@ Typical examples:
 
 Dependency mapping example:
 
-- `http.request` -> `status: ready`, `target_capability_id: http.request`
-- `llm.structured_json.generate` -> `status: ready`
-- Provider-backed capabilities -> include `provider_id`, `onboarding_path`, and `service_provider_detail_path`
+- `http.request` -> `kind: runtime_capability`, `status: ready`, `target_capability_id: http.request`
+- `llm.structured_json.generate` -> `kind: runtime_capability`, `status: ready`
+- Provider-backed capabilities -> `kind: provider_backed`, include `provider_id`, `onboarding_path`, and `service_provider_detail_path`
 - `inputs.file` -> `kind: artifact_input`, accepted reference types `content_ref`, `artifact_id`, `runtime_file_ref`
-- Unsupported Coze node -> explicit blocker
+- Unsupported Coze node -> `kind: explicit_blocker`, include a machine-readable blocker reason
+
+Promoted workflows are invoked through the stable capability contract `coze.workflow.<workflow_id>`. The invoke envelope should preserve `workflow_id`, `capability_id`, `workflow_version`, `run_id`, `status`, `authorization`, `invocation_policy`, and `trace_summary`, and draft/review workflows must fail closed.
 
 ## Prompt Migration
 

@@ -110,6 +110,8 @@ describe('WorkflowLabView', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('Workflow Lab')
+    expect(wrapper.text()).toContain('Verification Runbook')
+    expect(wrapper.text()).toContain('coze_workflow_lab_verification_runbook.md')
     expect(wrapper.text()).toContain('SZZG Agent Encapsulation Route')
     expect(wrapper.text()).toContain('http.request')
     expect(wrapper.text()).toContain('route_agent_single_match')

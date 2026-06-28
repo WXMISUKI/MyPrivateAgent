@@ -294,6 +294,8 @@ Workflow Lab 只做只读诊断和示例回放：
 
 Workflow Lab 结果应展示 workflow version、trace summary、dependency mapping、expected comparison 和 replay blockers，但不得绕过 capability runtime，也不得把 draft/review workflow 伪装成生产 ready callable。
 
+dependency mapping 的节点分类应以 `runtime_capability`、`provider_backed`、`artifact_input`、`explicit_blocker` 为准。已推广 workflow 的 invoke envelope 应与 capability runtime 保持一致，并携带 `workflow_version`、`authorization`、`invocation_policy` 与 `trace_summary`。
+
 对于文件类工作流，调用方应优先传 `content_ref`、`artifact_id` 或 runtime-managed file reference；不要把本地文件路径当成外部调用 contract 的默认输入。
 
 ### Separate Follow-up: Model Provider Registry

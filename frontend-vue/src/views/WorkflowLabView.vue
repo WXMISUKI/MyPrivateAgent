@@ -24,6 +24,24 @@
       </div>
     </header>
 
+    <section class="runbook-strip">
+      <div class="runbook-card">
+        <div>
+          <p class="eyebrow">Verification Runbook</p>
+          <h2>验收手册</h2>
+          <p class="runbook-desc">
+            手工验收请先看 <span class="mono-inline">docs/guides/coze_workflow_lab_verification_runbook.md</span>，
+            再按后端、前端和 OpenSpec 的顺序复跑。
+          </p>
+        </div>
+        <div class="runbook-actions">
+          <span class="runbook-pill">backend tests</span>
+          <span class="runbook-pill">frontend tests</span>
+          <span class="runbook-pill">openspec validate</span>
+        </div>
+      </div>
+    </section>
+
     <div class="lab-shell">
       <aside class="workflow-list-panel">
         <div class="panel-header">
@@ -346,6 +364,43 @@ function statusClass(status) {
   border-bottom: 1px solid var(--border-primary);
 }
 
+.runbook-strip {
+  padding: 12px 24px 0;
+}
+
+.runbook-card {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid rgba(99, 102, 241, 0.24);
+  border-radius: var(--radius-lg);
+  background: rgba(79, 70, 229, 0.08);
+}
+
+.runbook-desc {
+  margin: 8px 0 0;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+
+.runbook-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+
+.runbook-pill {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  color: #c7d2fe;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  background: rgba(79, 70, 229, 0.16);
+}
+
 .eyebrow {
   margin: 0 0 6px;
   text-transform: uppercase;
@@ -631,6 +686,11 @@ function statusClass(status) {
   font-size: 0.8rem;
 }
 
+.mono-inline {
+  font-family: monospace;
+  color: #c7d2fe;
+}
+
 .status-pill {
   padding: 4px 8px;
   border-radius: 999px;
@@ -670,6 +730,7 @@ function statusClass(status) {
 }
 
 @media (max-width: 860px) {
+  .runbook-card,
   .lab-hero,
   .detail-hero,
   .detail-grid,
@@ -681,6 +742,10 @@ function statusClass(status) {
   }
 
   .lab-hero {
+    display: grid;
+  }
+
+  .runbook-card {
     display: grid;
   }
 
