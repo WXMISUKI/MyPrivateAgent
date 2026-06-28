@@ -10,10 +10,12 @@ from typing import Optional
 try:
     from services.provider_config_service import get_provider_config_service
     from services.provider_failover_analytics_service import get_provider_failover_analytics_service
+    from services.provider_ops_service import get_provider_ops_service
     from database import get_db
 except ModuleNotFoundError:
     from backend.services.provider_config_service import get_provider_config_service
     from backend.services.provider_failover_analytics_service import get_provider_failover_analytics_service
+    from backend.services.provider_ops_service import get_provider_ops_service
     from backend.database import get_db
 
 logger = logging.getLogger(__name__)
@@ -31,6 +33,12 @@ class ProviderUpdateRequest(BaseModel):
 def list_providers():
     """List all known providers with their configuration status."""
     return get_provider_config_service().list_providers()
+
+
+@router.get("/provider-ops")
+def list_provider_ops():
+    """List provider operational posture as a read-only control plane."""
+    return get_provider_ops_service().list_provider_ops()
 
 
 @router.patch("/providers/{provider_name}")

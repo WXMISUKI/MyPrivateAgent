@@ -74,6 +74,8 @@ Grounded-answer package dry-run 当前会从 trial report 继续保留 compact `
 
 Settings 页中的 `ProviderConfigPanel` 是独立的 provider configuration control plane，消费 `/api/providers`、`/api/providers/{provider_name}` 和 `/api/providers/{provider_name}/test`。它允许显式更新 base URL、API key 和 model name，但 read model 必须脱敏，测试动作必须显式，且该控制面不替代 `/api/service-providers` 的 live management contract 或 `provider-onboarding-catalog-v1` 的静态接入目录。
 
+同一 Settings 页中的 `Provider Ops` 控制面是只读 operations contract，消费 `/api/provider-ops`，展示 credential posture、quota posture、rate limit posture、cost posture、SLA posture 和 fallback posture。该控制面只解释既有 provider 配置与治理元数据，不暴露 API key、token、raw provider client 或 raw payload，也不驱动 provider 路由、启动、配置写入或 runtime promotion。
+
 同一 Settings 页中的 `Provider Failover 看板` 是只读 observability contract，消费 `/api/failover-analytics` 和 runtime profile thresholds，展示切换率、切换子任务、总切换次数、平均切换次数以及 top provider/model 路径。该看板只解释已有 child execution 元数据，不驱动 planner、scheduler 或 provider routing 决策。
 
 `provider-onboarding-acceptance-gate-v1` 当前作为外接 provider 接入验收证据合同落地于 `backend/capability_runtime/provider_onboarding_acceptance_gate.py` 和 `backend/scripts/provider_onboarding_acceptance_smoke.py`。它按 `onboarding_id` 或 `provider_id` 读取 onboarding detail/readiness 与 service-provider management list，输出 compact `accepted / blocked` decision、capability ownership、blockers、warnings 和 boundaries。该 gate 只证明显式 managed-provider consumption readiness，不调用 provider invoke/test，不运行 RAG/OCR/VLM/ASR/TTS/GraphRAG，不写配置，不启动服务，不创建 source binding，也不推广默认 chat grounding 或 final answer policy。
