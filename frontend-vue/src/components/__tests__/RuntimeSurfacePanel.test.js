@@ -59,6 +59,36 @@ function buildProfile(overrides = {}) {
     default_model: 'doubao',
     models: [{ name: 'doubao', display_name: '豆包' }],
     providers: [],
+    provider_ops: {
+      contract_version: 'provider-ops-control-plane-v1',
+      summary: {
+        total: 2,
+        ready: 0,
+        review: 1,
+        blocked: 0,
+        unconfigured: 1
+      },
+      providers: [
+        {
+          provider_id: 'volcengine-ark',
+          display_name: '火山引擎 Ark',
+          overall_status: 'review',
+          credential_posture: 'configured',
+          fallback_posture: 'ready',
+          config_source: 'env',
+          next_action: 'review_provider_operational_limits_before_broader_use'
+        },
+        {
+          provider_id: 'ollama',
+          display_name: 'Ollama',
+          overall_status: 'unconfigured',
+          credential_posture: 'unconfigured',
+          fallback_posture: 'blocked',
+          config_source: 'builtin',
+          next_action: 'configure_provider_credentials_before_use'
+        }
+      ]
+    },
     runtime_core: {
       runtime_core: true,
       run_id: 'run-main-01',
@@ -1046,6 +1076,10 @@ describe('RuntimeSurfacePanel', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('Runtime Core 合同')
+    expect(wrapper.text()).toContain('Provider Ops 合同')
+    expect(wrapper.text()).toContain('provider-ops-control-plane-v1')
+    expect(wrapper.text()).toContain('review_provider_operational_limits_before_broader_use')
+    expect(wrapper.text()).toContain('configure_provider_credentials_before_use')
     expect(wrapper.text()).toContain('run-main-01')
     expect(wrapper.text()).toContain('waiting_approval')
     expect(wrapper.text()).toContain('request_id=approval-1')

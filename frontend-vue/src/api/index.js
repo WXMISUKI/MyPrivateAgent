@@ -197,6 +197,10 @@ export const providerApi = {
     return api.post(`/providers/${encodeURIComponent(providerName)}/test`)
   },
 
+  getProviderOps() {
+    return api.get('/provider-ops')
+  },
+
   getFailoverAnalytics(params = {}) {
     return api.get('/failover-analytics', { params })
   }

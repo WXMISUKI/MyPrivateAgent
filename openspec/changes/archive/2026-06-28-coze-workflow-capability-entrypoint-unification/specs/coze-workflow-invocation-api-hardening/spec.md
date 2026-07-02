@@ -1,33 +1,4 @@
-# coze-workflow-invocation-api-hardening Specification
-
-## Purpose
-
-Define the stable production invocation contract for promoted Coze migration workflows and require workflow-friendly APIs to stay behind the unified capability runtime enforcement path.
-## Requirements
-### Requirement: Promoted Coze workflows SHALL expose a stable capability invoke contract
-The system SHALL expose promoted workflows through a stable capability id of the form `coze.workflow.<workflow_id>` and SHALL invoke them through the capability runtime envelope.
-
-#### Scenario: Active workflow invoke succeeds
-- **WHEN** a workflow is in an active and ready state
-- **THEN** invoking its capability id SHALL return a stable envelope that includes workflow id, capability id, workflow version, run id, status, authorization, invocation policy, and trace summary
-
-#### Scenario: Capability id remains stable
-- **WHEN** a workflow version changes without changing the workflow identity
-- **THEN** the capability id SHALL remain stable
-- **AND THEN** the returned envelope SHALL include the workflow version
-
-### Requirement: Draft and review workflows SHALL fail closed
-The system SHALL not expose draft or review workflows as production callable capabilities by default.
-
-#### Scenario: Draft workflow invocation is blocked
-- **WHEN** a client invokes a workflow that is still draft
-- **THEN** the system SHALL fail closed
-- **AND THEN** the response SHALL indicate that the workflow is not callable as production capability
-
-#### Scenario: Review workflow invocation is blocked
-- **WHEN** a client invokes a workflow that is in review
-- **THEN** the system SHALL fail closed
-- **AND THEN** the response SHALL indicate that the workflow has not been promoted
+## MODIFIED Requirements
 
 ### Requirement: Workflow invoke endpoints SHALL reuse the same production envelope
 The system SHALL use the same invocation envelope for `POST /api/coze-workflows/{workflow_id}/invoke` and `POST /api/capabilities/{capability_id}/invoke`.
@@ -64,4 +35,3 @@ The system SHALL not bypass capability runtime checks when invoking a workflow a
 - **WHEN** a discovered workflow is invoked through `POST /api/coze-workflows/{workflow_id}/invoke` and capability runtime returns a business failure envelope
 - **THEN** the workflow route SHALL return the same business failure payload
 - **AND THEN** it SHALL not silently bypass readiness, dependency, or policy blockers
-

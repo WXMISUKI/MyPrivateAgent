@@ -149,6 +149,7 @@ class RuntimeSurfaceProfileAssembler:
             "runtime_contract_gate": service.contract_gate_service.build_runtime_contract(),
             "self_improvement_ledger": service.self_improvement_ledger_service.build_runtime_contract(db=db),
             "query_control_plane": service.query_control_plane_service.build_runtime_contract(),
+            "provider_ops": service.provider_ops_service.list_provider_ops(),
             "config_layers": config_layers,
             "auth_mode_contract": {
                 "current_mode": effective_config.get("auth_mode", auth_mode_default),

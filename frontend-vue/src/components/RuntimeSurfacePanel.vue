@@ -195,6 +195,49 @@
 
     <div v-if="profile" class="panel-card">
       <div class="card-head">
+        <h3>Provider Ops 合同</h3>
+        <span class="muted">{{ providerOps.connected ? '只读展示 provider 配置姿态与运营准备度' : '等待后端接入 provider_ops contract' }}</span>
+      </div>
+      <p v-if="!providerOps.connected" class="contract-placeholder">等待后端接入 provider_ops contract</p>
+      <div class="summary-grid runtime-contract-grid">
+        <div class="summary-card">
+          <span class="summary-label">合同版本</span>
+          <strong>{{ providerOps.contractVersion || '-' }}</strong>
+        </div>
+        <div class="summary-card">
+          <span class="summary-label">Provider 总数</span>
+          <strong>{{ providerOps.summary.total }}</strong>
+          <small class="summary-note">review: {{ providerOps.summary.review }} / unconfigured: {{ providerOps.summary.unconfigured }}</small>
+        </div>
+        <div class="summary-card">
+          <span class="summary-label">Ready / Blocked</span>
+          <strong>{{ `${providerOps.summary.ready} / ${providerOps.summary.blocked}` }}</strong>
+          <small class="summary-note">只读诊断，不在此面板执行配置变更</small>
+        </div>
+      </div>
+      <div class="contract-grid">
+        <div v-if="!providerOps.providers.length" class="contract-block">
+          <h4>Provider 状态</h4>
+          <ul>
+            <li>暂无 provider ops 数据</li>
+          </ul>
+        </div>
+        <div v-for="item in providerOps.providers" :key="item.providerId" class="contract-block">
+          <h4>{{ item.displayName || item.providerId || '-' }}</h4>
+          <ul>
+            <li><code>provider_id</code>: {{ item.providerId || '-' }}</li>
+            <li><code>overall_status</code>: {{ item.overallStatus || '-' }}</li>
+            <li><code>credential_posture</code>: {{ item.credentialPosture || '-' }}</li>
+            <li><code>fallback_posture</code>: {{ item.fallbackPosture || '-' }}</li>
+            <li><code>config_source</code>: {{ item.configSource || '-' }}</li>
+            <li><code>next_action</code>: {{ item.nextAction || '-' }}</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="profile" class="panel-card">
+      <div class="card-head">
         <h3>Runtime Core 合同</h3>
         <span class="muted">{{ runtimeCore.connected ? 'Phase A 对齐：把当前 run 的核心上下文支点直接暴露到运行时面板' : 'Phase A 对齐：当前前端已预留 runtime core 卡位' }}</span>
       </div>
@@ -1391,6 +1434,7 @@ const currentConversationId = computed(() => normalizeNumericId(conversationStor
 const currentPlanId = computed(() => normalizeNumericId(plannerStore.currentPlan?.id))
 const currentPlanItemId = computed(() => normalizeNumericId(plannerStore.currentPlan?.active_item_id))
 const activeMainChatQueryId = computed(() => String(route.query?.governance_query_id || '').trim())
+const providerOps = computed(() => buildProviderOpsContract(profile.value?.provider_ops))
 const runtimeCore = computed(() => buildRuntimeCoreContract(profile.value?.runtime_core))
 const runRecovery = computed(() => buildRunRecoveryContract(profile.value?.run_recovery))
 const governanceOverview = computed(() => buildGovernanceOverviewContract(profile.value?.governance_overview))
@@ -1895,6 +1939,33 @@ function buildRuntimeCoreContract(value) {
     child_merge_action_count: Number(contract.child_merge_action_count || 0),
     child_merge_primary_entities: Array.isArray(contract.child_merge_primary_entities) ? contract.child_merge_primary_entities : [],
     child_merge_conclusion: contract.child_merge_conclusion || '',
+  }
+}
+
+function buildProviderOpsContract(value) {
+  const contract = normalizeContractObject(value)
+  const summary = normalizeContractObject(contract.summary)
+  return {
+    connected: Object.keys(contract).length > 0,
+    contractVersion: String(contract.contract_version || '').trim(),
+    summary: {
+      total: Number(summary.total || 0),
+      ready: Number(summary.ready || 0),
+      review: Number(summary.review || 0),
+      blocked: Number(summary.blocked || 0),
+      unconfigured: Number(summary.unconfigured || 0),
+    },
+    providers: Array.isArray(contract.providers)
+      ? contract.providers.map(item => ({
+        providerId: String(item?.provider_id || '').trim(),
+        displayName: String(item?.display_name || '').trim(),
+        overallStatus: String(item?.overall_status || '').trim(),
+        credentialPosture: String(item?.credential_posture || '').trim(),
+        fallbackPosture: String(item?.fallback_posture || '').trim(),
+        configSource: String(item?.config_source || '').trim(),
+        nextAction: String(item?.next_action || '').trim(),
+      })).filter(item => item.providerId || item.displayName)
+      : [],
   }
 }
 

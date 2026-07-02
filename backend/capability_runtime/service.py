@@ -102,6 +102,8 @@ class CapabilityRuntimeService:
                     if key not in {"ok", "provider"}
                 },
             }
+        if "capability_id" in result:
+            return result
         return {
             "ok": False,
             "capability_id": capability.capability_id,

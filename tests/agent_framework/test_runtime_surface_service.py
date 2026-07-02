@@ -596,6 +596,39 @@ class RuntimeSurfaceServiceTests(unittest.TestCase):
         }
 
         service = RuntimeSurfaceService()
+        service.provider_ops_service = unittest.mock.Mock()
+        service.provider_ops_service.list_provider_ops.return_value = {
+            "contract_version": "provider-ops-control-plane-v1",
+            "summary": {
+                "total": 1,
+                "ready": 0,
+                "review": 1,
+                "blocked": 0,
+                "unconfigured": 0,
+            },
+            "providers": [
+                {
+                    "provider_id": "volcengine-ark",
+                    "display_name": "火山引擎 Ark",
+                    "configured": True,
+                    "enabled": True,
+                    "overall_status": "review",
+                    "reason": "operational_limits_not_declared",
+                    "next_action": "review_provider_operational_limits_before_broader_use",
+                    "config_source": "env",
+                    "credential_posture": "configured",
+                    "quota_posture": "unknown",
+                    "rate_limit_posture": "unknown",
+                    "cost_posture": "unknown",
+                    "sla_posture": "unknown",
+                    "fallback_posture": "ready",
+                    "requires_api_key": True,
+                    "api_key_masked": "****demo",
+                    "base_url": "https://ark.example.com",
+                    "model_name": "doubao-seed-2-0-mini-260215",
+                }
+            ],
+        }
         profile = service.get_runtime_profile()
 
         self.assertEqual(profile["agent_mode"], "general_demo")
@@ -608,6 +641,10 @@ class RuntimeSurfaceServiceTests(unittest.TestCase):
         self.assertEqual(profile["failover_thresholds"]["high"], 0.4)
         self.assertIn("configured_model_count", profile["providers"][0])
         self.assertEqual(profile["config_layers"]["provider_resolution"]["enabled_provider_ids"], ["volcengine-ark"])
+        self.assertEqual(profile["provider_ops"]["contract_version"], "provider-ops-control-plane-v1")
+        self.assertEqual(profile["provider_ops"]["summary"]["review"], 1)
+        self.assertEqual(profile["provider_ops"]["providers"][0]["provider_id"], "volcengine-ark")
+        self.assertEqual(profile["provider_ops"]["providers"][0]["overall_status"], "review")
         self.assertEqual(profile["providers"][1]["enabled"], False)
         self.assertEqual(profile["providers"][0]["model_sources"], ["env"])
         self.assertEqual(profile["providers"][0]["actual_models"], ["doubao-seed-2-0-mini-260215"])

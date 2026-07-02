@@ -53,6 +53,33 @@ vi.mock('../../api', () => ({
         total_switches: 7,
         top_provider_failover_pairs: []
       }
+    }),
+    getProviderOps: vi.fn().mockResolvedValue({
+      data: {
+        summary: {
+          total: 1,
+          ready: 0,
+          review: 1,
+          blocked: 0,
+          unconfigured: 0
+        },
+        providers: [
+          {
+            provider_id: 'ollama',
+            display_name: 'Ollama (本地)',
+            overall_status: 'review',
+            credential_posture: 'not_required',
+            quota_posture: 'unknown',
+            rate_limit_posture: 'unknown',
+            cost_posture: 'unknown',
+            sla_posture: 'unknown',
+            fallback_posture: 'ready',
+            reason: 'operational_limits_not_declared',
+            next_action: 'review_provider_operational_limits_before_broader_use',
+            base_url: 'http://localhost:11434'
+          }
+        ]
+      }
     })
   },
   runtimeSurfaceApi: {
@@ -114,6 +141,8 @@ describe('SettingsView', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('Provider Failover 看板')
+    expect(wrapper.text()).toContain('Provider Ops')
+    expect(wrapper.text()).toContain('review_provider_operational_limits_before_broader_use')
     expect(wrapper.text()).toContain('切换率')
     expect(wrapper.text()).toContain('5/20')
     expect(wrapper.text()).toContain('高风险')

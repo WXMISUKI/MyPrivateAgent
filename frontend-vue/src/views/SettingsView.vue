@@ -195,6 +195,7 @@
           </div>
         </section>
 
+        <ProviderOpsPanel />
         <ProviderConfigPanel />
         <ProviderOnboardingPanel />
         <CapabilityProviderDiagnosticsPanel />
@@ -226,6 +227,7 @@ import GovernanceTimelinePanel from '../components/GovernanceTimelinePanel.vue'
 import McpManagementPanel from '../components/McpManagementPanel.vue'
 import CapabilityGapSummaryPanel from '../components/CapabilityGapSummaryPanel.vue'
 import RuntimeSurfacePanel from '../components/RuntimeSurfacePanel.vue'
+import ProviderOpsPanel from '../components/ProviderOpsPanel.vue'
 import ProviderConfigPanel from '../components/ProviderConfigPanel.vue'
 import ProviderOnboardingPanel from '../components/ProviderOnboardingPanel.vue'
 import CapabilityProviderDiagnosticsPanel from '../components/CapabilityProviderDiagnosticsPanel.vue'
