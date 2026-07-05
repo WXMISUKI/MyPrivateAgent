@@ -10,23 +10,31 @@ try:
     from capability_runtime.service import CapabilityRuntimeService, get_capability_runtime_service
     from capability_runtime.provider_onboarding_catalog import get_provider_onboarding_catalog_service
     from services.coze_workflow_registry_service import (
-        SUPPORTED_RUNTIME_CAPABILITIES,
         CozeWorkflowRegistryService,
         get_coze_workflow_registry_service,
     )
+    from services.coze_workflow_dependency_mapper import build_dependency_contract
 except ModuleNotFoundError:
     from backend.capability_runtime.service import CapabilityRuntimeService, get_capability_runtime_service
     from backend.capability_runtime.provider_onboarding_catalog import get_provider_onboarding_catalog_service
     from backend.services.coze_workflow_registry_service import (
-        SUPPORTED_RUNTIME_CAPABILITIES,
         CozeWorkflowRegistryService,
         get_coze_workflow_registry_service,
     )
+    from backend.services.coze_workflow_dependency_mapper import build_dependency_contract
 
 
 CONTRACT_VERSION = "coze-workflow-lab-v1"
 REPO_ROOT = Path(__file__).resolve().parents[2]
 INTEGRATION_DOCS_ROOT = REPO_ROOT / "docs" / "integration"
+
+SUPPORTED_RUNTIME_CAPABILITIES = {
+    "document.file_type.detect",
+    "http.request",
+    "spreadsheet.table.extract",
+    "llm.structured_json.generate",
+    "json_schema.validate",
+}
 
 PROVIDER_BACKED_CAPABILITIES = {
     "document.ocr.extract": {
@@ -227,6 +235,7 @@ class CozeWorkflowLabService:
 
     def _build_detail(self, workflow: Mapping[str, Any]) -> Dict[str, Any]:
         summary = self._build_summary(workflow)
+        dependency_contract = build_dependency_contract(workflow)
         return {
             "contract_version": CONTRACT_VERSION,
             **summary,
@@ -244,7 +253,9 @@ class CozeWorkflowLabService:
                 "workflow_dir": workflow.get("workflow_dir"),
                 "manifest_path": workflow.get("manifest_path"),
             },
-            "dependency_mapping": self._build_dependency_mapping(workflow),
+            "dependency_summary": dependency_contract["summary"],
+            "dependency_mapping": dependency_contract["mapping"],
+            "dependency_blockers": list(dependency_contract["blockers"] or []),
         }
 
     def _blocked_example_replay(
@@ -374,36 +385,7 @@ class CozeWorkflowLabService:
         return [dict(example) for example in examples or [] if isinstance(example, Mapping)]
 
     def _build_dependency_mapping(self, workflow: Mapping[str, Any]) -> Dict[str, Any]:
-        items: List[Dict[str, Any]] = []
-        dependencies = dict(workflow.get("dependencies") or {})
-        source = dict(workflow.get("source") or {})
-
-        items.extend(self._map_runtime_capabilities(dependencies))
-        items.extend(self._map_named_dependencies("provider", dependencies.get("providers") or []))
-        items.extend(self._map_named_dependencies("tool", dependencies.get("tools") or []))
-        items.extend(self._map_named_dependencies("mcp_capability", dependencies.get("mcp_capabilities") or []))
-        items.extend(self._map_named_dependencies("skill", dependencies.get("skills") or []))
-        items.extend(self._map_unsupported_nodes(source.get("unsupported_nodes") or []))
-        items.extend(self._map_file_inputs(workflow))
-
-        blockers = [
-            item.get("blocker")
-            for item in items
-            if item.get("status") == "blocked" and item.get("blocker")
-        ]
-        if blockers:
-            status = "blocked"
-            reason = "One or more workflow dependencies are not mapped to supported runtime capabilities."
-        else:
-            status = "ready"
-            reason = "All declared dependencies are mapped for lab diagnostics."
-
-        return {
-            "status": status,
-            "reason": reason,
-            "blockers": blockers,
-            "items": items,
-        }
+        return dict(build_dependency_contract(workflow)["mapping"])
 
     def _map_runtime_capabilities(self, dependencies: Mapping[str, Any]) -> List[Dict[str, Any]]:
         items: List[Dict[str, Any]] = []

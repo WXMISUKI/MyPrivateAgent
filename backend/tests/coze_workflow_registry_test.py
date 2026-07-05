@@ -4,6 +4,7 @@ import json
 import shutil
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -79,7 +80,11 @@ governance:
   approval_required: false
   data_sensitivity: internal
 acceptance:
-  examples: []
+  examples:
+    - id: demo
+      path: examples/demo.json
+      expected_path: examples/demo_expected.json
+      required: true
 metadata:
   tags:
     - test
@@ -87,6 +92,14 @@ metadata:
             (workflow_dir / "workflow.yaml").write_text(manifest_content, encoding="utf-8")
             (workflow_dir / "prompts" / "system.md").write_text("System prompt", encoding="utf-8")
             (workflow_dir / "prompts" / "task.md").write_text("Task prompt", encoding="utf-8")
+            (workflow_dir / "examples" / "demo.json").write_text(
+                json.dumps({"input": "hello"}, ensure_ascii=False),
+                encoding="utf-8",
+            )
+            (workflow_dir / "examples" / "demo_expected.json").write_text(
+                json.dumps({"result": "ok"}, ensure_ascii=False),
+                encoding="utf-8",
+            )
 
             service = CozeWorkflowRegistryService(root_path=tmp_dir)
             contract = service.build_runtime_contract()
@@ -439,6 +452,106 @@ acceptance:
             assert response["invocation_policy"]["placeholder"] is True
             assert response["trace_summary"]["workflow_version"] == "0.1.0"
 
+    def test_dependency_blocked_workflow_invocation_fails_closed_before_dispatch(self):
+        from backend.services.coze_workflow_registry_service import CozeWorkflowRegistryService
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            workflow_dir = Path(tmp_dir) / "provider_blocked_workflow"
+            (workflow_dir / "prompts").mkdir(parents=True)
+            (workflow_dir / "examples").mkdir(parents=True)
+
+            manifest_content = """
+id: provider_blocked_workflow
+name: Provider Blocked Workflow
+version: 0.1.0
+status: active
+owner:
+  team: test-team
+  primary: test@example.com
+source:
+  platform: coze
+  workspace: test-workspace
+entrypoint:
+  mode: local
+  adapter: none
+inputs:
+  schema:
+    type: object
+    properties:
+      input:
+        type: string
+outputs:
+  schema:
+    type: object
+    properties:
+      result:
+        type: string
+prompts:
+  system: prompts/system.md
+  task: prompts/task.md
+dependencies:
+  tools: []
+  mcp_capabilities: []
+  skills: []
+  providers:
+    - unifiedKnowledgeProvider
+  knowledge_sources: []
+  runtime_capabilities: []
+governance:
+  permission_level: low
+  trace_required: true
+  approval_required: false
+  data_sensitivity: internal
+acceptance:
+  examples:
+    - id: demo
+      path: examples/demo.json
+      expected_path: examples/demo_expected.json
+      required: true
+metadata:
+  tags:
+    - test
+"""
+            (workflow_dir / "workflow.yaml").write_text(manifest_content, encoding="utf-8")
+            (workflow_dir / "prompts" / "system.md").write_text("System prompt", encoding="utf-8")
+            (workflow_dir / "prompts" / "task.md").write_text("Task prompt", encoding="utf-8")
+            (workflow_dir / "examples").mkdir(parents=True, exist_ok=True)
+            (workflow_dir / "examples" / "demo.json").write_text(
+                json.dumps({"input": "hello"}, ensure_ascii=False),
+                encoding="utf-8",
+            )
+            (workflow_dir / "examples" / "demo_expected.json").write_text(
+                json.dumps({"result": "ok"}, ensure_ascii=False),
+                encoding="utf-8",
+            )
+
+            class _FakeOnboardingCatalog:
+                def onboarding_id_for_provider(self, provider_id):
+                    return "knowledge-rag-provider" if provider_id == "unifiedKnowledgeProvider" else None
+
+                def get_readiness(self, onboarding_id):
+                    return {
+                        "configuration_status": "unconfigured",
+                        "checks": [],
+                        "recommended_action": "configure_required_provider_environment",
+                    }
+
+            with patch(
+                "backend.services.coze_workflow_dependency_mapper.get_provider_onboarding_catalog_service",
+                return_value=_FakeOnboardingCatalog(),
+            ):
+                service = CozeWorkflowRegistryService(root_path=tmp_dir)
+                response = service.invoke_workflow("provider_blocked_workflow", {"input": "hello"})
+
+            assert response["ok"] is False
+            assert response["status"] == "blocked"
+            assert response["error"]["code"] == "COZE_WORKFLOW_DEPENDENCY_UNAVAILABLE"
+            assert response["error"]["blockers"] == ["provider_not_ready:unifiedKnowledgeProvider"]
+            assert response["error"]["details"]["dependency_mapping"]["status"] == "blocked"
+            assert response["error"]["details"]["dependency_mapping"]["blockers"] == [
+                "provider_not_ready:unifiedKnowledgeProvider"
+            ]
+
     def test_missing_runtime_dependency_blocks_invocation(self):
         from backend.services.coze_workflow_registry_service import CozeWorkflowRegistryService
 
@@ -475,7 +588,7 @@ acceptance:
 
             assert response["ok"] is False
             assert response["error"]["code"] == "COZE_WORKFLOW_DEPENDENCY_UNAVAILABLE"
-            assert "missing_runtime_capabilities:missing.capability" in response["error"]["blockers"]
+            assert "missing_runtime_capability:missing.capability" in response["error"]["blockers"]
 
 
 if __name__ == "__main__":

@@ -24,6 +24,7 @@ External frameworks and provider projects are execution or data-plane candidates
 | Governance Layer | policy, approval, trace, audit, health, contract gate | [runtime_contracts.md](./runtime_contracts.md) |
 | Delivery Layer | service APIs, Runtime Surface, Governance Timeline, SDK/facade | [extension_points.md](./extension_points.md) |
 | Domain Agent Layer | manifest-driven agent assets and trial readiness | [domain_agent_development_guide.md](../guides/domain_agent_development_guide.md) |
+| Runtime Plane Integration | execution contracts, adapters, gateway, external runtime strategy | [runtime_plane_integration_strategy.md](./runtime_plane_integration_strategy.md) |
 | External Provider Layer | RAG/GraphRAG/document/voice data-plane services | [external_rag_provider_development.md](../guides/external_rag_provider_development.md) |
 
 ## What To Use Today
@@ -85,17 +86,20 @@ GET /api/runtime-profile
 - Default `/api/chat` retrieval injection remains disabled until provider readiness, representative eval evidence, and behavior promotion are approved through OpenSpec.
 - New framework adapters must start with adapter boundary, lifecycle mapping, readiness, precheck, promotion gate, and non-goals. Do not route a new framework directly into main chat.
 - External knowledge, document, and voice capabilities stay provider-first. Do not put vector databases, graph databases, OCR/layout/VLM engines, or ASR/TTS runtimes into the main backend by default.
+- **AgentHarnessFacade 不再扩展为生产执行层**。它保持 preview 状态用于本地 smoke 和 adapter demo，不承担 LangGraph/AgentRun 的角色。详见 [runtime_plane_integration_strategy.md](./runtime_plane_integration_strategy.md) Stage 0。
+- **运行层集成采用成熟框架**。复杂图编排用 LangGraph，托管运行用 AgentRun，MyPrivateAgent 只做治理控制面。新执行层能力必须通过 adapter 接入，不得直接在控制面代码中实现。
 
 ## Recommended Reading Order
 
 1. This entrypoint.
-2. [current_architecture.md](./current_architecture.md)
-3. [runtime_contracts.md](./runtime_contracts.md)
-4. [extension_points.md](./extension_points.md)
-5. [project_entrypoint_checklist.md](../guides/project_entrypoint_checklist.md)
-6. [domain_agent_development_guide.md](../guides/domain_agent_development_guide.md)
-7. [external_rag_provider_development.md](../guides/external_rag_provider_development.md)
-8. [next_phase_hardening.md](../roadmap/next_phase_hardening.md)
+2. [runtime_plane_integration_strategy.md](./runtime_plane_integration_strategy.md) — 当前最重要的方向文档
+3. [current_architecture.md](./current_architecture.md)
+4. [runtime_contracts.md](./runtime_contracts.md)
+5. [extension_points.md](./extension_points.md)
+6. [project_entrypoint_checklist.md](../guides/project_entrypoint_checklist.md)
+7. [domain_agent_development_guide.md](../guides/domain_agent_development_guide.md)
+8. [external_rag_provider_development.md](../guides/external_rag_provider_development.md)
+9. [next_phase_hardening.md](../roadmap/next_phase_hardening.md)
 
 ## OpenSpec Workflow
 

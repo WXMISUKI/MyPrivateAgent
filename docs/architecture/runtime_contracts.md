@@ -15,6 +15,18 @@ MyPrivateAgent 的正式定位是企业级 `Agent Runtime Control Plane`，不�
 
 后续若新增或推广外部框架 adapter，必须先通过 OpenSpec 记录 adapter 边界、生命周期映射、promotion gate、非目标与验证方式；默认不得直接进入主 chat 执行链。
 
+**运行层集成战略**：执行层采用成熟框架（LangGraph/AgentRun/ADK），治理层自己管控。外部框架通过 ExecutionAdapter 标准合同接入，MyPrivateAgent 不自研图引擎、checkpoint、sandbox、worker scheduler。详见 [runtime_plane_integration_strategy.md](./runtime_plane_integration_strategy.md)。
+
+### ExecutionAdapter v1 合同概念
+
+运行层与治理层之间的标准化通信 envelope（定义在 `backend/runtime_plane/contracts/`）：
+
+- `ExecutionRequest`：执行请求（request_id, agent_id, user_input, thread_id, runtime, context_refs）
+- `ExecutionEvent`：执行事件（event_id, run_id, stage, type, payload_summary, raw_ref）
+- `ExecutionResult`：执行结果（status, final_answer, artifacts, tool_calls, citations, trace_ref）
+
+约束：envelope 不得包含 Python callable、active stream iterator 或 provider client。每个 adapter 负责将框架原生事件翻译为标准 envelope。
+
 ## 1. Contract 聚合入口
 
 Runtime Surface 的当前聚合入口是：
@@ -50,7 +62,7 @@ Runtime Surface 的当前聚合入口是：
 
 `rag_source_registry` 与 `knowledge_graph_registry` 同样由 `DomainAgentRegistryService` 从 `capabilities.rag_sources` 和 `capabilities.graph_sources` 派生。它们只表达“哪个垂域 agent 允许看哪些知识源/图谱”，不创建索引、不上传文档、不编辑 ontology，也不自动把检索结果注入主 chat。外部知识执行由 capability runtime 的 `knowledge.rag.retrieve` 和 `knowledge.graph.query` 代理到 `unifiedKnowledgeProvider`。
 
-`coze_workflow_registry` 当前通过 `backend/coze_workflows/<workflow_id>/workflow.yaml` 的只读扫描和 `GET /api/coze-workflows` 暴露。`DomainAgentRegistryService` 会保留 `capabilities.coze_workflows` 的紧凑引用与缺失引用状态，`CapabilityRuntimeService` 会把 `active + ready` 的 workflow 映射为 `coze.workflow.<workflow_id>` capability contract。`POST /api/coze-workflows/{workflow_id}/invoke` 与 `POST /api/capabilities/{capability_id}/invoke` 共享同一统一 envelope；其中 workflow route 只是 capability runtime 的 workflow-friendly alias，不得成为第二条独立执行链。`draft` / `review` workflow 仍可在注册面可见，但默认不可作为生产可调用 capability 暴露。
+`coze_workflow_registry` 当前通过 `backend/coze_workflows/<workflow_id>/workflow.yaml` 的只读扫描和 `GET /api/coze-workflows` 暴露。`DomainAgentRegistryService` 会保留 `capabilities.coze_workflows` 的紧凑引用与缺失引用状态，`CapabilityRuntimeService` 会把 `active + ready` 的 workflow 映射为 `coze.workflow.<workflow_id>` capability contract。`backend/services/coze_workflow_dependency_mapper.py` 是 registry、Workflow Lab 与 invoke preflight 共享的 dependency contract 真源，统一输出 `runtime_capability / provider_backed / artifact_input / explicit_blocker`。`POST /api/coze-workflows/{workflow_id}/invoke` 与 `POST /api/capabilities/{capability_id}/invoke` 共享同一统一 envelope；其中 workflow route 只是 capability runtime 的 workflow-friendly alias，不得成为第二条独立执行链。`draft` / `review` workflow 仍可在注册面可见，但默认不可作为生产可调用 capability 暴露。
 
 Workflow Lab 只是该 registry / capability contract 的只读检视层：它消费 list/detail、dependency mapping、acceptance examples 和 replay diff，但不会生成第二条执行链，也不会绕过 capability runtime 的 fail-closed 规则。dependency mapping 的稳定分类语义应为 `runtime_capability / provider_backed / artifact_input / explicit_blocker`；已推广 workflow 的 invoke envelope 仍必须携带 `workflow_version / authorization / invocation_policy / trace_summary`，并与 capability runtime 的返回合同保持一致。
 

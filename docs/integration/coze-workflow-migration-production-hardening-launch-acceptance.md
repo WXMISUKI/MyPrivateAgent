@@ -19,6 +19,8 @@ Result:
 
 - `26 passed`
 
+> 注：本记录保留为迁移样板，后续依赖映射门禁或验收样例扩展时，只需要更新同一条 focused pytest 命令和结果摘要即可，不必新建另一份重复文档。
+
 ## Canonical Route Scenarios
 
 ### Scenario 1: Single Agent Jump
@@ -114,8 +116,51 @@ Expected output:
 - Production invoke must preserve the shared envelope returned by capability runtime.
 - Draft and review states must fail closed.
 
+## Dependency Enforcement Acceptance
+
+### Scenario 5: Provider-backed dependency is unavailable
+
+Input:
+
+```json
+{
+  "input": "hello"
+}
+```
+
+Workflow manifest excerpt:
+
+```yaml
+dependencies:
+  providers:
+    - missingProvider
+```
+
+Expected invoke outcome:
+
+```json
+{
+  "ok": false,
+  "status": "blocked",
+  "error": {
+    "code": "COZE_WORKFLOW_DEPENDENCY_UNAVAILABLE",
+    "blockers": ["provider_not_ready:missingProvider"]
+  }
+}
+```
+
+### Scenario 6: Shared dependency contract is identical in registry and Workflow Lab
+
+Expected read model:
+
+- registry detail and Workflow Lab detail expose the same `dependency_summary`
+- registry detail and Workflow Lab detail expose the same `dependency_mapping`
+- unsupported nodes are surfaced as `explicit_blocker`
+- ready provider-backed nodes are surfaced as `provider_backed`
+
 ## Handoff Notes
 
 - Use the Workflow Lab replay result as the canonical review artifact before promotion.
 - Keep model/provider registry work separate from this route sample.
 - If the workflow output diverges from the expected JSON, keep the workflow in review until the blocker or fixture is corrected.
+- If dependency mapping introduces a blocker, fix the manifest or the provider readiness first; do not bypass the block in invoke logic.

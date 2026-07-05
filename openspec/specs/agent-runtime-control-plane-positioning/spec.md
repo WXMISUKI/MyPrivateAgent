@@ -64,3 +64,27 @@ MyPrivateAgent's official Agent Runtime Control Plane positioning SHALL be visib
 - **THEN** the documentation states that MyPrivateAgent owns runtime contracts, governance, permissions, audit, observability, provider contracts, and adapter normalization
 - **AND** it states that external frameworks are adapter candidates rather than replacement implementations
 - **AND** it states that external providers are data-plane services consumed through provider contracts rather than main-backend dependencies
+
+### Requirement: Control Plane Must Not Expand Into Execution Platform
+
+MyPrivateAgent SHALL NOT self-build general-purpose execution capabilities (graph engine, checkpoint, sandbox, worker scheduler, model gateway) that are already available in mature frameworks.
+
+#### Scenario: Evaluating execution capability build-vs-buy
+
+- **WHEN** the team needs an execution capability such as graph orchestration, durable checkpointing, sandbox isolation, or parallel worker scheduling
+- **THEN** the team MUST first evaluate mature frameworks (LangGraph, AgentRun, ADK, OpenAI Agents SDK) before considering self-build
+- **AND** self-build is only justified when no mature framework provides the capability AND the capability is core to control-plane governance
+
+#### Scenario: AgentHarnessFacade growth boundary
+
+- **WHEN** a developer proposes adding execution capabilities to AgentHarnessFacade
+- **THEN** the proposal MUST be evaluated against the 10 development constraints in runtime_plane_integration_strategy.md
+- **AND** capabilities that belong to the execution plane MUST be implemented through framework adapter integration, not facade extension
+- **AND** AgentHarnessFacade MUST remain at preview stability level for local smoke and adapter demo purposes
+
+#### Scenario: Directory boundary enforcement
+
+- **WHEN** new code is written for control-plane or runtime-plane functionality
+- **THEN** control-plane code SHOULD be placed under `backend/control_plane/`
+- **AND** runtime-plane code SHOULD be placed under `backend/runtime_plane/`
+- **AND** existing code in `backend/services/` and `backend/agent_framework/` does not need to be moved immediately, but new code should follow the new boundaries

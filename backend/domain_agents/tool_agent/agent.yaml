@@ -1,0 +1,45 @@
+# 示例 Agent 2：工具调用 Agent
+# 验证：工具注册、工具调用、ReAct 循环、条件路由
+
+agent_id: tool_agent
+name: 工具调用 Agent
+description: 一个带工具调用的 Agent，用于验证工具系统和 ReAct 循环。
+model: gpt-4o
+version: "1.0"
+
+capabilities:
+  - chat
+  - tool_call
+
+tools:
+  - name: get_weather
+    description: 获取指定城市的天气信息
+    parameters:
+      type: object
+      properties:
+        city:
+          type: string
+          description: 城市名称
+      required: [city]
+    permission_level: auto
+    risk_level: low
+
+  - name: search_knowledge
+    description: 搜索知识库
+    parameters:
+      type: object
+      properties:
+        query:
+          type: string
+          description: 搜索关键词
+      required: [query]
+    permission_level: auto
+    risk_level: low
+
+policies: []
+
+evals:
+  - input: "北京今天天气怎么样？"
+    expected_tool_call: get_weather
+  - input: "搜索一下人工智能的最新进展"
+    expected_tool_call: search_knowledge

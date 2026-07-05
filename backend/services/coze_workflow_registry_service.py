@@ -7,18 +7,22 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Optional
 from uuid import uuid4
 
+try:
+    from services.coze_workflow_dependency_mapper import (
+        build_dependency_contract,
+        build_dependency_blockers,
+        build_dependency_summary,
+    )
+except ModuleNotFoundError:  # pragma: no cover - package import compatibility
+    from backend.services.coze_workflow_dependency_mapper import (
+        build_dependency_contract,
+        build_dependency_blockers,
+        build_dependency_summary,
+    )
+
 CONTRACT_VERSION = "coze-workflow-registry-v1"
 DEFAULT_COZE_WORKFLOW_ROOT = Path(__file__).resolve().parents[1] / "coze_workflows"
 SUPPORTED_STATUSES = {"draft", "review", "active", "deprecated", "archived"}
-SUPPORTED_RUNTIME_CAPABILITIES = {
-    "document.file_type.detect",
-    "http.request",
-    "spreadsheet.table.extract",
-    "llm.structured_json.generate",
-    "json_schema.validate",
-}
-
-
 @dataclass(frozen=True)
 class _ManifestResult:
     workflow: Dict[str, Any] | None
@@ -138,7 +142,16 @@ class CozeWorkflowRegistryService:
 
         if readiness.get("status") != "ready":
             code = "COZE_WORKFLOW_BLOCKED"
-            if any(str(item).startswith("missing_") for item in (readiness.get("blockers") or [])):
+            dependency_blocker_prefixes = (
+                "missing_",
+                "provider_not_ready:",
+                "unsupported_",
+                "explicit_blocker",
+            )
+            if any(
+                any(str(item).startswith(prefix) for prefix in dependency_blocker_prefixes)
+                for item in (readiness.get("blockers") or [])
+            ):
                 code = "COZE_WORKFLOW_DEPENDENCY_UNAVAILABLE"
             return self._build_error_envelope(
                 workflow_id=workflow_id,
@@ -148,7 +161,28 @@ class CozeWorkflowRegistryService:
                 code=code,
                 message="Workflow is not ready for invocation.",
                 blockers=list(readiness.get("blockers") or []),
-                details={"reason": readiness.get("reason")},
+                details={
+                    "reason": readiness.get("reason"),
+                    "dependency_summary": workflow.get("dependency_summary"),
+                    "dependency_mapping": workflow.get("dependency_mapping"),
+                },
+            )
+
+        dependency_contract = build_dependency_contract(workflow)
+        dependency_blockers = list(dependency_contract.get("blockers") or [])
+        if dependency_blockers:
+            return self._build_error_envelope(
+                workflow_id=workflow_id,
+                capability_id=str(workflow.get("capability_id") or f"coze.workflow.{workflow_id}"),
+                workflow_version=workflow_version,
+                status="blocked",
+                code="COZE_WORKFLOW_DEPENDENCY_UNAVAILABLE",
+                message="Workflow dependencies are unavailable.",
+                blockers=dependency_blockers,
+                details={
+                    "dependency_summary": dependency_contract.get("summary"),
+                    "dependency_mapping": dependency_contract.get("mapping"),
+                },
             )
 
         normalized_payload = dict(payload or {})
@@ -167,19 +201,6 @@ class CozeWorkflowRegistryService:
                 details={"validation_errors": schema_errors},
             )
 
-        dependency_blockers = self._detect_dependency_blockers(workflow)
-        if dependency_blockers:
-            return self._build_error_envelope(
-                workflow_id=workflow_id,
-                capability_id=str(workflow.get("capability_id") or f"coze.workflow.{workflow_id}"),
-                workflow_version=workflow_version,
-                status="blocked",
-                code="COZE_WORKFLOW_DEPENDENCY_UNAVAILABLE",
-                message="Workflow dependencies are unavailable.",
-                blockers=dependency_blockers,
-                details={"dependency_summary": self._build_dependency_summary(workflow)},
-            )
-
         try:
             result = self._execute_workflow(workflow, normalized_payload)
         except FileNotFoundError as exc:
@@ -190,7 +211,10 @@ class CozeWorkflowRegistryService:
                 status="blocked",
                 code="COZE_WORKFLOW_DEPENDENCY_UNAVAILABLE",
                 message=str(exc),
-                details={"dependency_summary": self._build_dependency_summary(workflow)},
+                details={
+                    "dependency_summary": dependency_contract.get("summary"),
+                    "dependency_mapping": dependency_contract.get("mapping"),
+                },
             )
         except RuntimeError as exc:
             return self._build_error_envelope(
@@ -200,7 +224,10 @@ class CozeWorkflowRegistryService:
                 status="blocked",
                 code="COZE_WORKFLOW_EXECUTOR_UNAVAILABLE",
                 message=str(exc),
-                details={"dependency_summary": self._build_dependency_summary(workflow)},
+                details={
+                    "dependency_summary": dependency_contract.get("summary"),
+                    "dependency_mapping": dependency_contract.get("mapping"),
+                },
             )
         except ValueError as exc:
             return self._build_error_envelope(
@@ -210,11 +237,14 @@ class CozeWorkflowRegistryService:
                 status="invalid_input",
                 code="COZE_WORKFLOW_EXECUTION_FAILED",
                 message=str(exc),
-                details={"dependency_summary": self._build_dependency_summary(workflow)},
+                details={
+                    "dependency_summary": dependency_contract.get("summary"),
+                    "dependency_mapping": dependency_contract.get("mapping"),
+                },
             )
 
         run_id = f"run_{uuid4().hex}"
-        dependency_summary = self._build_dependency_summary(workflow)
+        dependency_summary = dependency_contract.get("summary")
         trace_summary = {
             "workflow_id": workflow_id,
             "workflow_version": workflow_version,
@@ -362,32 +392,10 @@ class CozeWorkflowRegistryService:
         }
 
     def _build_dependency_summary(self, workflow: Mapping[str, Any]) -> Dict[str, Any]:
-        dependencies = dict(workflow.get("dependencies") or {})
-        return {
-            "tools": list(dependencies.get("tools") or []),
-            "mcp_capabilities": list(dependencies.get("mcp_capabilities") or []),
-            "skills": list(dependencies.get("skills") or []),
-            "providers": list(dependencies.get("providers") or []),
-            "knowledge_sources": list(dependencies.get("knowledge_sources") or []),
-            "runtime_capabilities": list(dependencies.get("runtime_capabilities") or []),
-        }
+        return dict(build_dependency_summary(workflow))
 
     def _detect_dependency_blockers(self, workflow: Mapping[str, Any]) -> List[str]:
-        blockers: List[str] = []
-        dependencies = dict(workflow.get("dependencies") or {})
-        runtime_capabilities = [
-            str(item or "").strip()
-            for item in (dependencies.get("runtime_capabilities") or [])
-            if str(item or "").strip()
-        ]
-        missing_runtime_capabilities = sorted(
-            cap for cap in runtime_capabilities if cap not in SUPPORTED_RUNTIME_CAPABILITIES
-        )
-        if missing_runtime_capabilities:
-            blockers.append(
-                "missing_runtime_capabilities:" + ",".join(missing_runtime_capabilities)
-            )
-        return blockers
+        return list(build_dependency_blockers(workflow))
 
     def _validate_payload_against_schema(self, schema: Mapping[str, Any], payload: Any, path: str = "payload") -> List[Dict[str, Any]]:
         if not schema:
@@ -655,16 +663,22 @@ class CozeWorkflowRegistryService:
         governance = _normalize_governance(manifest.get("governance"))
         acceptance = _normalize_acceptance(manifest.get("acceptance"), manifest_path.parent)
         metadata = _normalize_mapping(manifest.get("metadata"))
+        dependency_contract = build_dependency_contract(
+            {
+                "dependencies": dependencies,
+                "source": source,
+                "inputs": inputs,
+            }
+        )
 
         readiness = _compute_readiness(
             status=status,
             owner=owner,
             prompts=prompts,
             acceptance=acceptance,
-            dependencies=dependencies,
+            dependency_blockers=list(dependency_contract.get("blockers") or []),
         )
-
-        return {
+        workflow = {
             "id": workflow_id,
             "name": _clean_string(manifest.get("name")),
             "version": _clean_string(manifest.get("version")),
@@ -684,6 +698,10 @@ class CozeWorkflowRegistryService:
             "manifest_path": str(manifest_path),
             "readiness": readiness,
         }
+        workflow["dependency_summary"] = dependency_contract["summary"]
+        workflow["dependency_mapping"] = dependency_contract["mapping"]
+        workflow["dependency_blockers"] = list(dependency_contract["blockers"] or [])
+        return workflow
 
     def _build_invalid_contract(self, manifest_path: Path, manifest: Mapping[str, Any], reason: str) -> Dict[str, Any]:
         return {
@@ -709,6 +727,21 @@ class CozeWorkflowRegistryService:
                 "reason": reason,
                 "blockers": ["invalid_manifest"],
             },
+            "dependency_summary": {
+                "tools": [],
+                "mcp_capabilities": [],
+                "skills": [],
+                "providers": [],
+                "knowledge_sources": [],
+                "runtime_capabilities": [],
+            },
+            "dependency_mapping": {
+                "status": "blocked",
+                "reason": reason,
+                "blockers": ["invalid_manifest"],
+                "items": [],
+            },
+            "dependency_blockers": ["invalid_manifest"],
         }
 
 
@@ -844,10 +877,9 @@ def _compute_readiness(
     owner: Mapping[str, Any],
     prompts: Mapping[str, Any],
     acceptance: Mapping[str, Any],
-    dependencies: Mapping[str, Any],
+    dependency_blockers: List[str],
 ) -> Dict[str, Any]:
     blockers: List[str] = []
-    dependencies = dict(dependencies or {})
 
     if status not in SUPPORTED_STATUSES:
         blockers.append("invalid_status")
@@ -864,16 +896,7 @@ def _compute_readiness(
     if missing_required_examples > 0:
         blockers.append("missing_required_acceptance_examples")
 
-    runtime_capabilities = [
-        str(item or "").strip()
-        for item in (dependencies.get("runtime_capabilities") or [])
-        if str(item or "").strip()
-    ]
-    missing_runtime_capabilities = sorted(
-        cap for cap in runtime_capabilities if cap not in SUPPORTED_RUNTIME_CAPABILITIES
-    )
-    if missing_runtime_capabilities:
-        blockers.append("missing_runtime_capabilities:" + ",".join(missing_runtime_capabilities))
+    blockers.extend(dependency_blockers)
 
     if status == "active" and not examples:
         blockers.append("active_status_missing_examples")

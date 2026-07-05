@@ -6,9 +6,9 @@ from dataclasses import dataclass
 from typing import Iterable, Sequence
 
 try:
-    from routers import auth, capabilities, chat, commands, conversations, coze_workflows, document_artifacts, document_ingestions, document_rag_local_trials, domain_agents, health, learnings, mcp, memory, permissions, plans, provider_onboarding, providers, service_providers, skills, voice
+    from routers import agent_runtime, auth, capabilities, chat, commands, conversations, coze_workflows, document_artifacts, document_ingestions, document_rag_local_trials, domain_agents, health, learnings, mcp, memory, permissions, plans, provider_onboarding, providers, service_providers, skills, voice
 except ModuleNotFoundError:  # pragma: no cover - package import compatibility
-    from backend.routers import auth, capabilities, chat, commands, conversations, coze_workflows, document_artifacts, document_ingestions, document_rag_local_trials, domain_agents, health, learnings, mcp, memory, permissions, plans, provider_onboarding, providers, service_providers, skills, voice
+    from backend.routers import agent_runtime, auth, capabilities, chat, commands, conversations, coze_workflows, document_artifacts, document_ingestions, document_rag_local_trials, domain_agents, health, learnings, mcp, memory, permissions, plans, provider_onboarding, providers, service_providers, skills, voice
 
 
 @dataclass(frozen=True)
@@ -42,6 +42,7 @@ ROUTER_REGISTRATIONS = (
     RouterRegistration(name="document_rag_local_trials", groups=("core", "capabilities"), router=document_rag_local_trials.router),
     RouterRegistration(name="domain_agents", groups=("core", "domain_agents"), router=domain_agents.router),
     RouterRegistration(name="coze_workflows", groups=("core", "capabilities"), router=coze_workflows.router),
+    RouterRegistration(name="agent_runtime", groups=("core", "agent_runtime"), router=agent_runtime.router),
 )
 
 

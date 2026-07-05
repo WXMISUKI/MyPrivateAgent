@@ -104,8 +104,10 @@ class TestCozeWorkflowLabService:
             item for item in items if item["kind"] == "runtime_capability" and item["source"] == "http.request"
         )
         assert http_dependency["status"] == "ready"
-        http_node = next(item for item in items if item["kind"] == "coze_node")
-        assert http_node["target_capability_id"] == "http.request"
+        http_node = next(
+            item for item in items if item["target_capability_id"] == "http.request" and item["source"] != "http.request"
+        )
+        assert http_node["kind"] == "runtime_capability"
         assert http_node["status"] == "mapped"
 
     def test_lab_loads_acceptance_example_payloads(self):
@@ -206,7 +208,7 @@ class TestCozeWorkflowLabService:
 
         assert detail is not None
         item = detail["dependency_mapping"]["items"][0]
-        assert item["kind"] == "provider"
+        assert item["kind"] == "explicit_blocker"
         assert item["provider_id"] == "unifiedKnowledgeProvider"
         assert item["onboarding_id"] == "knowledge-rag-provider"
         assert item["onboarding_path"] == "/api/provider-onboarding/knowledge-rag-provider"
@@ -214,6 +216,7 @@ class TestCozeWorkflowLabService:
             "configure_required_provider_environment",
             "run_live_service_provider_probe",
         }
+        assert item["blocker"] == "provider_not_ready:unifiedKnowledgeProvider"
 
     def test_dependency_mapping_reports_file_artifact_contract(self):
         from backend.services.coze_workflow_lab_service import CozeWorkflowLabService
@@ -240,6 +243,20 @@ class TestCozeWorkflowLabService:
         mapping = detail["dependency_mapping"]
         assert mapping["status"] == "blocked"
         assert mapping["blockers"] == ["unsupported_coze_node:MagicImagePlugin"]
+        assert mapping["items"][0]["kind"] == "explicit_blocker"
+
+    def test_lab_dependency_mapping_matches_registry_detail(self):
+        from backend.services.coze_workflow_lab_service import CozeWorkflowLabService
+        from backend.services.coze_workflow_registry_service import CozeWorkflowRegistryService
+
+        registry_detail = CozeWorkflowRegistryService().get_workflow_by_id("szzg_agent_encapsulation_route")
+        assert registry_detail is not None
+
+        lab_detail = CozeWorkflowLabService().get_workflow_detail("szzg_agent_encapsulation_route")
+        assert lab_detail is not None
+
+        assert lab_detail["dependency_summary"] == registry_detail["dependency_summary"]
+        assert lab_detail["dependency_mapping"] == registry_detail["dependency_mapping"]
 
     def test_lab_replays_example_through_capability_runtime_and_matches_expected(self):
         from backend.services.coze_workflow_lab_service import CozeWorkflowLabService

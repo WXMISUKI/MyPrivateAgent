@@ -1,9 +1,5 @@
-# coze-workflow-invocation-api-hardening Specification
+## MODIFIED Requirements
 
-## Purpose
-
-Define the stable production invocation contract for promoted Coze migration workflows and require workflow-friendly APIs to stay behind the unified capability runtime enforcement path.
-## Requirements
 ### Requirement: Promoted Coze workflows SHALL expose a stable capability invoke contract
 The system SHALL expose promoted workflows through a stable capability id of the form `coze.workflow.<workflow_id>` and SHALL invoke them through the capability runtime envelope.
 
@@ -74,4 +70,3 @@ The system SHALL not bypass capability runtime checks when invoking a workflow a
 - **WHEN** a discovered workflow is invoked through `POST /api/coze-workflows/{workflow_id}/invoke` and capability runtime returns a business failure envelope
 - **THEN** the workflow route SHALL return the same business failure payload
 - **AND THEN** it SHALL not silently bypass readiness, dependency, or policy blockers
-

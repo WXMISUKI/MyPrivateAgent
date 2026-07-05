@@ -1,0 +1,52 @@
+# 示例 Agent 3：审批流程 Agent
+# 验证：Human-in-the-Loop、审批中断/恢复、治理桥接
+
+agent_id: approval_agent
+name: 审批流程 Agent
+description: 一个带审批流程的 Agent，高风险操作需要人工审批，用于验证 Human-in-the-Loop 能力。
+model: gpt-4o
+version: "1.0"
+
+capabilities:
+  - chat
+  - tool_call
+  - approval
+
+tools:
+  - name: get_weather
+    description: 获取指定城市的天气信息
+    parameters:
+      type: object
+      properties:
+        city:
+          type: string
+          description: 城市名称
+      required: [city]
+    permission_level: auto
+    risk_level: low
+
+  - name: execute_refund
+    description: 执行退款操作（高风险，需要审批）
+    parameters:
+      type: object
+      properties:
+        order_id:
+          type: string
+          description: 订单号
+        amount:
+          type: number
+          description: 退款金额
+      required: [order_id, amount]
+    permission_level: ask
+    risk_level: high
+
+policies:
+  - tool: execute_refund
+    risk_level: high
+    requires_approval: true
+    approval_message: "即将执行退款操作，请确认。"
+
+evals:
+  - input: "查询订单 ORD-001 的退款状态"
+    expected_tool_call: execute_refund
+    expected_approval: true

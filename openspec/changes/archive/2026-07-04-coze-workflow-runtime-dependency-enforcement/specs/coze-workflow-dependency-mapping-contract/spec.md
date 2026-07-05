@@ -1,9 +1,5 @@
-# coze-workflow-dependency-mapping-contract Specification
+## MODIFIED Requirements
 
-## Purpose
-
-Define the stable dependency mapping contract for migrated Coze workflows so registry, Workflow Lab, and runtime preflight all read the same blocker semantics.
-## Requirements
 ### Requirement: Coze workflow dependency mapping SHALL classify every node
 The system SHALL map every declared Coze workflow node into one of the following categories: `runtime_capability`, `provider_backed`, `artifact_input`, or `explicit_blocker`.
 
@@ -47,4 +43,3 @@ The system SHALL expose the same dependency mapping contract through the workflo
 - **WHEN** runtime invocation checks a workflow before execution
 - **THEN** it SHALL be able to consume the same dependency mapping blockers
 - **AND THEN** blocker reasons SHALL remain machine-readable and stable
-

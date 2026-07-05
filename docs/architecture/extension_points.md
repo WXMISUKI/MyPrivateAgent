@@ -166,6 +166,13 @@ python backend\scripts\provider_onboarding_acceptance_smoke.py --onboarding-id k
 - external pilot 必须分类错误类型，例如 configuration、connectivity、protocol、upstream runtime。
 - precheck / pilot ready 不等于 default main-chat execution ready；promotion 必须另开 OpenSpec。
 
+运行层集成战略：
+
+- 新 adapter 的长期目标位置是 `backend/runtime_plane/adapters/`。
+- 每个 adapter 必须实现 ExecutionAdapter 标准合同（ExecutionRequest/ExecutionEvent/ExecutionResult）。
+- 详见 [runtime_plane_integration_strategy.md](./runtime_plane_integration_strategy.md)。
+- 10 条开发硬约束见战略文档第 6 节。
+
 ## 6. 新增治理策略
 
 主要 seam：

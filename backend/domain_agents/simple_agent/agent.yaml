@@ -1,0 +1,21 @@
+# 示例 Agent 1：纯对话 Agent
+# 验证：图引擎基本执行、模型调用、流式输出
+
+agent_id: simple_agent
+name: 简单对话 Agent
+description: 一个纯对话 Agent，不使用工具，用于验证图引擎基本执行能力。
+model: gpt-4o
+version: "1.0"
+
+capabilities:
+  - chat
+
+tools: []
+
+policies: []
+
+evals:
+  - input: "你好，请介绍一下自己。"
+    expected_contains: "助手"
+  - input: "1+1等于几？"
+    expected_contains: "2"

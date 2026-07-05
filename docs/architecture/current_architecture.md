@@ -4,18 +4,21 @@
 
 ## 1. 当前定位
 
-`MyPrivateAgent` 当前应被视为一个 **企业级 Agent Runtime Control Plane**，而不是单一聊天 Demo，也不是直接绑定某个外部 agent 框架的业务应用。
+`MyPrivateAgent` 当前应被视为一个 **企业级 Agent Runtime Control Plane（治理控制面）**，而不是单一聊天 Demo，也不是直接绑定某个外部 agent 框架的业务应用，更不是一个需要自研完整执行层的平台。
 
-当前推荐路线仍是：
+**核心判断**：执行层用成熟框架（LangGraph/AgentRun/ADK），治理层自己管控。详见 [运行层集成战略](./runtime_plane_integration_strategy.md)。
 
-- 自研 Runtime Core：掌握 run、event、approval、trace、audit、memory、skill、tool 等核心对象。
-- 外部框架 Adapter：LangGraph / DeepAgents / CrewAI / Hermes / Manus 风格能力只作为可替换执行引擎或设计参考。
-- 最小治理台并行：前端只承担观察、诊断、回放、调试，不承载业务领域逻辑。
-- 双形态交付：核心能力可作为 embedded SDK 嵌入，也可通过标准服务接口对外暴露。
+当前推荐路线：
+
+- **治理控制面**：掌握 agent 资产目录、运行时契约、策略/审批/审计、质量门禁。
+- **运行层集成**：通过 ExecutionAdapter 标准合同接入 LangGraph/AgentRun 等成熟框架，不自研图引擎、checkpoint、sandbox。
+- **最小治理台并行**：前端只承担观察、诊断、回放、调试，不承载业务领域逻辑。
+- **双形态交付**：核心能力可作为 embedded SDK 嵌入，也可通过标准服务接口对外暴露。
 
 当前文档入口已经产品化为：
 
 - [Agent Runtime Control Plane Entrypoint](./agent_runtime_control_plane_entrypoint.md)：当前定位和推荐阅读顺序。
+- [运行层集成战略](./runtime_plane_integration_strategy.md)：**当前最重要的方向文档**，定义控制面/运行面边界、ExecutionAdapter 合同、四阶段推进计划、10 条开发硬约束。
 - [Project Entrypoint Checklist](../guides/project_entrypoint_checklist.md)：按接入任务选择 provider、domain agent、SDK、adapter 或 runtime seam。
 
 ## 2. 四层结构
@@ -192,14 +195,19 @@
 - 不要让前端治理台承担领域判断逻辑。
 - 不要把 provider acceptance、adapter pilot ready 或 domain-agent trial `go` 解读为默认 runtime promotion。
 - `docs/change` 只作为历史审计日志；新接入者应先读 `docs/architecture/`。
+- **不要自研通用图执行引擎、checkpoint、sandbox、worker scheduler、模型网关**。这些用成熟框架。
+- **不要让 AgentHarnessFacade 膨胀为生产执行层**。它保持 preview 用于本地 smoke 和 adapter demo。
+- **新执行层能力必须通过 ExecutionAdapter 标准合同接入**，不得直接在控制面代码中实现。
+- **10 条开发硬约束**详见 [运行层集成战略](./runtime_plane_integration_strategy.md) 第 6 节。
 
 ## 6. 推荐阅读顺序
 
 1. `docs/architecture/agent_runtime_control_plane_entrypoint.md`
-2. `docs/architecture/current_architecture.md`
-3. `docs/architecture/runtime_contracts.md`
-4. `docs/architecture/extension_points.md`
-5. `docs/guides/project_entrypoint_checklist.md`
-6. `openspec/specs/query-workspace-generalization/spec.md`
-7. `docs/architecture/reference_project_mapping.md`
-8. `docs/roadmap/next_phase_hardening.md`
+2. `docs/architecture/runtime_plane_integration_strategy.md` — 当前最重要的方向文档
+3. `docs/architecture/current_architecture.md`
+4. `docs/architecture/runtime_contracts.md`
+5. `docs/architecture/extension_points.md`
+6. `docs/guides/project_entrypoint_checklist.md`
+7. `openspec/specs/query-workspace-generalization/spec.md`
+8. `docs/architecture/reference_project_mapping.md`
+9. `docs/roadmap/next_phase_hardening.md`

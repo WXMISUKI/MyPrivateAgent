@@ -15,7 +15,15 @@
       "Bash(grep -oE '.{0,20}baseURL.{0,60}' index-I9PTUzpq.js)",
       "Bash(grep -oE '\"/api\"[^;]{0,100}' index-I9PTUzpq.js)",
       "Bash(pip list *)",
-      "Bash(conda info *)"
+      "Bash(conda info *)",
+      "Bash(npm list *)",
+      "Bash(npm search *)",
+      "WebFetch(domain:docs.claude.ai)",
+      "Bash(npm info *)",
+      "Bash(claude -d hooks)",
+      "WebFetch(domain:docs.anthropic.com)",
+      "Bash(powershell -WindowStyle Hidden -Command \"[console]::Beep\\(900,300\\); Start-Sleep -Milliseconds 100; [console]::Beep\\(1200,400\\)\" 2>&1)",
+      "Bash(pip install *)"
     ]
   }
 }
