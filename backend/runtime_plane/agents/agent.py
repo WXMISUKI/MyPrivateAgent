@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any, Callable, Iterator
 
 from ..graph.engine import END, START, StateGraph
 from ..graph.nodes import LLMNode, ToolNode
@@ -227,6 +227,32 @@ class Agent:
         logger.warning("No provider backend available, falling back to direct ChatOpenAI")
         from langchain_openai import ChatOpenAI
         return ChatOpenAI(model=self.model, temperature=0.7)
+
+    def stream_tokens(self, messages: list, system_prompt: str = "") -> Iterator[str]:
+        """Token 级流式输出，逐个 token 返回。
+
+        Yields:
+            每个 token 的文本片段
+        """
+        model = self._get_langchain_model()
+        lc_messages = self._to_langchain_messages(messages)
+
+        # 注入系统提示词
+        if system_prompt and (not lc_messages or lc_messages[0].type != "system"):
+            from langchain_core.messages import SystemMessage
+            lc_messages.insert(0, SystemMessage(content=system_prompt))
+        elif self.instructions and (not lc_messages or lc_messages[0].type != "system"):
+            from langchain_core.messages import SystemMessage
+            lc_messages.insert(0, SystemMessage(content=self.instructions))
+
+        # 使用 langchain 的 stream 方法获取 token 流
+        try:
+            for chunk in model.stream(lc_messages):
+                if hasattr(chunk, 'content') and chunk.content:
+                    yield chunk.content
+        except Exception as e:
+            logger.error(f"Token streaming error: {e}")
+            yield f"\n[流式输出错误: {e}]"
 
     @staticmethod
     def _to_langchain_messages(messages: list) -> list:

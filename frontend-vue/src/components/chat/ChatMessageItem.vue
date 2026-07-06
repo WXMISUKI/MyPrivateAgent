@@ -15,21 +15,15 @@
         </button>
       </div>
 
-      <div v-if="message.role === 'assistant' && message.thinking" class="thinking-box">
-        <div class="thinking-header" @click="onToggleThinking">
-          <span class="thinking-icon">🧠</span>
-          <span class="thinking-label">思考过程</span>
-          <span class="thinking-toggle">
-            <span class="toggle-arrow" :class="{ expanded: isThinkingExpanded }">▼</span>
-            <button v-if="message.isGenerating" class="thinking-stop" @click.stop="onAbortGeneration">
-              ⏹
-            </button>
-          </span>
-        </div>
-        <div class="thinking-content" :class="{ collapsed: !isThinkingExpanded }">
-          <MessageTextRenderer :content="message.thinking" class="thinking-body" />
-        </div>
-      </div>
+      <ThinkingBlock
+        v-if="message.role === 'assistant' && message.thinking"
+        :is-expanded="isThinkingExpanded"
+        :is-generating="!!message.isGenerating"
+        :duration="message.thinkingDuration"
+        @toggle="onToggleThinking"
+      >
+        <MessageTextRenderer :content="message.thinking" />
+      </ThinkingBlock>
 
       <div v-if="executionProgressItems.length" class="execution-progress-box">
         <div class="execution-progress-header">
@@ -225,6 +219,7 @@ import { useRouter } from 'vue-router'
 import { hasStructuredCardSchema } from '../cards/registry'
 
 const MessageTextRenderer = defineAsyncComponent(() => import('./MessageTextRenderer.vue'))
+const ThinkingBlock = defineAsyncComponent(() => import('./ThinkingBlock.vue'))
 const AgentRuntimeDebugPanel = defineAsyncComponent(() => import('../AgentRuntimeDebugPanel.vue'))
 const AgentStructuredCard = defineAsyncComponent(() => import('../cards/AgentStructuredCard.vue'))
 const router = useRouter()
@@ -721,123 +716,6 @@ function onOpenLearningRecord() {
   color: var(--text-tertiary);
 }
 
-.thinking-box {
-  background: var(--thinking-bg);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  margin-bottom: var(--space-sm);
-  border: 1px solid var(--thinking-border);
-  transition: all var(--transition-normal);
-}
-
-.thinking-header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-md);
-  cursor: pointer;
-  user-select: none;
-  background: var(--thinking-header-bg);
-  transition: background var(--transition-fast);
-}
-
-.thinking-header:hover {
-  background: var(--thinking-header-hover);
-}
-
-.thinking-icon {
-  font-size: 1rem;
-}
-
-.thinking-label {
-  flex: 1;
-  font-size: 0.875rem;
-  color: var(--thinking-text);
-  font-weight: 500;
-}
-
-.thinking-toggle {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-}
-
-.toggle-arrow {
-  font-size: 0.7rem;
-  color: var(--text-tertiary);
-  transition: transform var(--transition-normal);
-  display: inline-block;
-}
-
-.toggle-arrow.expanded {
-  transform: rotate(180deg);
-}
-
-.thinking-stop {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 0.8rem;
-  padding: 2px 6px;
-  border-radius: var(--radius-sm);
-  color: var(--error);
-  opacity: 0.8;
-  transition: all var(--transition-fast);
-}
-
-.thinking-stop.inline-stop {
-  margin-left: var(--space-sm);
-  border: 1px solid var(--error);
-  padding: 4px 8px;
-}
-
-.thinking-stop:hover {
-  opacity: 1;
-  background: var(--error-bg);
-}
-
-.thinking-content {
-  max-height: 400px;
-  overflow: hidden;
-  transition: max-height var(--transition-normal), opacity var(--transition-normal);
-}
-
-.thinking-content.collapsed {
-  max-height: 0;
-  opacity: 0;
-}
-
-.thinking-body {
-  padding: var(--space-md);
-  font-size: 0.875rem;
-  color: var(--text-secondary);
-  line-height: 1.7;
-  border-top: 1px solid var(--thinking-border);
-}
-
-.thinking-body :deep(pre) {
-  background: var(--bg-elevated);
-  padding: var(--space-md);
-  border-radius: var(--radius-md);
-  overflow-x: auto;
-  margin: var(--space-sm) 0;
-  font-size: 0.8rem;
-}
-
-.thinking-body :deep(code) {
-  font-family: var(--font-mono);
-  font-size: 0.85em;
-}
-
-.thinking-body :deep(p:not(:last-child)) {
-  margin-bottom: var(--space-sm);
-}
-
-.thinking-body :deep(ul),
-.thinking-body :deep(ol) {
-  margin: var(--space-sm) 0;
-  padding-left: var(--space-lg);
-}
 
 .tool-calls-box {
   background: var(--tool-bg);

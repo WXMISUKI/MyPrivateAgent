@@ -324,6 +324,97 @@ async def upload_and_run(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/upload-and-stream")
+async def upload_and_stream(
+    file: UploadFile = File(..., description="上传的文件"),
+    agent_id: str = Form("auto", description="Agent ID"),
+    user_input: str = Form("", description="用户输入"),
+):
+    """上传文件并流式执行 Agent（SSE），实时展示思考过程。"""
+    # 保存上传文件
+    file_id = str(uuid.uuid4())[:8]
+    safe_name = f"{file_id}_{file.filename}"
+    file_path = UPLOAD_DIR / safe_name
+
+    try:
+        with open(file_path, "wb") as f:
+            shutil.copyfileobj(file.file, f)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"文件保存失败: {e}")
+
+    # 意图识别
+    if agent_id == "auto":
+        search_text = f"{user_input} {file.filename}"
+        recognized = recognize_intent(search_text)
+        agent_id = recognized or "hazardous_project_recognition"
+
+    agent = _agent_registry.get(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent '{agent_id}' not found")
+
+    # 提取文档内容
+    try:
+        from ..domain_agents.hazardous_project_recognition.tools.document_extractor import extract_document_content
+        doc_result = extract_document_content(str(file_path))
+    except Exception as e:
+        doc_result = {"status": "error", "error": str(e)}
+
+    # 构建输入消息
+    if doc_result.get("status") == "success":
+        tables_text = ""
+        for t in doc_result.get("tables", []):
+            headers = t.get("headers", [])
+            rows = t.get("rows", [])
+            if not headers:
+                continue
+            # 清理空表头
+            clean_headers = [h.strip() for h in headers if h.strip()]
+            if not clean_headers:
+                continue
+            # 输出表头
+            tables_text += "表头：" + " | ".join(clean_headers) + "\n\n"
+            # 逐行输出，每行标注列名
+            for row in rows:
+                if not any(cell.strip() for cell in row):
+                    continue
+                row_parts = []
+                for i, cell in enumerate(row):
+                    cell_val = cell.strip()
+                    if not cell_val:
+                        continue
+                    col_name = clean_headers[i] if i < len(clean_headers) else f"列{i+1}"
+                    row_parts.append(f"{col_name}={cell_val}")
+                if row_parts:
+                    tables_text += "；".join(row_parts) + "\n"
+            tables_text += "\n"
+        if not tables_text.strip():
+            tables_text = doc_result.get("text_content", "")
+        content = f"文件名：{file.filename}\n\n{tables_text}"
+        messages = [{"role": "user", "content": content}]
+    else:
+        messages = [{"role": "user", "content": f"文件提取失败：{doc_result.get('error', '未知错误')}"}]
+
+    def generate():
+        import time
+        start_time = time.time()
+        yield f"data: {json.dumps({'type': 'start', 'agent_id': agent_id, 'filename': file.filename}, ensure_ascii=False)}\n\n"
+
+        try:
+            for token in agent.stream_tokens(messages):
+                yield f"data: {json.dumps({'type': 'token', 'content': token}, ensure_ascii=False)}\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)}, ensure_ascii=False)}\n\n"
+
+        duration = round(time.time() - start_time, 1)
+        yield f"data: {json.dumps({'type': 'done', 'duration': duration}, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+    )
+
+
 @router.post("/agents/{agent_id}/run", response_model=RunResponse)
 async def run_specific_agent(agent_id: str, request: RunRequest):
     """指定 Agent 执行。"""

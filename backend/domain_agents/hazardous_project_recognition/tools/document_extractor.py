@@ -207,16 +207,34 @@ def _extract_excel(file_path: str, filename: str) -> dict:
             row_values = [str(cell) if cell is not None else "" for cell in row]
             if any(v.strip() for v in row_values):
                 rows_data.append(row_values)
-                text_parts.append(" | ".join(row_values))
 
-        if rows_data:
-            headers = rows_data[0] if rows_data else []
-            data_rows = rows_data[1:] if len(rows_data) > 1 else []
+        if not rows_data:
+            continue
+
+        # 智能识别表头行：跳过只有第一个单元格有内容的行（标题行）
+        header_idx = 0
+        for i, row in enumerate(rows_data):
+            non_empty = [v for v in row if v.strip()]
+            if len(non_empty) > 1:
+                header_idx = i
+                break
+
+        headers = rows_data[header_idx]
+        data_rows = rows_data[header_idx + 1:]
+
+        # 过滤空行
+        data_rows = [r for r in data_rows if any(v.strip() for v in r)]
+
+        if headers:
             tables.append({
                 "sheet_name": sheet_name,
                 "headers": headers,
                 "rows": data_rows,
             })
+            # 构建文本（带表头）
+            text_parts.append(" | ".join(headers))
+            for row in data_rows:
+                text_parts.append(" | ".join(row))
 
     wb.close()
 

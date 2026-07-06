@@ -1299,14 +1299,28 @@ async function sendWithFiles(content, files) {
   conversationStore.isLoading = true
   scrollToBottom()
 
+  // 创建一个空的 assistant 消息，后续逐步追加内容
+  const assistantMessage = {
+    role: 'assistant',
+    content: '',
+    thinking: '',
+    thinkingDuration: '',
+    timestamp: Date.now(),
+    isGenerating: true,
+  }
+  await conversationStore.addMessage(assistantMessage)
+  const msgIndex = conversationStore.currentConversation.messages.length - 1
+  // 自动展开思考过程
+  const msgKey = `assistant_${msgIndex}`
+  expandedThinking.value[msgKey] = true
+
   try {
     const formData = new FormData()
-    // 只发第一个文件（后端当前支持单文件）
     formData.append('file', files[0])
     formData.append('agent_id', 'auto')
     formData.append('user_input', content || `请识别文件 ${files[0].name} 中的危大工程清单`)
 
-    const response = await fetch(buildApiUrl('/agent-runtime/upload-and-run'), {
+    const response = await fetch(buildApiUrl('/agent-runtime/upload-and-stream'), {
       method: 'POST',
       headers: authStore.token ? { 'Authorization': `Bearer ${authStore.token}` } : {},
       body: formData,
@@ -1317,28 +1331,71 @@ async function sendWithFiles(content, files) {
       throw new Error(err.detail || '上传失败')
     }
 
-    const result = await response.json()
-    console.log('[Upload] Response:', JSON.stringify(result).substring(0, 500))
-    const allMsgs = result.messages || []
-    const assistantMsgs = allMsgs.filter(m => m.role === 'assistant' && m.content)
-    console.log('[Upload] Assistant msgs:', assistantMsgs.length, 'Total msgs:', allMsgs.length)
-    const reply = assistantMsgs.length > 0
-      ? assistantMsgs[assistantMsgs.length - 1].content
-      : `处理完成，但无回复内容。(${allMsgs.length} messages, ${assistantMsgs.length} assistant)`
+    // 流式读取 SSE 事件
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let fullContent = ''
 
-    await conversationStore.addMessage({
-      role: 'assistant',
-      content: reply,
-      timestamp: Date.now(),
-      agent_id: result.agent_id,
-    })
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue
+        try {
+          const event = JSON.parse(line.substring(6))
+
+          if (event.type === 'token' && event.content) {
+            // Token 级流式：逐个 token 追加
+            fullContent += event.content
+            const msgs = conversationStore.currentConversation.messages
+            if (msgs[msgIndex]) {
+              msgs[msgIndex].content = fullContent
+              msgs[msgIndex].thinking = fullContent
+            }
+            // 每隔几个 token 滚动一次，避免过于频繁
+            if (fullContent.length % 100 < 5) {
+              scrollToBottom()
+            }
+          } else if (event.type === 'error') {
+            fullContent += `\n❌ ${event.message}\n`
+            const msgs = conversationStore.currentConversation.messages
+            if (msgs[msgIndex]) {
+              msgs[msgIndex].content = fullContent
+            }
+          } else if (event.type === 'done') {
+            const msgs = conversationStore.currentConversation.messages
+            if (msgs[msgIndex]) {
+              msgs[msgIndex].isGenerating = false
+              if (event.duration) {
+                msgs[msgIndex].thinkingDuration = `${event.duration}s`
+              }
+            }
+          }
+        } catch (e) {
+          // 忽略解析错误
+        }
+      }
+    }
+
+    // 如果没有收到任何内容
+    if (!fullContent.trim()) {
+      const msgs = conversationStore.currentConversation.messages
+      if (msgs[msgIndex]) {
+        msgs[msgIndex].content = '处理完成，但无回复内容。'
+      }
+    }
   } catch (err) {
     console.error('File upload error:', err)
-    await conversationStore.addMessage({
-      role: 'assistant',
-      content: `❌ 文件处理失败: ${err.message}`,
-      timestamp: Date.now(),
-    })
+    const msgs = conversationStore.currentConversation.messages
+    if (msgs[msgIndex]) {
+      msgs[msgIndex].content = `❌ 文件处理失败: ${err.message}`
+    }
   } finally {
     conversationStore.isLoading = false
     scrollToBottom()
