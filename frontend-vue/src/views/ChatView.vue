@@ -80,17 +80,44 @@
         />
 
         <div class="chat-input-area">
+          <!-- 已附加文件预览 -->
+          <div v-if="attachedFiles.length > 0" class="attached-files">
+            <div v-for="(file, idx) in attachedFiles" :key="idx" class="attached-file-chip">
+              <span class="file-icon">📄</span>
+              <span class="file-name">{{ file.name }}</span>
+              <span class="file-size">({{ formatFileSize(file.size) }})</span>
+              <button class="remove-file" @click="removeAttachedFile(idx)" title="移除">×</button>
+            </div>
+          </div>
           <div class="input-container">
             <textarea
               v-model="inputMessage"
               @keydown.enter.exact.prevent="handleSend"
               @keydown.shift.enter="handleNewLine"
               @keydown="handleKeyDown"
-              placeholder="输入消息，或输入 / 打开快捷命令..."
+              :placeholder="attachedFiles.length > 0 ? '输入消息后发送，或直接按 Enter 发送文件...' : '输入消息，或输入 / 打开快捷命令...'"
               rows="1"
               ref="textareaRef"
               :disabled="isLoading"
             ></textarea>
+            <input
+              ref="fileInputRef"
+              type="file"
+              multiple
+              accept=".doc,.docx,.xlsx,.xls,.csv,.pdf,.txt"
+              style="display: none"
+              @change="handleFileSelect"
+            />
+            <button
+              class="upload-btn"
+              type="button"
+              :disabled="isLoading"
+              title="上传文件（支持多选）"
+              aria-label="上传文件"
+              @click="$refs.fileInputRef?.click()"
+            >
+              <span>📎</span>
+            </button>
             <button
               class="voice-input-btn"
               :class="{ listening: isVoiceListening }"
@@ -199,6 +226,8 @@ const managedAsrWorkletUrl = new URL('../audio/managed-asr-processor.js', import
 
 const messagesContainer = ref(null)
 const textareaRef = ref(null)
+const fileInputRef = ref(null)
+const attachedFiles = ref([])
 const inputMessage = ref('')
 const expandedThinking = ref({})
 const selectedModel = ref('doubao')
@@ -1207,6 +1236,12 @@ async function handleSendMessage(content) {
 }
 
 async function handleSend(e) {
+  // 有附加文件时，即使没有输入文字也可以发送
+  if (attachedFiles.value.length > 0) {
+    stopVoiceInput()
+    await sendWithFiles(inputMessage.value.trim(), attachedFiles.value)
+    return
+  }
   if (!inputMessage.value.trim() || isLoading.value) return
   stopVoiceInput()
 
@@ -1226,6 +1261,88 @@ async function handleSend(e) {
 
 function handleNewLine(e) {
   // Allow default behavior for shift+enter
+}
+
+function handleFileSelect(event) {
+  const files = Array.from(event.target.files || [])
+  if (!files.length) return
+  // 追加到已附加列表（不去重，允许同名文件）
+  attachedFiles.value.push(...files)
+  // 重置 input 以便重复选择
+  event.target.value = ''
+}
+
+function removeAttachedFile(index) {
+  attachedFiles.value.splice(index, 1)
+}
+
+function formatFileSize(bytes) {
+  if (!bytes) return ''
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+}
+
+async function sendWithFiles(content, files) {
+  // 显示用户消息（含文件附件标记）
+  const fileNames = files.map(f => `📎 ${f.name}`).join('\n')
+  const displayContent = content ? `${content}\n${fileNames}` : fileNames
+  const userMessage = {
+    role: 'user',
+    content: displayContent,
+    timestamp: Date.now(),
+    files: files.map(f => ({ name: f.name, size: f.size, type: f.type })),
+  }
+  await conversationStore.addMessage(userMessage)
+  inputMessage.value = ''
+  attachedFiles.value = []
+  conversationStore.isLoading = true
+  scrollToBottom()
+
+  try {
+    const formData = new FormData()
+    // 只发第一个文件（后端当前支持单文件）
+    formData.append('file', files[0])
+    formData.append('agent_id', 'auto')
+    formData.append('user_input', content || `请识别文件 ${files[0].name} 中的危大工程清单`)
+
+    const response = await fetch(buildApiUrl('/agent-runtime/upload-and-run'), {
+      method: 'POST',
+      headers: authStore.token ? { 'Authorization': `Bearer ${authStore.token}` } : {},
+      body: formData,
+    })
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ detail: response.statusText }))
+      throw new Error(err.detail || '上传失败')
+    }
+
+    const result = await response.json()
+    console.log('[Upload] Response:', JSON.stringify(result).substring(0, 500))
+    const allMsgs = result.messages || []
+    const assistantMsgs = allMsgs.filter(m => m.role === 'assistant' && m.content)
+    console.log('[Upload] Assistant msgs:', assistantMsgs.length, 'Total msgs:', allMsgs.length)
+    const reply = assistantMsgs.length > 0
+      ? assistantMsgs[assistantMsgs.length - 1].content
+      : `处理完成，但无回复内容。(${allMsgs.length} messages, ${assistantMsgs.length} assistant)`
+
+    await conversationStore.addMessage({
+      role: 'assistant',
+      content: reply,
+      timestamp: Date.now(),
+      agent_id: result.agent_id,
+    })
+  } catch (err) {
+    console.error('File upload error:', err)
+    await conversationStore.addMessage({
+      role: 'assistant',
+      content: `❌ 文件处理失败: ${err.message}`,
+      timestamp: Date.now(),
+    })
+  } finally {
+    conversationStore.isLoading = false
+    scrollToBottom()
+  }
 }
 
 function scrollToBottom() {
@@ -1546,6 +1663,56 @@ onUnmounted(() => {
   border-top: 1px solid var(--border-primary);
 }
 
+.attached-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  padding-bottom: var(--space-sm);
+}
+
+.attached-file-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-primary);
+  border-radius: 16px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  max-width: 240px;
+}
+
+.attached-file-chip .file-icon {
+  font-size: 0.9rem;
+}
+
+.attached-file-chip .file-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 140px;
+}
+
+.attached-file-chip .file-size {
+  color: var(--text-tertiary);
+  font-size: 0.75rem;
+}
+
+.attached-file-chip .remove-file {
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0 2px;
+  line-height: 1;
+}
+
+.attached-file-chip .remove-file:hover {
+  color: #dc2626;
+}
+
 .input-container {
   display: flex;
   gap: var(--space-sm);
@@ -1581,6 +1748,33 @@ onUnmounted(() => {
 
 .input-container textarea:disabled {
   opacity: 0.6;
+}
+
+.upload-btn {
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-primary);
+}
+
+.upload-btn:hover:not(:disabled) {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.upload-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .voice-input-btn,

@@ -1,0 +1,55 @@
+# 危大工程识别 Agent
+# 从上传的文档中识别危大/超危大工程清单，返回结构化 JSON
+
+agent_id: hazardous_project_recognition
+name: 危大工程识别
+description: 从 Excel/Word/CSV 文件中识别危大工程清单，匹配标准名称和类别，判定是否超危大。
+model: doubao
+version: "1.0"
+domain: construction-safety
+
+capabilities:
+  - chat
+  - tool_call
+  - file_upload
+
+tools:
+  - name: extract_document_content
+    description: 从上传的文档文件中提取文本和表格内容
+    parameters:
+      type: object
+      properties:
+        file_path:
+          type: string
+          description: 文件路径
+      required: [file_path]
+    permission_level: auto
+    risk_level: low
+
+  - name: validate_json_output
+    description: 验证 JSON 输出是否符合危大工程清单格式
+    parameters:
+      type: object
+      properties:
+        json_str:
+          type: string
+          description: 待验证的 JSON 字符串
+      required: [json_str]
+    permission_level: auto
+    risk_level: low
+
+prompts:
+  system: prompts/system.md
+  task: prompts/task.md
+
+policies:
+  - permission_level: medium
+  - trace_required: true
+  - approval_required: false
+  - data_sensitivity: internal
+
+evals:
+  - id: sample_xlsx
+    input: examples/hazardous_project_list_sample.xlsx
+    expected_path: examples/hazardous_project_list_expected.json
+    fixture_row_count: 14

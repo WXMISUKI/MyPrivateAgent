@@ -69,6 +69,12 @@ def _create_lifespan(config: AgentServerConfig):
         """Run startup bootstrap steps and cleanup on shutdown."""
         if config.bootstrap.init_database:
             init_database()
+        # 注册运行层 Agent
+        try:
+            from backend.runtime_plane.agent_bootstrap import register_example_agents
+            register_example_agents()
+        except Exception as e:
+            logger.warning(f"Agent bootstrap failed (non-fatal): {e}")
         logger.info("Application startup complete")
         yield
         try:

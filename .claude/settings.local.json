@@ -23,7 +23,20 @@
       "Bash(claude -d hooks)",
       "WebFetch(domain:docs.anthropic.com)",
       "Bash(powershell -WindowStyle Hidden -Command \"[console]::Beep\\(900,300\\); Start-Sleep -Milliseconds 100; [console]::Beep\\(1200,400\\)\" 2>&1)",
-      "Bash(pip install *)"
+      "Bash(pip install *)",
+      "Bash(curl -s http://localhost:8000/api/agent-runtime/health)",
+      "Bash(curl -s -X POST http://localhost:8000/api/agent-runtime/upload-and-run -F file=@D:/AI/资料/doc测试1.doc -F agent_id=auto -F user_input=请识别这个文件中的危大工程清单)",
+      "Bash(curl -s -w '\\\\nHTTP_CODE: %{http_code}' -X POST http://localhost:8000/api/agent-runtime/upload-and-run -F file=@D:/AI/资料/doc测试1.doc -F agent_id=auto)",
+      "Bash(curl -s --max-time 120 -X POST http://localhost:8000/api/agent-runtime/upload-and-run -F file=@D:/AI/资料/doc测试1.doc -F agent_id=hazardous_project_recognition -F user_input=请识别危大工程清单)",
+      "Bash(curl -s --max-time 30 -X POST http://localhost:8000/api/agent-runtime/run -H 'Content-Type: application/json' -d '{\"agent_id\":\"hazardous_project_recognition\",\"user_input\":\"你好，请介绍一下自己\"}')",
+      "Bash(curl *)",
+      "WebSearch",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:google.github.io)",
+      "WebFetch(domain:adk.dev)",
+      "WebFetch(domain:openai.github.io)",
+      "WebFetch(domain:langchain-ai.github.io)",
+      "WebFetch(domain:www.promptingguide.ai)"
     ]
   }
 }

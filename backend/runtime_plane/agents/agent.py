@@ -144,55 +144,27 @@ class Agent:
         return graph
 
     def _default_model_call(self, messages: list, tools: list = None) -> dict:
-        """默认模型调用（需要配置 API key）。"""
+        """默认模型调用，对接现有豆包 Provider。"""
         try:
-            from langchain_openai import ChatOpenAI
-            model = ChatOpenAI(model=self.model, temperature=0)
+            # 获取 langchain 模型客户端（复用现有 Provider 基础设施）
+            model = self._get_langchain_model()
 
             # 转换消息格式
-            lc_messages = []
-            for m in messages:
-                if isinstance(m, dict):
-                    role = m.get("role", "user")
-                    content = m.get("content", "")
-                    if role == "system":
-                        from langchain_core.messages import SystemMessage
-                        lc_messages.append(SystemMessage(content=content))
-                    elif role == "assistant":
-                        from langchain_core.messages import AIMessage
-                        lc_messages.append(AIMessage(content=content))
-                    elif role == "tool":
-                        from langchain_core.messages import ToolMessage
-                        lc_messages.append(ToolMessage(
-                            content=content,
-                            tool_call_id=m.get("tool_call_id", ""),
-                        ))
-                    else:
-                        from langchain_core.messages import HumanMessage
-                        lc_messages.append(HumanMessage(content=content))
-                else:
-                    lc_messages.append(m)
+            lc_messages = self._to_langchain_messages(messages)
 
             # 注入系统提示词
             if self.instructions and (not lc_messages or lc_messages[0].type != "system"):
                 from langchain_core.messages import SystemMessage
                 lc_messages.insert(0, SystemMessage(content=self.instructions))
 
-            # 绑定工具
-            if tools:
-                lc_tools = []
-                for t in tools:
-                    if isinstance(t, ToolDef):
-                        lc_tools.append({
-                            "type": "function",
-                            "function": {
-                                "name": t.name,
-                                "description": t.description,
-                                "parameters": t.parameters,
-                            },
-                        })
+            # 绑定工具（仅当模型支持时）
+            if tools and self._supports_tool_binding(model):
+                lc_tools = self._build_langchain_tools(tools)
                 if lc_tools:
-                    model = model.bind_tools(lc_tools)
+                    try:
+                        model = model.bind_tools(lc_tools)
+                    except Exception as e:
+                        logger.warning(f"Tool binding failed, proceeding without tools: {e}")
 
             response = model.invoke(lc_messages)
 
@@ -212,11 +184,11 @@ class Agent:
                 ]
             return result
 
-        except ImportError:
-            logger.warning("langchain-openai not installed, using mock model call")
+        except ImportError as e:
+            logger.warning(f"Missing dependency: {e}. Using mock model call.")
             return {
                 "role": "assistant",
-                "content": f"[Mock {self.name}] I received {len(messages)} messages but no model is configured.",
+                "content": f"[Mock {self.name}] Received {len(messages)} messages. Install langchain-openai to enable real model calls.",
             }
         except Exception as e:
             logger.error(f"Model call error: {e}")
@@ -224,6 +196,91 @@ class Agent:
                 "role": "assistant",
                 "content": f"Error: {e}",
             }
+
+    def _get_langchain_model(self):
+        """获取 langchain 模型客户端，优先使用现有 Provider 基础设施。"""
+        # 尝试使用现有的 DoubaoProviderBackend
+        try:
+            from backend.agent_framework.provider_backends import DoubaoProviderBackend
+            backend = DoubaoProviderBackend()
+            if backend.supports_model(self.model):
+                model = backend.get_model(self.model)
+                return model
+            # 如果不支持指定模型，尝试用默认别名
+            try:
+                from backend.config import ARK_MODEL_ALIAS
+                return backend.get_model(ARK_MODEL_ALIAS)
+            except (ImportError, ValueError):
+                pass
+        except Exception as e:
+            logger.debug(f"DoubaoProviderBackend not available: {e}")
+
+        # 尝试使用 ModelRouter
+        try:
+            from backend.model_router import ModelRouter
+            router = ModelRouter()
+            return router.get_model(self.model)
+        except Exception as e:
+            logger.debug(f"ModelRouter not available: {e}")
+
+        # 回退：直接创建 ChatOpenAI（需要 OPENAI_API_KEY）
+        logger.warning("No provider backend available, falling back to direct ChatOpenAI")
+        from langchain_openai import ChatOpenAI
+        return ChatOpenAI(model=self.model, temperature=0.7)
+
+    @staticmethod
+    def _to_langchain_messages(messages: list) -> list:
+        """将标准消息格式转换为 langchain 消息对象。"""
+        from langchain_core.messages import (
+            AIMessage, HumanMessage, SystemMessage, ToolMessage,
+        )
+        lc_messages = []
+        for m in messages:
+            if not isinstance(m, dict):
+                lc_messages.append(m)
+                continue
+            role = m.get("role", "user")
+            content = m.get("content", "")
+            if role == "system":
+                lc_messages.append(SystemMessage(content=content))
+            elif role == "assistant":
+                lc_messages.append(AIMessage(content=content))
+            elif role == "tool":
+                lc_messages.append(ToolMessage(
+                    content=content,
+                    tool_call_id=m.get("tool_call_id", ""),
+                ))
+            else:
+                lc_messages.append(HumanMessage(content=content))
+        return lc_messages
+
+    @staticmethod
+    def _supports_tool_binding(model) -> bool:
+        """检查模型是否支持 tool binding。"""
+        # 豆包/火山引擎 Ark API 当前不兼容 langchain tool binding 格式
+        model_name = getattr(model, 'model', '') or ''
+        base_url = getattr(model, 'openai_api_base', '') or ''
+        if 'ark' in base_url.lower() or 'volces' in base_url.lower():
+            return False
+        if 'doubao' in model_name.lower():
+            return False
+        return True
+
+    @staticmethod
+    def _build_langchain_tools(tools: list) -> list:
+        """将 ToolDef 列表转换为 langchain 工具格式。"""
+        lc_tools = []
+        for t in tools:
+            if isinstance(t, ToolDef):
+                lc_tools.append({
+                    "type": "function",
+                    "function": {
+                        "name": t.name,
+                        "description": t.description,
+                        "parameters": t.parameters,
+                    },
+                })
+        return lc_tools
 
 
     def to_agent_card(self) -> dict:

@@ -87,5 +87,15 @@ def register_example_agents():
     )
     register_agent(approval_agent)
 
-    logger.info(f"Registered {3} example agents: simple_agent, tool_agent, approval_agent")
-    return {"simple_agent": simple, "tool_agent": tool_agent, "approval_agent": approval_agent}
+    # Agent 4: 危大工程识别
+    try:
+        from ..domain_agents.hazardous_project_recognition.bootstrap import register_hazardous_agent
+        hazardous = register_hazardous_agent()
+        agent_count = 4
+    except Exception as e:
+        logger.warning(f"Failed to register hazardous_project_recognition: {e}")
+        agent_count = 3
+
+    logger.info(f"Registered {agent_count} agents")
+    from ..routers.agent_runtime import get_registry
+    return get_registry()

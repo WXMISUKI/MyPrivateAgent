@@ -135,7 +135,7 @@ class DoubaoProviderBackend:
             model=effective_model or config["actual_model"],
             api_key=api_key,
             temperature=0.7,
-            max_tokens=2048,
+            max_tokens=32768,
             streaming=True,
             timeout=30,
         )
