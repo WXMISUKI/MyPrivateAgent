@@ -9,6 +9,9 @@
 | 理解项目是什么 | [Agent Runtime Control Plane Entrypoint](./architecture/agent_runtime_control_plane_entrypoint.md) | 项目不是单一 chat demo，也不是 LangGraph/CrewAI/Qwen-Agent/OpenAI Agents SDK 等外部框架的替代实现 |
 | 看当前事实架构 | [当前架构总览](./architecture/current_architecture.md) | Runtime Core / Capability / Governance / Delivery 四层已收口为主解释框架 |
 | 看运行层战略 | [运行层集成战略](./architecture/runtime_plane_integration_strategy.md) | 运行层用成熟框架和 adapter 接入，控制面只管治理与 contract |
+| 看阶段回顾模板 | [Runtime Plane Stage Review Protocol](./roadmap/runtime_plane_stage_review_protocol.md) | 每完成一个 stage 都按同一模板复盘，防止偏离计划 |
+| 看 Stage 0 回顾 | [Runtime Plane Stage 0 Review](./roadmap/runtime_plane_stage_0_review.md) | 已完成的冻结与定位收口回顾样本 |
+| 看 Stage 1 首切片 | [Runtime Plane Stage 1 Slice Selection](./roadmap/runtime_plane_stage_1_slice_selection.md) | Stage 1 先做 simple_agent，验证 envelope 和 adapter boundary |
 | 查运行时 contract | [Runtime Contracts](./architecture/runtime_contracts.md) | Runtime Surface、Provider、Query Control、SDK、ToolRuntime 等 contract 以代码和 canonical spec 为真源 |
 | 选择扩展路径 | [Extension Points](./architecture/extension_points.md) | 新能力先选 seam，再开 OpenSpec；不要直接改默认 chat 或绕过治理层 |
 | 接入外接 Provider | [Capability Runtime Registry](./guides/capability_runtime_registry.md) | 走 provider onboarding catalog + service-provider management + UI surface + acceptance gate；accepted 只代表显式 managed-provider consumption |

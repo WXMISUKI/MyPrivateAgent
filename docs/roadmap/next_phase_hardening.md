@@ -32,6 +32,9 @@
 - `docs/architecture/current_architecture.md`
 - `docs/architecture/runtime_plane_integration_strategy.md`
 - `docs/architecture/extension_points.md`
+- `docs/roadmap/runtime_plane_stage_review_protocol.md`
+- `docs/roadmap/runtime_plane_stage_0_review.md`
+- `docs/roadmap/runtime_plane_stage_1_slice_selection.md`
 - `openspec/changes/agent-runtime-plane-integration-strategy/proposal.md`
 - `openspec/changes/agent-runtime-plane-integration-strategy/design.md`
 - `openspec/changes/agent-runtime-plane-integration-strategy/specs/runtime-plane-integration-strategy/spec.md`

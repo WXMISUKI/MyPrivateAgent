@@ -187,18 +187,20 @@ class ExecutionResult:
 | 更新项目定位文档 | PROJECT_AGENT.md、entrypoint、current_architecture | 本次完成 |
 | 创建运行层集成战略文档 | 本文档 | 本次完成 |
 | 创建 OpenSpec spec | `runtime-plane-integration-strategy/spec.md` | 本次完成 |
-| 创建目录骨架 | `backend/control_plane/`、`backend/runtime_plane/` | 本次完成 |
+| 收口目录骨架 | `backend/control_plane/`、`backend/runtime_plane/` 已存在，后续新能力优先收口到这两个正式承载位置 | 本次完成 |
 | 冻结 AgentHarnessFacade 扩展 | 不再新增 preview 方法 | 立即生效 |
 | 更新开发约束 | 10 条硬约束写入文档 | 本次完成 |
 
 **完成标准**：
 - 所有文档内部链接可跳转
-- 目录骨架可被 Python import
+- `backend/control_plane/` 与 `backend/runtime_plane/` 作为正式承载位置存在且可被 Python import
 - 新开发有明确的"该放哪里"指引
 
 ### Stage 1：运行层 MVP（2-3 周）
 
 **目标**：三条竖切跑通，验证 LangGraph/AgentRun 接入路径。
+
+**首切片**：`simple_agent`。先验证 ExecutionRequest / ExecutionEvent / ExecutionResult envelope 和 adapter boundary，再进入 tool/approval 复杂度。
 
 | 竖切 | 验证什么 | 框架选择 |
 |---|---|---|
@@ -216,6 +218,7 @@ class ExecutionResult:
 - 每个 agent 必须有 `agent.yaml`
 - 每个 agent 必须有最小 smoke 测试
 - 只通过 adapter 接入，不直接调用框架原生 API
+- 每完成一个竖切，必须写一份阶段回顾，确认是否仍符合 Stage 1 非目标与后续推广条件
 
 ### Stage 2：治理最小接入（3-4 周）
 
@@ -242,6 +245,7 @@ class ExecutionResult:
 - eval 模板（每个 agent 的最小验证用例）
 - CI quality gate（新 agent 必须通过的自动化检查）
 - promotion 流程（experimental → pilot → production 的标准化路径）
+- 阶段回顾模板正式固化为团队执行规范
 
 ## 6. 10 条开发硬约束
 
@@ -305,3 +309,29 @@ class ExecutionResult:
 5. [extension_points.md](./extension_points.md)
 6. [domain_agent_development_guide.md](../guides/domain_agent_development_guide.md)
 7. [next_phase_hardening.md](../roadmap/next_phase_hardening.md)
+8. [runtime_plane_stage_review_protocol.md](../roadmap/runtime_plane_stage_review_protocol.md)
+9. [runtime_plane_stage_0_review.md](../roadmap/runtime_plane_stage_0_review.md)
+
+## 10. 阶段回顾协议
+
+每完成一个 stage，必须按统一模板记录回顾，避免推进过程中慢慢偏离原计划。
+
+建议模板：
+
+```text
+Stage:
+Date:
+Completed work:
+What stayed within scope:
+What drifted or got tempting:
+What must not be expanded next:
+What evidence shows the stage is done:
+Is the next stage still justified:
+Next allowed action:
+```
+
+回顾原则：
+
+- 只写事实，不写愿望
+- 如果出现偏离，先回 freeze-and-align stage 再继续
+- 回顾必须附上当前 stage 的非目标

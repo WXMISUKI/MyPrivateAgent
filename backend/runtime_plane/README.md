@@ -21,5 +21,6 @@
 
 ## 当前状态
 
-**骨架占位**。现有 adapter 代码仍在 `backend/agent_framework/framework_adapter_spi/` 中，不搬迁。
-新运行层能力应优先放在此目录下。
+**实验骨架占位**。目录中的 graph / bootstrap / governance bridge 模块用于收口运行层概念与占位验证，不代表生产级执行平台。
+现有 adapter 代码仍在 `backend/agent_framework/framework_adapter_spi/` 中，不搬迁。
+新运行层能力应优先放在此目录下，并通过 ExecutionAdapter 合同接入。
