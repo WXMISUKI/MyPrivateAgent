@@ -15,6 +15,27 @@
 - Coze 工作流迁移资产已开始通过 `backend/coze_workflows/<workflow_id>/workflow.yaml` 和 `GET /api/coze-workflows` 进入只读登记面；后续协作应沿 manifest -> registry -> capability -> invoke -> acceptance 的顺序推进，不要把迁移流程拆成多个平行入口。
 - 任何外部框架接入默认先走 OpenSpec adapter proposal 与 promotion gate，不直接进入主 chat 执行链。
 
+### 运行层集成战略补充
+
+当前新增的运行层方向已经收口为 [运行层集成战略](../architecture/runtime_plane_integration_strategy.md)。它的作用不是把 MyPrivateAgent 继续做成执行平台，而是把未来的运行层工作锁定在成熟框架适配与治理控制面边界之内。
+
+当前执行原则：
+
+1. 先完成 Stage 0 冻结和定位收口。
+2. 再做最小 runtime-plane slice，不做平台重写。
+3. 每完成一个 stage，必须做书面回顾，确认是否仍符合非目标。
+4. 如果运行层工作开始膨胀，优先回到 freeze-and-align stage，而不是继续追加能力。
+
+当前需要同步检查的文档：
+
+- `docs/architecture/agent_runtime_control_plane_entrypoint.md`
+- `docs/architecture/current_architecture.md`
+- `docs/architecture/runtime_plane_integration_strategy.md`
+- `docs/architecture/extension_points.md`
+- `openspec/changes/agent-runtime-plane-integration-strategy/proposal.md`
+- `openspec/changes/agent-runtime-plane-integration-strategy/design.md`
+- `openspec/changes/agent-runtime-plane-integration-strategy/specs/runtime-plane-integration-strategy/spec.md`
+
 下一阶段应优先做三件事：
 
 1. Self-Improvement Ledger 从能力契约推进到健康摘要。
