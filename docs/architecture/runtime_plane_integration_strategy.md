@@ -202,6 +202,13 @@ class ExecutionResult:
 
 **首切片**：`simple_agent`。先验证 ExecutionRequest / ExecutionEvent / ExecutionResult envelope 和 adapter boundary，再进入 tool/approval 复杂度。
 
+**当前进度**：
+
+- `simple_agent` 最小适配器已落地
+- ExecutionRequest / ExecutionEvent / ExecutionResult / AgentManifest 已落地
+- `simple_agent` 的最小单测已通过
+- 当前仍未进入 tool / approval / multi-agent 复杂切片
+
 | 竖切 | 验证什么 | 框架选择 |
 |---|---|---|
 | simple_agent | 只调用模型，不调用工具。验证部署、调用、trace 回传 | LangGraph 或 AgentRun |

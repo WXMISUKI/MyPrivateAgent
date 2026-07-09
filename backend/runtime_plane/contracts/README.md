@@ -19,4 +19,4 @@
 
 ## 当前状态
 
-**骨架占位**。合同定义将在 Stage 1（运行层 MVP）中实现。
+**已落地的最小合同**。ExecutionRequest / ExecutionEvent / ExecutionResult / AgentManifest 已作为 Stage 1 首个切片实现。
