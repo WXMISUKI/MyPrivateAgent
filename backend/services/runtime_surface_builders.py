@@ -312,6 +312,56 @@ class RuntimeRecoveryContractBuilder:
             },
         ]
 
+    @staticmethod
+    def build_production_recovery_authorization_summary(
+        contract: Dict[str, Any] | None = None,
+    ) -> Dict[str, Any]:
+        normalized = dict(contract or {})
+        gate = dict(normalized.get("production_recovery_gate") or {})
+        worker_gate = dict(normalized.get("worker_ownership_production_gate") or {})
+        enablement_input = dict(normalized.get("worker_ownership_enablement_input") or {})
+        handoff = dict(normalized.get("loader_execution_handoff") or {})
+        audit = dict(normalized.get("recovery_audit") or {})
+        return {
+            "contract_version": str(
+                normalized.get("contract_version")
+                or "phase-ii-embedded-sdk-production-recovery-authorization-v1"
+            ).strip(),
+            "overall_status": str(normalized.get("overall_status") or "blocked").strip() or "blocked",
+            "authorization_ready": bool(normalized.get("authorization_ready")),
+            "authorization_source": str(normalized.get("authorization_source") or "").strip(),
+            "authorization_request_id": str(normalized.get("authorization_request_id") or "").strip(),
+            "requested_by": str(normalized.get("requested_by") or "").strip(),
+            "requested_at": str(normalized.get("requested_at") or "").strip(),
+            "target_store_mode": str(normalized.get("target_store_mode") or "").strip(),
+            "target_backend": str(normalized.get("target_backend") or "").strip(),
+            "lock_adapter_kind": str(normalized.get("lock_adapter_kind") or "").strip(),
+            "will_execute": bool(normalized.get("will_execute")),
+            "missing_sections": [
+                str(item).strip()
+                for item in (normalized.get("missing_sections") or [])
+                if str(item or "").strip()
+            ],
+            "production_recovery_gate_status": str(gate.get("overall_status") or "").strip(),
+            "production_recovery_gate_missing_sections": [
+                str(item).strip()
+                for item in (gate.get("missing_sections") or [])
+                if str(item or "").strip()
+            ],
+            "worker_ownership_gate_status": str(worker_gate.get("overall_status") or "").strip(),
+            "worker_ownership_enablement_input_status": str(
+                enablement_input.get("overall_status") or ""
+            ).strip(),
+            "worker_ownership_enablement_input_source_kind": str(
+                enablement_input.get("source_kind")
+                or enablement_input.get("enablement_input_source_kind")
+                or ""
+            ).strip(),
+            "loader_execution_handoff_status": str(handoff.get("overall_status") or "").strip(),
+            "recovery_audit_status": str(audit.get("overall_status") or "").strip(),
+            "next_allowed_action": str(normalized.get("next_allowed_action") or "").strip(),
+        }
+
     @classmethod
     def build_run_recovery_contract(cls, probe: Dict[str, Any] | None = None) -> Dict[str, Any]:
         normalized_probe = dict(probe or {})
@@ -337,10 +387,12 @@ class RuntimeRecoveryContractBuilder:
         recovery_operation_history = [
             item for item in recovery_operation_history if item
         ]
+        persistence_interface = dict(normalized_probe.get("persistence_interface") or {})
         workspace_backend = dict(
             checkpoint.get("workspace_backend")
             or tool_continuation.get("workspace_backend")
             or loop_continuation.get("workspace_backend")
+            or persistence_interface
             or {}
         )
         has_probe = bool(normalized_probe)
@@ -366,6 +418,10 @@ class RuntimeRecoveryContractBuilder:
             "recovery_audit_summary": cls.build_recovery_audit_summary(recovery_operation_history),
             "recovery_capabilities": recovery_capabilities,
             "recovery_entrypoints": recovery_entrypoints,
+            "persistence_interface": persistence_interface,
+            "production_recovery_authorization": cls.build_production_recovery_authorization_summary(
+                dict(persistence_interface.get("production_recovery_authorization") or {})
+            ),
             "workspace_backend": workspace_backend,
             "reason": (
                 str(normalized_probe.get("error") or "").strip()
@@ -383,6 +439,9 @@ class RuntimeRecoveryContractBuilder:
         workspace_backend = dict(normalized_contract.get("workspace_backend") or {})
         persistence_interface = dict(normalized_contract.get("persistence_interface") or {})
         recovery_entrypoints = RuntimeRecoveryContractBuilder.build_expected_recovery_entrypoints(normalized_contract)
+        production_recovery_authorization = dict(
+            persistence_interface.get("production_recovery_authorization") or {}
+        )
         return {
             "contract_version": "phase-ii-default-runtime-recovery-v1",
             "recovery_mode": str(default_recovery_capabilities.get("recovery_mode") or "").strip(),
@@ -395,6 +454,9 @@ class RuntimeRecoveryContractBuilder:
             "workspace_backend_kind": str(workspace_backend.get("backend_kind") or "").strip(),
             "workspace_backend_mode": str(workspace_backend.get("backend_mode") or "").strip(),
             "persistence_interface": persistence_interface,
+            "production_recovery_authorization": RuntimeRecoveryContractBuilder.build_production_recovery_authorization_summary(
+                production_recovery_authorization
+            ),
             "recovery_entrypoints": recovery_entrypoints,
         }
 

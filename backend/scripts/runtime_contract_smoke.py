@@ -50,7 +50,11 @@ try:
         validate_sandbox_dispatch_attempt,
     )
     from agent_framework.harness import create_agent
-    from agent_framework.persistence import InMemoryEmbeddedRunWorkspaceStore
+    from agent_framework.persistence import (
+        InMemoryEmbeddedRunWorkspaceStore,
+        build_durable_workspace_production_recovery_gate_contract,
+        build_embedded_sdk_production_recovery_authorization_contract,
+    )
     from agent_framework.production_recovery_policy import (
         build_production_recovery_registry_checkpoint_policy_contract,
     )
@@ -102,7 +106,11 @@ except ModuleNotFoundError:  # pragma: no cover - package import compatibility
         validate_sandbox_dispatch_attempt,
     )
     from backend.agent_framework.harness import create_agent
-    from backend.agent_framework.persistence import InMemoryEmbeddedRunWorkspaceStore
+    from backend.agent_framework.persistence import (
+        InMemoryEmbeddedRunWorkspaceStore,
+        build_durable_workspace_production_recovery_gate_contract,
+        build_embedded_sdk_production_recovery_authorization_contract,
+    )
     from backend.agent_framework.production_recovery_policy import (
         build_production_recovery_registry_checkpoint_policy_contract,
     )
@@ -248,6 +256,15 @@ def main() -> int:
             {
                 "name": "embedded_sdk_persistence_posture",
                 **persistence_posture_result,
+            }
+        )
+        production_recovery_authorization_result = (
+            _run_embedded_sdk_production_recovery_authorization_contract_check()
+        )
+        checks.append(
+            {
+                "name": "embedded_sdk_production_recovery_authorization",
+                **production_recovery_authorization_result,
             }
         )
         ownership_store_mode_result = _run_worker_ownership_store_mode_contract_check()
@@ -2325,6 +2342,27 @@ def _run_embedded_sdk_persistence_posture_check() -> dict:
         "production_recovery_gate_status": str(durable_production_gate.get("overall_status") or ""),
         "production_recovery_gate_missing_sections": list(durable_missing_sections),
         "production_recovery_default_enabled": bool(durable_production_gate.get("production_default_enabled")),
+        "production_recovery_authorization_contract_version": str(
+            ((durable_interface.get("production_recovery_authorization") or {}).get("contract_version"))
+            or ""
+        ),
+        "production_recovery_authorization_status": str(
+            ((durable_interface.get("production_recovery_authorization") or {}).get("overall_status"))
+            or ""
+        ),
+        "production_recovery_authorization_missing_sections": list(
+            (
+                (durable_interface.get("production_recovery_authorization") or {}).get("missing_sections")
+                if isinstance(
+                    (durable_interface.get("production_recovery_authorization") or {}).get("missing_sections"),
+                    list,
+                )
+                else []
+            )
+        ),
+        "production_recovery_authorization_will_execute": bool(
+            (durable_interface.get("production_recovery_authorization") or {}).get("will_execute")
+        ),
         "production_recovery_worker_ownership_gate_contract_version": str(
             durable_worker_ownership_evidence.get("worker_ownership_gate_contract_version") or ""
         ),
@@ -2356,6 +2394,101 @@ def _run_embedded_sdk_persistence_posture_check() -> dict:
             registry_checkpoint_policy.get("authorization_source")
         ),
         "failure_reason": "" if ok else "embedded_sdk_persistence_posture_incomplete",
+    }
+
+
+def _run_embedded_sdk_production_recovery_authorization_contract_check() -> dict:
+    backend_description = _SmokeDurableWorkspaceStore().describe_backend()
+    ready_worker_gate = {
+        "contract_version": "phase-ii-worker-ownership-production-gate-v1",
+        "overall_status": "ready",
+        "production_default_enabled": True,
+        "missing_sections": [],
+        "next_allowed_action": "consider_explicit_production_default_enablement",
+    }
+    ready_gate = build_durable_workspace_production_recovery_gate_contract(
+        backend_description=backend_description,
+        descriptor_lifecycle_governed=True,
+        registry_binding_policy_ready=True,
+        checkpoint_resume_cursor_gate_ready=True,
+        worker_ownership_gate_ready=True,
+        worker_ownership_production_gate=ready_worker_gate,
+        recovery_audit_ready=True,
+        rollout_checklist_ready=True,
+        loader_execution_handoff_policy_ready=True,
+        production_default_enabled=False,
+    )
+    blocked = build_embedded_sdk_production_recovery_authorization_contract(
+        backend_description=backend_description,
+        production_recovery_gate=ready_gate,
+    )
+    ready = build_embedded_sdk_production_recovery_authorization_contract(
+        backend_description=backend_description,
+        production_recovery_gate=ready_gate,
+        worker_ownership_production_enablement_runtime_config_consumer={
+            "contract_version": (
+                "phase-ii-worker-ownership-production-enablement-runtime-config-consumer-v1"
+            ),
+            "overall_status": "ready",
+            "source_kind": "runtime_config",
+            "config_id": "embedded-recovery-auth-smoke",
+            "approved_by": "ops@example.com",
+            "approved_at": "2026-07-13T10:00:00Z",
+            "target_store_mode": "strict_sql",
+            "target_backend": "postgres",
+            "lock_adapter_kind": "postgres_advisory_lock",
+            "missing_sections": [],
+            "enablement_input_source": {
+                "overall_status": "ready",
+                "input_source_kind": "config",
+                "request_id": "embedded-recovery-auth-smoke",
+                "requested_by": "ops@example.com",
+                "requested_at": "2026-07-13T10:00:00Z",
+                "target_store_mode": "strict_sql",
+                "missing_sections": [],
+            },
+        },
+    )
+    blocked_missing_sections = (
+        blocked.get("missing_sections") if isinstance(blocked.get("missing_sections"), list) else []
+    )
+    ready_missing_sections = (
+        ready.get("missing_sections") if isinstance(ready.get("missing_sections"), list) else []
+    )
+    ok = (
+        str(blocked.get("contract_version") or "").strip()
+        == "phase-ii-embedded-sdk-production-recovery-authorization-v1"
+        and str(blocked.get("overall_status") or "").strip() == "blocked"
+        and not bool(blocked.get("authorization_ready"))
+        and "authorization_request_source" in blocked_missing_sections
+        and "worker_ownership_enablement_input" in blocked_missing_sections
+        and not bool(blocked.get("will_execute"))
+        and str(ready.get("overall_status") or "").strip() == "ready"
+        and bool(ready.get("authorization_ready"))
+        and str(ready.get("authorization_source") or "").strip() == "runtime_config"
+        and not ready_missing_sections
+        and not bool(ready.get("will_execute"))
+        and str(((ready.get("loader_execution_handoff") or {}).get("overall_status")) or "").strip() == "ready"
+        and str(((ready.get("recovery_audit") or {}).get("overall_status")) or "").strip() == "ready"
+    )
+    return {
+        "ok": ok,
+        "contract_version": str(blocked.get("contract_version") or ""),
+        "blocked_status": str(blocked.get("overall_status") or ""),
+        "blocked_missing_sections": list(blocked_missing_sections),
+        "blocked_will_execute": bool(blocked.get("will_execute")),
+        "ready_status": str(ready.get("overall_status") or ""),
+        "ready_authorization_ready": bool(ready.get("authorization_ready")),
+        "ready_authorization_source": str(ready.get("authorization_source") or ""),
+        "ready_missing_sections": list(ready_missing_sections),
+        "ready_will_execute": bool(ready.get("will_execute")),
+        "ready_loader_handoff_status": str(
+            ((ready.get("loader_execution_handoff") or {}).get("overall_status")) or ""
+        ),
+        "ready_recovery_audit_status": str(
+            ((ready.get("recovery_audit") or {}).get("overall_status")) or ""
+        ),
+        "failure_reason": "" if ok else "embedded_sdk_production_recovery_authorization_incomplete",
     }
 
 
@@ -5087,6 +5220,14 @@ def _run_runtime_surface_run_recovery_contract_check() -> dict:
                 and bool(recovery.get("recoverable"))
                 and str((recovery.get("tool_continuation") or {}).get("recovery_reason") or "").strip() == "ready_via_registry"
                 and str((recovery.get("loop_continuation") or {}).get("recovery_reason") or "").strip() == "ready_via_registry"
+                and str(
+                    ((recovery.get("production_recovery_authorization") or {}).get("contract_version"))
+                    or ""
+                ).strip()
+                == "phase-ii-embedded-sdk-production-recovery-authorization-v1"
+                and not bool(
+                    (recovery.get("production_recovery_authorization") or {}).get("will_execute")
+                )
                 and str(workspace_backend.get("backend_kind") or "").strip() == "sqlalchemy"
                 and bool(workspace_backend.get("durable"))
                 and not bool(workspace_backend.get("fallback_active"))
@@ -5101,6 +5242,13 @@ def _run_runtime_surface_run_recovery_contract_check() -> dict:
                 "fallback_active": workspace_backend.get("fallback_active"),
                 "tool_recovery_reason": (recovery.get("tool_continuation") or {}).get("recovery_reason"),
                 "loop_recovery_reason": (recovery.get("loop_continuation") or {}).get("recovery_reason"),
+                "production_recovery_authorization_status": str(
+                    ((recovery.get("production_recovery_authorization") or {}).get("overall_status"))
+                    or ""
+                ),
+                "production_recovery_authorization_will_execute": bool(
+                    (recovery.get("production_recovery_authorization") or {}).get("will_execute")
+                ),
                 "failure_reason": "" if ok else "run_recovery_contract_incomplete",
             }
         finally:

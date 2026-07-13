@@ -314,6 +314,18 @@ class QualityGateReportTests(unittest.TestCase):
                 '"registry_binding_policy_ready":true,'
                 '"checkpoint_resume_cursor_policy_ready":true,'
                 '"registry_checkpoint_policy_authorization_source":false},\n'
+                '    {"name":"embedded_sdk_production_recovery_authorization","ok":true,'
+                '"contract_version":"phase-ii-embedded-sdk-production-recovery-authorization-v1",'
+                '"blocked_status":"blocked",'
+                '"blocked_missing_sections":["worker_ownership_enablement_input","authorization_request_source"],'
+                '"blocked_will_execute":false,'
+                '"ready_status":"ready",'
+                '"ready_authorization_ready":true,'
+                '"ready_authorization_source":"runtime_config",'
+                '"ready_missing_sections":[],'
+                '"ready_will_execute":false,'
+                '"ready_loader_handoff_status":"ready",'
+                '"ready_recovery_audit_status":"ready"},\n'
                 '    {"name":"worker_ownership_store_mode","ok":true,'
                 '"default_mode":"memory_only",'
                 '"default_mode_source":"default",'
@@ -653,13 +665,14 @@ class QualityGateReportTests(unittest.TestCase):
                 "tool_runtime_timeout_retry",
                 "approval_lifecycle_recovery_alignment",
                 "embedded_sdk_persistence_posture",
+                "embedded_sdk_production_recovery_authorization",
                 "worker_ownership_store_mode",
                 "child_executor_promotion_gate",
                 "subagent_lane_query_detail",
             ],
         )
         self.assertEqual(result["runtime_contract_summary"]["overall_status"], "healthy")
-        self.assertEqual(result["runtime_contract_summary"]["check_count"], 12)
+        self.assertEqual(result["runtime_contract_summary"]["check_count"], 13)
         self.assertEqual(result["runtime_contract_summary"]["missing_payload_count"], 0)
         self.assertTrue(result["runtime_contract_summary"]["approval_replay_coverage"]["event_payload_sample"])
         approved_coverage = result["runtime_contract_summary"]["approved_tool_execution_coverage"]
@@ -723,6 +736,17 @@ class QualityGateReportTests(unittest.TestCase):
             persistence_coverage["production_recovery_gate_missing_sections"],
         )
         self.assertFalse(persistence_coverage["production_recovery_default_enabled"])
+        authorization_coverage = result["runtime_contract_summary"][
+            "embedded_sdk_production_recovery_authorization_coverage"
+        ]
+        self.assertTrue(authorization_coverage["authorization_smoke"])
+        self.assertEqual(
+            authorization_coverage["contract_version"],
+            "phase-ii-embedded-sdk-production-recovery-authorization-v1",
+        )
+        self.assertEqual(authorization_coverage["blocked_status"], "blocked")
+        self.assertEqual(authorization_coverage["ready_status"], "ready")
+        self.assertFalse(authorization_coverage["ready_will_execute"])
         recovery_audit_coverage = result["runtime_contract_summary"]["recovery_audit_operation_history_coverage"]
         self.assertTrue(recovery_audit_coverage["audit_smoke"])
         self.assertEqual(
@@ -1000,6 +1024,10 @@ class QualityGateReportTests(unittest.TestCase):
         )
         self.assertIn(
             "embedded_sdk_persistence_coverage.persistence_smoke",
+            schema_guard["summary_required_fields"],
+        )
+        self.assertIn(
+            "embedded_sdk_production_recovery_authorization_coverage.authorization_smoke",
             schema_guard["summary_required_fields"],
         )
         self.assertIn(

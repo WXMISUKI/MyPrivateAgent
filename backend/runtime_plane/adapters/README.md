@@ -8,6 +8,8 @@
 
 | 适配器 | 目标框架 | 借鉴能力 | 状态 |
 |---|---|---|---|
+| SimpleAgentAdapter | 本地 runtime plane | 最小 envelope / adapter boundary | 已落地 |
+| ToolAgentAdapter | 本地 runtime plane | 受控 tool call / observation / normalized envelope | 已落地 |
 | LangGraphAdapter | LangGraph | 图/状态/checkpoint/human-in-loop | 待实现（现有 pilot 骨架在 framework_adapter_spi/） |
 | AgentRunAdapter | AgentRun | 托管运行/沙箱/模型代理/可观测 | 待实现 |
 | ADKAdapter | Google ADK | agent 发现/跨 agent 通信 | 待实现 |
@@ -27,4 +29,4 @@
 
 ## 当前状态
 
-**骨架占位**。现有 LangGraph draft adapter 在 `backend/agent_framework/framework_adapter_spi/langgraph_draft.py`。
+**骨架占位**。当前已落地本地 `SimpleAgentAdapter` 和 `ToolAgentAdapter`，外部框架的 pilot 骨架仍在 `backend/agent_framework/framework_adapter_spi/langgraph_draft.py`。

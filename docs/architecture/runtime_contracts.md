@@ -1320,3 +1320,39 @@ II-1 第一刀当前未做：
 - 新增重要 contract 时同步 snapshot whitelist。
 - 删除字段前先确认前端与测试是否仍消费。
 - 任何 contract version 变化都应写入 `docs/change`。
+
+补充约束：
+
+- `runtime_contract_summary` 当前已新增 `embedded_sdk_production_recovery_authorization_coverage`，用于守护 Embedded SDK production recovery authorization dry-run 的 blocked/ready 样本。
+- `RuntimeContractSnapshotService` 也必须同步守护该 coverage 的关键字段，至少包括：
+  - `embedded_sdk_production_recovery_authorization_coverage`
+  - `embedded_sdk_production_recovery_authorization_coverage.authorization_smoke`
+  - `embedded_sdk_production_recovery_authorization_coverage.blocked_status`
+  - `embedded_sdk_production_recovery_authorization_coverage.ready_status`
+
+## 15. Embedded SDK Production Recovery Authorization Dry-Run
+
+主要来源：
+
+- `backend/agent_framework/persistence.py`
+- `backend/services/runtime_surface_builders.py`
+- `backend/scripts/runtime_contract_smoke.py`
+- `backend/scripts/quality_gate_report.py`
+- `backend/services/runtime_contract_gate_service.py`
+- `backend/services/runtime_contract_snapshot_service.py`
+
+当前状态：
+
+- `embedded_sdk_production_recovery_authorization` 已作为 side-effect-free dry-run contract 落在 Embedded SDK persistence seam。
+- 该 contract 明确区分：
+  - `production_recovery_gate`：默认生产恢复是否具备前置 readiness。
+  - `embedded_sdk_production_recovery_authorization`：是否已经具备进入显式生产恢复授权评审的证据。
+- Runtime Surface 的 `default_runtime_recovery` 与 `run_recovery` 已暴露 compact `production_recovery_authorization` 摘要，但该摘要仍然是 read-model only，不执行恢复。
+- runtime smoke、quality gate summary、runtime contract gate 与 snapshot 已纳入 `embedded_sdk_production_recovery_authorization_coverage`。
+
+维护约束：
+
+- `ready` 只代表授权审查证据 dry-run ready，不代表恢复已经执行。
+- 无论 `blocked` 还是 `ready`，都必须保持 `will_execute = false`。
+- 不得在该 slice 内提交审批、claim worker ownership、启动 worker、启动 scheduler 或默认启用后台恢复。
+- run-specific recoverability 仍由 `run_recovery` probe 负责，不能被 production authorization readiness 覆盖。

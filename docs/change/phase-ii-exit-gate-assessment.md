@@ -133,6 +133,14 @@ Phase III 应从以下方向中选择一个最小切片，不并行发散：
 1. 先进入 **Embedded SDK production recovery authorization slice**，因为它直接承接 Phase II 最大剩余风险。
 2. Provider/domain-agent 方向只在真实调用方触发后恢复。
 
+后续进展补充：
+
+- 该推荐切片已完成第一刀实现：
+  - persistence seam 新增 `embedded_sdk_production_recovery_authorization` dry-run contract
+  - Runtime Surface `default_runtime_recovery / run_recovery` 已暴露 compact authorization summary
+  - runtime smoke、quality gate、runtime contract gate 与 snapshot 已纳入授权 dry-run coverage
+- 当前仍保持 fail-closed、opt-in、non-executable；`ready` 不代表后台自动恢复、worker 启动或 retry scheduler 启动。
+
 ## 5. 明确暂停项
 
 以下方向不作为默认下一阶段：

@@ -46,6 +46,12 @@ class RuntimeSurfaceServiceTests(unittest.TestCase):
         self.assertEqual(contract["recovery_posture"], "cross_process_candidate")
         self.assertTrue(contract["expected_cross_process_candidate"])
         self.assertEqual(contract["recovery_entrypoints"][1]["recovery_reason"], "ready_via_registry")
+        self.assertIn("production_recovery_authorization", contract)
+        self.assertEqual(
+            contract["production_recovery_authorization"]["contract_version"],
+            "phase-ii-embedded-sdk-production-recovery-authorization-v1",
+        )
+        self.assertFalse(contract["production_recovery_authorization"]["will_execute"])
 
     def test_runtime_surface_profile_context_prefers_parent_run_for_recovery_target(self):
         self.assertEqual(
@@ -757,6 +763,13 @@ class RuntimeSurfaceServiceTests(unittest.TestCase):
         self.assertEqual(
             profile["default_runtime_recovery"]["persistence_interface"]["contract_version"],
             "phase-ii-embedded-sdk-persistence-interface-v1",
+        )
+        self.assertEqual(
+            profile["default_runtime_recovery"]["production_recovery_authorization"]["contract_version"],
+            "phase-ii-embedded-sdk-production-recovery-authorization-v1",
+        )
+        self.assertFalse(
+            profile["default_runtime_recovery"]["production_recovery_authorization"]["will_execute"]
         )
         self.assertTrue(profile["default_runtime_recovery"]["expected_cross_process_candidate"])
         default_recovery_entrypoints = {
@@ -1886,6 +1899,11 @@ class RuntimeSurfaceServiceTests(unittest.TestCase):
         self.assertEqual(profile["run_recovery"]["contract_version"], "phase-ii-run-recovery-v1")
         self.assertFalse(profile["run_recovery"]["recoverable"])
         self.assertEqual(profile["run_recovery"]["loop_continuation"]["recovery_reason"], "descriptor_missing")
+        self.assertEqual(
+            profile["run_recovery"]["production_recovery_authorization"]["contract_version"],
+            "phase-ii-embedded-sdk-production-recovery-authorization-v1",
+        )
+        self.assertFalse(profile["run_recovery"]["production_recovery_authorization"]["will_execute"])
         self.assertEqual(profile["run_recovery"]["recovery_capabilities"]["recovery_mode"], "unavailable")
         self.assertFalse(profile["run_recovery"]["recovery_capabilities"]["requires_durable_workspace"])
         profile_recovery_entrypoints = {
@@ -2295,6 +2313,11 @@ class RuntimeSurfaceServiceTests(unittest.TestCase):
         self.assertEqual(run_recovery["contract_version"], "phase-ii-run-recovery-v1")
         self.assertFalse(run_recovery["recoverable"])
         self.assertEqual(run_recovery["loop_continuation"]["recovery_reason"], "descriptor_missing")
+        self.assertEqual(
+            run_recovery["production_recovery_authorization"]["contract_version"],
+            "phase-ii-embedded-sdk-production-recovery-authorization-v1",
+        )
+        self.assertFalse(run_recovery["production_recovery_authorization"]["will_execute"])
         self.assertEqual(run_recovery["recovery_capabilities"]["recovery_mode"], "unavailable")
         run_recovery_entrypoints = {
             (item["method"], item.get("mode") or ""): item

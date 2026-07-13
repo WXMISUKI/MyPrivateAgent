@@ -1413,6 +1413,15 @@ Provider-first 能力路线已补充到 `docs/roadmap/provider_capability_gap_as
 
 当前补充：
 
+- `Embedded SDK production recovery authorization slice` 已完成第一刀：
+  - persistence seam 新增 side-effect-free `embedded_sdk_production_recovery_authorization`
+  - Runtime Surface `default_runtime_recovery / run_recovery` 已暴露 compact authorization summary
+  - runtime smoke / quality gate / runtime contract gate / snapshot 已纳入授权 dry-run 覆盖
+- 该切片仍保持 fail-closed、opt-in、non-executable，尚未进入真实 production recovery execution authorization。
+- 下一步若继续推进 Embedded SDK hardening，必须继续沿 dry-run / read-model / governance coverage 前进；若要放开真实执行授权，必须新开 change。
+
+当前补充：
+
 - 文档入口产品化已完成：`docs/README.md`、`agent_runtime_control_plane_entrypoint.md` 与 `project_entrypoint_checklist.md` 现在共同作为当前控制面入口，覆盖 Provider、Domain Agent、Embedded SDK / Harness 和 Framework Adapter 四条接入路径。
 - Domain agent grounded-answer 证据链已经达到 repo-side minimal integration trial pack 完成线。后续除非真实调用方试接暴露具体缺口，否则不再默认沿 domain-agent evidence 继续拆小阶段。
 - 默认下一步应回到 Embedded SDK / Execution Loop 主干、framework adapter authoring checklist，或 Runtime Surface contract assembler，而不是继续增加本地 trial evidence 层。

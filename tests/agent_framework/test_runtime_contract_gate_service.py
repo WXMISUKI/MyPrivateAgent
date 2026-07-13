@@ -986,6 +986,10 @@ class RuntimeContractGateServiceTests(unittest.TestCase):
             artifact_schema["summary_required_fields"],
         )
         self.assertIn(
+            "embedded_sdk_production_recovery_authorization_coverage.authorization_smoke",
+            artifact_schema["summary_required_fields"],
+        )
+        self.assertIn(
             "worker_ownership_store_mode_coverage.mode_smoke",
             artifact_schema["summary_required_fields"],
         )

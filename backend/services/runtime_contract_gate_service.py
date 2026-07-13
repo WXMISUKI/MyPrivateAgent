@@ -28,6 +28,10 @@ RUNTIME_CONTRACT_SUMMARY_REQUIRED_FIELDS = (
     "embedded_sdk_persistence_coverage.persistence_smoke",
     "embedded_sdk_persistence_coverage.production_recovery_worker_ownership_gate_status",
     "embedded_sdk_persistence_coverage.production_recovery_worker_ownership_missing_sections",
+    "embedded_sdk_production_recovery_authorization_coverage",
+    "embedded_sdk_production_recovery_authorization_coverage.authorization_smoke",
+    "embedded_sdk_production_recovery_authorization_coverage.blocked_status",
+    "embedded_sdk_production_recovery_authorization_coverage.ready_status",
     "worker_ownership_store_mode_coverage",
     "worker_ownership_store_mode_coverage.mode_smoke",
     "worker_ownership_store_mode_coverage.enablement_config_factory_binding_smoke",
@@ -285,6 +289,13 @@ class RuntimeContractGateService:
         embedded_sdk_persistence_coverage = summary.get("embedded_sdk_persistence_coverage")
         if not isinstance(embedded_sdk_persistence_coverage, Mapping):
             embedded_sdk_persistence_coverage = fallback["embedded_sdk_persistence_coverage"]
+        embedded_sdk_production_recovery_authorization_coverage = summary.get(
+            "embedded_sdk_production_recovery_authorization_coverage"
+        )
+        if not isinstance(embedded_sdk_production_recovery_authorization_coverage, Mapping):
+            embedded_sdk_production_recovery_authorization_coverage = fallback[
+                "embedded_sdk_production_recovery_authorization_coverage"
+            ]
         worker_ownership_store_mode_coverage = summary.get("worker_ownership_store_mode_coverage")
         if not isinstance(worker_ownership_store_mode_coverage, Mapping):
             worker_ownership_store_mode_coverage = fallback["worker_ownership_store_mode_coverage"]
@@ -415,6 +426,11 @@ class RuntimeContractGateService:
             "embedded_sdk_persistence_coverage": self._normalize_embedded_sdk_persistence_coverage(
                 embedded_sdk_persistence_coverage
             ),
+            "embedded_sdk_production_recovery_authorization_coverage": (
+                self._normalize_embedded_sdk_production_recovery_authorization_coverage(
+                    embedded_sdk_production_recovery_authorization_coverage
+                )
+            ),
             "worker_ownership_store_mode_coverage": self._normalize_worker_ownership_store_mode_coverage(
                 worker_ownership_store_mode_coverage
             ),
@@ -538,6 +554,15 @@ class RuntimeContractGateService:
             (check for check in checks if str(check.get("name") or "").strip() == "embedded_sdk_persistence_posture"),
             {},
         )
+        production_recovery_authorization_check = next(
+            (
+                check
+                for check in checks
+                if str(check.get("name") or "").strip()
+                == "embedded_sdk_production_recovery_authorization"
+            ),
+            {},
+        )
         worker_ownership_store_mode_check = next(
             (check for check in checks if str(check.get("name") or "").strip() == "worker_ownership_store_mode"),
             {},
@@ -648,6 +673,11 @@ class RuntimeContractGateService:
             "embedded_sdk_persistence_coverage": self._build_embedded_sdk_persistence_coverage(
                 persistence_posture_check
             ),
+            "embedded_sdk_production_recovery_authorization_coverage": (
+                self._build_embedded_sdk_production_recovery_authorization_coverage(
+                    production_recovery_authorization_check
+                )
+            ),
             "worker_ownership_store_mode_coverage": self._build_worker_ownership_store_mode_coverage(
                 worker_ownership_store_mode_check
             ),
@@ -736,6 +766,9 @@ class RuntimeContractGateService:
             "tool_runtime_timeout_retry_coverage": self._build_tool_runtime_timeout_retry_coverage({}),
             "checkpoint_resume_cursor_coverage": self._build_checkpoint_resume_cursor_coverage({}),
             "embedded_sdk_persistence_coverage": self._build_embedded_sdk_persistence_coverage({}),
+            "embedded_sdk_production_recovery_authorization_coverage": (
+                self._build_embedded_sdk_production_recovery_authorization_coverage({})
+            ),
             "worker_ownership_store_mode_coverage": self._build_worker_ownership_store_mode_coverage({}),
             "recovery_retry_evidence_coverage": self._build_recovery_retry_evidence_coverage({}),
             "recovery_retry_scheduler_coverage": self._build_recovery_retry_scheduler_coverage({}),
@@ -2313,6 +2346,68 @@ class RuntimeContractGateService:
             "production_recovery_worker_ownership_gate_status": worker_ownership_gate_status,
             "production_recovery_worker_ownership_default_enabled": worker_ownership_default_enabled,
             "production_recovery_worker_ownership_missing_sections": list(worker_ownership_missing_sections),
+        }
+
+    def _build_embedded_sdk_production_recovery_authorization_coverage(
+        self,
+        check: Mapping[str, Any],
+    ) -> Dict[str, Any]:
+        return self._normalize_embedded_sdk_production_recovery_authorization_coverage({
+            "authorization_smoke": bool(check.get("ok")) if check else False,
+            "contract_version": str(check.get("contract_version") or ""),
+            "blocked_status": str(check.get("blocked_status") or ""),
+            "blocked_missing_sections": self._normalize_string_list(
+                check.get("blocked_missing_sections")
+            ),
+            "blocked_will_execute": check.get("blocked_will_execute"),
+            "ready_status": str(check.get("ready_status") or ""),
+            "ready_authorization_ready": check.get("ready_authorization_ready"),
+            "ready_authorization_source": str(check.get("ready_authorization_source") or ""),
+            "ready_missing_sections": self._normalize_string_list(
+                check.get("ready_missing_sections")
+            ),
+            "ready_will_execute": check.get("ready_will_execute"),
+            "ready_loader_handoff_status": str(check.get("ready_loader_handoff_status") or ""),
+            "ready_recovery_audit_status": str(check.get("ready_recovery_audit_status") or ""),
+        })
+
+    def _normalize_embedded_sdk_production_recovery_authorization_coverage(
+        self,
+        coverage: Mapping[str, Any],
+    ) -> Dict[str, Any]:
+        blocked_missing_sections = self._normalize_string_list(coverage.get("blocked_missing_sections"))
+        ready_missing_sections = self._normalize_string_list(coverage.get("ready_missing_sections"))
+        authorization_smoke = (
+            self._coerce_truthy_flag(coverage.get("authorization_smoke"))
+            and str(coverage.get("contract_version") or "")
+            == "phase-ii-embedded-sdk-production-recovery-authorization-v1"
+            and str(coverage.get("blocked_status") or "") == "blocked"
+            and "authorization_request_source" in blocked_missing_sections
+            and "worker_ownership_enablement_input" in blocked_missing_sections
+            and not self._coerce_truthy_flag(coverage.get("blocked_will_execute"))
+            and str(coverage.get("ready_status") or "") == "ready"
+            and self._coerce_truthy_flag(coverage.get("ready_authorization_ready"))
+            and str(coverage.get("ready_authorization_source") or "") == "runtime_config"
+            and not ready_missing_sections
+            and not self._coerce_truthy_flag(coverage.get("ready_will_execute"))
+            and str(coverage.get("ready_loader_handoff_status") or "") == "ready"
+            and str(coverage.get("ready_recovery_audit_status") or "") == "ready"
+        )
+        return {
+            "authorization_smoke": authorization_smoke,
+            "contract_version": str(coverage.get("contract_version") or ""),
+            "blocked_status": str(coverage.get("blocked_status") or ""),
+            "blocked_missing_sections": blocked_missing_sections,
+            "blocked_will_execute": self._coerce_truthy_flag(coverage.get("blocked_will_execute")),
+            "ready_status": str(coverage.get("ready_status") or ""),
+            "ready_authorization_ready": self._coerce_truthy_flag(
+                coverage.get("ready_authorization_ready")
+            ),
+            "ready_authorization_source": str(coverage.get("ready_authorization_source") or ""),
+            "ready_missing_sections": ready_missing_sections,
+            "ready_will_execute": self._coerce_truthy_flag(coverage.get("ready_will_execute")),
+            "ready_loader_handoff_status": str(coverage.get("ready_loader_handoff_status") or ""),
+            "ready_recovery_audit_status": str(coverage.get("ready_recovery_audit_status") or ""),
         }
 
     def _build_worker_ownership_store_mode_coverage(self, check: Mapping[str, Any]) -> Dict[str, Any]:

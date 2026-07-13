@@ -4,8 +4,10 @@
 
 from .base import ExecutionAdapter
 from .simple_agent import SimpleAgentAdapter
+from .tool_agent import ToolAgentAdapter
 
 __all__ = [
     "ExecutionAdapter",
     "SimpleAgentAdapter",
+    "ToolAgentAdapter",
 ]

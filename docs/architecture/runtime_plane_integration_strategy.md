@@ -205,9 +205,11 @@ class ExecutionResult:
 **当前进度**：
 
 - `simple_agent` 最小适配器已落地
+- `tool_agent` 最小适配器已落地
 - ExecutionRequest / ExecutionEvent / ExecutionResult / AgentManifest 已落地
 - `simple_agent` 的最小单测已通过
-- 当前仍未进入 tool / approval / multi-agent 复杂切片
+- `tool_agent` 的最小单测已通过
+- 当前仍未进入 approval / multi-agent 复杂切片
 
 | 竖切 | 验证什么 | 框架选择 |
 |---|---|---|

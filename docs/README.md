@@ -13,6 +13,8 @@
 | 看阶段回顾模板 | [Runtime Plane Stage Review Protocol](./roadmap/runtime_plane_stage_review_protocol.md) | 每完成一个 stage 都按同一模板复盘，防止偏离计划 |
 | 看 Stage 0 回顾 | [Runtime Plane Stage 0 Review](./roadmap/runtime_plane_stage_0_review.md) | 已完成的冻结与定位收口回顾样本 |
 | 看 Stage 1 首切片 | [Runtime Plane Stage 1 Slice Selection](./roadmap/runtime_plane_stage_1_slice_selection.md) | Stage 1 先做 simple_agent，验证 envelope 和 adapter boundary |
+| 看 Stage 1 下一刀 | [Runtime Plane Stage 1 Tool Agent Selection](./roadmap/runtime_plane_stage_1_tool_agent_selection.md) | Stage 1 第二个切片先做受控 tool_agent，再考虑 approval_agent |
+| 看 Stage 1 Tool 回顾 | [Runtime Plane Stage 1 Tool Agent Review](./roadmap/runtime_plane_stage_1_tool_agent_review.md) | tool_agent 的最小受控工具闭环已完成并验证 |
 | 查运行时 contract | [Runtime Contracts](./architecture/runtime_contracts.md) | Runtime Surface、Provider、Query Control、SDK、ToolRuntime 等 contract 以代码和 canonical spec 为真源 |
 | 选择扩展路径 | [Extension Points](./architecture/extension_points.md) | 新能力先选 seam，再开 OpenSpec；不要直接改默认 chat 或绕过治理层 |
 | 接入外接 Provider | [Capability Runtime Registry](./guides/capability_runtime_registry.md) | 走 provider onboarding catalog + service-provider management + UI surface + acceptance gate；accepted 只代表显式 managed-provider consumption |

@@ -136,6 +136,9 @@ class EmbeddedRuntimeFactory:
             worker_ownership_production_gate=dict(
                 worker_ownership_operational_readiness.get("production_gate") or {}
             ),
+            worker_ownership_production_enablement_runtime_config_consumer=(
+                production_enablement_runtime_config_consumer
+            ),
         )
         durable = bool(persistence_interface.get("durable"))
         fallback_active = bool(persistence_interface.get("fallback_active"))

@@ -304,6 +304,32 @@ class RuntimeContractSmokeTests(unittest.TestCase):
         self.assertTrue(result["checkpoint_resume_cursor_policy_ready"])
         self.assertFalse(result["registry_checkpoint_policy_authorization_source"])
         self.assertFalse(result["production_recovery_default_enabled"])
+        self.assertEqual(
+            result["production_recovery_authorization_contract_version"],
+            "phase-ii-embedded-sdk-production-recovery-authorization-v1",
+        )
+        self.assertEqual(result["production_recovery_authorization_status"], "blocked")
+        self.assertFalse(result["production_recovery_authorization_will_execute"])
+
+    def test_embedded_sdk_production_recovery_authorization_check_covers_blocked_and_ready(self):
+        result = runtime_contract_smoke._run_embedded_sdk_production_recovery_authorization_contract_check()
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(
+            result["contract_version"],
+            "phase-ii-embedded-sdk-production-recovery-authorization-v1",
+        )
+        self.assertEqual(result["blocked_status"], "blocked")
+        self.assertIn("authorization_request_source", result["blocked_missing_sections"])
+        self.assertIn("worker_ownership_enablement_input", result["blocked_missing_sections"])
+        self.assertFalse(result["blocked_will_execute"])
+        self.assertEqual(result["ready_status"], "ready")
+        self.assertTrue(result["ready_authorization_ready"])
+        self.assertEqual(result["ready_authorization_source"], "runtime_config")
+        self.assertEqual(result["ready_missing_sections"], [])
+        self.assertFalse(result["ready_will_execute"])
+        self.assertEqual(result["ready_loader_handoff_status"], "ready")
+        self.assertEqual(result["ready_recovery_audit_status"], "ready")
 
     def test_worker_ownership_store_mode_check_covers_default_strict_and_fallback_modes(self):
         result = runtime_contract_smoke._run_worker_ownership_store_mode_contract_check()
@@ -1018,6 +1044,7 @@ class RuntimeContractSmokeTests(unittest.TestCase):
         self.assertEqual(payload["checks"][4]["name"], "durable_checkpoint_resume_cursor")
         checks_by_name = {check["name"]: check for check in payload["checks"]}
         self.assertIn("embedded_sdk_persistence_posture", checks_by_name)
+        self.assertIn("embedded_sdk_production_recovery_authorization", checks_by_name)
         self.assertIn("runtime_surface_run_recovery", checks_by_name)
         self.assertIn("approval_lifecycle_recovery_alignment", checks_by_name)
         self.assertIn("runtime_approved_tool_execution_bridge", checks_by_name)
@@ -1037,6 +1064,7 @@ class RuntimeContractSmokeTests(unittest.TestCase):
             "embedded_sdk_durable_recovery",
             "durable_checkpoint_resume_cursor",
             "embedded_sdk_persistence_posture",
+            "embedded_sdk_production_recovery_authorization",
             "worker_ownership_store_mode",
             "recovery_retry_evidence",
             "recovery_retry_scheduler",
@@ -1056,6 +1084,10 @@ class RuntimeContractSmokeTests(unittest.TestCase):
         self.assertGreaterEqual(checks_by_name["embedded_sdk_event_payloads"]["checked_event_count"], 1)
         self.assertIn("approval_replayed", checks_by_name["embedded_sdk_event_payloads"]["observed_status_kinds"])
         self.assertIn("approval_ignored", checks_by_name["embedded_sdk_event_payloads"]["observed_status_kinds"])
+        self.assertEqual(
+            checks_by_name["embedded_sdk_production_recovery_authorization"]["ready_authorization_source"],
+            "runtime_config",
+        )
         self.assertEqual(
             checks_by_name["approval_lifecycle_recovery_alignment"]["replayed_submission_status"],
             "replayed",

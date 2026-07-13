@@ -251,6 +251,12 @@ def _build_complete_profile():
                         "vendor_lock_semantics",
                     ],
                 },
+                "embedded_sdk_production_recovery_authorization_coverage": {
+                    "authorization_smoke": True,
+                    "contract_version": "phase-ii-embedded-sdk-production-recovery-authorization-v1",
+                    "blocked_status": "blocked",
+                    "ready_status": "ready",
+                },
                 "worker_ownership_store_mode_coverage": {
                     "mode_smoke": True,
                     "enablement_config_factory_binding_smoke": True,
@@ -1176,7 +1182,7 @@ class RuntimeContractSnapshotServiceTests(unittest.TestCase):
         by_name = {item["contract_name"]: item for item in snapshot["contracts"]}
         self.assertEqual(snapshot["overall_status"], "degraded")
         self.assertEqual(snapshot["missing_contract_count"], 1)
-        self.assertEqual(snapshot["missing_field_count"], 107)
+        self.assertEqual(snapshot["missing_field_count"], 111)
         self.assertEqual(by_name["skill_contract"]["status"], "missing")
         self.assertEqual(
             by_name["command_contract"]["missing_fields"],
@@ -1212,6 +1218,10 @@ class RuntimeContractSnapshotServiceTests(unittest.TestCase):
                 "runtime_contract_summary.embedded_sdk_persistence_coverage.persistence_smoke",
                 "runtime_contract_summary.embedded_sdk_persistence_coverage.production_recovery_worker_ownership_gate_status",
                 "runtime_contract_summary.embedded_sdk_persistence_coverage.production_recovery_worker_ownership_missing_sections",
+                "runtime_contract_summary.embedded_sdk_production_recovery_authorization_coverage",
+                "runtime_contract_summary.embedded_sdk_production_recovery_authorization_coverage.authorization_smoke",
+                "runtime_contract_summary.embedded_sdk_production_recovery_authorization_coverage.blocked_status",
+                "runtime_contract_summary.embedded_sdk_production_recovery_authorization_coverage.ready_status",
                 "runtime_contract_summary.worker_ownership_store_mode_coverage",
                 "runtime_contract_summary.worker_ownership_store_mode_coverage.mode_smoke",
                 "runtime_contract_summary.worker_ownership_store_mode_coverage.enablement_config_factory_binding_smoke",

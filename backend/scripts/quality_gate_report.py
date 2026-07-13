@@ -35,6 +35,10 @@ RUNTIME_CONTRACT_SUMMARY_REQUIRED_FIELDS = (
     "embedded_sdk_persistence_coverage.persistence_smoke",
     "embedded_sdk_persistence_coverage.production_recovery_worker_ownership_gate_status",
     "embedded_sdk_persistence_coverage.production_recovery_worker_ownership_missing_sections",
+    "embedded_sdk_production_recovery_authorization_coverage",
+    "embedded_sdk_production_recovery_authorization_coverage.authorization_smoke",
+    "embedded_sdk_production_recovery_authorization_coverage.blocked_status",
+    "embedded_sdk_production_recovery_authorization_coverage.ready_status",
     "worker_ownership_store_mode_coverage",
     "worker_ownership_store_mode_coverage.mode_smoke",
     "worker_ownership_store_mode_coverage.enablement_config_factory_binding_smoke",
@@ -322,6 +326,15 @@ def _build_runtime_contract_summary(checks: list[dict[str, Any]]) -> dict[str, A
         (check for check in checks if str(check.get("name") or "").strip() == "child_executor_sandbox_backend"),
         {},
     )
+    production_recovery_authorization_check = next(
+        (
+            check
+            for check in checks
+            if str(check.get("name") or "").strip()
+            == "embedded_sdk_production_recovery_authorization"
+        ),
+        {},
+    )
     return {
         "overall_status": "healthy" if not failed_checks and checks else "degraded",
         "check_count": len(checks),
@@ -343,6 +356,11 @@ def _build_runtime_contract_summary(checks: list[dict[str, Any]]) -> dict[str, A
         ),
         "checkpoint_resume_cursor_coverage": _build_checkpoint_resume_cursor_coverage(checkpoint_cursor_check),
         "embedded_sdk_persistence_coverage": _build_embedded_sdk_persistence_coverage(persistence_posture_check),
+        "embedded_sdk_production_recovery_authorization_coverage": (
+            _build_embedded_sdk_production_recovery_authorization_coverage(
+                production_recovery_authorization_check
+            )
+        ),
         "worker_ownership_store_mode_coverage": _build_worker_ownership_store_mode_coverage(
             worker_ownership_store_mode_check
         ),
@@ -648,6 +666,43 @@ def _build_embedded_sdk_persistence_coverage(check: dict[str, Any]) -> dict[str,
         "production_recovery_worker_ownership_gate_status": worker_ownership_gate_status,
         "production_recovery_worker_ownership_default_enabled": worker_ownership_default_enabled,
         "production_recovery_worker_ownership_missing_sections": list(worker_ownership_missing_sections),
+    }
+
+
+def _build_embedded_sdk_production_recovery_authorization_coverage(
+    check: dict[str, Any],
+) -> dict[str, Any]:
+    blocked_missing_sections = _normalize_string_list(check.get("blocked_missing_sections"))
+    ready_missing_sections = _normalize_string_list(check.get("ready_missing_sections"))
+    authorization_smoke = (
+        bool(check.get("ok"))
+        and str(check.get("contract_version") or "").strip()
+        == "phase-ii-embedded-sdk-production-recovery-authorization-v1"
+        and str(check.get("blocked_status") or "").strip() == "blocked"
+        and "authorization_request_source" in blocked_missing_sections
+        and "worker_ownership_enablement_input" in blocked_missing_sections
+        and not bool(check.get("blocked_will_execute"))
+        and str(check.get("ready_status") or "").strip() == "ready"
+        and bool(check.get("ready_authorization_ready"))
+        and str(check.get("ready_authorization_source") or "").strip() == "runtime_config"
+        and not ready_missing_sections
+        and not bool(check.get("ready_will_execute"))
+        and str(check.get("ready_loader_handoff_status") or "").strip() == "ready"
+        and str(check.get("ready_recovery_audit_status") or "").strip() == "ready"
+    )
+    return {
+        "authorization_smoke": authorization_smoke,
+        "contract_version": str(check.get("contract_version") or "").strip(),
+        "blocked_status": str(check.get("blocked_status") or "").strip(),
+        "blocked_missing_sections": blocked_missing_sections,
+        "blocked_will_execute": bool(check.get("blocked_will_execute")),
+        "ready_status": str(check.get("ready_status") or "").strip(),
+        "ready_authorization_ready": bool(check.get("ready_authorization_ready")),
+        "ready_authorization_source": str(check.get("ready_authorization_source") or "").strip(),
+        "ready_missing_sections": ready_missing_sections,
+        "ready_will_execute": bool(check.get("ready_will_execute")),
+        "ready_loader_handoff_status": str(check.get("ready_loader_handoff_status") or "").strip(),
+        "ready_recovery_audit_status": str(check.get("ready_recovery_audit_status") or "").strip(),
     }
 
 

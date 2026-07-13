@@ -8,6 +8,9 @@ from .continuation_lifecycle import build_continuation_descriptor_lifecycle_cont
 from .loader_handoff import build_durable_loader_execution_handoff_policy_contract
 from .production_recovery_policy import build_production_recovery_registry_checkpoint_policy_contract
 from .recovery_audit_readiness import build_recovery_audit_production_readiness_contract
+from .worker_ownership import (
+    build_worker_ownership_production_enablement_runtime_config_consumer_contract,
+)
 
 
 EMBEDDED_WORKSPACE_STATE_CONTRACT_VERSION = "phase-ii-durable-workspace-state-contract-v1"
@@ -29,6 +32,9 @@ EMBEDDED_WORKSPACE_RUNTIME_ONLY_STATE_KINDS = [
 
 EMBEDDED_SDK_PERSISTENCE_INTERFACE_VERSION = "phase-ii-embedded-sdk-persistence-interface-v1"
 EMBEDDED_SDK_PRODUCTION_RECOVERY_GATE_VERSION = "phase-ii-durable-workspace-production-recovery-gate-v1"
+EMBEDDED_SDK_PRODUCTION_RECOVERY_AUTHORIZATION_VERSION = (
+    "phase-ii-embedded-sdk-production-recovery-authorization-v1"
+)
 EMBEDDED_SDK_PERSISTENCE_POSTURE_MEMORY_PREVIEW = "memory_preview"
 EMBEDDED_SDK_PERSISTENCE_POSTURE_DURABLE_READY = "durable_ready"
 EMBEDDED_SDK_PERSISTENCE_POSTURE_DURABLE_DEGRADED = "durable_degraded"
@@ -56,6 +62,28 @@ def _build_production_recovery_gate_section(
         "missing_reason": "" if ready else str(missing_reason or "").strip(),
         "evidence": dict(evidence or {}),
     }
+
+
+def _normalize_text(value: Any) -> str:
+    return str(value or "").strip()
+
+
+def _normalize_string_list(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [str(item).strip() for item in value if str(item or "").strip()]
+
+
+def _index_gate_sections(gate: Dict[str, Any] | None) -> Dict[str, Dict[str, Any]]:
+    indexed: Dict[str, Dict[str, Any]] = {}
+    for section in (gate or {}).get("sections") or []:
+        if not isinstance(section, dict):
+            continue
+        name = _normalize_text(section.get("name"))
+        if not name:
+            continue
+        indexed[name] = dict(section)
+    return indexed
 
 
 def build_durable_workspace_production_recovery_gate_contract(
@@ -223,10 +251,148 @@ def build_durable_workspace_production_recovery_gate_contract(
     }
 
 
+def build_embedded_sdk_production_recovery_authorization_contract(
+    *,
+    backend_description: Dict[str, Any] | None = None,
+    production_recovery_gate: Dict[str, Any] | None = None,
+    worker_ownership_production_enablement_runtime_config_consumer: Dict[str, Any] | None = None,
+) -> Dict[str, Any]:
+    description = dict(backend_description or {})
+    gate = dict(
+        production_recovery_gate
+        or build_durable_workspace_production_recovery_gate_contract(
+            backend_description=description,
+        )
+    )
+    gate_sections = _index_gate_sections(gate)
+    worker_gate_section = dict(gate_sections.get("worker_ownership_production_gate") or {})
+    handoff_section = dict(gate_sections.get("loader_execution_handoff_policy") or {})
+    audit_section = dict(gate_sections.get("recovery_audit_operation_history") or {})
+    worker_gate_evidence = dict(worker_gate_section.get("evidence") or {})
+    handoff_evidence = dict(handoff_section.get("evidence") or {})
+    audit_evidence = dict(audit_section.get("evidence") or {})
+    loader_handoff_policy = dict(
+        handoff_evidence.get("handoff_policy")
+        or build_durable_loader_execution_handoff_policy_contract()
+    )
+    recovery_audit = dict(
+        audit_evidence.get("audit_readiness")
+        or build_recovery_audit_production_readiness_contract()
+    )
+    enablement_consumer = dict(
+        worker_ownership_production_enablement_runtime_config_consumer
+        or build_worker_ownership_production_enablement_runtime_config_consumer_contract()
+    )
+    enablement_input = dict(enablement_consumer.get("enablement_input_source") or {})
+    gate_missing_sections = _normalize_string_list(gate.get("missing_sections"))
+    worker_gate_missing_sections = _normalize_string_list(
+        worker_gate_evidence.get("worker_ownership_missing_sections")
+    )
+    enablement_missing_sections = _normalize_string_list(enablement_consumer.get("missing_sections"))
+    enablement_input_missing_sections = _normalize_string_list(enablement_input.get("missing_sections"))
+    gate_ready = _normalize_text(gate.get("overall_status")) == "ready"
+    worker_gate_ready = bool(worker_gate_section.get("ready"))
+    handoff_ready = bool(handoff_section.get("ready"))
+    audit_ready = bool(audit_section.get("ready"))
+    enablement_consumer_ready = _normalize_text(enablement_consumer.get("overall_status")) == "ready"
+    enablement_input_ready = _normalize_text(enablement_input.get("overall_status")) == "ready"
+    authorization_source = _normalize_text(enablement_consumer.get("source_kind"))
+    if not authorization_source and enablement_input_ready:
+        authorization_source = _normalize_text(enablement_input.get("input_source_kind"))
+    missing_sections: list[str] = []
+    if not gate_ready:
+        missing_sections.append("production_recovery_gate")
+    if not worker_gate_ready:
+        missing_sections.append("worker_ownership_production_gate")
+    if not handoff_ready:
+        missing_sections.append("loader_execution_handoff_policy")
+    if not audit_ready:
+        missing_sections.append("recovery_audit_operation_history")
+    if not enablement_consumer_ready or not enablement_input_ready:
+        missing_sections.append("worker_ownership_enablement_input")
+    if not authorization_source:
+        missing_sections.append("authorization_request_source")
+    overall_status = "ready" if not missing_sections else "blocked"
+    return {
+        "contract_version": EMBEDDED_SDK_PRODUCTION_RECOVERY_AUTHORIZATION_VERSION,
+        "overall_status": overall_status,
+        "ready": overall_status == "ready",
+        "authorization_ready": overall_status == "ready",
+        "authorization_source": authorization_source,
+        "authorization_request_id": _normalize_text(enablement_consumer.get("config_id"))
+        or _normalize_text(enablement_input.get("request_id")),
+        "requested_by": _normalize_text(enablement_consumer.get("approved_by"))
+        or _normalize_text(enablement_input.get("requested_by")),
+        "requested_at": _normalize_text(enablement_consumer.get("approved_at"))
+        or _normalize_text(enablement_input.get("requested_at")),
+        "target_store_mode": _normalize_text(enablement_consumer.get("target_store_mode"))
+        or _normalize_text(enablement_input.get("target_store_mode")),
+        "target_backend": _normalize_text(enablement_consumer.get("target_backend")),
+        "lock_adapter_kind": _normalize_text(enablement_consumer.get("lock_adapter_kind")),
+        "will_execute": False,
+        "missing_sections": list(dict.fromkeys(missing_sections)),
+        "production_recovery_gate": {
+            "contract_version": _normalize_text(gate.get("contract_version")),
+            "overall_status": _normalize_text(gate.get("overall_status")) or "blocked",
+            "missing_sections": gate_missing_sections,
+        },
+        "worker_ownership_production_gate": {
+            "overall_status": _normalize_text(worker_gate_section.get("status")) or "blocked",
+            "ready": worker_gate_ready,
+            "contract_version": _normalize_text(
+                worker_gate_evidence.get("worker_ownership_gate_contract_version")
+            ),
+            "missing_sections": worker_gate_missing_sections,
+        },
+        "worker_ownership_enablement_input": {
+            "contract_version": _normalize_text(enablement_consumer.get("contract_version")),
+            "overall_status": _normalize_text(enablement_consumer.get("overall_status")) or "blocked",
+            "source_kind": _normalize_text(enablement_consumer.get("source_kind")),
+            "config_id": _normalize_text(enablement_consumer.get("config_id")),
+            "approved_by": _normalize_text(enablement_consumer.get("approved_by")),
+            "approved_at": _normalize_text(enablement_consumer.get("approved_at")),
+            "missing_sections": enablement_missing_sections,
+            "enablement_input_source_status": _normalize_text(enablement_input.get("overall_status"))
+            or "blocked",
+            "enablement_input_source_kind": _normalize_text(enablement_input.get("input_source_kind")),
+            "enablement_input_source_missing_sections": enablement_input_missing_sections,
+        },
+        "loader_execution_handoff": {
+            "overall_status": _normalize_text(handoff_section.get("status")) or "blocked",
+            "ready": handoff_ready,
+            "policy_contract_version": _normalize_text(loader_handoff_policy.get("contract_version")),
+            "policy_status": _normalize_text(loader_handoff_policy.get("status")) or "blocked",
+            "blocked_reason": _normalize_text(loader_handoff_policy.get("blocked_reason")),
+            "will_execute": bool(loader_handoff_policy.get("will_execute")),
+        },
+        "recovery_audit": {
+            "overall_status": _normalize_text(audit_section.get("status")) or "blocked",
+            "ready": audit_ready,
+            "contract_version": _normalize_text(recovery_audit.get("contract_version")),
+            "audit_readiness_status": _normalize_text(recovery_audit.get("overall_status"))
+            or "blocked",
+            "authorization_source": bool(recovery_audit.get("authorization_source")),
+        },
+        "next_allowed_action": (
+            "prepare_explicit_production_recovery_authorization_review"
+            if overall_status == "ready"
+            else "complete_production_recovery_gate_and_caller_owned_authorization_evidence"
+        ),
+        "non_goals": [
+            "no_recovery_execution",
+            "no_approval_submission",
+            "no_worker_ownership_claim",
+            "no_background_worker_start",
+            "no_scheduler_start",
+        ],
+    }
+
+
 def build_embedded_sdk_persistence_interface(
     backend_description: Dict[str, Any] | None,
     *,
     worker_ownership_production_gate: Dict[str, Any] | None = None,
+    worker_ownership_production_enablement_runtime_config_consumer: Dict[str, Any] | None = None,
 ) -> Dict[str, Any]:
     description = dict(backend_description or {})
     durable = bool(description.get("durable"))
@@ -255,6 +421,13 @@ def build_embedded_sdk_persistence_interface(
         loader_execution_handoff_policy_ready=True,
         production_default_enabled=False,
     )
+    production_recovery_authorization = build_embedded_sdk_production_recovery_authorization_contract(
+        backend_description=description,
+        production_recovery_gate=production_recovery_gate,
+        worker_ownership_production_enablement_runtime_config_consumer=(
+            worker_ownership_production_enablement_runtime_config_consumer
+        ),
+    )
     return {
         "contract_version": EMBEDDED_SDK_PERSISTENCE_INTERFACE_VERSION,
         "persistence_posture": persistence_posture,
@@ -268,6 +441,7 @@ def build_embedded_sdk_persistence_interface(
         "cross_process_block_reason": cross_process_block_reason,
         "state_contract": dict(description.get("state_contract") or {}),
         "production_recovery_gate": production_recovery_gate,
+        "production_recovery_authorization": production_recovery_authorization,
     }
 
 

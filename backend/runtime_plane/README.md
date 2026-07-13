@@ -9,7 +9,7 @@
 | 模块 | 职责 |
 |---|---|
 | contracts | ExecutionAdapter 标准合同（ExecutionRequest/ExecutionEvent/ExecutionResult/AgentManifest） |
-| adapters | 运行层适配器（首个 slice 为 `simple_agent`，后续再扩展外部框架适配） |
+| adapters | 运行层适配器（当前已落地 `simple_agent` 与 `tool_agent`，后续再扩展外部框架适配） |
 | gateway | Intent Router（意图识别路由）、Runtime Selector（运行时选择器） |
 
 ## 约束
@@ -27,5 +27,6 @@
 
 ## 当前 Stage 1 切片
 
-- `simple_agent`：最小运行层切片，先验证标准 envelope 和 adapter boundary
-- 目标是先把 request / event / result 跑通，再考虑 tool / approval / multi-agent
+- `simple_agent`：最小运行层切片，已验证标准 envelope 和 adapter boundary
+- `tool_agent`：第二个最小切片，已验证单工具调用闭环和 normalized tool envelope
+- 下一步才考虑 `approval_agent`，仍然必须通过 adapter boundary
