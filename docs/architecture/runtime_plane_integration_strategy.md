@@ -207,11 +207,13 @@ class ExecutionResult:
 - `simple_agent` 最小适配器已落地
 - `tool_agent` 最小适配器已落地
 - `approval_agent` 最小适配器已落地
+- `governance_projection` 只读治理投影已落地
 - ExecutionRequest / ExecutionEvent / ExecutionResult / AgentManifest 已落地
 - `simple_agent` 的最小单测已通过
 - `tool_agent` 的最小单测已通过
 - `approval_agent` 的最小单测已通过
-- 当前 Stage 1 三条 MVP 竖切已经闭合，但仍未进入真实审批提交、审批恢复、multi-agent 或 managed runtime 复杂切片
+- `governance_projection` 聚焦单测已通过
+- 当前 Stage 1 三条 MVP 竖切已经闭合，并已具备只读治理摘要；但仍未进入真实 trace persistence、审批提交、审批恢复、Runtime Surface API、multi-agent 或 managed runtime 复杂切片
 
 | 竖切 | 验证什么 | 框架选择 |
 |---|---|---|
@@ -234,6 +236,12 @@ class ExecutionResult:
 ### Stage 2：治理最小接入（3-4 周）
 
 **目标**：治理层能观察运行层，高风险操作走审批。
+
+**当前进度**：
+
+- Stage 2 前置第一刀已完成：Stage 1 adapter envelope 现在会返回 top-level `governance_projection`
+- 该 projection 只表达只读治理摘要，不写 trace/audit，不提交审批，不改变默认 `/api/chat`
+- 下一刀若继续治理接入，应优先评估是否接入 Runtime Surface 只读 profile 或 Query Control trace adapter，而不是直接写生产 trace
 
 | 阶段 | 治理接入深度 | 目标 |
 |---|---|---|

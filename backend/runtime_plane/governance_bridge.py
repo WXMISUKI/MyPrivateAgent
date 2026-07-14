@@ -11,7 +11,75 @@ import logging
 import uuid
 from typing import Any
 
+from .contracts import AgentManifest, ExecutionEvent, ExecutionRequest, ExecutionResult
+
 logger = logging.getLogger(__name__)
+
+
+def _clean_str(value: Any) -> str:
+    return str(value or "").strip()
+
+
+def _stage_counts(events: list[ExecutionEvent]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for event in events:
+        stage = _clean_str(event.stage) or "unknown"
+        counts[stage] = counts.get(stage, 0) + 1
+    return counts
+
+
+def _find_approval_event(events: list[ExecutionEvent]) -> ExecutionEvent | None:
+    for event in events:
+        if _clean_str(event.type).lower() == "approval_required":
+            return event
+        if _clean_str(event.stage).lower() == "approval":
+            return event
+    return None
+
+
+def build_runtime_plane_governance_projection(
+    *,
+    request: ExecutionRequest,
+    manifest: AgentManifest,
+    events: list[ExecutionEvent],
+    result: ExecutionResult,
+    adapter_id: str,
+) -> dict[str, Any]:
+    """Build a compact, side-effect-free governance read model.
+
+    This projection is intentionally not a trace writer. It gives future
+    governance surfaces one stable summary of runtime-plane adapter envelopes.
+    """
+    approval_event = _find_approval_event(events)
+    approval_metadata = dict(approval_event.metadata) if approval_event else {}
+    approval_required = bool(approval_event) or result.status == "approval_pending"
+    approval_tool_name = _clean_str(approval_metadata.get("tool_name")) or None
+    tool_call_count = len(result.tool_calls)
+
+    return {
+        "read_model": "runtime_plane_governance_projection",
+        "contract_version": "runtime-plane-governance-read-model-v1",
+        "request_id": request.request_id,
+        "run_id": events[0].run_id if events else request.request_id,
+        "agent_id": request.agent_id,
+        "manifest_agent_id": manifest.agent_id,
+        "runtime": request.runtime,
+        "adapter_id": adapter_id,
+        "result_status": result.status,
+        "trace_ref": result.trace_ref,
+        "event_count": len(events),
+        "stage_counts": _stage_counts(events),
+        "tool_call_count": tool_call_count,
+        "approval_required": approval_required,
+        "approval_tool_name": approval_tool_name,
+        "approval_status": "required" if approval_required else "not_required",
+        "boundaries": {
+            "read_model_only": True,
+            "will_persist_trace": False,
+            "will_submit_approval": False,
+            "default_chat_changed": False,
+        },
+    }
 
 
 class GovernanceBridge:
@@ -153,3 +221,21 @@ class GovernanceBridge:
             "node_name": node_name,
             "data": {"result_keys": list(result.keys()) if result else []},
         })
+
+    def project_execution_envelope(
+        self,
+        *,
+        request: ExecutionRequest,
+        manifest: AgentManifest,
+        events: list[ExecutionEvent],
+        result: ExecutionResult,
+        adapter_id: str,
+    ) -> dict[str, Any]:
+        """Return the read-only governance projection for an adapter envelope."""
+        return build_runtime_plane_governance_projection(
+            request=request,
+            manifest=manifest,
+            events=events,
+            result=result,
+            adapter_id=adapter_id,
+        )

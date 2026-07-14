@@ -9,7 +9,8 @@
 | 模块 | 职责 |
 |---|---|
 | contracts | ExecutionAdapter 标准合同（ExecutionRequest/ExecutionEvent/ExecutionResult/AgentManifest） |
-| adapters | 运行层适配器（当前已落地 `simple_agent` 与 `tool_agent`，后续再扩展外部框架适配） |
+| adapters | 运行层适配器（当前已落地 `simple_agent`、`tool_agent` 与 `approval_agent`，后续再扩展外部框架适配） |
+| governance_bridge | 运行层 envelope 到治理可读摘要的只读桥接 |
 | gateway | Intent Router（意图识别路由）、Runtime Selector（运行时选择器） |
 
 ## 约束
@@ -29,4 +30,5 @@
 
 - `simple_agent`：最小运行层切片，已验证标准 envelope 和 adapter boundary
 - `tool_agent`：第二个最小切片，已验证单工具调用闭环和 normalized tool envelope
-- 下一步才考虑 `approval_agent`，仍然必须通过 adapter boundary
+- `approval_agent`：第三个最小切片，已验证高风险工具意图归一化为 `approval_pending` 且不执行 handler
+- `governance_projection`：当前三个 adapter 均会返回只读治理投影；该投影不写 trace/audit，不提交审批，不改变默认 `/api/chat`

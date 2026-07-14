@@ -14,6 +14,7 @@ from typing import Any, Callable, Iterable
 
 from ..agents import Agent
 from ..contracts import AgentManifest, ExecutionEvent, ExecutionRequest, ExecutionResult
+from ..governance_bridge import build_runtime_plane_governance_projection
 from ..tools import ToolDef
 from .base import ExecutionAdapter
 
@@ -210,11 +211,19 @@ class ApprovalAgentAdapter(ExecutionAdapter):
     def execute(self, request: ExecutionRequest) -> dict[str, Any]:
         events = list(self.stream_events(request))
         result = self.translate_output(request, self._last_state, events)
+        manifest = self.manifest()
         return {
             "request": request.to_dict(),
-            "manifest": self.manifest().to_dict(),
+            "manifest": manifest.to_dict(),
             "events": [event.to_dict() for event in events],
             "result": result.to_dict(),
+            "governance_projection": build_runtime_plane_governance_projection(
+                request=request,
+                manifest=manifest,
+                events=events,
+                result=result,
+                adapter_id=self.adapter_id,
+            ),
             "state": dict(self._last_state),
         }
 

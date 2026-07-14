@@ -184,6 +184,11 @@ The system MUST require a written review after each runtime-plane stage so the t
 - **THEN** the team MUST pause and return to the freeze-and-align stage
 - **AND** the next task MUST be to tighten the adapter boundary or the stage definition
 
+#### Scenario: Post-Stage-1 governance read model is added
+- **WHEN** Stage 1 adapter envelopes are projected for governance visibility
+- **THEN** the projection MUST remain side-effect-free and read-only
+- **AND** the review MUST state that trace persistence, approval submission, Runtime Surface API wiring, and default chat changes are still out of scope
+
 ## Non-Goals
 
 - This spec does not implement any specific framework integration (LangGraph, AgentRun, ADK, etc.).
