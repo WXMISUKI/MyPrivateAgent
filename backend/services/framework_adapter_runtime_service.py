@@ -423,6 +423,70 @@ class FrameworkAdapterRuntimeService:
             "boundaries": self._langgraph_controlled_pilot_smoke_boundaries(),
         }
 
+    def build_langgraph_smoke_governance_projection(
+        self,
+        *,
+        smoke_report: Mapping[str, Any],
+    ) -> Dict[str, Any]:
+        report = dict(smoke_report or {})
+        pilot_result = report.get("pilot_result") if isinstance(report.get("pilot_result"), Mapping) else {}
+        acceptance = report.get("acceptance") if isinstance(report.get("acceptance"), Mapping) else {}
+        readiness = report.get("readiness") if isinstance(report.get("readiness"), Mapping) else {}
+        events = list(pilot_result.get("events") or []) if isinstance(pilot_result, Mapping) else []
+        stage_counts = self._count_framework_adapter_event_stages(events)
+        snapshot_ref = pilot_result.get("snapshot_ref") if isinstance(pilot_result, Mapping) else None
+        trace_ref = ""
+        if isinstance(snapshot_ref, Mapping):
+            trace_ref = str(snapshot_ref.get("snapshot_id") or snapshot_ref.get("event_type") or "").strip()
+        run_id = str(pilot_result.get("run_id") or "").strip()
+        if not run_id:
+            run_id = str(readiness.get("pilot_target", {}).get("run_kind") or "langgraph-controlled-pilot-smoke").strip()
+        smoke_status = str(report.get("smoke_status") or "").strip() or "unknown"
+        result_status = self._map_langgraph_smoke_projection_status(smoke_status)
+        error = acceptance.get("error") if isinstance(acceptance.get("error"), Mapping) else {}
+        return {
+            "read_model": "runtime_plane_governance_projection",
+            "contract_version": "runtime-plane-governance-read-model-v1",
+            "projection_source": "langgraph_controlled_pilot_smoke",
+            "request_id": run_id,
+            "run_id": run_id,
+            "agent_id": "langgraph_draft",
+            "manifest_agent_id": "langgraph_draft",
+            "runtime": "langgraph",
+            "adapter_id": "langgraph_draft",
+            "result_status": result_status,
+            "trace_ref": trace_ref,
+            "event_count": len(events),
+            "stage_counts": stage_counts,
+            "tool_call_count": 0,
+            "approval_required": False,
+            "approval_tool_name": None,
+            "approval_status": "not_required",
+            "trace_backing": {
+                "source_read_model": "langgraph-controlled-pilot-smoke-v1",
+                "smoke_status": smoke_status,
+                "accepted": bool(acceptance.get("accepted")),
+                "external_call_attempted": bool(report.get("external_call_attempted")),
+                "snapshot_available": bool(acceptance.get("snapshot_available")),
+                "query_control_recording_available": bool(acceptance.get("query_control_recording_available")),
+                "final_output_available": bool(acceptance.get("final_output_available")),
+                "pilot_status": str(acceptance.get("pilot_status") or "").strip(),
+                "error": {
+                    "error_type": str(error.get("error_type") or "").strip(),
+                    "detail": str(error.get("detail") or "").strip(),
+                } if error else None,
+            },
+            "boundaries": {
+                "read_model_only": True,
+                "will_persist_projection": False,
+                "will_persist_trace": False,
+                "will_submit_approval": False,
+                "will_execute_adapter": False,
+                "default_chat_changed": False,
+                "production_promotion": "disabled",
+            },
+        }
+
     def _get_adapter(self, adapter_id: str) -> Any:
         normalized_id = str(adapter_id or "").strip()
         for adapter in self.framework_adapter_registry.list_adapters():
@@ -582,6 +646,26 @@ class FrameworkAdapterRuntimeService:
             "sandbox_management": "external_runtime_owned",
             "runtime_behavior_changed": False,
         }
+
+    @staticmethod
+    def _count_framework_adapter_event_stages(events: Sequence[Mapping[str, Any]]) -> Dict[str, int]:
+        counts: Dict[str, int] = {}
+        for event in events:
+            payload = event.get("payload") if isinstance(event, Mapping) and isinstance(event.get("payload"), Mapping) else {}
+            stage = str(payload.get("framework_adapter_event_type") or event.get("type") or "unknown").strip()
+            counts[stage or "unknown"] = counts.get(stage or "unknown", 0) + 1
+        return counts
+
+    @staticmethod
+    def _map_langgraph_smoke_projection_status(smoke_status: str) -> str:
+        normalized = str(smoke_status or "").strip().lower()
+        if normalized == "passed":
+            return "success"
+        if normalized == "blocked":
+            return "blocked"
+        if normalized == "failed":
+            return "failed"
+        return "unknown"
 
     @classmethod
     def _build_unknown_adapter_checklist(cls, adapter_id: str) -> Dict[str, Any]:

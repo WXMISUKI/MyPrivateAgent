@@ -564,6 +564,108 @@ class FrameworkAdapterExternalPilotTests(unittest.TestCase):
         self.assertEqual(_StubRunTraceService.trace_calls[0]["event_type"], "framework_adapter_external_error")
         self.assertEqual(result["boundaries"]["default_chat_entry"], "disabled")
 
+    @patch("backend.services.framework_adapter_runtime_service.get_run_trace_service", return_value=_StubRunTraceService())
+    @patch("backend.agent_framework.framework_adapters.ENABLE_LANGGRAPH_EXTERNAL_PILOT", True)
+    @patch("backend.agent_framework.framework_adapters.ENABLE_LANGGRAPH_RUNTIME_EXECUTION", True)
+    @patch("backend.agent_framework.framework_adapters.LANGGRAPH_RUNTIME_ENDPOINT", "http://localhost:8123/langgraph")
+    @patch("backend.agent_framework.framework_adapters.LANGGRAPH_ASSISTANT_ID", "assistant-1")
+    @patch("backend.agent_framework.framework_adapters._is_python_package_available", return_value=True)
+    def test_langgraph_smoke_projection_summarizes_passed_smoke(self, *_mocks):
+        service = FrameworkAdapterRuntimeService(
+            framework_adapter_registry=AgentFrameworkAdapterRegistry([LangGraphDraftAdapter()]),
+            external_pilot_transport=_StubExternalPilotTransport(),
+        )
+        smoke = service.run_langgraph_controlled_pilot_smoke(
+            run_id="run-smoke-projection-1",
+            messages=[{"role": "user", "content": "生成总结"}],
+            execution_context={"plan_id": 10},
+            db=object(),
+            user_id=1,
+            conversation_id=99,
+        )
+
+        projection = service.build_langgraph_smoke_governance_projection(smoke_report=smoke)
+
+        self.assertEqual(projection["read_model"], "runtime_plane_governance_projection")
+        self.assertEqual(projection["projection_source"], "langgraph_controlled_pilot_smoke")
+        self.assertEqual(projection["run_id"], "run-smoke-projection-1")
+        self.assertEqual(projection["runtime"], "langgraph")
+        self.assertEqual(projection["adapter_id"], "langgraph_draft")
+        self.assertEqual(projection["result_status"], "success")
+        self.assertEqual(projection["trace_ref"], "FRAM-EXT-321-20260513000000")
+        self.assertEqual(projection["event_count"], 3)
+        self.assertEqual(projection["stage_counts"]["framework_adapter_status"], 1)
+        self.assertEqual(projection["stage_counts"]["framework_adapter_reasoning"], 1)
+        self.assertEqual(projection["stage_counts"]["framework_adapter_output"], 1)
+        self.assertTrue(projection["trace_backing"]["accepted"])
+        self.assertTrue(projection["trace_backing"]["external_call_attempted"])
+        self.assertTrue(projection["trace_backing"]["snapshot_available"])
+        self.assertEqual(projection["boundaries"]["read_model_only"], True)
+        self.assertEqual(projection["boundaries"]["will_persist_trace"], False)
+        self.assertEqual(projection["boundaries"]["production_promotion"], "disabled")
+
+    @patch("backend.services.framework_adapter_runtime_service.get_run_trace_service", return_value=_StubRunTraceService())
+    @patch("backend.agent_framework.framework_adapters.ENABLE_LANGGRAPH_EXTERNAL_PILOT", False)
+    @patch("backend.agent_framework.framework_adapters.ENABLE_LANGGRAPH_RUNTIME_EXECUTION", True)
+    @patch("backend.agent_framework.framework_adapters.LANGGRAPH_RUNTIME_ENDPOINT", "http://localhost:8123/langgraph")
+    @patch("backend.agent_framework.framework_adapters.LANGGRAPH_ASSISTANT_ID", "assistant-1")
+    @patch("backend.agent_framework.framework_adapters._is_python_package_available", return_value=True)
+    def test_langgraph_smoke_projection_summarizes_blocked_smoke_without_trace_write(self, *_mocks):
+        service = FrameworkAdapterRuntimeService(
+            framework_adapter_registry=AgentFrameworkAdapterRegistry([LangGraphDraftAdapter()]),
+            external_pilot_transport=_FailIfCalledTransport(),
+        )
+        smoke = service.run_langgraph_controlled_pilot_smoke(
+            run_id="run-smoke-projection-blocked-1",
+            messages=[{"role": "user", "content": "hello"}],
+            execution_context={},
+            db=object(),
+            user_id=1,
+            conversation_id=99,
+        )
+
+        projection = service.build_langgraph_smoke_governance_projection(smoke_report=smoke)
+
+        self.assertEqual(projection["result_status"], "blocked")
+        self.assertEqual(projection["event_count"], 0)
+        self.assertEqual(projection["trace_ref"], "")
+        self.assertEqual(projection["trace_backing"]["smoke_status"], "blocked")
+        self.assertEqual(projection["trace_backing"]["external_call_attempted"], False)
+        self.assertEqual(projection["trace_backing"]["accepted"], False)
+        self.assertEqual(projection["boundaries"]["will_persist_projection"], False)
+        self.assertFalse(_StubRunTraceService.trace_calls)
+        self.assertFalse(_StubRunTraceService.audit_calls)
+
+    @patch("backend.services.framework_adapter_runtime_service.get_run_trace_service", return_value=_StubRunTraceService())
+    @patch("backend.agent_framework.framework_adapters.ENABLE_LANGGRAPH_EXTERNAL_PILOT", True)
+    @patch("backend.agent_framework.framework_adapters.ENABLE_LANGGRAPH_RUNTIME_EXECUTION", True)
+    @patch("backend.agent_framework.framework_adapters.LANGGRAPH_RUNTIME_ENDPOINT", "http://localhost:8123/langgraph")
+    @patch("backend.agent_framework.framework_adapters.LANGGRAPH_ASSISTANT_ID", "assistant-1")
+    @patch("backend.agent_framework.framework_adapters._is_python_package_available", return_value=True)
+    def test_langgraph_smoke_projection_preserves_failed_smoke_error_summary(self, *_mocks):
+        service = FrameworkAdapterRuntimeService(
+            framework_adapter_registry=AgentFrameworkAdapterRegistry([LangGraphDraftAdapter()]),
+            external_pilot_transport=_StubErrorTransport(httpx.ConnectError("connect failed")),
+        )
+        smoke = service.run_langgraph_controlled_pilot_smoke(
+            run_id="run-smoke-projection-failed-1",
+            messages=[{"role": "user", "content": "生成总结"}],
+            execution_context={},
+            db=object(),
+            user_id=1,
+            conversation_id=99,
+        )
+
+        projection = service.build_langgraph_smoke_governance_projection(smoke_report=smoke)
+
+        self.assertEqual(projection["result_status"], "failed")
+        self.assertEqual(projection["event_count"], 1)
+        self.assertEqual(projection["stage_counts"]["framework_adapter_external_error"], 1)
+        self.assertEqual(projection["trace_backing"]["error"]["error_type"], "connectivity_error")
+        self.assertEqual(projection["trace_backing"]["error"]["detail"], "connect failed")
+        self.assertEqual(projection["boundaries"]["default_chat_changed"], False)
+        self.assertEqual(projection["boundaries"]["will_execute_adapter"], False)
+
 
 if __name__ == "__main__":
     unittest.main()

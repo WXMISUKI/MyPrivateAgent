@@ -246,7 +246,8 @@ class ExecutionResult:
 - Framework adapter authoring template 已完成第一刀：`build_adapter_authoring_checklist(...)` 现在会输出 `authoring_template`，把 `simple_agent` / `tool_agent` / `approval_agent` 三条 Stage 1 proof 映射到外部成熟运行框架 adapter 的开发责任，并明确 `runtime_plane_governance_profile` 作为只读投影消费面
 - LangGraph controlled pilot readiness gate 已完成第一刀：`build_langgraph_controlled_pilot_readiness(...)` 会组合 adapter registry、precheck、authoring template、Stage 1 proof mapping 与 boundary checks，判断 `langgraph_draft` 是否允许进入显式 controlled pilot smoke
 - LangGraph controlled pilot smoke 已完成第一刀：`run_langgraph_controlled_pilot_smoke(...)` 会先评估 readiness，blocked 时不调用外部 runtime，ready 时复用既有 external pilot execution path 并返回 acceptance evidence
-- 下一刀若继续治理接入，应优先评估 trace-backed projection source，把 smoke 结果转成可回放治理读模型，而不是直接写生产 trace或默认 chat promotion
+- LangGraph smoke projection source 已完成第一刀：`build_langgraph_smoke_governance_projection(...)` 会把 blocked / passed / failed smoke report 转成兼容 `runtime_plane_governance_projection` 的只读治理投影，并附带 compact `trace_backing` evidence
+- 下一刀若继续治理接入，应优先让 Runtime Surface 显式消费该 projection source，而不是直接写生产 trace或默认 chat promotion
 
 | 阶段 | 治理接入深度 | 目标 |
 |---|---|---|
@@ -276,6 +277,7 @@ class ExecutionResult:
 - 新外部运行框架接入必须先消费 `framework-adapter-authoring-template-v1`。
 - LangGraph 作为第一个真实外部 adapter 目标时，必须先通过 `langgraph-controlled-pilot-readiness-v1`；ready 只允许进入显式 smoke，不表示 production runtime ready。
 - LangGraph controlled pilot smoke 成功只证明外部 pilot path 可受控执行，不表示默认 chat、production runtime、worker、checkpoint 或 sandbox 已启用。
+- LangGraph smoke projection source 只把 smoke evidence 转成 read-only projection，不持久化 projection、不写 trace/audit、不替换 Runtime Surface 默认来源。
 - 新 adapter 的第一步是实现 SPI 与 smoke tests，不是把框架原生 payload 直接塞进业务服务。
 - `checklist_status = ready` 或 `promotion_review.status = pilot_candidate` 只表示可以进入 controlled pilot review，不表示默认 chat、生产 runtime、worker、checkpoint 或 sandbox 已启用。
 - 如果 adapter 开发暴露运行层缺口，先回到 OpenSpec proposal 更新边界；不要在 adapter 实现中顺手扩本地 runtime engine。

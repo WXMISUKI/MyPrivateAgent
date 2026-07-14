@@ -1475,3 +1475,12 @@ Provider-first 能力路线已补充到 `docs/roadmap/provider_capability_gap_as
   - external pilot failed 时会形成 `smoke_status = failed` 的证据，而不是抛弃失败或误判为生产阻断
 - 该 smoke 是外部成熟 runtime 接入链的显式试运行合同，不是默认 chat promotion，也不是 production runtime authorization。
 - 下一步最值得做的是 trace-backed projection source：把 smoke evidence 转成只读、可回放、可被 Runtime Surface/Governance Timeline 消费的治理投影；在此之前不要把 LangGraph pilot success 推广到默认主流程。
+
+当前补充：
+
+- LangGraph smoke projection source 已完成第一刀：
+  - `FrameworkAdapterRuntimeService.build_langgraph_smoke_governance_projection(...)` 可把 blocked / passed / failed smoke report 转成 `runtime_plane_governance_projection` 兼容投影
+  - projection 保留 run id、runtime、adapter id、result status、trace ref、event count、stage counts、approval/tool indicators 和 read-only boundary flags
+  - projection 附带 compact `trace_backing`：smoke status、accepted、external_call_attempted、snapshot/query-control availability、final_output availability 和 error summary
+  - 该层不写 trace/audit、不持久化 projection、不提交审批、不改 `/api/chat`
+- 下一步推荐：Runtime Surface 显式消费 LangGraph smoke projection source，形成 profile-level 可见性；仍不要直接写生产 trace 或默认主流程。
