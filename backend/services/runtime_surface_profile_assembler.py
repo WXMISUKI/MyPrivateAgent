@@ -8,10 +8,12 @@ try:
     from services.runtime_surface_builders import ProviderCatalogBuilder
     from services.runtime_surface_embedded_sdk_builder import EmbeddedSdkRuntimeSurfaceBuilder
     from services.runtime_surface_profile_context import RuntimeSurfaceProfileContextAssembler
+    from services.runtime_surface_runtime_plane_builder import RuntimeSurfaceRuntimePlaneBuilder
 except ModuleNotFoundError:  # pragma: no cover - package import compatibility
     from backend.services.runtime_surface_builders import ProviderCatalogBuilder
     from backend.services.runtime_surface_embedded_sdk_builder import EmbeddedSdkRuntimeSurfaceBuilder
     from backend.services.runtime_surface_profile_context import RuntimeSurfaceProfileContextAssembler
+    from backend.services.runtime_surface_runtime_plane_builder import RuntimeSurfaceRuntimePlaneBuilder
 
 
 class RuntimeSurfaceProfileAssembler:
@@ -103,6 +105,7 @@ class RuntimeSurfaceProfileAssembler:
         )
         embedded_runtime_factory = service.runtime_factory.build_runtime_contract()
         embedded_runtime_bundle = EmbeddedSdkRuntimeSurfaceBuilder.build_profile_bundle(embedded_runtime_factory)
+        runtime_plane_governance_profile = service._build_runtime_plane_governance_profile_contract()
 
         profile = {
             "agent_mode": "general_demo",
@@ -129,6 +132,7 @@ class RuntimeSurfaceProfileAssembler:
             "main_chat_query_detail": main_chat_query_detail,
             "external_adapter_recent_summary": external_adapter_recent_summary,
             "channel_promotion_gate": channel_promotion_gate,
+            "runtime_plane_governance_profile": runtime_plane_governance_profile,
             "domain_agent_registry": service.domain_agent_registry_service.build_runtime_contract(),
             "rag_source_registry": service.domain_agent_registry_service.build_rag_source_registry_contract(),
             "knowledge_graph_registry": service.domain_agent_registry_service.build_knowledge_graph_registry_contract(),

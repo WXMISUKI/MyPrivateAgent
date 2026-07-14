@@ -53,6 +53,7 @@ Runtime Surface 的当前聚合入口是：
 - `runtime_contract_gate`
 - `self_improvement_ledger`
 - `query_control_plane`
+- `runtime_plane_governance_profile`
 - `contract_snapshot`
 - `config_layers`
 
@@ -1329,6 +1330,7 @@ II-1 第一刀当前未做：
   - `embedded_sdk_production_recovery_authorization_coverage.authorization_smoke`
   - `embedded_sdk_production_recovery_authorization_coverage.blocked_status`
   - `embedded_sdk_production_recovery_authorization_coverage.ready_status`
+- `runtime_plane_governance_profile` 作为 Runtime Surface 顶层 contract，必须被 Snapshot 守护；至少守护 `projection_contract_status`、`projection_contract_version`、`supported_adapter_ids`、`latest_projection_available` 与 read-only boundary flags。
 
 ## 15. Embedded SDK Production Recovery Authorization Dry-Run
 
@@ -1356,3 +1358,26 @@ II-1 第一刀当前未做：
 - 无论 `blocked` 还是 `ready`，都必须保持 `will_execute = false`。
 - 不得在该 slice 内提交审批、claim worker ownership、启动 worker、启动 scheduler 或默认启用后台恢复。
 - run-specific recoverability 仍由 `run_recovery` probe 负责，不能被 production authorization readiness 覆盖。
+
+## 16. Runtime Surface Runtime Plane Governance Profile
+
+主要来源：
+
+- `backend/services/runtime_surface_runtime_plane_builder.py`
+- `backend/services/runtime_surface_profile_assembler.py`
+- `backend/services/runtime_contract_snapshot_service.py`
+
+当前状态：
+
+- Runtime Surface 已暴露顶层 `runtime_plane_governance_profile`。
+- 该 profile 只表达 runtime-plane `governance_projection` 合同是否可被治理消费，以及当前是否有 supplied/latest projection summary。
+- 默认无 projection source 时，`latest_projection_available = false` 且 `reason = projection_source_unavailable`。
+- supplied projection 只会被压缩为 request/run/agent/runtime、adapter、result status、event count、stage counts、tool/approval indicators 与 trace ref 摘要。
+- Runtime Contract Snapshot 已守护该 contract 的稳定字段。
+
+维护约束：
+
+- 不得在该 profile builder 中执行 adapter。
+- 不得在该 profile builder 中写 trace、audit、approval、scheduler、checkpoint、worker、memory、provider 或 chat state。
+- 不得把 `latest_projection_available = true` 解释为 production runtime promotion。
+- 后续若要把 projection 接入真实 trace persistence、Runtime Surface dedicated endpoint 或 Governance Timeline，必须另开显式 OpenSpec change。

@@ -127,6 +127,11 @@ The system MUST normalize external runtime requests, events, results, interrupti
 - **THEN** the event MUST be represented as a normalized approval interrupt in the local contract
 - **AND** the approval decision MUST remain replayable
 
+#### Scenario: Runtime Surface exposes projection readiness
+- **WHEN** Runtime Surface exposes runtime-plane governance visibility
+- **THEN** it MUST consume the normalized projection contract rather than adapter-native state
+- **AND** it MUST remain read-only until a later change explicitly adds trace persistence or approval submission
+
 ### Requirement: Runtime plane and control plane must have distinct ownership boundaries
 The system MUST keep runtime-plane and control-plane responsibilities distinct in architecture, code organization, and documentation.
 

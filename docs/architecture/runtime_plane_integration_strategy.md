@@ -241,7 +241,9 @@ class ExecutionResult:
 
 - Stage 2 前置第一刀已完成：Stage 1 adapter envelope 现在会返回 top-level `governance_projection`
 - 该 projection 只表达只读治理摘要，不写 trace/audit，不提交审批，不改变默认 `/api/chat`
-- 下一刀若继续治理接入，应优先评估是否接入 Runtime Surface 只读 profile 或 Query Control trace adapter，而不是直接写生产 trace
+- Stage 2 前置第二刀已完成：Runtime Surface 现在暴露 top-level `runtime_plane_governance_profile`
+- 该 profile 只表达 projection contract readiness、supported adapters、latest projection summary availability 与 read-only boundaries；默认不执行 adapter、不写 trace/audit、不提交审批
+- 下一刀若继续治理接入，应优先评估 trace-backed projection source 或 framework adapter authoring template，而不是直接写生产 trace
 
 | 阶段 | 治理接入深度 | 目标 |
 |---|---|---|

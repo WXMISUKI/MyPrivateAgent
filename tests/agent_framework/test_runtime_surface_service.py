@@ -20,6 +20,7 @@ from backend.services.runtime_surface_builders import ProviderCatalogBuilder, Ru
 from backend.services.runtime_surface_embedded_sdk_builder import EmbeddedSdkRuntimeSurfaceBuilder
 from backend.services.runtime_surface_profile_context import RuntimeSurfaceProfileContextAssembler
 from backend.services.runtime_surface_profile_assembler import RuntimeSurfaceProfileAssembler
+from backend.services.runtime_surface_runtime_plane_builder import RuntimeSurfaceRuntimePlaneBuilder
 from backend.services.runtime_surface_service import RuntimeSurfaceService
 
 
@@ -124,6 +125,58 @@ class RuntimeSurfaceServiceTests(unittest.TestCase):
             ],
             RuntimeSurfaceProfileContextAssembler,
         )
+
+    def test_runtime_surface_runtime_plane_builder_defaults_to_no_projection(self):
+        profile = RuntimeSurfaceRuntimePlaneBuilder.build_governance_profile()
+
+        self.assertEqual(profile["contract_version"], "runtime-surface-runtime-plane-profile-v1")
+        self.assertEqual(profile["projection_contract_status"], "ready")
+        self.assertEqual(profile["projection_contract_version"], "runtime-plane-governance-read-model-v1")
+        self.assertEqual(profile["supported_adapter_ids"], ["simple_agent", "tool_agent", "approval_agent"])
+        self.assertEqual(profile["supported_adapter_count"], 3)
+        self.assertFalse(profile["latest_projection_available"])
+        self.assertEqual(profile["reason"], "projection_source_unavailable")
+        self.assertIsNone(profile["latest_projection"])
+        self.assertTrue(profile["boundaries"]["read_model_only"])
+        self.assertFalse(profile["boundaries"]["will_execute_adapter"])
+        self.assertFalse(profile["boundaries"]["will_persist_projection"])
+        self.assertFalse(profile["boundaries"]["will_persist_trace"])
+        self.assertFalse(profile["boundaries"]["will_submit_approval"])
+        self.assertFalse(profile["boundaries"]["default_chat_changed"])
+        self.assertFalse(profile["boundaries"]["frontend_ui_changed"])
+
+    def test_runtime_surface_runtime_plane_builder_compacts_supplied_projection(self):
+        profile = RuntimeSurfaceRuntimePlaneBuilder.build_governance_profile({
+            "read_model": "runtime_plane_governance_projection",
+            "contract_version": "runtime-plane-governance-read-model-v1",
+            "request_id": "req-1",
+            "run_id": "run-1",
+            "agent_id": "approval_agent",
+            "runtime": "local",
+            "adapter_id": "approval_agent",
+            "result_status": "approval_pending",
+            "trace_ref": "req-1",
+            "event_count": 2,
+            "stage_counts": {"planning": 1, "approval": 1},
+            "tool_call_count": 1,
+            "approval_required": True,
+            "approval_status": "required",
+            "approval_tool_name": "delete_record",
+            "raw_state": {"messages": ["not copied"]},
+        })
+
+        self.assertTrue(profile["latest_projection_available"])
+        self.assertEqual(profile["reason"], "")
+        latest = profile["latest_projection"]
+        self.assertEqual(latest["request_id"], "req-1")
+        self.assertEqual(latest["adapter_id"], "approval_agent")
+        self.assertEqual(latest["result_status"], "approval_pending")
+        self.assertEqual(latest["event_count"], 2)
+        self.assertEqual(latest["stage_counts"], {"planning": 1, "approval": 1})
+        self.assertEqual(latest["tool_call_count"], 1)
+        self.assertTrue(latest["approval_required"])
+        self.assertEqual(latest["approval_tool_name"], "delete_record")
+        self.assertNotIn("raw_state", latest)
 
     def test_runtime_core_contract_builder_builds_default_contract(self):
         contract = RuntimeCoreContractBuilder.build_contract()
@@ -1370,6 +1423,13 @@ class RuntimeSurfaceServiceTests(unittest.TestCase):
         self.assertIn("contract_snapshot", profile)
         self.assertEqual(profile["contract_snapshot"]["contract_version"], "phase-c-runtime-contract-snapshot-v1")
         self.assertIn("channel_promotion_gate", profile)
+        self.assertIn("runtime_plane_governance_profile", profile)
+        self.assertEqual(
+            profile["runtime_plane_governance_profile"]["contract_version"],
+            "runtime-surface-runtime-plane-profile-v1",
+        )
+        self.assertFalse(profile["runtime_plane_governance_profile"]["latest_projection_available"])
+        self.assertFalse(profile["runtime_plane_governance_profile"]["boundaries"]["will_execute_adapter"])
         self.assertEqual(profile["channel_promotion_gate"]["contract_version"], "phase-h-channel-promotion-gate-v1")
         self.assertIn("runtime_core", profile)
         self.assertIn("governance_overview", profile)

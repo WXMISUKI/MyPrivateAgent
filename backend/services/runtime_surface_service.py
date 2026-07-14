@@ -45,6 +45,7 @@ try:
     )
     from services.runtime_surface_embedded_sdk_builder import EmbeddedSdkRuntimeSurfaceBuilder
     from services.runtime_surface_profile_assembler import RuntimeSurfaceProfileAssembler
+    from services.runtime_surface_runtime_plane_builder import RuntimeSurfaceRuntimePlaneBuilder
     from services.skill_runtime_service import get_skill_runtime_service
     from services.subagent_service import get_subagent_runtime_service
     from services.tool_runtime_service import get_tool_runtime_service
@@ -83,6 +84,7 @@ except ModuleNotFoundError:  # pragma: no cover - package import compatibility
     )
     from backend.services.runtime_surface_embedded_sdk_builder import EmbeddedSdkRuntimeSurfaceBuilder
     from backend.services.runtime_surface_profile_assembler import RuntimeSurfaceProfileAssembler
+    from backend.services.runtime_surface_runtime_plane_builder import RuntimeSurfaceRuntimePlaneBuilder
     from backend.services.skill_runtime_service import get_skill_runtime_service
     from backend.services.subagent_service import get_subagent_runtime_service
     from backend.services.tool_runtime_service import get_tool_runtime_service
@@ -330,6 +332,12 @@ class RuntimeSurfaceService:
                 "blocking_reasons": ["detail_not_generalized"],
             },
         )
+
+    def _build_runtime_plane_governance_profile_contract(
+        self,
+        projection: Dict[str, Any] | None = None,
+    ) -> Dict[str, Any]:
+        return RuntimeSurfaceRuntimePlaneBuilder.build_governance_profile(projection)
 
     def get_child_executor_output_replay(self, *, parent_run_id: str) -> Dict[str, Any]:
         return self._build_child_executor_sdk_reader().list_child_executor_outputs(parent_run_id)

@@ -1427,11 +1427,12 @@ Provider-first 能力路线已补充到 `docs/roadmap/provider_capability_gap_as
   - `tool_agent`：验证单个受控只读工具调用、tool observation 与 normalized envelope。
   - `approval_agent`：验证高风险工具意图被归一化为 `approval_pending`，且高风险 handler 不执行。
 - Runtime Plane governance read model 第一刀已完成：三个 Stage 1 adapter 均返回 top-level `governance_projection`，包含 request/run/agent/runtime、result status、stage counts、tool/approval indicators、trace ref 与 read-only boundary flags。
-- 该 projection 不写 trace/audit，不提交审批，不进入 Runtime Surface API，不改变默认 `/api/chat`，也不表示生产 runtime promotion。
+- Runtime Surface runtime-plane profile 第一刀已完成：`runtime_plane_governance_profile` 已进入 Runtime Surface 顶层 profile，并由 Runtime Contract Snapshot 守护稳定字段。
+- 该 projection/profile 不写 trace/audit，不提交审批，不改变默认 `/api/chat`，也不表示生产 runtime promotion。
 - 这不表示 MyPrivateAgent 已具备生产运行层、真实审批提交、审批恢复、managed runtime、sandbox、checkpoint、scheduler 或多智能体编排能力。
 - 下一步最高价值方向应从“继续补本地 adapter demo”转向二选一：
-  1. Runtime Surface read-only profile for runtime-plane projections：把当前 projection 暴露为只读 profile，不写 trace/audit。
-  2. Framework adapter authoring template：把当前 local adapter proof 固化为 LangGraph / AgentRun adapter 的 authoring checklist 和最小 smoke 模板。
+  1. Framework adapter authoring template：把当前 local adapter proof 固化为 LangGraph / AgentRun adapter 的 authoring checklist 和最小 smoke 模板。
+  2. Trace-backed projection source proposal：评估是否把 runtime-plane projection 以只读、可回放方式接入 Query Control trace，而不是直接写生产 trace。
 - 当前不建议继续扩本地 graph engine、checkpoint、sandbox 或 worker scheduler。
 
 当前补充：

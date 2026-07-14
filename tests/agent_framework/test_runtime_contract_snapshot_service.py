@@ -845,6 +845,25 @@ def _build_complete_profile():
             "governance_requirements": ["traceable_lifecycle_stage"],
             "runtime_surface_enabled": True,
         },
+        "runtime_plane_governance_profile": {
+            "contract_version": "runtime-surface-runtime-plane-profile-v1",
+            "projection_contract_status": "ready",
+            "projection_contract_version": "runtime-plane-governance-read-model-v1",
+            "supported_adapter_ids": ["simple_agent", "tool_agent", "approval_agent"],
+            "supported_adapter_count": 3,
+            "latest_projection_available": False,
+            "reason": "projection_source_unavailable",
+            "latest_projection": None,
+            "boundaries": {
+                "read_model_only": True,
+                "will_execute_adapter": False,
+                "will_persist_projection": False,
+                "will_persist_trace": False,
+                "will_submit_approval": False,
+                "default_chat_changed": False,
+                "frontend_ui_changed": False,
+            },
+        },
     }
 
 
@@ -854,7 +873,7 @@ class RuntimeContractSnapshotServiceTests(unittest.TestCase):
 
         self.assertEqual(snapshot["contract_version"], "phase-c-runtime-contract-snapshot-v1")
         self.assertEqual(snapshot["overall_status"], "healthy")
-        self.assertEqual(snapshot["contract_count"], 13)
+        self.assertEqual(snapshot["contract_count"], 14)
         self.assertEqual(snapshot["missing_contract_count"], 0)
         self.assertEqual(snapshot["missing_field_count"], 0)
         self.assertEqual(len(snapshot["fingerprint"]), 64)
@@ -1160,6 +1179,9 @@ class RuntimeContractSnapshotServiceTests(unittest.TestCase):
         self.assertIn("health_summary", by_name["self_improvement_ledger"]["stable_fields"])
         self.assertIn("lifecycle_stages", by_name["query_control_plane"]["stable_fields"])
         self.assertIn("execution_channels", by_name["query_control_plane"]["stable_fields"])
+        self.assertIn("runtime_plane_governance_profile", by_name)
+        self.assertIn("projection_contract_status", by_name["runtime_plane_governance_profile"]["stable_fields"])
+        self.assertIn("boundaries.will_execute_adapter", by_name["runtime_plane_governance_profile"]["stable_fields"])
 
     def test_build_snapshot_degrades_when_required_contracts_or_fields_are_missing(self):
         profile = _build_complete_profile()
@@ -1394,6 +1416,21 @@ class RuntimeContractSnapshotServiceTests(unittest.TestCase):
         self.assertIn(
             "runtime_contract_summary.subagent_lane_query_detail_coverage",
             runtime_contract_gate["missing_fields"],
+        )
+
+    def test_build_snapshot_degrades_when_runtime_plane_profile_boundary_is_missing(self):
+        profile = _build_complete_profile()
+        del profile["runtime_plane_governance_profile"]["boundaries"]["will_execute_adapter"]
+
+        snapshot = RuntimeContractSnapshotService().build_snapshot(profile)
+
+        by_name = {item["contract_name"]: item for item in snapshot["contracts"]}
+        runtime_plane_profile = by_name["runtime_plane_governance_profile"]
+        self.assertEqual(snapshot["overall_status"], "degraded")
+        self.assertEqual(runtime_plane_profile["status"], "degraded")
+        self.assertIn(
+            "boundaries.will_execute_adapter",
+            runtime_plane_profile["missing_fields"],
         )
 
     def test_build_snapshot_degrades_when_subagent_detail_smoke_flag_is_missing_from_summary(self):

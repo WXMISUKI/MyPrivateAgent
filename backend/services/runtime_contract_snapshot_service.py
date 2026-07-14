@@ -317,6 +317,27 @@ class RuntimeContractSnapshotService:
             ),
         ),
         ContractSnapshotSpec(
+            contract_name="runtime_plane_governance_profile",
+            required_fields=(
+                "contract_version",
+                "projection_contract_status",
+                "projection_contract_version",
+                "supported_adapter_ids",
+                "supported_adapter_count",
+                "latest_projection_available",
+                "reason",
+                "latest_projection",
+                "boundaries",
+                "boundaries.read_model_only",
+                "boundaries.will_execute_adapter",
+                "boundaries.will_persist_projection",
+                "boundaries.will_persist_trace",
+                "boundaries.will_submit_approval",
+                "boundaries.default_chat_changed",
+                "boundaries.frontend_ui_changed",
+            ),
+        ),
+        ContractSnapshotSpec(
             contract_name="self_improvement_ledger",
             required_fields=(
                 "contract_version",
