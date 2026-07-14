@@ -251,6 +251,121 @@ class FrameworkAdapterRuntimeService:
             "boundary": self._adapter_authoring_boundary(),
         }
 
+    def build_langgraph_controlled_pilot_readiness(
+        self,
+        *,
+        adapter_id: str = "langgraph_draft",
+    ) -> Dict[str, Any]:
+        normalized_id = str(adapter_id or "").strip()
+        checklist = self.build_adapter_authoring_checklist(adapter_id=normalized_id)
+        blockers: list[Dict[str, Any]] = []
+        if checklist.get("checklist_status") == "blocked":
+            blockers.extend(list(checklist.get("promotion_review", {}).get("blockers") or []))
+
+        if normalized_id != "langgraph_draft":
+            registered = checklist.get("precheck_summary", {}).get("status") != "missing"
+            blockers.append({
+                "component": "pilot_target",
+                "status": "blocked",
+                "reason_code": (
+                    "unsupported_controlled_pilot_target"
+                    if registered
+                    else "adapter_not_registered"
+                ),
+                "detail": (
+                    "LangGraph controlled pilot readiness only supports `langgraph_draft`"
+                    if registered
+                    else normalized_id or "missing_adapter_id"
+                ),
+            })
+
+        template = checklist.get("authoring_template") if isinstance(checklist.get("authoring_template"), Mapping) else {}
+        proof_slices = {
+            str(item.get("proof_slice") or "").strip()
+            for item in template.get("runtime_plane_mapping", [])
+            if isinstance(item, Mapping)
+        }
+        required_proofs = {"simple_agent", "tool_agent", "approval_agent"}
+        missing_proofs = sorted(required_proofs - proof_slices)
+        for proof_slice in missing_proofs:
+            blockers.append({
+                "component": "authoring_template",
+                "status": "blocked",
+                "reason_code": "missing_stage_1_proof_mapping",
+                "detail": proof_slice,
+            })
+
+        boundary = template.get("boundaries") if isinstance(template.get("boundaries"), Mapping) else {}
+        if boundary.get("default_chat_entry") != "disabled":
+            blockers.append({
+                "component": "boundary",
+                "status": "blocked",
+                "reason_code": "default_chat_boundary_drift",
+                "detail": str(boundary.get("default_chat_entry") or ""),
+            })
+
+        unique_blockers = self._dedupe_readiness_blockers(blockers)
+        ready = normalized_id == "langgraph_draft" and not unique_blockers
+        precheck = checklist.get("precheck_summary") if isinstance(checklist.get("precheck_summary"), Mapping) else {}
+        return {
+            "contract_version": "langgraph-controlled-pilot-readiness-v1",
+            "adapter_id": checklist.get("adapter_id") or normalized_id or None,
+            "framework_name": checklist.get("framework_name") or "LangGraph",
+            "readiness_status": "ready" if ready else "blocked",
+            "can_start_controlled_pilot": ready,
+            "next_allowed_action": (
+                "run_explicit_controlled_pilot_smoke"
+                if ready
+                else "resolve_controlled_pilot_blockers"
+            ),
+            "pilot_target": {
+                "adapter_id": "langgraph_draft",
+                "framework_name": "LangGraph",
+                "execution_mode": "draft_external_runtime",
+                "run_kind": "framework_adapter_external_pilot",
+            },
+            "precheck_summary": {
+                "ready": bool(precheck.get("ready")),
+                "status": precheck.get("status") or "unknown",
+                "configuration_status": precheck.get("configuration_status") or "unknown",
+                "execution_mode": precheck.get("execution_mode") or "",
+                "missing_packages": list(precheck.get("missing_packages") or []),
+                "missing_env": list(precheck.get("missing_env") or []),
+                "execution_block_reason": str(precheck.get("execution_block_reason") or "").strip(),
+            },
+            "authoring_template_summary": {
+                "template_version": template.get("template_version") or "",
+                "registration_status": template.get("registration_status") or "",
+                "stage_1_proof_mapping": sorted(proof_slices),
+                "runtime_surface_profile": (
+                    template.get("projection_mapping", {}).get("runtime_surface_profile")
+                    if isinstance(template.get("projection_mapping"), Mapping)
+                    else ""
+                ),
+                "minimum_smoke_tests": list(template.get("minimum_smoke_tests") or []),
+            },
+            "required_gates": [
+                "adapter_registered",
+                "langgraph_package_available",
+                "langgraph_runtime_endpoint_configured",
+                "langgraph_assistant_id_configured",
+                "langgraph_runtime_execution_enabled",
+                "langgraph_external_pilot_enabled",
+                "authoring_template_stage_1_mapping_present",
+                "default_chat_entry_disabled",
+            ],
+            "blockers": unique_blockers,
+            "boundaries": {
+                "will_execute": False,
+                "external_framework_call": "not_performed",
+                "trace_write": "not_performed",
+                "audit_write": "not_performed",
+                "tool_registration": "not_performed",
+                "default_chat_entry": "disabled",
+                "production_promotion": "disabled",
+            },
+        }
+
     def _get_adapter(self, adapter_id: str) -> Any:
         normalized_id = str(adapter_id or "").strip()
         for adapter in self.framework_adapter_registry.list_adapters():
@@ -341,6 +456,23 @@ class FrameworkAdapterRuntimeService:
                 "detail": block_reason,
             })
         return blockers
+
+    @staticmethod
+    def _dedupe_readiness_blockers(blockers: Sequence[Mapping[str, Any]]) -> list[Dict[str, Any]]:
+        seen: set[tuple[str, str, str]] = set()
+        unique: list[Dict[str, Any]] = []
+        for blocker in blockers:
+            item = dict(blocker or {})
+            key = (
+                str(item.get("component") or "").strip(),
+                str(item.get("reason_code") or "").strip(),
+                str(item.get("detail") or "").strip(),
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            unique.append(item)
+        return unique
 
     @classmethod
     def _build_unknown_adapter_checklist(cls, adapter_id: str) -> Dict[str, Any]:

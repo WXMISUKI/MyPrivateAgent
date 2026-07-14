@@ -236,6 +236,107 @@ class FrameworkAdapterRuntimeServiceTests(unittest.TestCase):
         self.assertFalse(_StubRunTraceService.trace_calls)
         self.assertFalse(_StubRunTraceService.audit_calls)
 
+    @patch("backend.agent_framework.framework_adapters.ENABLE_LANGGRAPH_EXTERNAL_PILOT", True)
+    @patch("backend.agent_framework.framework_adapters.ENABLE_LANGGRAPH_RUNTIME_EXECUTION", True)
+    @patch("backend.agent_framework.framework_adapters.LANGGRAPH_RUNTIME_ENDPOINT", "http://localhost:8123/langgraph")
+    @patch("backend.agent_framework.framework_adapters.LANGGRAPH_ASSISTANT_ID", "assistant-1")
+    @patch("backend.agent_framework.framework_adapters._is_python_package_available", return_value=True)
+    def test_langgraph_controlled_pilot_readiness_reports_ready_without_execution(self, *_mocks):
+        service = FrameworkAdapterRuntimeService(
+            framework_adapter_registry=AgentFrameworkAdapterRegistry([LangGraphDraftAdapter()])
+        )
+
+        result = service.build_langgraph_controlled_pilot_readiness()
+
+        self.assertEqual(result["contract_version"], "langgraph-controlled-pilot-readiness-v1")
+        self.assertEqual(result["adapter_id"], "langgraph_draft")
+        self.assertEqual(result["framework_name"], "LangGraph")
+        self.assertEqual(result["readiness_status"], "ready")
+        self.assertEqual(result["can_start_controlled_pilot"], True)
+        self.assertEqual(result["next_allowed_action"], "run_explicit_controlled_pilot_smoke")
+        self.assertEqual(result["pilot_target"]["run_kind"], "framework_adapter_external_pilot")
+        self.assertEqual(result["precheck_summary"]["ready"], True)
+        self.assertEqual(result["authoring_template_summary"]["runtime_surface_profile"], "runtime_plane_governance_profile")
+        self.assertEqual(
+            set(result["authoring_template_summary"]["stage_1_proof_mapping"]),
+            {"simple_agent", "tool_agent", "approval_agent"},
+        )
+        self.assertIn("langgraph_external_pilot_enabled", result["required_gates"])
+        self.assertEqual(result["blockers"], [])
+        self.assertEqual(result["boundaries"]["will_execute"], False)
+        self.assertEqual(result["boundaries"]["external_framework_call"], "not_performed")
+        self.assertEqual(result["boundaries"]["trace_write"], "not_performed")
+        self.assertEqual(result["boundaries"]["audit_write"], "not_performed")
+        self.assertEqual(result["boundaries"]["default_chat_entry"], "disabled")
+        self.assertFalse(_StubRunTraceService.trace_calls)
+        self.assertFalse(_StubRunTraceService.audit_calls)
+
+    @patch("backend.agent_framework.framework_adapters.ENABLE_LANGGRAPH_EXTERNAL_PILOT", False)
+    @patch("backend.agent_framework.framework_adapters.ENABLE_LANGGRAPH_RUNTIME_EXECUTION", True)
+    @patch("backend.agent_framework.framework_adapters.LANGGRAPH_RUNTIME_ENDPOINT", "http://localhost:8123/langgraph")
+    @patch("backend.agent_framework.framework_adapters.LANGGRAPH_ASSISTANT_ID", "assistant-1")
+    @patch("backend.agent_framework.framework_adapters._is_python_package_available", return_value=True)
+    def test_langgraph_controlled_pilot_readiness_blocks_when_external_pilot_disabled(self, *_mocks):
+        service = FrameworkAdapterRuntimeService(
+            framework_adapter_registry=AgentFrameworkAdapterRegistry([LangGraphDraftAdapter()])
+        )
+
+        result = service.build_langgraph_controlled_pilot_readiness()
+
+        self.assertEqual(result["readiness_status"], "blocked")
+        self.assertEqual(result["can_start_controlled_pilot"], False)
+        self.assertEqual(result["next_allowed_action"], "resolve_controlled_pilot_blockers")
+        self.assertEqual(result["precheck_summary"]["execution_block_reason"], "external pilot is not enabled")
+        self.assertIn(
+            {
+                "component": "execution_gate",
+                "status": "blocked",
+                "reason_code": "execution_blocked",
+                "detail": "external pilot is not enabled",
+            },
+            result["blockers"],
+        )
+        self.assertEqual(result["boundaries"]["external_framework_call"], "not_performed")
+        self.assertFalse(_StubRunTraceService.trace_calls)
+        self.assertFalse(_StubRunTraceService.audit_calls)
+
+    def test_langgraph_controlled_pilot_readiness_blocks_unknown_adapter(self):
+        result = self.service.build_langgraph_controlled_pilot_readiness(adapter_id="missing_adapter")
+
+        self.assertEqual(result["readiness_status"], "blocked")
+        self.assertEqual(result["can_start_controlled_pilot"], False)
+        self.assertIn(
+            {
+                "component": "adapter_registry",
+                "status": "blocked",
+                "reason_code": "adapter_not_registered",
+                "detail": "missing_adapter",
+            },
+            result["blockers"],
+        )
+        self.assertEqual(result["boundaries"]["will_execute"], False)
+        self.assertEqual(result["boundaries"]["trace_write"], "not_performed")
+        self.assertFalse(_StubRunTraceService.trace_calls)
+        self.assertFalse(_StubRunTraceService.audit_calls)
+
+    def test_langgraph_controlled_pilot_readiness_blocks_registered_non_langgraph_adapter(self):
+        result = self.service.build_langgraph_controlled_pilot_readiness(adapter_id="local_fake_framework")
+
+        self.assertEqual(result["readiness_status"], "blocked")
+        self.assertEqual(result["can_start_controlled_pilot"], False)
+        self.assertIn(
+            {
+                "component": "pilot_target",
+                "status": "blocked",
+                "reason_code": "unsupported_controlled_pilot_target",
+                "detail": "LangGraph controlled pilot readiness only supports `langgraph_draft`",
+            },
+            result["blockers"],
+        )
+        self.assertEqual(result["boundaries"]["default_chat_entry"], "disabled")
+        self.assertFalse(_StubRunTraceService.trace_calls)
+        self.assertFalse(_StubRunTraceService.audit_calls)
+
     def test_execute_adapter_run_rejects_registered_placeholder_adapter(self):
         service = FrameworkAdapterRuntimeService(
             framework_adapter_registry=AgentFrameworkAdapterRegistry([

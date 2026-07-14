@@ -1453,3 +1453,15 @@ Provider-first 能力路线已补充到 `docs/roadmap/provider_capability_gap_as
   2. AgentRun controlled pilot：适合托管运行、沙箱、部署、可观测能力验证。
   3. Trace-backed projection source：适合先增强治理可回放证据，但仍不直接写生产 trace。
 - 当前不建议继续增加第四个本地 demo adapter，也不建议把 checklist ready 解释为 production runtime ready。
+
+当前补充：
+
+- LangGraph controlled pilot readiness gate 已完成第一刀：
+  - `FrameworkAdapterRuntimeService.build_langgraph_controlled_pilot_readiness(...)` 新增 side-effect-free readiness read model
+  - 该 gate 组合 `langgraph_draft` registry、precheck、external pilot enablement、authoring template、Stage 1 proof mapping 和 default chat boundary
+  - ready 只表示 `can_start_controlled_pilot = true`，下一步允许显式运行 controlled pilot smoke；它不执行外部 runtime、不写 trace/audit、不提交审批、不改 `/api/chat`
+- 这比直接补 AgentRun adapter 或继续扩本地 runtime engine 更快形成可投产路径：先证明 LangGraph 这条成熟运行框架接入链是否能在治理边界内安全试运行。
+- 下一步推荐顺序：
+  1. 运行 LangGraph controlled pilot smoke：只在 readiness gate ready 时，通过既有 `execute_external_adapter_run(...)` 和 stub/真实测试环境验证一次端到端外部 runtime 调用。
+  2. 评估 trace-backed projection source：把 pilot 结果以可回放、可审计方式进入治理 read model，而不是直接进入生产 trace。
+  3. 若 LangGraph pilot 暴露托管/沙箱/部署缺口，再评估 AgentRun controlled pilot；不要在 MyPrivateAgent 内自研这些基础设施。

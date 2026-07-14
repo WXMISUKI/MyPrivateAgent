@@ -244,7 +244,8 @@ class ExecutionResult:
 - Stage 2 前置第二刀已完成：Runtime Surface 现在暴露 top-level `runtime_plane_governance_profile`
 - 该 profile 只表达 projection contract readiness、supported adapters、latest projection summary availability 与 read-only boundaries；默认不执行 adapter、不写 trace/audit、不提交审批
 - Framework adapter authoring template 已完成第一刀：`build_adapter_authoring_checklist(...)` 现在会输出 `authoring_template`，把 `simple_agent` / `tool_agent` / `approval_agent` 三条 Stage 1 proof 映射到外部成熟运行框架 adapter 的开发责任，并明确 `runtime_plane_governance_profile` 作为只读投影消费面
-- 下一刀若继续治理接入，应优先评估 trace-backed projection source 或选择一个真实外部 adapter 进入 controlled pilot proposal，而不是直接写生产 trace
+- LangGraph controlled pilot readiness gate 已完成第一刀：`build_langgraph_controlled_pilot_readiness(...)` 会组合 adapter registry、precheck、authoring template、Stage 1 proof mapping 与 boundary checks，判断 `langgraph_draft` 是否允许进入显式 controlled pilot smoke
+- 下一刀若继续治理接入，应优先运行显式 LangGraph controlled pilot smoke 或评估 trace-backed projection source，而不是直接写生产 trace或默认 chat promotion
 
 | 阶段 | 治理接入深度 | 目标 |
 |---|---|---|
@@ -272,6 +273,7 @@ class ExecutionResult:
 当前 Stage 3 前置约束：
 
 - 新外部运行框架接入必须先消费 `framework-adapter-authoring-template-v1`。
+- LangGraph 作为第一个真实外部 adapter 目标时，必须先通过 `langgraph-controlled-pilot-readiness-v1`；ready 只允许进入显式 smoke，不表示 production runtime ready。
 - 新 adapter 的第一步是实现 SPI 与 smoke tests，不是把框架原生 payload 直接塞进业务服务。
 - `checklist_status = ready` 或 `promotion_review.status = pilot_candidate` 只表示可以进入 controlled pilot review，不表示默认 chat、生产 runtime、worker、checkpoint 或 sandbox 已启用。
 - 如果 adapter 开发暴露运行层缺口，先回到 OpenSpec proposal 更新边界；不要在 adapter 实现中顺手扩本地 runtime engine。
