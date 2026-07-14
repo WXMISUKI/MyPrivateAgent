@@ -35,9 +35,9 @@
 - `docs/roadmap/runtime_plane_stage_review_protocol.md`
 - `docs/roadmap/runtime_plane_stage_0_review.md`
 - `docs/roadmap/runtime_plane_stage_1_slice_selection.md`
-- `openspec/changes/agent-runtime-plane-integration-strategy/proposal.md`
-- `openspec/changes/agent-runtime-plane-integration-strategy/design.md`
-- `openspec/changes/agent-runtime-plane-integration-strategy/specs/runtime-plane-integration-strategy/spec.md`
+- `openspec/changes/archive/2026-07-14-agent-runtime-plane-integration-strategy/proposal.md`
+- `openspec/changes/archive/2026-07-14-agent-runtime-plane-integration-strategy/design.md`
+- `openspec/changes/archive/2026-07-14-agent-runtime-plane-integration-strategy/specs/runtime-plane-integration-strategy/spec.md`
 
 下一阶段应优先做三件事：
 
@@ -1419,6 +1419,18 @@ Provider-first 能力路线已补充到 `docs/roadmap/provider_capability_gap_as
   - runtime smoke / quality gate / runtime contract gate / snapshot 已纳入授权 dry-run 覆盖
 - 该切片仍保持 fail-closed、opt-in、non-executable，尚未进入真实 production recovery execution authorization。
 - 下一步若继续推进 Embedded SDK hardening，必须继续沿 dry-run / read-model / governance coverage 前进；若要放开真实执行授权，必须新开 change。
+
+当前补充：
+
+- Runtime Plane Stage 1 MVP 三条竖切已闭合：
+  - `simple_agent`：验证 ExecutionRequest / ExecutionEvent / ExecutionResult envelope 和 adapter boundary。
+  - `tool_agent`：验证单个受控只读工具调用、tool observation 与 normalized envelope。
+  - `approval_agent`：验证高风险工具意图被归一化为 `approval_pending`，且高风险 handler 不执行。
+- 这不表示 MyPrivateAgent 已具备生产运行层、真实审批提交、审批恢复、managed runtime、sandbox、checkpoint、scheduler 或多智能体编排能力。
+- 下一步最高价值方向应从“继续补本地 adapter demo”转向二选一：
+  1. Runtime Plane governance bridge read-only wiring：把 Stage 1 envelope 接入只读治理 trace / Runtime Surface，不改变执行行为。
+  2. Framework adapter authoring template：把当前 local adapter proof 固化为 LangGraph / AgentRun adapter 的 authoring checklist 和最小 smoke 模板。
+- 当前不建议继续扩本地 graph engine、checkpoint、sandbox 或 worker scheduler。
 
 当前补充：
 

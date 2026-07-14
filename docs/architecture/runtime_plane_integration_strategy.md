@@ -206,16 +206,18 @@ class ExecutionResult:
 
 - `simple_agent` 最小适配器已落地
 - `tool_agent` 最小适配器已落地
+- `approval_agent` 最小适配器已落地
 - ExecutionRequest / ExecutionEvent / ExecutionResult / AgentManifest 已落地
 - `simple_agent` 的最小单测已通过
 - `tool_agent` 的最小单测已通过
-- 当前仍未进入 approval / multi-agent 复杂切片
+- `approval_agent` 的最小单测已通过
+- 当前 Stage 1 三条 MVP 竖切已经闭合，但仍未进入真实审批提交、审批恢复、multi-agent 或 managed runtime 复杂切片
 
 | 竖切 | 验证什么 | 框架选择 |
 |---|---|---|
 | simple_agent | 只调用模型，不调用工具。验证部署、调用、trace 回传 | LangGraph 或 AgentRun |
 | tool_agent | 调一个只读工具。验证 tool schema、MCP/Function Call、错误归一化 | LangGraph |
-| approval_agent | 调一个高风险模拟工具。验证 interrupt 能否映射到 MyPrivateAgent approval | LangGraph |
+| approval_agent | 高风险工具意图不执行，归一化为 `approval_pending` envelope | Local adapter proof first |
 
 **产出**：
 - 三个 demo agent（`backend/domain_agents/` 下新增）

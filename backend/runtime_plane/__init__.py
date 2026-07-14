@@ -13,6 +13,7 @@ MyPrivateAgent 的运行层集成能力，参照 LangGraph + AgentRun 设计。
 """
 
 from .agents import Agent, AgentOrchestrator
+from .adapters import ApprovalAgentAdapter
 from .adapters import ExecutionAdapter, SimpleAgentAdapter
 from .adapters import ToolAgentAdapter
 from .contracts import AgentManifest, ExecutionEvent, ExecutionRequest, ExecutionResult
@@ -23,6 +24,7 @@ __all__ = [
     "Agent", "AgentOrchestrator",
     "ExecutionAdapter", "SimpleAgentAdapter",
     "ToolAgentAdapter",
+    "ApprovalAgentAdapter",
     "ExecutionRequest", "ExecutionEvent", "ExecutionResult", "AgentManifest",
     "ToolDef", "ToolRegistry", "tool",
     "GovernanceBridge",

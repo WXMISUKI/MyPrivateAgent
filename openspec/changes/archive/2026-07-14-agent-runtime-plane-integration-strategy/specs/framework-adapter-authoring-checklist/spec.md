@@ -38,6 +38,8 @@ The framework adapter checklist SHALL NOT replace the Framework Adapter SPI, pre
 - **THEN** the checklist points to required authoring sections and runtime-plane ownership boundaries
 - **AND** it does not create a new adapter, register tools, invoke workers, modify provider bindings, or promote query detail/history/workspace layers
 
+## ADDED Requirements
+
 ### Requirement: Checklist must encode runtime-plane integration constraints
 The system SHALL require the adapter checklist to state whether the candidate is a runtime-plane dependency, a managed runtime target, or a control-plane-only integration.
 

@@ -3,11 +3,8 @@
 ## Purpose
 
 Define MyPrivateAgent's official positioning as an enterprise Agent Runtime Control Plane above pluggable external agent execution frameworks.
-
 ## Requirements
-
 ### Requirement: Project Must Be Positioned As Runtime Control Plane
-
 MyPrivateAgent SHALL be positioned as an enterprise Agent Runtime Control Plane that owns governance, runtime contracts, adapter normalization, permissions, audit, observability, and business-system integration above one or more agent execution frameworks.
 
 #### Scenario: Evaluating a mature external agent framework
@@ -23,7 +20,6 @@ MyPrivateAgent SHALL be positioned as an enterprise Agent Runtime Control Plane 
 - **AND** the project MUST NOT be described as a replacement implementation of LangGraph, CrewAI, Qwen-Agent, OpenAI Agents SDK, DeerFlow, or similar frameworks
 
 ### Requirement: External Frameworks Must Integrate Through Adapters
-
 External agent frameworks SHALL integrate through explicit framework adapters that map framework-native events, tools, handoffs, runs, failures, and approvals into local runtime contracts.
 
 #### Scenario: Adding a new framework integration
@@ -55,7 +51,6 @@ Framework positioning and runtime governance changes SHALL follow the project se
 - **AND** git submission MUST happen after verification output and archive location are known
 
 ### Requirement: Control-plane positioning is visible from documentation entrypoints
-
 MyPrivateAgent's official Agent Runtime Control Plane positioning SHALL be visible from repository entrypoint documentation.
 
 #### Scenario: Reader checks project positioning
@@ -66,19 +61,18 @@ MyPrivateAgent's official Agent Runtime Control Plane positioning SHALL be visib
 - **AND** it states that external providers are data-plane services consumed through provider contracts rather than main-backend dependencies
 
 ### Requirement: Control Plane Must Not Expand Into Execution Platform
-
-MyPrivateAgent SHALL NOT self-build general-purpose execution capabilities (graph engine, checkpoint, sandbox, worker scheduler, model gateway) that are already available in mature frameworks.
+MyPrivateAgent SHALL NOT self-build general-purpose execution capabilities that are already available in mature frameworks.
 
 #### Scenario: Evaluating execution capability build-vs-buy
 
 - **WHEN** the team needs an execution capability such as graph orchestration, durable checkpointing, sandbox isolation, or parallel worker scheduling
-- **THEN** the team MUST first evaluate mature frameworks (LangGraph, AgentRun, ADK, OpenAI Agents SDK) before considering self-build
+- **THEN** the team MUST first evaluate mature frameworks or managed runtime candidates before considering self-build
 - **AND** self-build is only justified when no mature framework provides the capability AND the capability is core to control-plane governance
 
 #### Scenario: AgentHarnessFacade growth boundary
 
-- **WHEN** a developer proposes adding execution capabilities to AgentHarnessFacade
-- **THEN** the proposal MUST be evaluated against the 10 development constraints in runtime_plane_integration_strategy.md
+- **WHEN** a developer proposes adding production execution capabilities to AgentHarnessFacade
+- **THEN** the proposal MUST be evaluated against the runtime-plane integration strategy and adapter boundary
 - **AND** capabilities that belong to the execution plane MUST be implemented through framework adapter integration, not facade extension
 - **AND** AgentHarnessFacade MUST remain at preview stability level for local smoke and adapter demo purposes
 
@@ -87,4 +81,6 @@ MyPrivateAgent SHALL NOT self-build general-purpose execution capabilities (grap
 - **WHEN** new code is written for control-plane or runtime-plane functionality
 - **THEN** control-plane code SHOULD be placed under `backend/control_plane/`
 - **AND** runtime-plane code SHOULD be placed under `backend/runtime_plane/`
+- **AND** framework-specific code SHOULD be placed under `backend/framework_adapters/`
 - **AND** existing code in `backend/services/` and `backend/agent_framework/` does not need to be moved immediately, but new code should follow the new boundaries
+

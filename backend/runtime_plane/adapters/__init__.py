@@ -3,11 +3,13 @@
 """
 
 from .base import ExecutionAdapter
+from .approval_agent import ApprovalAgentAdapter
 from .simple_agent import SimpleAgentAdapter
 from .tool_agent import ToolAgentAdapter
 
 __all__ = [
     "ExecutionAdapter",
+    "ApprovalAgentAdapter",
     "SimpleAgentAdapter",
     "ToolAgentAdapter",
 ]
