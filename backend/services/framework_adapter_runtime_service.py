@@ -366,6 +366,63 @@ class FrameworkAdapterRuntimeService:
             },
         }
 
+    def run_langgraph_controlled_pilot_smoke(
+        self,
+        *,
+        run_id: str,
+        messages: Sequence[Mapping[str, Any]],
+        execution_context: Optional[Mapping[str, Any]] = None,
+        db: Any = None,
+        user_id: Optional[int] = None,
+        conversation_id: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        readiness = self.build_langgraph_controlled_pilot_readiness(adapter_id="langgraph_draft")
+        if not bool(readiness.get("can_start_controlled_pilot")):
+            return {
+                "contract_version": "langgraph-controlled-pilot-smoke-v1",
+                "adapter_id": "langgraph_draft",
+                "framework_name": "LangGraph",
+                "smoke_status": "blocked",
+                "external_call_attempted": False,
+                "readiness": readiness,
+                "blockers": list(readiness.get("blockers") or []),
+                "acceptance": self._build_langgraph_smoke_acceptance(
+                    pilot_result={},
+                    external_call_attempted=False,
+                ),
+                "pilot_result": None,
+                "boundaries": self._langgraph_controlled_pilot_smoke_boundaries(),
+            }
+
+        pilot_result = self.execute_external_adapter_run(
+            adapter_id="langgraph_draft",
+            run_id=run_id,
+            messages=messages,
+            execution_context={
+                **dict(execution_context or {}),
+                "run_kind": "framework_adapter_external_pilot",
+            },
+            db=db,
+            user_id=user_id,
+            conversation_id=conversation_id,
+        )
+        smoke_status = "passed" if str(pilot_result.get("status") or "").strip() == "ok" else "failed"
+        return {
+            "contract_version": "langgraph-controlled-pilot-smoke-v1",
+            "adapter_id": "langgraph_draft",
+            "framework_name": "LangGraph",
+            "smoke_status": smoke_status,
+            "external_call_attempted": True,
+            "readiness": readiness,
+            "blockers": [],
+            "acceptance": self._build_langgraph_smoke_acceptance(
+                pilot_result=pilot_result,
+                external_call_attempted=True,
+            ),
+            "pilot_result": pilot_result,
+            "boundaries": self._langgraph_controlled_pilot_smoke_boundaries(),
+        }
+
     def _get_adapter(self, adapter_id: str) -> Any:
         normalized_id = str(adapter_id or "").strip()
         for adapter in self.framework_adapter_registry.list_adapters():
@@ -473,6 +530,58 @@ class FrameworkAdapterRuntimeService:
             seen.add(key)
             unique.append(item)
         return unique
+
+    @staticmethod
+    def _build_langgraph_smoke_acceptance(
+        *,
+        pilot_result: Mapping[str, Any],
+        external_call_attempted: bool,
+    ) -> Dict[str, Any]:
+        events = list(pilot_result.get("events") or []) if isinstance(pilot_result, Mapping) else []
+        final_output = str(pilot_result.get("final_output") or "").strip() if isinstance(pilot_result, Mapping) else ""
+        snapshot_ref = pilot_result.get("snapshot_ref") if isinstance(pilot_result, Mapping) else None
+        query_control_recordings = list(pilot_result.get("query_control_recordings") or []) if isinstance(pilot_result, Mapping) else []
+        error = pilot_result.get("error") if isinstance(pilot_result, Mapping) and isinstance(pilot_result.get("error"), Mapping) else {}
+        pilot_status = str(pilot_result.get("status") or "").strip() if isinstance(pilot_result, Mapping) else ""
+        checks = {
+            "external_call_attempted": bool(external_call_attempted),
+            "pilot_status_ok": pilot_status == "ok",
+            "final_output_available": bool(final_output),
+            "events_available": bool(events),
+            "snapshot_available": isinstance(snapshot_ref, Mapping),
+            "query_control_recording_available": bool(query_control_recordings),
+        }
+        return {
+            "accepted": bool(
+                checks["external_call_attempted"]
+                and checks["pilot_status_ok"]
+                and checks["final_output_available"]
+                and checks["events_available"]
+                and checks["snapshot_available"]
+            ),
+            "pilot_status": pilot_status or "not_started",
+            "final_output_available": checks["final_output_available"],
+            "event_count": len(events),
+            "snapshot_available": checks["snapshot_available"],
+            "query_control_recording_available": checks["query_control_recording_available"],
+            "checks": checks,
+            "error": {
+                "error_type": str(error.get("error_type") or "").strip(),
+                "detail": str(error.get("detail") or "").strip(),
+            } if error else None,
+        }
+
+    @staticmethod
+    def _langgraph_controlled_pilot_smoke_boundaries() -> Dict[str, Any]:
+        return {
+            "default_chat_entry": "disabled",
+            "production_promotion": "disabled",
+            "worker_execution": "not_performed",
+            "scheduler_execution": "not_performed",
+            "checkpoint_management": "external_runtime_owned",
+            "sandbox_management": "external_runtime_owned",
+            "runtime_behavior_changed": False,
+        }
 
     @classmethod
     def _build_unknown_adapter_checklist(cls, adapter_id: str) -> Dict[str, Any]:

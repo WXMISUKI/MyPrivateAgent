@@ -1465,3 +1465,13 @@ Provider-first 能力路线已补充到 `docs/roadmap/provider_capability_gap_as
   1. 运行 LangGraph controlled pilot smoke：只在 readiness gate ready 时，通过既有 `execute_external_adapter_run(...)` 和 stub/真实测试环境验证一次端到端外部 runtime 调用。
   2. 评估 trace-backed projection source：把 pilot 结果以可回放、可审计方式进入治理 read model，而不是直接进入生产 trace。
   3. 若 LangGraph pilot 暴露托管/沙箱/部署缺口，再评估 AgentRun controlled pilot；不要在 MyPrivateAgent 内自研这些基础设施。
+
+当前补充：
+
+- LangGraph controlled pilot smoke 已完成第一刀：
+  - `FrameworkAdapterRuntimeService.run_langgraph_controlled_pilot_smoke(...)` 新增 readiness-gated explicit smoke wrapper
+  - readiness blocked 时返回 `smoke_status = blocked` 且 `external_call_attempted = false`
+  - readiness ready 时复用既有 `execute_external_adapter_run(...)`，并返回 pilot status、final output availability、event count、snapshot availability、query-control recording availability 和 acceptance checks
+  - external pilot failed 时会形成 `smoke_status = failed` 的证据，而不是抛弃失败或误判为生产阻断
+- 该 smoke 是外部成熟 runtime 接入链的显式试运行合同，不是默认 chat promotion，也不是 production runtime authorization。
+- 下一步最值得做的是 trace-backed projection source：把 smoke evidence 转成只读、可回放、可被 Runtime Surface/Governance Timeline 消费的治理投影；在此之前不要把 LangGraph pilot success 推广到默认主流程。

@@ -63,6 +63,17 @@ class _StubErrorTransport:
         raise self.exc
 
 
+class _FailIfCalledTransport:
+    def probe(self, **_kwargs):
+        raise AssertionError("probe should not be called when readiness blocks smoke")
+
+    def invoke(self, **_kwargs):
+        raise AssertionError("invoke should not be called when readiness blocks smoke")
+
+    def stream(self, **_kwargs):
+        raise AssertionError("stream should not be called when readiness blocks smoke")
+
+
 class _StubQueryControlTimelineService:
     def __init__(self):
         self.calls = []
@@ -441,6 +452,117 @@ class FrameworkAdapterExternalPilotTests(unittest.TestCase):
         self.assertEqual(result["status"], "failed")
         self.assertEqual(result["error"]["error_type"], "configuration_error")
         self.assertEqual(_StubRunTraceService.trace_calls[0]["event_type"], "framework_adapter_external_error")
+
+    @patch("backend.services.framework_adapter_runtime_service.get_run_trace_service", return_value=_StubRunTraceService())
+    @patch("backend.agent_framework.framework_adapters.ENABLE_LANGGRAPH_EXTERNAL_PILOT", False)
+    @patch("backend.agent_framework.framework_adapters.ENABLE_LANGGRAPH_RUNTIME_EXECUTION", True)
+    @patch("backend.agent_framework.framework_adapters.LANGGRAPH_RUNTIME_ENDPOINT", "http://localhost:8123/langgraph")
+    @patch("backend.agent_framework.framework_adapters.LANGGRAPH_ASSISTANT_ID", "assistant-1")
+    @patch("backend.agent_framework.framework_adapters._is_python_package_available", return_value=True)
+    def test_controlled_pilot_smoke_blocks_before_external_call_when_readiness_blocked(self, *_mocks):
+        service = FrameworkAdapterRuntimeService(
+            framework_adapter_registry=AgentFrameworkAdapterRegistry([LangGraphDraftAdapter()]),
+            external_pilot_transport=_FailIfCalledTransport(),
+        )
+
+        result = service.run_langgraph_controlled_pilot_smoke(
+            run_id="run-smoke-blocked-1",
+            messages=[{"role": "user", "content": "hello"}],
+            execution_context={"plan_id": 10},
+            db=object(),
+            user_id=1,
+            conversation_id=99,
+        )
+
+        self.assertEqual(result["contract_version"], "langgraph-controlled-pilot-smoke-v1")
+        self.assertEqual(result["smoke_status"], "blocked")
+        self.assertEqual(result["external_call_attempted"], False)
+        self.assertEqual(result["pilot_result"], None)
+        self.assertEqual(result["acceptance"]["accepted"], False)
+        self.assertEqual(result["acceptance"]["pilot_status"], "not_started")
+        self.assertIn(
+            {
+                "component": "execution_gate",
+                "status": "blocked",
+                "reason_code": "execution_blocked",
+                "detail": "external pilot is not enabled",
+            },
+            result["blockers"],
+        )
+        self.assertEqual(result["boundaries"]["default_chat_entry"], "disabled")
+        self.assertEqual(result["boundaries"]["production_promotion"], "disabled")
+        self.assertFalse(_StubRunTraceService.trace_calls)
+        self.assertFalse(_StubRunTraceService.audit_calls)
+
+    @patch("backend.services.framework_adapter_runtime_service.get_run_trace_service", return_value=_StubRunTraceService())
+    @patch("backend.agent_framework.framework_adapters.ENABLE_LANGGRAPH_EXTERNAL_PILOT", True)
+    @patch("backend.agent_framework.framework_adapters.ENABLE_LANGGRAPH_RUNTIME_EXECUTION", True)
+    @patch("backend.agent_framework.framework_adapters.LANGGRAPH_RUNTIME_ENDPOINT", "http://localhost:8123/langgraph")
+    @patch("backend.agent_framework.framework_adapters.LANGGRAPH_ASSISTANT_ID", "assistant-1")
+    @patch("backend.agent_framework.framework_adapters._is_python_package_available", return_value=True)
+    def test_controlled_pilot_smoke_runs_external_pilot_and_returns_acceptance(self, *_mocks):
+        query_control_timeline = _StubQueryControlTimelineService()
+        service = FrameworkAdapterRuntimeService(
+            framework_adapter_registry=AgentFrameworkAdapterRegistry([LangGraphDraftAdapter()]),
+            external_pilot_transport=_StubExternalPilotTransport(),
+            query_control_timeline_service=query_control_timeline,
+        )
+
+        result = service.run_langgraph_controlled_pilot_smoke(
+            run_id="run-smoke-ready-1",
+            messages=[{"role": "user", "content": "生成总结"}],
+            execution_context={"plan_id": 10, "plan_item_id": 24},
+            db=object(),
+            user_id=1,
+            conversation_id=99,
+        )
+
+        self.assertEqual(result["smoke_status"], "passed")
+        self.assertEqual(result["external_call_attempted"], True)
+        self.assertEqual(result["readiness"]["readiness_status"], "ready")
+        self.assertEqual(result["pilot_result"]["status"], "ok")
+        self.assertEqual(result["acceptance"]["accepted"], True)
+        self.assertEqual(result["acceptance"]["pilot_status"], "ok")
+        self.assertEqual(result["acceptance"]["final_output_available"], True)
+        self.assertEqual(result["acceptance"]["event_count"], 3)
+        self.assertEqual(result["acceptance"]["snapshot_available"], True)
+        self.assertEqual(result["acceptance"]["query_control_recording_available"], True)
+        self.assertEqual(result["pilot_result"]["translated_input"]["execution_context"]["run_kind"], "framework_adapter_external_pilot")
+        self.assertEqual(len(_StubRunTraceService.trace_calls), 3)
+        self.assertEqual(_StubRunTraceService.audit_calls[0]["event_type"], "framework_adapter_external_pilot_completed")
+        self.assertEqual(result["boundaries"]["production_promotion"], "disabled")
+
+    @patch("backend.services.framework_adapter_runtime_service.get_run_trace_service", return_value=_StubRunTraceService())
+    @patch("backend.agent_framework.framework_adapters.ENABLE_LANGGRAPH_EXTERNAL_PILOT", True)
+    @patch("backend.agent_framework.framework_adapters.ENABLE_LANGGRAPH_RUNTIME_EXECUTION", True)
+    @patch("backend.agent_framework.framework_adapters.LANGGRAPH_RUNTIME_ENDPOINT", "http://localhost:8123/langgraph")
+    @patch("backend.agent_framework.framework_adapters.LANGGRAPH_ASSISTANT_ID", "assistant-1")
+    @patch("backend.agent_framework.framework_adapters._is_python_package_available", return_value=True)
+    def test_controlled_pilot_smoke_captures_external_failure_as_evidence(self, *_mocks):
+        service = FrameworkAdapterRuntimeService(
+            framework_adapter_registry=AgentFrameworkAdapterRegistry([LangGraphDraftAdapter()]),
+            external_pilot_transport=_StubErrorTransport(httpx.ConnectError("connect failed")),
+        )
+
+        result = service.run_langgraph_controlled_pilot_smoke(
+            run_id="run-smoke-failed-1",
+            messages=[{"role": "user", "content": "生成总结"}],
+            execution_context={"plan_id": 10},
+            db=object(),
+            user_id=1,
+            conversation_id=99,
+        )
+
+        self.assertEqual(result["smoke_status"], "failed")
+        self.assertEqual(result["external_call_attempted"], True)
+        self.assertEqual(result["pilot_result"]["status"], "failed")
+        self.assertEqual(result["acceptance"]["accepted"], False)
+        self.assertEqual(result["acceptance"]["pilot_status"], "failed")
+        self.assertEqual(result["acceptance"]["error"]["error_type"], "connectivity_error")
+        self.assertEqual(result["acceptance"]["error"]["detail"], "connect failed")
+        self.assertEqual(result["acceptance"]["event_count"], 1)
+        self.assertEqual(_StubRunTraceService.trace_calls[0]["event_type"], "framework_adapter_external_error")
+        self.assertEqual(result["boundaries"]["default_chat_entry"], "disabled")
 
 
 if __name__ == "__main__":
