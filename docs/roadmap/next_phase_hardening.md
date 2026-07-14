@@ -1440,3 +1440,16 @@ Provider-first 能力路线已补充到 `docs/roadmap/provider_capability_gap_as
 - 文档入口产品化已完成：`docs/README.md`、`agent_runtime_control_plane_entrypoint.md` 与 `project_entrypoint_checklist.md` 现在共同作为当前控制面入口，覆盖 Provider、Domain Agent、Embedded SDK / Harness 和 Framework Adapter 四条接入路径。
 - Domain agent grounded-answer 证据链已经达到 repo-side minimal integration trial pack 完成线。后续除非真实调用方试接暴露具体缺口，否则不再默认沿 domain-agent evidence 继续拆小阶段。
 - 默认下一步应回到 Embedded SDK / Execution Loop 主干、framework adapter authoring checklist，或 Runtime Surface contract assembler，而不是继续增加本地 trial evidence 层。
+
+当前补充：
+
+- Framework adapter authoring template 已完成第一刀：
+  - `FrameworkAdapterRuntimeService.build_adapter_authoring_checklist(...)` 新增 additive `authoring_template`
+  - 模板固定推荐文件、required contracts、Stage 1 runtime-plane proof mapping、`runtime_plane_governance_profile` projection mapping、minimum smoke tests、promotion gate、non-goals 和 boundary flags
+  - registered / blocked / unknown adapter review 都保持 side-effect-free；unknown adapter 仍 fail-closed，但会给出 registration-first authoring guidance
+- 该模板的意义是把本地 runtime-plane proof 转化为可复制的外部成熟运行框架 adapter 开发合同，而不是继续扩本地 graph/checkpoint/scheduler/sandbox。
+- 下一步如果继续 Framework Adapter 方向，最优先应选择一个真实目标进入 controlled pilot proposal：
+  1. LangGraph controlled pilot：适合复杂图编排、循环、checkpoint/human-in-loop 的生产路径验证。
+  2. AgentRun controlled pilot：适合托管运行、沙箱、部署、可观测能力验证。
+  3. Trace-backed projection source：适合先增强治理可回放证据，但仍不直接写生产 trace。
+- 当前不建议继续增加第四个本地 demo adapter，也不建议把 checklist ready 解释为 production runtime ready。

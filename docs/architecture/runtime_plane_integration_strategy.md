@@ -243,7 +243,8 @@ class ExecutionResult:
 - 该 projection 只表达只读治理摘要，不写 trace/audit，不提交审批，不改变默认 `/api/chat`
 - Stage 2 前置第二刀已完成：Runtime Surface 现在暴露 top-level `runtime_plane_governance_profile`
 - 该 profile 只表达 projection contract readiness、supported adapters、latest projection summary availability 与 read-only boundaries；默认不执行 adapter、不写 trace/audit、不提交审批
-- 下一刀若继续治理接入，应优先评估 trace-backed projection source 或 framework adapter authoring template，而不是直接写生产 trace
+- Framework adapter authoring template 已完成第一刀：`build_adapter_authoring_checklist(...)` 现在会输出 `authoring_template`，把 `simple_agent` / `tool_agent` / `approval_agent` 三条 Stage 1 proof 映射到外部成熟运行框架 adapter 的开发责任，并明确 `runtime_plane_governance_profile` 作为只读投影消费面
+- 下一刀若继续治理接入，应优先评估 trace-backed projection source 或选择一个真实外部 adapter 进入 controlled pilot proposal，而不是直接写生产 trace
 
 | 阶段 | 治理接入深度 | 目标 |
 |---|---|---|
@@ -262,11 +263,18 @@ class ExecutionResult:
 
 **产出**：
 - agent 模板（agent.yaml + prompts/ + tools/ + evals/ 的最小脚手架）
-- adapter 模板（新框架 adapter 的最小实现骨架）
+- adapter 模板（已具备第一刀 authoring template：推荐文件、required contracts、runtime-plane proof mapping、projection mapping、minimum smoke tests、promotion gate、non-goals、boundary flags）
 - eval 模板（每个 agent 的最小验证用例）
 - CI quality gate（新 agent 必须通过的自动化检查）
 - promotion 流程（experimental → pilot → production 的标准化路径）
 - 阶段回顾模板正式固化为团队执行规范
+
+当前 Stage 3 前置约束：
+
+- 新外部运行框架接入必须先消费 `framework-adapter-authoring-template-v1`。
+- 新 adapter 的第一步是实现 SPI 与 smoke tests，不是把框架原生 payload 直接塞进业务服务。
+- `checklist_status = ready` 或 `promotion_review.status = pilot_candidate` 只表示可以进入 controlled pilot review，不表示默认 chat、生产 runtime、worker、checkpoint 或 sandbox 已启用。
+- 如果 adapter 开发暴露运行层缺口，先回到 OpenSpec proposal 更新边界；不要在 adapter 实现中顺手扩本地 runtime engine。
 
 ## 6. 10 条开发硬约束
 

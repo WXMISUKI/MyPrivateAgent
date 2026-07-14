@@ -231,6 +231,7 @@ class FrameworkAdapterRuntimeService:
             "framework_name": precheck.get("framework_name") or getattr(adapter, "framework_name", ""),
             "checklist_status": "ready" if ready else "blocked",
             "authoring_sections": self._build_authoring_sections(adapter=adapter, precheck=precheck),
+            "authoring_template": self._build_authoring_template(adapter=adapter, precheck=precheck),
             "promotion_review": {
                 "status": promotion_status,
                 "will_execute": False,
@@ -349,6 +350,15 @@ class FrameworkAdapterRuntimeService:
             "framework_name": "",
             "checklist_status": "blocked",
             "authoring_sections": {},
+            "authoring_template": cls._build_authoring_template(
+                adapter=None,
+                precheck={
+                    "adapter_id": adapter_id or None,
+                    "framework_name": "",
+                    "ready": False,
+                    "execution_block_reason": "adapter_not_registered",
+                },
+            ),
             "promotion_review": {
                 "status": "blocked",
                 "will_execute": False,
@@ -371,6 +381,137 @@ class FrameworkAdapterRuntimeService:
                 "execution_block_reason": "adapter_not_registered",
             },
             "boundary": cls._adapter_authoring_boundary(),
+        }
+
+    @staticmethod
+    def _build_authoring_template(*, adapter: Any, precheck: Mapping[str, Any]) -> Dict[str, Any]:
+        adapter_id = str(precheck.get("adapter_id") or getattr(adapter, "adapter_id", "") or "").strip()
+        framework_name = str(precheck.get("framework_name") or getattr(adapter, "framework_name", "") or "").strip()
+        target_framework = framework_name or "unregistered_framework"
+        registration_status = "registered" if adapter is not None else "missing"
+        return {
+            "template_version": "framework-adapter-authoring-template-v1",
+            "adapter_id": adapter_id or None,
+            "target_framework": target_framework,
+            "registration_status": registration_status,
+            "next_action": "author_controlled_pilot_adapter" if registration_status == "registered" else "register_adapter_before_authoring_review",
+            "recommended_files": [
+                {
+                    "path": "backend/agent_framework/framework_adapter_spi/<adapter_id>.py",
+                    "purpose": "implement AgentFrameworkAdapter translation, health, and event normalization",
+                    "owner": "framework_adapter",
+                },
+                {
+                    "path": "backend/agent_framework/framework_adapters.py",
+                    "purpose": "register the adapter behind explicit config gates",
+                    "owner": "framework_adapter_registry",
+                },
+                {
+                    "path": "tests/agent_framework/test_<adapter_id>_adapter.py",
+                    "purpose": "verify health, translation, blocked execution, and normalized events",
+                    "owner": "adapter_smoke_tests",
+                },
+                {
+                    "path": "docs/architecture/runtime_plane_integration_strategy.md",
+                    "purpose": "document borrowed framework semantics and MyPrivateAgent boundaries",
+                    "owner": "architecture_docs",
+                },
+            ],
+            "required_contracts": [
+                {
+                    "name": "AgentFrameworkAdapter",
+                    "module": "backend.agent_framework.framework_adapter_spi",
+                    "responsibility": "translate external runtime input, events, health, and output into platform-owned shapes",
+                },
+                {
+                    "name": "ExecutionRequest",
+                    "module": "backend.runtime_plane.contracts.execution",
+                    "responsibility": "represent caller-owned request metadata without framework clients or active iterators",
+                },
+                {
+                    "name": "ExecutionEvent",
+                    "module": "backend.runtime_plane.contracts.execution",
+                    "responsibility": "normalize framework lifecycle events into compact governance-safe evidence",
+                },
+                {
+                    "name": "ExecutionResult",
+                    "module": "backend.runtime_plane.contracts.execution",
+                    "responsibility": "return final status, artifacts, tool calls, citations, and trace references",
+                },
+                {
+                    "name": "runtime_plane_governance_profile",
+                    "module": "backend.services.runtime_surface_runtime_plane_builder",
+                    "responsibility": "expose read-only projection readiness without executing adapters or persisting traces",
+                },
+            ],
+            "runtime_plane_mapping": [
+                {
+                    "proof_slice": "simple_agent",
+                    "validates": "request/event/result envelope and final output normalization",
+                    "adapter_responsibility": "map framework start/output events to ExecutionEvent and ExecutionResult",
+                },
+                {
+                    "proof_slice": "tool_agent",
+                    "validates": "controlled read-only tool observation and tool result metadata",
+                    "adapter_responsibility": "surface tool calls as normalized observations without bypassing ToolRuntime policy",
+                },
+                {
+                    "proof_slice": "approval_agent",
+                    "validates": "high-risk tool intent becomes approval_pending without handler execution",
+                    "adapter_responsibility": "convert framework interruptions or human-in-loop pauses into approval_required evidence",
+                },
+            ],
+            "projection_mapping": {
+                "source_read_model": "runtime_plane_governance_projection",
+                "runtime_surface_profile": "runtime_plane_governance_profile",
+                "expected_projection_fields": [
+                    "request_id",
+                    "run_id",
+                    "agent_id",
+                    "runtime",
+                    "adapter_id",
+                    "result_status",
+                    "stage_counts",
+                    "tool_call_count",
+                    "approval_required",
+                    "trace_ref",
+                ],
+                "read_model_only": True,
+            },
+            "minimum_smoke_tests": [
+                "health_check_without_external_execution",
+                "translate_input_preserves_request_context",
+                "stream_events_returns_normalized_lifecycle_events",
+                "translate_output_returns_final_result_event",
+                "blocked_precheck_does_not_execute_adapter",
+                "checklist_generation_does_not_write_trace_or_audit",
+            ],
+            "promotion_gate_requirements": [
+                "adapter_registered",
+                "precheck_ready",
+                "stage_1_runtime_plane_mapping_declared",
+                "governance_projection_mapping_declared",
+                "minimum_smoke_tests_passed",
+                "controlled_pilot_review_approved",
+                "default_chat_entry_remains_disabled",
+            ],
+            "non_goals": [
+                "execute_external_runtime_from_template",
+                "implement_langgraph_or_agentrun_engine",
+                "create_worker_scheduler_checkpoint_or_sandbox",
+                "register_tools_or_modify_tool_runtime",
+                "persist_trace_or_audit_from_checklist",
+                "promote_default_main_chat_execution",
+            ],
+            "boundaries": {
+                "will_execute": False,
+                "default_chat_entry": "disabled",
+                "external_framework_call": "not_performed",
+                "trace_write": "not_performed",
+                "audit_write": "not_performed",
+                "tool_registration": "not_performed",
+                "runtime_behavior_changed": False,
+            },
         }
 
     @staticmethod

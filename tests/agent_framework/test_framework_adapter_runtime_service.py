@@ -121,11 +121,59 @@ class FrameworkAdapterRuntimeServiceTests(unittest.TestCase):
         self.assertEqual(result["promotion_review"]["default_chat_entry"], "disabled")
         self.assertEqual(result["authoring_sections"]["lifecycle_mapping"]["query_control_channel"], "external_adapter")
         self.assertIn("framework_adapter_status", result["authoring_sections"]["lifecycle_mapping"]["required_events"])
+        self.assertEqual(
+            result["authoring_template"]["template_version"],
+            "framework-adapter-authoring-template-v1",
+        )
+        self.assertEqual(result["authoring_template"]["adapter_id"], "local_fake_framework")
+        self.assertEqual(result["authoring_template"]["registration_status"], "registered")
+        self.assertEqual(result["authoring_template"]["boundaries"]["default_chat_entry"], "disabled")
         self.assertEqual(result["boundary"]["adapter_execution"], "not_performed")
         self.assertEqual(result["boundary"]["trace_write"], "not_performed")
         self.assertEqual(result["boundary"]["audit_write"], "not_performed")
         self.assertFalse(_StubRunTraceService.trace_calls)
         self.assertFalse(_StubRunTraceService.audit_calls)
+
+    def test_adapter_authoring_template_maps_runtime_plane_proof_to_projection_profile(self):
+        result = self.service.build_adapter_authoring_checklist(
+            adapter_id="local_fake_framework",
+        )
+
+        template = result["authoring_template"]
+        proof_slices = {
+            mapping["proof_slice"]: mapping
+            for mapping in template["runtime_plane_mapping"]
+        }
+        required_contract_names = {
+            contract["name"]
+            for contract in template["required_contracts"]
+        }
+
+        self.assertEqual(
+            set(proof_slices),
+            {"simple_agent", "tool_agent", "approval_agent"},
+        )
+        self.assertIn("request/event/result envelope", proof_slices["simple_agent"]["validates"])
+        self.assertIn("controlled read-only tool", proof_slices["tool_agent"]["validates"])
+        self.assertIn("approval_pending", proof_slices["approval_agent"]["validates"])
+        self.assertIn("AgentFrameworkAdapter", required_contract_names)
+        self.assertIn("ExecutionRequest", required_contract_names)
+        self.assertIn("ExecutionEvent", required_contract_names)
+        self.assertIn("ExecutionResult", required_contract_names)
+        self.assertIn("runtime_plane_governance_profile", required_contract_names)
+        self.assertEqual(
+            template["projection_mapping"]["runtime_surface_profile"],
+            "runtime_plane_governance_profile",
+        )
+        self.assertTrue(template["projection_mapping"]["read_model_only"])
+        self.assertIn(
+            "checklist_generation_does_not_write_trace_or_audit",
+            template["minimum_smoke_tests"],
+        )
+        self.assertIn(
+            "default_chat_entry_remains_disabled",
+            template["promotion_gate_requirements"],
+        )
 
     @patch("backend.agent_framework.framework_adapters._is_python_package_available", return_value=False)
     @patch("backend.agent_framework.framework_adapters.LANGGRAPH_RUNTIME_ENDPOINT", "")
@@ -141,6 +189,10 @@ class FrameworkAdapterRuntimeServiceTests(unittest.TestCase):
         self.assertEqual(result["checklist_status"], "blocked")
         self.assertEqual(result["promotion_review"]["status"], "blocked")
         self.assertEqual(result["promotion_review"]["default_chat_entry"], "disabled")
+        self.assertEqual(result["authoring_template"]["adapter_id"], "langgraph_draft")
+        self.assertEqual(result["authoring_template"]["target_framework"], "LangGraph")
+        self.assertEqual(result["authoring_template"]["registration_status"], "registered")
+        self.assertEqual(result["authoring_template"]["boundaries"]["will_execute"], False)
         self.assertIn("langgraph", result["precheck_summary"]["missing_packages"])
         self.assertIn("LANGGRAPH_RUNTIME_ENDPOINT", result["precheck_summary"]["missing_env"])
         self.assertIn(
@@ -160,6 +212,17 @@ class FrameworkAdapterRuntimeServiceTests(unittest.TestCase):
         self.assertEqual(result["promotion_review"]["status"], "blocked")
         self.assertEqual(result["promotion_review"]["will_execute"], False)
         self.assertEqual(result["promotion_review"]["default_chat_entry"], "disabled")
+        self.assertEqual(result["authoring_template"]["adapter_id"], "missing_adapter")
+        self.assertEqual(result["authoring_template"]["registration_status"], "missing")
+        self.assertEqual(
+            result["authoring_template"]["next_action"],
+            "register_adapter_before_authoring_review",
+        )
+        self.assertEqual(result["authoring_template"]["boundaries"]["external_framework_call"], "not_performed")
+        self.assertIn(
+            "adapter_registered",
+            result["authoring_template"]["promotion_gate_requirements"],
+        )
         self.assertIn(
             {
                 "component": "adapter_registry",
@@ -170,6 +233,8 @@ class FrameworkAdapterRuntimeServiceTests(unittest.TestCase):
             result["promotion_review"]["blockers"],
         )
         self.assertEqual(result["boundary"]["external_framework_call"], "not_performed")
+        self.assertFalse(_StubRunTraceService.trace_calls)
+        self.assertFalse(_StubRunTraceService.audit_calls)
 
     def test_execute_adapter_run_rejects_registered_placeholder_adapter(self):
         service = FrameworkAdapterRuntimeService(
